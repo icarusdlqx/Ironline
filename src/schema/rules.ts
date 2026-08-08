@@ -127,6 +127,13 @@ export const TerrainTypeSchema = z.strictObject({
   passable: z.boolean(),
 });
 
+export const SensorRulesSchema = z.strictObject({
+  id: z.literal('sensors'),
+  baseRange: z.number().positive(),
+  rangePerSkill: z.number().nonnegative(),
+  ghostMemorySeconds: z.number().nonnegative(),
+});
+
 export const TerrainRulesSchema = z.strictObject({
   id: z.literal('terrain'),
   types: z.record(IdSchema, TerrainTypeSchema),
@@ -138,6 +145,7 @@ export type CombatRules = z.infer<typeof CombatRulesSchema>;
 export type HeatRules = z.infer<typeof HeatRulesSchema>;
 export type DamageRules = z.infer<typeof DamageRulesSchema>;
 export type TerrainRules = z.infer<typeof TerrainRulesSchema>;
+export type SensorRules = z.infer<typeof SensorRulesSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
 
 export interface Rules {
@@ -147,6 +155,7 @@ export interface Rules {
   readonly heat: HeatRules;
   readonly damage: DamageRules;
   readonly terrain: TerrainRules;
+  readonly sensors: SensorRules;
 }
 
 export const RULE_SCHEMAS = {
@@ -156,6 +165,7 @@ export const RULE_SCHEMAS = {
   heat: HeatRulesSchema,
   damage: DamageRulesSchema,
   terrain: TerrainRulesSchema,
+  sensors: SensorRulesSchema,
 } as const;
 
 export type RuleId = keyof typeof RULE_SCHEMAS;

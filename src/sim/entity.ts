@@ -1,7 +1,16 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
 import type { Rules } from '../schema/rules';
-import type { AmmoBin, LocationState, MechEntity, Vec2, WeaponMount } from './types';
+import { emptyOrders } from './orders';
+import { sensorRangeFor } from './sensors';
+import {
+  WEAPON_GROUPS,
+  type AmmoBin,
+  type LocationState,
+  type MechEntity,
+  type Vec2,
+  type WeaponMount,
+} from './types';
 
 export interface SpawnParams {
   id: number;
@@ -10,7 +19,10 @@ export interface SpawnParams {
   pilotId: string;
   spawn: Vec2;
   facingDegrees: number;
+  autopilot?: boolean;
 }
+
+const GROUP_BY_WEAPON_TYPE = { energy: 1, ballistic: 2, missile: 3 } as const;
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
@@ -51,6 +63,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     index,
     weaponId: mount.weaponId,
     location: mount.location,
+    group: GROUP_BY_WEAPON_TYPE[catalog.weapons.get(mount.weaponId)?.type ?? 'energy'],
     cooldown: 0,
     destroyed: false,
   }));
@@ -124,6 +137,11 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     outgoingAccuracyFactor,
     destroyed: false,
     killMethod: null,
+
+    autopilot: params.autopilot ?? true,
+    orders: emptyOrders(),
+    groupEnabled: Array.from({ length: WEAPON_GROUPS }, () => true),
+    sensorRange: sensorRangeFor(rules.sensors, pilot.sensors),
 
     targetId: null,
     calledShot: null,

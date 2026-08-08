@@ -12,6 +12,7 @@ import {
   HeatRulesSchema,
   MovementRulesSchema,
   RULE_IDS,
+  SensorRulesSchema,
   SimulationRulesSchema,
   TerrainRulesSchema,
   type Rules,
@@ -182,6 +183,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const heat = parseRule('heat', HeatRulesSchema, byStem, issues);
   const damage = parseRule('damage', DamageRulesSchema, byStem, issues);
   const terrain = parseRule('terrain', TerrainRulesSchema, byStem, issues);
+  const sensors = parseRule('sensors', SensorRulesSchema, byStem, issues);
 
   if (
     simulation === null ||
@@ -189,12 +191,13 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     combat === null ||
     heat === null ||
     damage === null ||
-    terrain === null
+    terrain === null ||
+    sensors === null
   ) {
     return null;
   }
 
-  return { simulation, movement, combat, heat, damage, terrain };
+  return { simulation, movement, combat, heat, damage, terrain, sensors };
 }
 
 export function loadCatalog(): Catalog {

@@ -10,6 +10,10 @@ export function testWorld(seed: string = 'test'): World {
   return createWorld(catalog, { seed, missionId: 'skirmish_ridge' });
 }
 
+export function playerWorld(seed: string = 'test', playerTeam: number = 0): World {
+  return createWorld(catalog, { seed, missionId: 'skirmish_ridge', playerTeam });
+}
+
 export function unitOf(world: World, designId: string): MechEntity {
   const entity = world.entities.find((candidate) => candidate.designId === designId);
   if (entity === undefined) throw new Error(`no unit with design "${designId}" in this mission`);

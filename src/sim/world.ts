@@ -6,7 +6,9 @@ import { createMech } from './entity';
 import { emit } from './events';
 import { updateHeat } from './heat';
 import { updateMovement } from './movement';
+import { updatePlayerControl } from './orders';
 import { createRng, type RngSeed } from './rng';
+import { createVision, updateVision } from './sensors';
 import { createTerrainGrid } from './terrain';
 import { isOperational, type MechEntity, type World } from './types';
 
@@ -14,6 +16,7 @@ export interface WorldOptions {
   seed: RngSeed;
   missionId: string;
   maxTicks?: number;
+  playerTeam?: number;
 }
 
 export interface UnitResult {
@@ -54,6 +57,7 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
   const mapData = catalog.maps.get(mission.mapId);
   if (mapData === undefined) throw new Error(`unknown map "${mission.mapId}"`);
 
+  const playerTeam = options.playerTeam ?? null;
   const entities: MechEntity[] = [];
   let nextId = 1;
 
@@ -67,6 +71,7 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
           pilotId: unit.pilotId,
           spawn: unit.spawn,
           facingDegrees: unit.facingDegrees,
+          autopilot: lance.team !== playerTeam,
         }),
       );
       nextId += 1;
@@ -78,7 +83,7 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
     weight: catalog.rules.combat.hitLocationWeights[location],
   })).filter((entry) => entry.weight > 0);
 
-  return {
+  const world: World = {
     tick: 0,
     dt: 1 / catalog.rules.simulation.tickRate,
     rng: createRng(options.seed),
@@ -91,9 +96,18 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
     events: [],
     hitLocationTable,
     weaponStats: new Map(),
+    playerTeam,
+    vision: null,
     finished: false,
     winner: null,
   };
+
+  if (playerTeam !== null) {
+    world.vision = createVision(world, playerTeam);
+    updateVision(world, world.vision);
+  }
+
+  return world;
 }
 
 function teamsWithSurvivors(world: World): number[] {
@@ -149,8 +163,13 @@ export function stepWorld(world: World, maxTicks: number): void {
 
   for (const entity of world.entities) updateHeat(world, entity);
 
+  if (world.vision !== null) updateVision(world, world.vision);
+
   if ((world.tick - 1) % world.rules.simulation.aiDecisionIntervalTicks === 0) {
-    for (const entity of world.entities) runBasicAi(world, entity);
+    for (const entity of world.entities) {
+      if (entity.autopilot) runBasicAi(world, entity);
+      else updatePlayerControl(world, entity);
+    }
   }
 
   for (const entity of world.entities) updateMovement(world, entity);
@@ -199,6 +218,7 @@ export function runBattle(catalog: Catalog, options: WorldOptions): BattleResult
 
   while (!world.finished && world.tick < maxTicks) {
     stepWorld(world, maxTicks);
+    world.events.length = 0;
   }
 
   return toResult(world, options.seed, maxTicks);

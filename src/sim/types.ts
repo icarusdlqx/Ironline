@@ -3,7 +3,9 @@ import type { Catalog } from '../schema/load';
 import type { Mission } from '../schema/mission';
 import type { Rules } from '../schema/rules';
 import type { SimEvent } from './events';
+import type { OrderState } from './orders';
 import type { Rng } from './rng';
+import type { TeamVision } from './sensors';
 import type { TerrainGrid } from './terrain';
 
 export type EntityId = number;
@@ -25,10 +27,13 @@ export interface LocationState {
   destroyed: boolean;
 }
 
+export const WEAPON_GROUPS = 4;
+
 export interface WeaponMount {
   index: number;
   weaponId: string;
   location: MechLocation;
+  group: number;
   cooldown: number;
   destroyed: boolean;
 }
@@ -94,6 +99,11 @@ export interface MechEntity {
   destroyed: boolean;
   killMethod: KillMethod | null;
 
+  autopilot: boolean;
+  orders: OrderState;
+  groupEnabled: boolean[];
+  sensorRange: number;
+
   targetId: EntityId | null;
   calledShot: MechLocation | null;
   path: Vec2[];
@@ -133,6 +143,8 @@ export interface World {
   events: SimEvent[];
   hitLocationTable: readonly { value: MechLocation; weight: number }[];
   weaponStats: Map<string, WeaponStat>;
+  playerTeam: number | null;
+  vision: TeamVision | null;
   finished: boolean;
   winner: number | null;
 }

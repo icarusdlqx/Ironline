@@ -1,0 +1,454 @@
+:root {
+  --bg: #0d1013;
+  --panel: rgba(14, 18, 22, 0.92);
+  --edge: rgba(140, 224, 255, 0.18);
+  --accent: #8ce0ff;
+  --warn: #ffc061;
+  --danger: #ff8a6b;
+  --text: #d7e2ea;
+  --muted: #7f8f9c;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.viewport canvas {
+  display: block;
+}
+
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 16px;
+  background: linear-gradient(rgba(8, 11, 14, 0.9), rgba(8, 11, 14, 0));
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.mission {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.pause {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.pause.active {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.paused-banner,
+.outcome {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 18px;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  background: rgba(10, 13, 16, 0.9);
+  color: var(--warn);
+  letter-spacing: 0.14em;
+  font-size: 12px;
+}
+
+.outcome {
+  top: 40%;
+  font-size: 22px;
+  padding: 14px 34px;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.error {
+  position: absolute;
+  inset: 20% 20% auto 20%;
+  padding: 16px;
+  border: 1px solid var(--danger);
+  background: rgba(20, 8, 8, 0.95);
+  color: var(--danger);
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.sidebar {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  width: 268px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h2 small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.empty {
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.paper-doll {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-areas:
+    '.  .  hd .  .'
+    'la lt ct rt ra'
+    '.  ll .  rl .';
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.doll-cell {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 3px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.doll-cell:disabled {
+  cursor: default;
+}
+
+.doll-cell.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.doll-cell.destroyed {
+  background: rgba(255, 90, 70, 0.16);
+  border-color: var(--danger);
+}
+
+.doll-label {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.doll-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 2px;
+  overflow: hidden;
+  display: block;
+}
+
+.doll-bar span {
+  display: block;
+  height: 100%;
+}
+
+.doll-bar.armour span {
+  background: var(--accent);
+}
+
+.doll-bar.internal span {
+  background: var(--warn);
+}
+
+.heat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.heat-track {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.heat-fill {
+  height: 100%;
+  transition: width 120ms linear;
+}
+
+.heat-fill.ok {
+  background: #4fa3d1;
+}
+.heat-fill.warn {
+  background: var(--warn);
+}
+.heat-fill.danger {
+  background: #ff9448;
+}
+.heat-fill.critical {
+  background: var(--danger);
+}
+
+.heat-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.heat-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.target-line {
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weapon-group {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.weapon-group.disabled {
+  opacity: 0.45;
+}
+
+.group-key {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 0;
+}
+
+.weapon-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+}
+
+.weapon-group li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.weapon-group li.destroyed {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.cooldown-ring {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.weapon-name {
+  flex: 1;
+}
+
+.weapon-ammo {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.log {
+  margin: 12px 0 0;
+  padding: 8px 0 0;
+  list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 11px;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.bottombar {
+  position: absolute;
+  left: 12px;
+  right: 300px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lance {
+  display: flex;
+  gap: 8px;
+}
+
+.lance-card {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.lance-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.lance-card.dead {
+  opacity: 0.45;
+}
+
+.lance-name {
+  font-weight: 600;
+}
+
+.lance-chassis {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lance-health {
+  display: block;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lance-health span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.lance-status {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.palette {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.command {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.command:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.command.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.command-key {
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 9px;
+}

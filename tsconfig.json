@@ -18,6 +18,7 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
     "noEmit": true
   },
   "include": ["src", "tests", "vite.config.ts", "eslint.config.js"]

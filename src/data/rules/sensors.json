@@ -1,0 +1,6 @@
+{
+  "id": "sensors",
+  "baseRange": 380,
+  "rangePerSkill": 55,
+  "ghostMemorySeconds": 20
+}

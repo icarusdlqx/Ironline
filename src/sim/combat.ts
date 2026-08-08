@@ -132,6 +132,7 @@ export function updateWeapons(world: World, shooter: MechEntity): void {
 
   for (const mount of shooter.weapons) {
     if (mount.destroyed || mount.cooldown > 0) continue;
+    if (shooter.groupEnabled[mount.group - 1] !== true) continue;
 
     const weapon = world.catalog.weapons.get(mount.weaponId);
     if (weapon === undefined) continue;
