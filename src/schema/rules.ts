@@ -127,6 +127,59 @@ export const TerrainTypeSchema = z.strictObject({
   passable: z.boolean(),
 });
 
+export const SalvageRulesSchema = z.strictObject({
+  id: z.literal('salvage'),
+  chassisRecoveryByOutcome: z.strictObject({
+    centre_torso: Probability,
+    head: Probability,
+    ammo_explosion: Probability,
+    legged: Probability,
+    ejected: Probability,
+  }),
+  weaponRecoveryMin: Probability,
+  weaponRecoveryMax: Probability,
+  equipmentRecovery: Probability,
+  destroyedLocationRecovery: Probability,
+  hulkRebuildCostFraction: z.number().positive().max(1),
+  hulkRebuildDays: z.number().int().positive(),
+});
+
+export const EconomyRulesSchema = z.strictObject({
+  id: z.literal('economy'),
+  negotiation: z.strictObject({
+    payoutFloorFactor: z.number().positive().max(1),
+    payoutCeilingFactor: z.number().min(1).max(4),
+    steps: z.number().int().min(2).max(20),
+  }),
+  repair: z.strictObject({
+    armourCostPerPoint: z.number().nonnegative(),
+    internalCostPerPoint: z.number().nonnegative(),
+    locationReplaceCostFraction: z.number().nonnegative().max(1),
+    armourPointsPerDay: z.number().positive(),
+    internalPointsPerDay: z.number().positive(),
+    locationReplaceDays: z.number().nonnegative(),
+    minimumDays: z.number().int().nonnegative(),
+  }),
+  pilot: z.strictObject({
+    hireCostBase: z.number().nonnegative(),
+    hireCostPerSkillPoint: z.number().nonnegative(),
+    salaryPerDay: z.number().nonnegative(),
+    injuryDaysBase: z.number().int().nonnegative(),
+    injuryDaysPerWound: z.number().int().nonnegative(),
+    injuryChanceOnMechLoss: Probability,
+    deathChanceOnMechLoss: Probability,
+  }),
+  xp: z.strictObject({
+    perDamageDealt: z.number().nonnegative(),
+    perKill: z.number().nonnegative(),
+    missionSurvival: z.number().nonnegative(),
+    missionWin: z.number().nonnegative(),
+    skillCostBase: z.number().positive(),
+    skillCostGrowth: z.number().min(1).max(5),
+  }),
+  market: z.strictObject({ sellFraction: z.number().positive().max(1) }),
+});
+
 export const ConstructionRulesSchema = z.strictObject({
   id: z.literal('construction'),
   engineWeightByRating: z.record(z.string().regex(/^\d+$/), z.number().positive()),
@@ -155,6 +208,8 @@ export type DamageRules = z.infer<typeof DamageRulesSchema>;
 export type TerrainRules = z.infer<typeof TerrainRulesSchema>;
 export type SensorRules = z.infer<typeof SensorRulesSchema>;
 export type ConstructionRules = z.infer<typeof ConstructionRulesSchema>;
+export type SalvageRules = z.infer<typeof SalvageRulesSchema>;
+export type EconomyRules = z.infer<typeof EconomyRulesSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
 
 export interface Rules {
@@ -166,6 +221,8 @@ export interface Rules {
   readonly terrain: TerrainRules;
   readonly sensors: SensorRules;
   readonly construction: ConstructionRules;
+  readonly salvage: SalvageRules;
+  readonly economy: EconomyRules;
 }
 
 export const RULE_SCHEMAS = {
@@ -177,6 +234,8 @@ export const RULE_SCHEMAS = {
   terrain: TerrainRulesSchema,
   sensors: SensorRulesSchema,
   construction: ConstructionRulesSchema,
+  salvage: SalvageRulesSchema,
+  economy: EconomyRulesSchema,
 } as const;
 
 export type RuleId = keyof typeof RULE_SCHEMAS;

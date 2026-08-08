@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { prepareDeployment, resolveMission } from '../campaign/campaign';
+import { loadCampaign, saveCampaign } from '../campaign/save';
+import { getCatalog } from '../schema/load';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
@@ -18,12 +21,28 @@ export function Battle() {
   const state = useGame();
   const unit = selectedUnit(state);
 
+  const [resolved, setResolved] = useState(false);
+
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) return;
 
+    let options = {};
+    if (useGame.getState().campaignPending) {
+      const saved = loadCampaign().state;
+      if (saved !== null) {
+        const deployment = prepareDeployment(getCatalog(), saved);
+        options = {
+          missionId: deployment.missionId,
+          seed: deployment.seed,
+          playerTeam: deployment.playerTeam,
+          playerLance: deployment.entries,
+        };
+      }
+    }
+
     let cancelled = false;
-    createEngine(host)
+    createEngine(host, options)
       .then((engine) => {
         if (cancelled) {
           engine.destroy();
@@ -41,6 +60,22 @@ export function Battle() {
       engineRef.current = null;
     };
   }, []);
+
+  const onReturnToCampaign = (): void => {
+    const engine = engineRef.current;
+    if (engine !== null && !resolved) {
+      const catalog = getCatalog();
+      const saved = loadCampaign().state;
+      if (saved !== null) {
+        const deployment = prepareDeployment(catalog, saved);
+        resolveMission(catalog, saved, engine.result(), deployment.lance);
+        saveCampaign(saved);
+      }
+      setResolved(true);
+      return;
+    }
+    state.patch({ campaignPending: false, screen: 'campaign' });
+  };
 
   const onCommand = (command: Command): void => {
     const engine = engineRef.current;
@@ -89,6 +124,14 @@ export function Battle() {
         >
           Mechbay
         </button>
+        <button
+          type="button"
+          className="pause"
+          onClick={() => state.patch({ screen: 'campaign' })}
+          data-testid="open-campaign"
+        >
+          Campaign
+        </button>
         <span className="hint">Space pauses · right-click orders · wheel zooms</span>
       </header>
 
@@ -100,11 +143,18 @@ export function Battle() {
 
       {state.finished ? (
         <div className="outcome" data-testid="outcome">
-          {state.winner === null
-            ? 'Stalemate'
-            : state.winner === state.playerTeam
-              ? 'Mission accomplished'
-              : 'Lance destroyed'}
+          <span>
+            {state.winner === null
+              ? 'Stalemate'
+              : state.winner === state.playerTeam
+                ? 'Mission accomplished'
+                : 'Lance destroyed'}
+          </span>
+          {state.campaignPending ? (
+            <button type="button" onClick={onReturnToCampaign} data-testid="return-to-campaign">
+              {resolved ? 'Back to campaign' : 'Resolve contract'}
+            </button>
+          ) : null}
         </div>
       ) : null}
 

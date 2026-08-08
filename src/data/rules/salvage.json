@@ -1,0 +1,16 @@
+{
+  "id": "salvage",
+  "chassisRecoveryByOutcome": {
+    "centre_torso": 0.2,
+    "head": 0.45,
+    "ammo_explosion": 0.05,
+    "legged": 0.85,
+    "ejected": 0.9
+  },
+  "weaponRecoveryMin": 0.6,
+  "weaponRecoveryMax": 0.9,
+  "equipmentRecovery": 0.7,
+  "destroyedLocationRecovery": 0.15,
+  "hulkRebuildCostFraction": 0.45,
+  "hulkRebuildDays": 21
+}

@@ -843,3 +843,272 @@ button {
 .bay-status.error {
   color: var(--danger);
 }
+
+/* ---- Campaign ---- */
+
+.camp {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas:
+    'top      top'
+    'map      contract'
+    'bay      roster'
+    'store    log';
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  overflow: auto;
+}
+
+.camp-top {
+  grid-area: top;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.camp-top h2 {
+  margin: 0;
+  font-size: 15px;
+  flex: 1;
+}
+
+.camp-top span {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.camp-top button,
+.camp-contract button,
+.camp-bay button,
+.camp-roster button,
+.camp-store select {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.camp-top button:disabled,
+.camp-roster button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.camp-import {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.camp-import input {
+  max-width: 130px;
+  font-size: 10px;
+}
+
+.camp-map {
+  grid-area: map;
+  position: relative;
+  min-height: 240px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background-image:
+    linear-gradient(rgba(140, 224, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 224, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.camp-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 14, 18, 0.95);
+  font-size: 11px;
+  text-align: left;
+}
+
+.camp-node.open {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.camp-node.selected {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.camp-node.done {
+  border-color: rgba(140, 224, 255, 0.4);
+  color: var(--muted);
+}
+
+.camp-node.failed {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.camp-node:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.node-state {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.camp-contract,
+.camp-bay,
+.camp-roster,
+.camp-store {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 11px;
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.camp-contract {
+  grid-area: contract;
+}
+.camp-bay {
+  grid-area: bay;
+}
+.camp-roster {
+  grid-area: roster;
+}
+.camp-store {
+  grid-area: store;
+}
+
+.camp-contract h3,
+.camp-bay h3,
+.camp-roster h3,
+.camp-store h3 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.camp-brief {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.camp-negotiate {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.camp-negotiate input {
+  accent-color: var(--accent);
+}
+
+.camp-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.camp-bay ul,
+.camp-roster ul,
+.camp-store ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.camp-bay li,
+.camp-roster li,
+.camp-store li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bay-mech-name,
+.pilot-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bay-mech-state,
+.pilot-state {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.pilot-skills {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.pilot-buttons {
+  display: flex;
+  gap: 3px;
+}
+
+.pilot-buttons button {
+  padding: 1px 4px;
+  font-size: 9px;
+}
+
+.strip-legal {
+  color: var(--danger);
+  font-size: 9px;
+}
+
+.camp-log {
+  grid-area: log;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.camp-log ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.camp-status {
+  color: var(--accent);
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.outcome button {
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  padding: 6px 14px;
+  font-size: 12px;
+}

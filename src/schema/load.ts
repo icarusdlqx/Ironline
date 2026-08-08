@@ -1,4 +1,5 @@
 import type { ZodType } from 'zod';
+import { CampaignSchema, type Campaign } from './campaign';
 import { ChassisSchema, type Chassis } from './chassis';
 import { DesignSchema, type Design } from './design';
 import { EquipmentSchema, type Equipment } from './equipment';
@@ -10,9 +11,11 @@ import {
   CombatRulesSchema,
   ConstructionRulesSchema,
   DamageRulesSchema,
+  EconomyRulesSchema,
   HeatRulesSchema,
   MovementRulesSchema,
   RULE_IDS,
+  SalvageRulesSchema,
   SensorRulesSchema,
   SimulationRulesSchema,
   TerrainRulesSchema,
@@ -46,6 +49,7 @@ export interface Catalog {
   readonly designs: ReadonlyMap<string, Design>;
   readonly maps: ReadonlyMap<string, TerrainMapData>;
   readonly missions: ReadonlyMap<string, Mission>;
+  readonly campaigns: ReadonlyMap<string, Campaign>;
 }
 
 type RawFiles = Record<string, unknown>;
@@ -75,6 +79,10 @@ const mapFiles = import.meta.glob('../data/maps/*.json', {
   import: 'default',
 }) as RawFiles;
 const missionFiles = import.meta.glob('../data/missions/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const campaignFiles = import.meta.glob('../data/campaigns/*.json', {
   eager: true,
   import: 'default',
 }) as RawFiles;
@@ -186,6 +194,8 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const terrain = parseRule('terrain', TerrainRulesSchema, byStem, issues);
   const sensors = parseRule('sensors', SensorRulesSchema, byStem, issues);
   const construction = parseRule('construction', ConstructionRulesSchema, byStem, issues);
+  const salvage = parseRule('salvage', SalvageRulesSchema, byStem, issues);
+  const economy = parseRule('economy', EconomyRulesSchema, byStem, issues);
 
   if (
     simulation === null ||
@@ -195,12 +205,25 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     damage === null ||
     terrain === null ||
     sensors === null ||
-    construction === null
+    construction === null ||
+    salvage === null ||
+    economy === null
   ) {
     return null;
   }
 
-  return { simulation, movement, combat, heat, damage, terrain, sensors, construction };
+  return {
+    simulation,
+    movement,
+    combat,
+    heat,
+    damage,
+    terrain,
+    sensors,
+    construction,
+    salvage,
+    economy,
+  };
 }
 
 export function loadCatalog(): Catalog {
@@ -215,6 +238,7 @@ export function loadCatalog(): Catalog {
     designs: parseCollection('design', designFiles, DesignSchema, issues),
     maps: parseCollection('map', mapFiles, TerrainMapSchema, issues),
     missions: parseCollection('mission', missionFiles, MissionSchema, issues),
+    campaigns: parseCollection('campaign', campaignFiles, CampaignSchema, issues),
   };
 
   if (rules === null || issues.length > 0) throw new ContentValidationError(issues);

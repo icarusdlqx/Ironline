@@ -4,7 +4,7 @@ import { loadCatalog } from '../schema/load';
 import { Renderer } from '../render/scene';
 import { issueAttack, issueMove, issueStop, setGroupEnabled, setHoldFire } from '../sim/orders';
 import { findEntity, isOperational, type EntityId, type Vec2, type World } from '../sim/types';
-import { createWorld, stepWorld } from '../sim/world';
+import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
 import { attachInput } from './input';
 import { snapshotUnits } from './snapshot';
 import { useGame, type OrderMode } from './store';
@@ -17,6 +17,7 @@ export interface EngineOptions {
   missionId?: string;
   seed?: string;
   playerTeam?: number;
+  playerLance?: LanceEntry[];
 }
 
 export class Engine {
@@ -220,6 +221,10 @@ export class Engine {
   setOrderMode(mode: OrderMode): void {
     useGame.getState().setOrderMode(mode);
   }
+
+  result(): BattleResult {
+    return toResult(this.world, String(this.world.rng.save().w), this.maxTicks);
+  }
 }
 
 export async function createEngine(host: HTMLElement, options: EngineOptions = {}): Promise<Engine> {
@@ -231,6 +236,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
     seed: options.seed ?? 'skirmish',
     missionId,
     playerTeam,
+    ...(options.playerLance === undefined ? {} : { playerLance: options.playerLance }),
   });
 
   const mission = catalog.missions.get(missionId);

@@ -150,9 +150,34 @@ function checkMaps(catalog: Catalog, push: Push): void {
   }
 }
 
+function checkCampaigns(catalog: Catalog, push: Push): void {
+  for (const campaign of catalog.campaigns.values()) {
+    const file = `campaigns/${campaign.id}.json`;
+
+    for (const node of campaign.nodes) {
+      if (!catalog.missions.has(node.missionId)) {
+        push(file, `nodes.${node.id}`, `unknown mission "${node.missionId}"`);
+      }
+    }
+
+    for (const designId of campaign.startingDesignIds) {
+      if (!catalog.designs.has(designId)) {
+        push(file, 'startingDesignIds', `unknown design "${designId}"`);
+      }
+    }
+
+    for (const pilotId of [...campaign.startingPilotIds, ...campaign.hiringPoolPilotIds]) {
+      if (!catalog.pilots.has(pilotId)) {
+        push(file, 'startingPilotIds', `unknown pilot "${pilotId}"`);
+      }
+    }
+  }
+}
+
 export function checkIntegrity(catalog: Catalog, issues: ContentIssue[]): void {
   const push: Push = (file, path, message) => issues.push({ file, path, message });
   checkMaps(catalog, push);
   checkDesigns(catalog, push);
   checkMissions(catalog, push);
+  checkCampaigns(catalog, push);
 }

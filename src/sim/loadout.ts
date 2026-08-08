@@ -298,6 +298,32 @@ export function computeLoadout(catalog: Catalog, design: Design): Loadout {
   };
 }
 
+/** Spends every remaining ton on armour, in proportion to each location's maximum. */
+export function maximiseArmour(catalog: Catalog, design: Design): Design {
+  const chassis = catalog.chassis.get(design.chassisId);
+  if (chassis === undefined) return design;
+
+  const stripped: Design = {
+    ...design,
+    armour: Object.fromEntries(LOCATIONS.map((location) => [location, 0])) as Record<
+      MechLocation,
+      number
+    >,
+  };
+
+  const bare = computeLoadout(catalog, stripped);
+  const affordable = Math.max(0, bare.freeTonnage) * catalog.rules.construction.armourPointsPerTon;
+  const maxTotal = LOCATIONS.reduce((sum, location) => sum + chassis.armourMax[location], 0);
+  const scale = maxTotal === 0 ? 0 : Math.min(1, affordable / maxTotal);
+
+  return {
+    ...design,
+    armour: Object.fromEntries(
+      LOCATIONS.map((location) => [location, Math.floor(chassis.armourMax[location] * scale)]),
+    ) as Record<MechLocation, number>,
+  };
+}
+
 export function computeHeatProfile(catalog: Catalog, design: Design): HeatProfile {
   const rules = catalog.rules.heat;
   const sink = catalog.equipment.get(design.heatSinkId);

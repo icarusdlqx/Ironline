@@ -1,0 +1,37 @@
+{
+  "id": "economy",
+  "negotiation": {
+    "payoutFloorFactor": 0.55,
+    "payoutCeilingFactor": 1.45,
+    "steps": 8
+  },
+  "repair": {
+    "armourCostPerPoint": 250,
+    "internalCostPerPoint": 1200,
+    "locationReplaceCostFraction": 0.08,
+    "armourPointsPerDay": 90,
+    "internalPointsPerDay": 20,
+    "locationReplaceDays": 4,
+    "minimumDays": 1
+  },
+  "pilot": {
+    "hireCostBase": 120000,
+    "hireCostPerSkillPoint": 45000,
+    "salaryPerDay": 1200,
+    "injuryDaysBase": 6,
+    "injuryDaysPerWound": 4,
+    "injuryChanceOnMechLoss": 0.5,
+    "deathChanceOnMechLoss": 0.18
+  },
+  "xp": {
+    "perDamageDealt": 0.6,
+    "perKill": 90,
+    "missionSurvival": 60,
+    "missionWin": 40,
+    "skillCostBase": 400,
+    "skillCostGrowth": 1.9
+  },
+  "market": {
+    "sellFraction": 0.45
+  }
+}

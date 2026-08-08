@@ -1,0 +1,102 @@
+{
+  "id": "standoff_ridge",
+  "name": "Standoff \u2014 Ridge Pass",
+  "type": "skirmish",
+  "mapId": "ridge_pass",
+  "maxDurationSeconds": 420,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Ironline Lance",
+      "units": [
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 108,
+            "y": 852
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": {
+            "x": 156,
+            "y": 876
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 204,
+            "y": 828
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 132,
+            "y": 780
+          },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Steel Legion",
+      "units": [
+        {
+          "designId": "rampart_breaker",
+          "pilotId": "nadia_ostrow",
+          "spawn": {
+            "x": 852,
+            "y": 108
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "bulwark_burner",
+          "pilotId": "cato_ferrin",
+          "spawn": {
+            "x": 804,
+            "y": 132
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "willem_torrance",
+          "spawn": {
+            "x": 876,
+            "y": 180
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "juno_reyes",
+          "spawn": {
+            "x": 828,
+            "y": 84
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "wisp_harasser",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 900,
+            "y": 132
+          },
+          "facingDegrees": 135
+        }
+      ]
+    }
+  ]
+}

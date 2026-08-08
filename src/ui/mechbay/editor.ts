@@ -2,7 +2,7 @@ import type { MechLocation } from '../../schema/common';
 import { LOCATIONS } from '../../schema/common';
 import { DesignSchema, type Design } from '../../schema/design';
 import type { Catalog } from '../../schema/load';
-import { computeLoadout } from '../../sim/loadout';
+import { computeLoadout, maximiseArmour as fitArmour } from '../../sim/loadout';
 
 const STORAGE_PREFIX = 'ironline.design.';
 
@@ -97,21 +97,8 @@ export function setName(design: Design, name: string): Design {
   return next;
 }
 
-/** Spends every remaining ton on armour, spread in proportion to each location's maximum. */
 export function maximiseArmour(catalog: Catalog, design: Design): Design {
-  const chassis = catalog.chassis.get(design.chassisId);
-  if (chassis === undefined) return design;
-
-  const stripped = LOCATIONS.reduce((current, location) => setArmour(current, location, 0), design);
-  const bare = computeLoadout(catalog, stripped);
-  const affordable = Math.max(0, bare.freeTonnage) * catalog.rules.construction.armourPointsPerTon;
-  const maxTotal = LOCATIONS.reduce((sum, location) => sum + chassis.armourMax[location], 0);
-  const scale = Math.min(1, affordable / maxTotal);
-
-  return LOCATIONS.reduce(
-    (current, location) => setArmour(current, location, Math.floor(chassis.armourMax[location] * scale)),
-    stripped,
-  );
+  return fitArmour(catalog, design);
 }
 
 export function serialiseDesign(design: Design): string {

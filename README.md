@@ -13,7 +13,7 @@ src/schema    Zod schemas + the validating content loader
 src/render    PixiJS tactical renderer — reads sim state, never mutates it
 src/ui        React shell, Zustand store, fixed-step game loop and input
 src/ui/mechbay loadout editor, construction validation, heat calculator
-src/campaign  economy, salvage, roster, time (Phase 4)
+src/campaign  economy, salvage, refit, repair, roster, time, save/load
 src/headless  CLI balance harness
 tests         architecture tests + the browser playthrough harness
 ```
@@ -64,7 +64,13 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   per-location armour sliders, a heat efficiency calculator verified against
   headless sim runs, and build save/load/export. All seven shipped designs are
   legal builds.
-- Phase 4 — Campaign shell: next.
+- **Phase 4 — Campaign shell: complete.** Node-based operational map with
+  branching prerequisites, contract negotiation trading payout against salvage
+  rights, C-bill economy with pilot salaries, salvage resolution keyed to how
+  each enemy was taken out, refit from stores, repair queue with day
+  advancement, pilot XP and injuries, and save/load that round-trips exactly
+  including the campaign random stream.
+- Phase 5 — Objectives & support: next.
 
 ## Controls
 

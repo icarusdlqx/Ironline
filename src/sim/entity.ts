@@ -1,5 +1,7 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
+import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
+import type { Pilot } from '../schema/pilot';
 import type { Rules } from '../schema/rules';
 import { emptyOrders } from './orders';
 import { sensorRangeFor } from './sensors';
@@ -12,6 +14,12 @@ import {
   type WeaponMount,
 } from './types';
 
+export interface LocationDamage {
+  armour: number;
+  internal: number;
+  destroyed: boolean;
+}
+
 export interface SpawnParams {
   id: number;
   team: number;
@@ -20,6 +28,11 @@ export interface SpawnParams {
   spawn: Vec2;
   facingDegrees: number;
   autopilot?: boolean;
+  /** Overrides the catalogue lookup, for refitted or salvaged campaign mechs. */
+  design?: Design;
+  pilot?: Pilot;
+  /** Carries battle damage forward, for a mech deployed before repairs finish. */
+  damage?: Partial<Record<MechLocation, LocationDamage>>;
 }
 
 const GROUP_BY_WEAPON_TYPE = { energy: 1, ballistic: 2, missile: 3 } as const;
@@ -43,14 +56,32 @@ function buildLocations(
   return Object.fromEntries(entries) as Record<MechLocation, LocationState>;
 }
 
+function applyStartingDamage(
+  locations: Record<MechLocation, LocationState>,
+  damage: Partial<Record<MechLocation, LocationDamage>>,
+): void {
+  for (const location of LOCATIONS) {
+    const carried = damage[location];
+    if (carried === undefined) continue;
+    const state = locations[location];
+    state.armour = Math.max(0, Math.min(state.armourMax, carried.armour));
+    state.internal = Math.max(0, Math.min(state.internalMax, carried.internal));
+    state.destroyed = carried.destroyed || state.internal <= 0;
+    if (state.destroyed) {
+      state.armour = 0;
+      state.internal = 0;
+    }
+  }
+}
+
 export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams): MechEntity {
-  const design = catalog.designs.get(params.designId);
+  const design = params.design ?? catalog.designs.get(params.designId);
   if (design === undefined) throw new Error(`unknown design "${params.designId}"`);
 
   const chassis = catalog.chassis.get(design.chassisId);
   if (chassis === undefined) throw new Error(`unknown chassis "${design.chassisId}"`);
 
-  const pilot = catalog.pilots.get(params.pilotId);
+  const pilot = params.pilot ?? catalog.pilots.get(params.pilotId);
   if (pilot === undefined) throw new Error(`unknown pilot "${params.pilotId}"`);
 
   const caseLocations = new Set(
@@ -95,6 +126,20 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
 
   const walkSpeed = (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor;
 
+  const locations = buildLocations(design.armour, chassis.internals);
+  if (params.damage !== undefined) applyStartingDamage(locations, params.damage);
+
+  const destroyedLocations = LOCATIONS.filter((location) => locations[location].destroyed);
+  for (const mount of weapons) {
+    if (destroyedLocations.includes(mount.location)) mount.destroyed = true;
+  }
+  for (const bin of ammoBins) {
+    if (destroyedLocations.includes(bin.location)) {
+      bin.destroyed = true;
+      bin.rounds = 0;
+    }
+  }
+
   return {
     id: params.id,
     team: params.team,
@@ -122,7 +167,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
       (rules.movement.turnRateReferenceTonnage / chassis.tonnage) *
       DEGREES_TO_RADIANS,
 
-    locations: buildLocations(design.armour, chassis.internals),
+    locations,
     weapons,
     ammoBins,
 

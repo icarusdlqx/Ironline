@@ -1,8 +1,10 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
+import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
+import type { Pilot } from '../schema/pilot';
 import { runBasicAi } from './ai/basic';
 import { resolveProjectiles, updateWeapons } from './combat';
-import { createMech } from './entity';
+import { createMech, type LocationDamage } from './entity';
 import { emit } from './events';
 import { updateHeat } from './heat';
 import { updateMovement } from './movement';
@@ -12,11 +14,25 @@ import { createVision, updateVision } from './sensors';
 import { createTerrainGrid } from './terrain';
 import { isOperational, type MechEntity, type World } from './types';
 
+export interface LanceEntry {
+  design: Design;
+  pilot: Pilot;
+  damage?: Partial<Record<MechLocation, LocationDamage>>;
+}
+
 export interface WorldOptions {
   seed: RngSeed;
   missionId: string;
   maxTicks?: number;
   playerTeam?: number;
+  /** Replaces the mission's own player lance with campaign mechs and pilots. */
+  playerLance?: LanceEntry[];
+}
+
+export interface UnitCondition {
+  armour: number;
+  internal: number;
+  destroyed: boolean;
 }
 
 export interface UnitResult {
@@ -37,6 +53,7 @@ export interface UnitResult {
   ammoSpent: number;
   heatPeak: number;
   kills: number;
+  condition: Record<MechLocation, UnitCondition>;
 }
 
 export interface BattleResult {
@@ -62,20 +79,30 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
   let nextId = 1;
 
   for (const lance of mission.lances) {
-    for (const unit of lance.units) {
+    const override = lance.team === playerTeam ? options.playerLance : undefined;
+    const slots = override === undefined ? lance.units : lance.units.slice(0, override.length);
+
+    slots.forEach((unit, index) => {
+      const entry = override?.[index];
       entities.push(
         createMech(catalog, catalog.rules, {
           id: nextId,
           team: lance.team,
-          designId: unit.designId,
-          pilotId: unit.pilotId,
+          designId: entry?.design.id ?? unit.designId,
+          pilotId: entry?.pilot.id ?? unit.pilotId,
           spawn: unit.spawn,
           facingDegrees: unit.facingDegrees,
           autopilot: lance.team !== playerTeam,
+          ...(entry === undefined ? {} : { design: entry.design, pilot: entry.pilot }),
+          ...(entry?.damage === undefined ? {} : { damage: entry.damage }),
         }),
       );
       nextId += 1;
-    }
+    });
+  }
+
+  if (options.playerLance !== undefined && options.playerLance.length === 0) {
+    throw new Error('a player lance must contain at least one mech');
   }
 
   const hitLocationTable = LOCATIONS.map((location: MechLocation) => ({
@@ -205,6 +232,16 @@ export function toResult(world: World, seed: RngSeed, maxTicks: number): BattleR
       ammoSpent: entity.stats.ammoSpent,
       heatPeak: entity.stats.heatPeak,
       kills: entity.stats.kills,
+      condition: Object.fromEntries(
+        LOCATIONS.map((location) => [
+          location,
+          {
+            armour: entity.locations[location].armour,
+            internal: entity.locations[location].internal,
+            destroyed: entity.locations[location].destroyed,
+          },
+        ]),
+      ) as Record<MechLocation, UnitCondition>,
     })),
     weapons: [...world.weaponStats.entries()]
       .map(([weaponId, stat]) => ({ weaponId, ...stat }))

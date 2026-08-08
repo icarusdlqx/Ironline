@@ -292,6 +292,110 @@ async function main() {
     await page.waitForSelector('[data-testid="lance-bar"]');
     check('returning to the skirmish remounts the battle', (await page.locator('.viewport canvas').count()) === 1);
 
+    process.stdout.write('\ncampaign\n');
+    await page.evaluate(() => localStorage.clear());
+    await page.locator('[data-testid="open-campaign"]').click();
+    await page.waitForSelector('[data-testid="campaign"]');
+
+    const day = async () =>
+      Number((await page.locator('[data-testid="camp-day"]').innerText()).replace('Day ', ''));
+    const cash = async () =>
+      Number(
+        (await page.locator('[data-testid="camp-cbills"]').innerText()).replace(/[^0-9-]/g, ''),
+      );
+
+    check('campaign map draws every node', (await page.locator('.camp-node').count()) === 4);
+    check('only the opening node is available', (await page.locator('.camp-node.open').count()) === 1);
+    check('the lance is on the books', (await page.locator('[data-testid="camp-bay"] li').count()) === 4);
+    check('the barracks lists four pilots', (await page.locator('[data-testid="camp-roster"] li').count()) === 4);
+    check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
+
+    const offerAt = async (value) => {
+      await page.locator('[data-testid="camp-terms"]').fill(String(value));
+      return page.locator('[data-testid="camp-offer"]').innerText();
+    };
+    const payoutHeavy = await offerAt(0);
+    const salvageHeavy = await offerAt(7);
+    check(
+      'negotiation trades payout against salvage',
+      payoutHeavy !== salvageHeavy &&
+        payoutHeavy.includes('0% salvage') &&
+        !salvageHeavy.includes('0% salvage'),
+      `${payoutHeavy} vs ${salvageHeavy}`,
+    );
+
+    const dayBefore = await day();
+    await page.locator('[data-testid="camp-advance"]').click();
+    check('advancing a day moves the clock', (await day()) === dayBefore + 1);
+
+    await page.locator('[data-testid="camp-terms"]').fill('7');
+    await page.locator('[data-testid="camp-accept"]').click();
+    check('signing shows the active contract', (await page.locator('[data-testid="camp-deploy"]').count()) === 1);
+
+    await page.locator('[data-testid="camp-save"]').click();
+    const savedCampaign = await page.evaluate(() => localStorage.getItem('ironline.campaign'));
+    check('the campaign saves to storage', savedCampaign !== null && savedCampaign.length > 100);
+
+    const cashBefore = await cash();
+    await page.locator('[data-testid="camp-deploy"]').click();
+    await page.waitForSelector('[data-testid="lance-bar"]');
+    check('deploying launches the contracted mission', (await page.locator('.viewport canvas').count()) === 1);
+
+    const deployed = await page.evaluate(() => {
+      const { world } = globalThis.__ironline;
+      return {
+        mission: world.mission.id,
+        playerMechs: world.entities.filter((e) => e.team === 0).map((e) => e.name),
+      };
+    });
+    check('the mission is the one under contract', deployed.mission === 'raid_ridge', deployed.mission);
+    check('the campaign lance deployed', deployed.playerMechs.length === 4, deployed.playerMechs.join(', '));
+
+    await page.evaluate(async () => {
+      const { engine } = globalThis.__ironline;
+      const deadline = Date.now() + 25_000;
+      while (!engine.world.finished && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        for (let step = 0; step < 400 && !engine.world.finished; step += 1) engine.forceStep();
+      }
+    });
+    await page.waitForSelector('[data-testid="return-to-campaign"]');
+    await page.screenshot({ path: `${SHOTS}/07-campaign-battle.png` });
+
+    await page.locator('[data-testid="return-to-campaign"]').click();
+    await page.locator('[data-testid="return-to-campaign"]').click();
+    await page.waitForSelector('[data-testid="campaign"]');
+
+    const resolvedState = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('ironline.campaign')).state,
+    );
+    check('the contract resolved into history', resolvedState.history.length === 1);
+    check('the contract slot is clear again', resolvedState.contract === null);
+    check(
+      'the outcome was recorded either way',
+      resolvedState.completedNodes.length + resolvedState.failedNodes.length === 1,
+    );
+
+    if (resolvedState.history[0].won) {
+      check('winning paid out', (await cash()) > cashBefore, `${cashBefore} → ${await cash()}`);
+      check('salvage reached stores', resolvedState.store.length > 0);
+      check('the next contracts unlocked', (await page.locator('.camp-node.open').count()) >= 1);
+    } else {
+      check('a loss is recorded as a failed node', resolvedState.failedNodes.length === 1);
+    }
+
+    check('battle damage came home', (await page.locator('[data-testid="camp-bay"] li').count()) >= 4);
+    await page.screenshot({ path: `${SHOTS}/08-campaign.png` });
+
+    await page.locator('[data-testid="camp-load"]').click();
+    const afterReload = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('ironline.campaign')).state,
+    );
+    check(
+      'reloading preserves the campaign exactly',
+      JSON.stringify(afterReload) === JSON.stringify(resolvedState),
+    );
+
     check('no page errors across the whole run', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
   } finally {
     await browser.close();

@@ -1,0 +1,60 @@
+{
+  "id": "border_dispute",
+  "name": "Border Dispute",
+  "startingCbills": 3200000,
+  "startingDay": 0,
+  "startingDesignIds": ["sentinel_brawler", "bulwark_assault", "wisp_scout", "sentinel_sniper"],
+  "startingPilotIds": ["kessa_vale", "dorn_hess", "marek_sud", "ilse_brant"],
+  "hiringPoolPilotIds": ["nadia_ostrow", "cato_ferrin", "juno_reyes", "willem_torrance"],
+  "victoryNodeId": "ridge_hold",
+  "nodes": [
+    {
+      "id": "militia_raid",
+      "name": "Militia Raid",
+      "missionId": "raid_ridge",
+      "employer": "Kestrel Combine",
+      "brief": "A militia detachment is dug in at the pass. Light opposition, and the Combine is happy to trade salvage rights for a smaller cheque.",
+      "requires": [],
+      "basePayout": 850000,
+      "maxSalvageShare": 0.75,
+      "deadlineDays": 21,
+      "position": { "x": 0.18, "y": 0.7 }
+    },
+    {
+      "id": "pass_skirmish",
+      "name": "Contested Pass",
+      "missionId": "skirmish_ridge",
+      "employer": "Kestrel Combine",
+      "brief": "A regular lance holds the crossing. The Combine wants it cleared and is paying properly for it.",
+      "requires": ["militia_raid"],
+      "basePayout": 1450000,
+      "maxSalvageShare": 0.5,
+      "deadlineDays": 24,
+      "position": { "x": 0.5, "y": 0.42 }
+    },
+    {
+      "id": "supply_line",
+      "name": "Supply Line",
+      "missionId": "raid_ridge",
+      "employer": "Halloran Freight",
+      "brief": "A second employer wants the same militia bled again. Poor money, generous salvage.",
+      "requires": ["militia_raid"],
+      "basePayout": 620000,
+      "maxSalvageShare": 0.95,
+      "deadlineDays": 30,
+      "position": { "x": 0.46, "y": 0.82 }
+    },
+    {
+      "id": "ridge_hold",
+      "name": "Ridge Hold",
+      "missionId": "standoff_ridge",
+      "employer": "Kestrel Combine",
+      "brief": "The Steel Legion has moved a reinforced company onto the ridge. This is the one that decides the border.",
+      "requires": ["pass_skirmish"],
+      "basePayout": 2600000,
+      "maxSalvageShare": 0.45,
+      "deadlineDays": 35,
+      "position": { "x": 0.82, "y": 0.5 }
+    }
+  ]
+}
