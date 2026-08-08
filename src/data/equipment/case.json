@@ -1,0 +1,10 @@
+{
+  "id": "case",
+  "name": "CASE",
+  "category": "defensive",
+  "tonnage": 0.5,
+  "slots": 1,
+  "cost": 50000,
+  "stats": { "ammo_blast_containment": 1 },
+  "tags": []
+}

@@ -1,0 +1,10 @@
+{
+  "id": "heat_sink",
+  "name": "Heat Sink",
+  "category": "heat_sink",
+  "tonnage": 1,
+  "slots": 1,
+  "cost": 2000,
+  "stats": { "dissipation": 1 },
+  "tags": []
+}

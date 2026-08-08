@@ -1,0 +1,10 @@
+{
+  "id": "double_heat_sink",
+  "name": "Double Heat Sink",
+  "category": "heat_sink",
+  "tonnage": 1,
+  "slots": 3,
+  "cost": 6000,
+  "stats": { "dissipation": 2 },
+  "tags": []
+}

@@ -1,0 +1,25 @@
+{
+  "id": "bulwark_bwk3",
+  "name": "Bulwark BWK-3",
+  "class": "heavy",
+  "tonnage": 70,
+  "baseCost": 8900000,
+  "engineRating": 280,
+  "internalHeatSinks": 12,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head":         { "energy": 0, "ballistic": 0, "missile": 0, "slots": 1 },
+    "centre_torso": { "energy": 1, "ballistic": 0, "missile": 0, "slots": 3 },
+    "left_torso":   { "energy": 0, "ballistic": 0, "missile": 2, "slots": 8 },
+    "right_torso":  { "energy": 0, "ballistic": 1, "missile": 0, "slots": 8 },
+    "left_arm":     { "energy": 2, "ballistic": 0, "missile": 0, "slots": 6 },
+    "right_arm":    { "energy": 0, "ballistic": 1, "missile": 0, "slots": 6 },
+    "left_leg":     { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 },
+    "right_leg":    { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 }
+  },
+  "armourMax":  { "head": 18, "centre_torso": 96, "left_torso": 76, "right_torso": 76,
+                  "left_arm": 54, "right_arm": 54, "left_leg": 68, "right_leg": 68 },
+  "internals":  { "head": 6,  "centre_torso": 50, "left_torso": 34, "right_torso": 34,
+                  "left_arm": 22, "right_arm": 22, "left_leg": 34, "right_leg": 34 },
+  "traits": []
+}

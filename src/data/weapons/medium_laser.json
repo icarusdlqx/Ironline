@@ -1,0 +1,18 @@
+{
+  "id": "medium_laser",
+  "name": "Medium Laser",
+  "type": "energy",
+  "tonnage": 1,
+  "slots": 1,
+  "damage": 5,
+  "projectiles": 1,
+  "heat": 3,
+  "cooldown": 2.5,
+  "velocity": null,
+  "range": { "min": 0, "short": 60, "medium": 120, "long": 180 },
+  "ammoPerTon": null,
+  "cost": 40000,
+  "recoil": 0,
+  "accuracy": 1,
+  "tags": []
+}

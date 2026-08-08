@@ -1,0 +1,25 @@
+{
+  "id": "wisp_wsp1",
+  "name": "Wisp WSP-1",
+  "class": "light",
+  "tonnage": 30,
+  "baseCost": 2100000,
+  "engineRating": 210,
+  "internalHeatSinks": 10,
+  "jumpCapable": true,
+  "hardpoints": {
+    "head":         { "energy": 0, "ballistic": 0, "missile": 0, "slots": 1 },
+    "centre_torso": { "energy": 1, "ballistic": 0, "missile": 0, "slots": 2 },
+    "left_torso":   { "energy": 0, "ballistic": 0, "missile": 1, "slots": 4 },
+    "right_torso":  { "energy": 0, "ballistic": 0, "missile": 0, "slots": 4 },
+    "left_arm":     { "energy": 1, "ballistic": 0, "missile": 0, "slots": 3 },
+    "right_arm":    { "energy": 1, "ballistic": 0, "missile": 0, "slots": 3 },
+    "left_leg":     { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 },
+    "right_leg":    { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 }
+  },
+  "armourMax":  { "head": 12, "centre_torso": 40, "left_torso": 30, "right_torso": 30,
+                  "left_arm": 20, "right_arm": 20, "left_leg": 28, "right_leg": 28 },
+  "internals":  { "head": 5,  "centre_torso": 20, "left_torso": 14, "right_torso": 14,
+                  "left_arm": 10, "right_arm": 10, "left_leg": 14, "right_leg": 14 },
+  "traits": []
+}

@@ -1,0 +1,10 @@
+{
+  "id": "targeting_computer",
+  "name": "Targeting Computer",
+  "category": "targeting",
+  "tonnage": 3,
+  "slots": 3,
+  "cost": 280000,
+  "stats": { "accuracy_factor": 1.05, "called_shot_factor": 1.1 },
+  "tags": []
+}

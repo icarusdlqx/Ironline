@@ -1,0 +1,18 @@
+{
+  "id": "ac20",
+  "name": "AC/20",
+  "type": "ballistic",
+  "tonnage": 14,
+  "slots": 10,
+  "damage": 20,
+  "projectiles": 1,
+  "heat": 7,
+  "cooldown": 4.0,
+  "velocity": 400,
+  "range": { "min": 0, "short": 90, "medium": 180, "long": 270 },
+  "ammoPerTon": 5,
+  "cost": 300000,
+  "recoil": 0.35,
+  "accuracy": 1,
+  "tags": []
+}
