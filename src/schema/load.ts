@@ -8,6 +8,7 @@ import { MissionSchema, type Mission } from './mission';
 import { PilotSchema, type Pilot } from './pilot';
 import {
   CombatRulesSchema,
+  ConstructionRulesSchema,
   DamageRulesSchema,
   HeatRulesSchema,
   MovementRulesSchema,
@@ -184,6 +185,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const damage = parseRule('damage', DamageRulesSchema, byStem, issues);
   const terrain = parseRule('terrain', TerrainRulesSchema, byStem, issues);
   const sensors = parseRule('sensors', SensorRulesSchema, byStem, issues);
+  const construction = parseRule('construction', ConstructionRulesSchema, byStem, issues);
 
   if (
     simulation === null ||
@@ -192,12 +194,13 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     heat === null ||
     damage === null ||
     terrain === null ||
-    sensors === null
+    sensors === null ||
+    construction === null
   ) {
     return null;
   }
 
-  return { simulation, movement, combat, heat, damage, terrain, sensors };
+  return { simulation, movement, combat, heat, damage, terrain, sensors, construction };
 }
 
 export function loadCatalog(): Catalog {

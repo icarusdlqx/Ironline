@@ -2,24 +2,51 @@
   "id": "bulwark_burner",
   "name": "Bulwark BWK-3 'Burner'",
   "chassisId": "bulwark_bwk3",
-  "armour": { "head": 18, "centre_torso": 96, "left_torso": 76, "right_torso": 76,
-              "left_arm": 54, "right_arm": 54, "left_leg": 68, "right_leg": 68 },
-  "heatSinkId": "double_heat_sink",
-  "heatSinks": 14,
+  "armour": {
+    "head": 18,
+    "centre_torso": 96,
+    "left_torso": 76,
+    "right_torso": 76,
+    "left_arm": 54,
+    "right_arm": 54,
+    "left_leg": 68,
+    "right_leg": 68
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 18,
   "mounts": [
-    { "weaponId": "ppc", "location": "left_arm" },
-    { "weaponId": "ppc", "location": "left_arm" },
-    { "weaponId": "medium_laser", "location": "centre_torso" },
-    { "weaponId": "ac20", "location": "right_arm" },
-    { "weaponId": "srm6", "location": "left_torso" },
-    { "weaponId": "srm6", "location": "left_torso" }
+    {
+      "weaponId": "ppc",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "ppc",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "centre_torso"
+    },
+    {
+      "weaponId": "srm6",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "srm6",
+      "location": "left_torso"
+    }
   ],
   "ammo": [
-    { "weaponId": "ac20", "location": "right_torso", "tons": 2 },
-    { "weaponId": "srm6", "location": "left_torso", "tons": 2 }
+    {
+      "weaponId": "srm6",
+      "location": "left_torso",
+      "tons": 3
+    }
   ],
   "equipment": [
-    { "equipmentId": "case", "location": "right_torso" },
-    { "equipmentId": "case", "location": "left_torso" }
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    }
   ]
 }

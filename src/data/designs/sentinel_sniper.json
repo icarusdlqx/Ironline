@@ -2,24 +2,43 @@
   "id": "sentinel_sniper",
   "name": "Sentinel SNL-2 'Sniper'",
   "chassisId": "sentinel_snl2",
-  "armour": { "head": 18, "centre_torso": 70, "left_torso": 52, "right_torso": 52,
-              "left_arm": 38, "right_arm": 38, "left_leg": 46, "right_leg": 46 },
-  "heatSinkId": "double_heat_sink",
-  "heatSinks": 12,
+  "armour": {
+    "head": 18,
+    "centre_torso": 70,
+    "left_torso": 52,
+    "right_torso": 52,
+    "left_arm": 38,
+    "right_arm": 38,
+    "left_leg": 46,
+    "right_leg": 46
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 10,
   "mounts": [
-    { "weaponId": "large_laser", "location": "left_arm" },
-    { "weaponId": "large_laser", "location": "left_arm" },
-    { "weaponId": "medium_laser", "location": "centre_torso" },
-    { "weaponId": "ac5", "location": "right_arm" },
-    { "weaponId": "lrm10", "location": "left_torso" },
-    { "weaponId": "lrm10", "location": "left_torso" }
+    {
+      "weaponId": "large_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "large_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "lrm10",
+      "location": "left_torso"
+    }
   ],
   "ammo": [
-    { "weaponId": "ac5", "location": "right_torso", "tons": 1 },
-    { "weaponId": "lrm10", "location": "left_torso", "tons": 2 }
+    {
+      "weaponId": "lrm10",
+      "location": "left_torso",
+      "tons": 1
+    }
   ],
   "equipment": [
-    { "equipmentId": "case", "location": "right_torso" },
-    { "equipmentId": "case", "location": "left_torso" }
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    }
   ]
 }

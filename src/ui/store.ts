@@ -45,7 +45,10 @@ export interface UnitSnapshot {
   hasMoveOrder: boolean;
 }
 
+export type Screen = 'battle' | 'mechbay';
+
 export interface GameState {
+  screen: Screen;
   ready: boolean;
   error: string | null;
   paused: boolean;
@@ -74,6 +77,7 @@ export interface GameActions {
 const LOG_LIMIT = 60;
 
 export const useGame = create<GameState & GameActions>((set) => ({
+  screen: 'battle',
   ready: false,
   error: null,
   paused: false,

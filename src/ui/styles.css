@@ -452,3 +452,394 @@ button {
   padding: 0 4px;
   font-size: 9px;
 }
+
+/* ---- Mechbay ---- */
+
+.bay {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    'top    top   top'
+    'budget grid  side'
+    'act    act   act';
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.bay-top {
+  grid-area: top;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.bay-name {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.bay-top select,
+.bay-top button,
+.bay-actions button,
+.bay-actions select {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.bay-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.bay-budget {
+  grid-area: budget;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+  overflow-y: auto;
+}
+
+.bay-budget h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.bay-budget table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+.bay-budget th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--muted);
+  padding: 1px 0;
+}
+
+.bay-budget td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bay-budget tr.free td {
+  color: var(--accent);
+}
+
+.bay-budget tr.over td,
+.bay-budget tr.over th {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.bay-slot-total,
+.bay-sinks {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.bay-sinks input {
+  width: 52px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--edge);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.bay-sinks select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--edge);
+  color: var(--text);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.bay-budget > button {
+  width: 100%;
+  background: rgba(140, 224, 255, 0.12);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--accent);
+  padding: 6px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.bay-issues {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.bay-issues li {
+  padding: 2px 0;
+}
+
+.bay-grid {
+  grid-area: grid;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.bay-location {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bay-location.invalid {
+  border-color: var(--danger);
+}
+
+.bay-location header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.bay-location-name {
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.bay-slots {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.bay-slots.over {
+  color: var(--danger);
+}
+
+.bay-hardpoints {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pip {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.pip.energy {
+  border-color: rgba(140, 224, 255, 0.5);
+}
+.pip.ballistic {
+  border-color: rgba(255, 212, 137, 0.5);
+}
+.pip.missile {
+  border-color: rgba(255, 157, 92, 0.5);
+}
+.pip.over {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.bay-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.bay-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  align-items: center;
+  padding: 1px 0;
+}
+
+.bay-items li.ammo span {
+  color: var(--warn);
+}
+
+.bay-items li.equipment span {
+  color: var(--muted);
+}
+
+.bay-items button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 0 3px;
+  line-height: 1;
+}
+
+.bay-items button:hover {
+  color: var(--danger);
+}
+
+.bay-armour {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.bay-armour input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.bay-side {
+  grid-area: side;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 10px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.bay-side h4 {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bay-side h4:first-child {
+  margin-top: 0;
+}
+
+.bay-heat dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 8px;
+  margin: 0 0 6px;
+}
+
+.bay-heat dt {
+  color: var(--muted);
+}
+
+.bay-heat dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bay-heat dd.ok {
+  color: var(--accent);
+}
+.bay-heat dd.warn {
+  color: var(--warn);
+}
+
+.heat-meter {
+  height: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.heat-meter span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.bay-stocks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bay-stock {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 3px 6px;
+  margin-bottom: 3px;
+  cursor: grab;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bay-stock:active {
+  cursor: grabbing;
+}
+
+.stock-detail {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.bay-actions {
+  grid-area: act;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.bay-import {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.bay-import input {
+  font-size: 10px;
+  max-width: 180px;
+}
+
+.bay-status {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.bay-status.ok {
+  color: var(--accent);
+}
+
+.bay-status.error {
+  color: var(--danger);
+}

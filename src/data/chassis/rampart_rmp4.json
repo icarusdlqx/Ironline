@@ -1,0 +1,25 @@
+{
+  "id": "rampart_rmp4",
+  "name": "Rampart RMP-4",
+  "class": "assault",
+  "tonnage": 85,
+  "baseCost": 14200000,
+  "engineRating": 300,
+  "internalHeatSinks": 14,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head":         { "energy": 0, "ballistic": 0, "missile": 0, "slots": 1 },
+    "centre_torso": { "energy": 1, "ballistic": 0, "missile": 0, "slots": 4 },
+    "left_torso":   { "energy": 0, "ballistic": 0, "missile": 2, "slots": 12 },
+    "right_torso":  { "energy": 0, "ballistic": 1, "missile": 0, "slots": 12 },
+    "left_arm":     { "energy": 2, "ballistic": 0, "missile": 0, "slots": 8 },
+    "right_arm":    { "energy": 0, "ballistic": 1, "missile": 0, "slots": 10 },
+    "left_leg":     { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 },
+    "right_leg":    { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 }
+  },
+  "armourMax":  { "head": 20, "centre_torso": 110, "left_torso": 88, "right_torso": 88,
+                  "left_arm": 62, "right_arm": 62, "left_leg": 80, "right_leg": 80 },
+  "internals":  { "head": 6,  "centre_torso": 58, "left_torso": 40, "right_torso": 40,
+                  "left_arm": 26, "right_arm": 26, "left_leg": 40, "right_leg": 40 },
+  "traits": []
+}

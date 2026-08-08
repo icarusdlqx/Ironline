@@ -34,7 +34,7 @@ describe('createMech', () => {
     const mech = createMech(catalog, catalog.rules, {
       id: 98,
       team: 0,
-      designId: 'bulwark_assault',
+      designId: 'rampart_breaker',
       pilotId: 'dorn_hess',
       spawn: { x: 100, y: 100 },
       facingDegrees: 0,
@@ -42,7 +42,7 @@ describe('createMech', () => {
 
     const gauss = mech.ammoBins.find((bin) => bin.weaponId === 'gauss_rifle');
     const load = catalog.designs
-      .get('bulwark_assault')
+      .get('rampart_breaker')
       ?.ammo.find((entry) => entry.weaponId === 'gauss_rifle');
     const perTon = catalog.weapons.get('gauss_rifle')?.ammoPerTon ?? 0;
 

@@ -1,0 +1,57 @@
+{
+  "id": "rampart_breaker",
+  "name": "Rampart RMP-4 'Breaker'",
+  "chassisId": "rampart_rmp4",
+  "armour": {
+    "head": 20,
+    "centre_torso": 110,
+    "left_torso": 88,
+    "right_torso": 88,
+    "left_arm": 62,
+    "right_arm": 62,
+    "left_leg": 80,
+    "right_leg": 80
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 19,
+  "mounts": [
+    {
+      "weaponId": "ac20",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "gauss_rifle",
+      "location": "right_torso"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "left_arm"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "gauss_rifle",
+      "location": "right_torso",
+      "tons": 2
+    },
+    {
+      "weaponId": "ac20",
+      "location": "left_torso",
+      "tons": 2
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "right_torso"
+    },
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    }
+  ]
+}

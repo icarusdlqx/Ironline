@@ -224,6 +224,73 @@ async function main() {
     check('outcome banner is shown', (await page.locator('[data-testid="outcome"]').count()) === 1);
     check('battle log recorded destructions', (await page.locator('[data-testid="event-log"] li').count()) > 0);
     await page.screenshot({ path: `${SHOTS}/04-outcome.png` });
+    await page.evaluate(() => localStorage.clear());
+
+    process.stdout.write('\nmechbay\n');
+    await page.locator('[data-testid="open-mechbay"]').click();
+    await page.waitForSelector('[data-testid="mechbay"]');
+
+    check('mechbay shows all eight locations', (await page.locator('.bay-location').count()) === 8);
+    check(
+      'the starting build is legal',
+      (await page.locator('[data-testid="bay-status"]').innerText()).includes('legal') &&
+        !(await page.locator('[data-testid="bay-save"]').isDisabled()),
+    );
+    check(
+      'heat efficiency shows alpha strike and sustained heat',
+      (await page.locator('[data-testid="heat-alpha"]').innerText()).length > 0 &&
+        (await page.locator('[data-testid="heat-sustained"]').innerText()).includes('/s'),
+    );
+
+    const freeTonnage = async () =>
+      Number((await page.locator('[data-testid="free-tonnage"]').innerText()).replace('t', ''));
+    const startingFree = await freeTonnage();
+
+    await page
+      .locator('[data-testid="stock-weapon-gauss_rifle"]')
+      .dragTo(page.locator('[data-testid="bay-location-right_arm"]'));
+
+    const afterDrag = await freeTonnage();
+    check('drag-to-hardpoint mounts the weapon', afterDrag < startingFree, `${startingFree}t → ${afterDrag}t`);
+    check('an illegal build reports its problems', (await page.locator('[data-testid="bay-issues"] li').count()) > 0);
+    await page.screenshot({ path: `${SHOTS}/05-mechbay-illegal.png` });
+    check('save is refused for an illegal build', await page.locator('[data-testid="bay-save"]').isDisabled());
+    check('export is refused for an illegal build', await page.locator('[data-testid="bay-export"]').isDisabled());
+
+    const blocked = await page.evaluate(() => {
+      const button = document.querySelector('[data-testid="bay-save"]');
+      const before = Object.keys(localStorage).length;
+      button.click();
+      return { added: Object.keys(localStorage).length - before };
+    });
+    check('clicking a disabled save writes nothing to storage', blocked.added === 0);
+
+    await page.locator('[data-testid="bay-location-right_arm"] .bay-items button').last().click();
+    check('removing the weapon restores a legal build', !(await page.locator('[data-testid="bay-save"]').isDisabled()));
+    check('free tonnage returns to its starting value', (await freeTonnage()) === startingFree);
+
+    await page.locator('[data-testid="armour-head"]').fill('0');
+    check('the armour slider frees tonnage', (await freeTonnage()) > startingFree);
+    await page.locator('[data-testid="max-armour"]').click();
+    check(
+      'spending the remainder on armour keeps the build legal',
+      !(await page.locator('[data-testid="bay-save"]').isDisabled()),
+    );
+
+    await page.locator('[data-testid="bay-save"]').click();
+    const saved = await page.evaluate(() =>
+      Object.keys(localStorage).filter((key) => key.startsWith('ironline.design.')),
+    );
+    check('a legal build saves to storage', saved.length > 0, saved.join(','));
+    check(
+      'saving reports success',
+      (await page.locator('[data-testid="bay-status"]').innerText()).startsWith('Saved'),
+    );
+
+    await page.screenshot({ path: `${SHOTS}/06-mechbay-legal.png` });
+    await page.locator('[data-testid="bay-exit"]').click();
+    await page.waitForSelector('[data-testid="lance-bar"]');
+    check('returning to the skirmish remounts the battle', (await page.locator('.viewport canvas').count()) === 1);
 
     check('no page errors across the whole run', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
   } finally {

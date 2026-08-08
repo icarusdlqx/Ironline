@@ -2,14 +2,49 @@
   "id": "heat",
   "capacityBase": 30,
   "capacityPerSink": 0.5,
-  "dissipationPerSinkPerSecond": 0.6,
+  "dissipationPerSinkPerSecond": 0.35,
   "shutdownSeconds": 8,
   "pilotingOverrideFactor": 0.12,
   "tiers": [
-    { "fraction": 0.0,  "movementFactor": 1.0, "accuracyFactor": 1.0,  "shutdownChancePerSecond": 0.0,  "ammoExplosionChancePerSecond": 0.0,   "forcedShutdown": false },
-    { "fraction": 0.5,  "movementFactor": 0.9, "accuracyFactor": 1.0,  "shutdownChancePerSecond": 0.0,  "ammoExplosionChancePerSecond": 0.0,   "forcedShutdown": false },
-    { "fraction": 0.7,  "movementFactor": 0.9, "accuracyFactor": 0.85, "shutdownChancePerSecond": 0.0,  "ammoExplosionChancePerSecond": 0.0,   "forcedShutdown": false },
-    { "fraction": 0.85, "movementFactor": 0.9, "accuracyFactor": 0.85, "shutdownChancePerSecond": 0.25, "ammoExplosionChancePerSecond": 0.015, "forcedShutdown": false },
-    { "fraction": 1.0,  "movementFactor": 0.9, "accuracyFactor": 0.85, "shutdownChancePerSecond": 1.0,  "ammoExplosionChancePerSecond": 0.05,  "forcedShutdown": true }
+    {
+      "fraction": 0.0,
+      "movementFactor": 1.0,
+      "accuracyFactor": 1.0,
+      "shutdownChancePerSecond": 0.0,
+      "ammoExplosionChancePerSecond": 0.0,
+      "forcedShutdown": false
+    },
+    {
+      "fraction": 0.5,
+      "movementFactor": 0.9,
+      "accuracyFactor": 1.0,
+      "shutdownChancePerSecond": 0.0,
+      "ammoExplosionChancePerSecond": 0.0,
+      "forcedShutdown": false
+    },
+    {
+      "fraction": 0.7,
+      "movementFactor": 0.9,
+      "accuracyFactor": 0.85,
+      "shutdownChancePerSecond": 0.0,
+      "ammoExplosionChancePerSecond": 0.0,
+      "forcedShutdown": false
+    },
+    {
+      "fraction": 0.85,
+      "movementFactor": 0.9,
+      "accuracyFactor": 0.85,
+      "shutdownChancePerSecond": 0.25,
+      "ammoExplosionChancePerSecond": 0.015,
+      "forcedShutdown": false
+    },
+    {
+      "fraction": 1.0,
+      "movementFactor": 0.9,
+      "accuracyFactor": 0.85,
+      "shutdownChancePerSecond": 1.0,
+      "ammoExplosionChancePerSecond": 0.05,
+      "forcedShutdown": true
+    }
   ]
 }
