@@ -1,0 +1,17 @@
+{
+  "id": "damage",
+  "transfer": {
+    "head": null,
+    "centre_torso": null,
+    "left_torso": "centre_torso",
+    "right_torso": "centre_torso",
+    "left_arm": "left_torso",
+    "right_arm": "right_torso",
+    "left_leg": "left_torso",
+    "right_leg": "right_torso"
+  },
+  "ammoExplosionDamagePerRound": 1.0,
+  "ammoExplosionCap": 180,
+  "headDestroyedEjectionChance": 0.4,
+  "legDestroyedSpeedFactor": 0.5
+}

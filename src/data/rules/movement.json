@@ -1,0 +1,14 @@
+{
+  "id": "movement",
+  "walkSpeedFactor": 3.0,
+  "runMultiplier": 1.5,
+  "turnRateDegreesPerSecond": 260,
+  "turnRateReferenceTonnage": 20,
+  "singleLegSpeedFactor": 0.5,
+  "jumpDistancePerJet": 30,
+  "jumpHeatPerJet": 3,
+  "jumpCooldownSeconds": 6,
+  "moveAlignmentDegrees": 60,
+  "waypointRadius": 8,
+  "arrivalRadius": 6
+}

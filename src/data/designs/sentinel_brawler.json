@@ -1,0 +1,22 @@
+{
+  "id": "sentinel_brawler",
+  "name": "Sentinel SNL-2 'Brawler'",
+  "chassisId": "sentinel_snl2",
+  "armour": { "head": 18, "centre_torso": 70, "left_torso": 52, "right_torso": 52,
+              "left_arm": 38, "right_arm": 38, "left_leg": 46, "right_leg": 46 },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 12,
+  "mounts": [
+    { "weaponId": "ac20", "location": "right_arm" },
+    { "weaponId": "medium_laser", "location": "left_arm" },
+    { "weaponId": "medium_laser", "location": "left_arm" },
+    { "weaponId": "medium_laser", "location": "centre_torso" },
+    { "weaponId": "srm6", "location": "left_torso" },
+    { "weaponId": "srm6", "location": "left_torso" }
+  ],
+  "ammo": [
+    { "weaponId": "ac20", "location": "right_torso", "tons": 2 },
+    { "weaponId": "srm6", "location": "left_torso", "tons": 1 }
+  ],
+  "equipment": [ { "equipmentId": "case", "location": "right_torso" } ]
+}

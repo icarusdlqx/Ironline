@@ -1,0 +1,17 @@
+{
+  "id": "wisp_harasser",
+  "name": "Wisp WSP-1 'Harasser'",
+  "chassisId": "wisp_wsp1",
+  "armour": { "head": 12, "centre_torso": 40, "left_torso": 30, "right_torso": 30,
+              "left_arm": 20, "right_arm": 20, "left_leg": 28, "right_leg": 28 },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 12,
+  "mounts": [
+    { "weaponId": "large_laser", "location": "left_arm" },
+    { "weaponId": "medium_laser", "location": "right_arm" },
+    { "weaponId": "medium_laser", "location": "centre_torso" },
+    { "weaponId": "lrm10", "location": "left_torso" }
+  ],
+  "ammo": [ { "weaponId": "lrm10", "location": "right_torso", "tons": 1 } ],
+  "equipment": [ { "equipmentId": "case", "location": "right_torso" } ]
+}

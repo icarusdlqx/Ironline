@@ -1,6 +1,21 @@
 import type { ZodType } from 'zod';
 import { ChassisSchema, type Chassis } from './chassis';
+import { DesignSchema, type Design } from './design';
 import { EquipmentSchema, type Equipment } from './equipment';
+import { checkIntegrity } from './integrity';
+import { TerrainMapSchema, type TerrainMapData } from './map';
+import { MissionSchema, type Mission } from './mission';
+import { PilotSchema, type Pilot } from './pilot';
+import {
+  CombatRulesSchema,
+  DamageRulesSchema,
+  HeatRulesSchema,
+  MovementRulesSchema,
+  RULE_IDS,
+  SimulationRulesSchema,
+  TerrainRulesSchema,
+  type Rules,
+} from './rules';
 import { WeaponSchema, type Weapon } from './weapon';
 
 export interface ContentIssue {
@@ -21,9 +36,14 @@ export class ContentValidationError extends Error {
 }
 
 export interface Catalog {
+  readonly rules: Rules;
   readonly chassis: ReadonlyMap<string, Chassis>;
   readonly weapons: ReadonlyMap<string, Weapon>;
   readonly equipment: ReadonlyMap<string, Equipment>;
+  readonly pilots: ReadonlyMap<string, Pilot>;
+  readonly designs: ReadonlyMap<string, Design>;
+  readonly maps: ReadonlyMap<string, TerrainMapData>;
+  readonly missions: ReadonlyMap<string, Mission>;
 }
 
 type RawFiles = Record<string, unknown>;
@@ -32,13 +52,31 @@ const chassisFiles = import.meta.glob('../data/chassis/*.json', {
   eager: true,
   import: 'default',
 }) as RawFiles;
-
 const weaponFiles = import.meta.glob('../data/weapons/*.json', {
   eager: true,
   import: 'default',
 }) as RawFiles;
-
 const equipmentFiles = import.meta.glob('../data/equipment/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const pilotFiles = import.meta.glob('../data/pilots/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const designFiles = import.meta.glob('../data/designs/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const mapFiles = import.meta.glob('../data/maps/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const missionFiles = import.meta.glob('../data/missions/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const ruleFiles = import.meta.glob('../data/rules/*.json', {
   eager: true,
   import: 'default',
 }) as RawFiles;
@@ -46,6 +84,20 @@ const equipmentFiles = import.meta.glob('../data/equipment/*.json', {
 function fileStem(filePath: string): string {
   const segments = filePath.split('/');
   return (segments[segments.length - 1] ?? '').replace(/\.json$/, '');
+}
+
+function recordIssues(
+  file: string,
+  error: { issues: readonly { path: PropertyKey[]; message: string }[] },
+  issues: ContentIssue[],
+): void {
+  for (const issue of error.issues) {
+    issues.push({
+      file,
+      path: issue.path.map(String).join('.') || '(root)',
+      message: issue.message,
+    });
+  }
 }
 
 function parseCollection<T extends { id: string }>(
@@ -60,13 +112,7 @@ function parseCollection<T extends { id: string }>(
     const result = schema.safeParse(files[filePath]);
 
     if (!result.success) {
-      for (const issue of result.error.issues) {
-        issues.push({
-          file: filePath,
-          path: issue.path.map(String).join('.') || '(root)',
-          message: issue.message,
-        });
-      }
+      recordIssues(filePath, result.error, issues);
       continue;
     }
 
@@ -81,7 +127,11 @@ function parseCollection<T extends { id: string }>(
     }
 
     if (parsed.has(result.data.id)) {
-      issues.push({ file: filePath, path: 'id', message: `duplicate ${label} id "${result.data.id}"` });
+      issues.push({
+        file: filePath,
+        path: 'id',
+        message: `duplicate ${label} id "${result.data.id}"`,
+      });
       continue;
     }
 
@@ -91,16 +141,82 @@ function parseCollection<T extends { id: string }>(
   return parsed;
 }
 
+function parseRule<T>(
+  ruleId: string,
+  schema: ZodType<T>,
+  files: Map<string, { path: string; value: unknown }>,
+  issues: ContentIssue[],
+): T | null {
+  const entry = files.get(ruleId);
+  if (entry === undefined) {
+    issues.push({
+      file: `../data/rules/${ruleId}.json`,
+      path: '(file)',
+      message: 'required rules file is missing',
+    });
+    return null;
+  }
+
+  const result = schema.safeParse(entry.value);
+  if (!result.success) {
+    recordIssues(entry.path, result.error, issues);
+    return null;
+  }
+  return result.data;
+}
+
+function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
+  const byStem = new Map<string, { path: string; value: unknown }>();
+  for (const filePath of Object.keys(files).sort()) {
+    const stem = fileStem(filePath);
+    if (!RULE_IDS.includes(stem as (typeof RULE_IDS)[number])) {
+      issues.push({ file: filePath, path: '(file)', message: `unknown rules document "${stem}"` });
+      continue;
+    }
+    byStem.set(stem, { path: filePath, value: files[filePath] });
+  }
+
+  const simulation = parseRule('simulation', SimulationRulesSchema, byStem, issues);
+  const movement = parseRule('movement', MovementRulesSchema, byStem, issues);
+  const combat = parseRule('combat', CombatRulesSchema, byStem, issues);
+  const heat = parseRule('heat', HeatRulesSchema, byStem, issues);
+  const damage = parseRule('damage', DamageRulesSchema, byStem, issues);
+  const terrain = parseRule('terrain', TerrainRulesSchema, byStem, issues);
+
+  if (
+    simulation === null ||
+    movement === null ||
+    combat === null ||
+    heat === null ||
+    damage === null ||
+    terrain === null
+  ) {
+    return null;
+  }
+
+  return { simulation, movement, combat, heat, damage, terrain };
+}
+
 export function loadCatalog(): Catalog {
   const issues: ContentIssue[] = [];
 
-  const catalog: Catalog = {
+  const rules = parseRules(ruleFiles, issues);
+  const partial = {
     chassis: parseCollection('chassis', chassisFiles, ChassisSchema, issues),
     weapons: parseCollection('weapon', weaponFiles, WeaponSchema, issues),
     equipment: parseCollection('equipment', equipmentFiles, EquipmentSchema, issues),
+    pilots: parseCollection('pilot', pilotFiles, PilotSchema, issues),
+    designs: parseCollection('design', designFiles, DesignSchema, issues),
+    maps: parseCollection('map', mapFiles, TerrainMapSchema, issues),
+    missions: parseCollection('mission', missionFiles, MissionSchema, issues),
   };
 
+  if (rules === null || issues.length > 0) throw new ContentValidationError(issues);
+
+  const catalog: Catalog = { rules, ...partial };
+  checkIntegrity(catalog, issues);
   if (issues.length > 0) throw new ContentValidationError(issues);
+
   return catalog;
 }
 

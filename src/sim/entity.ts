@@ -1,0 +1,144 @@
+import { LOCATIONS, type MechLocation } from '../schema/common';
+import type { Catalog } from '../schema/load';
+import type { Rules } from '../schema/rules';
+import type { AmmoBin, LocationState, MechEntity, Vec2, WeaponMount } from './types';
+
+export interface SpawnParams {
+  id: number;
+  team: number;
+  designId: string;
+  pilotId: string;
+  spawn: Vec2;
+  facingDegrees: number;
+}
+
+const DEGREES_TO_RADIANS = Math.PI / 180;
+
+function buildLocations(
+  armour: Record<MechLocation, number>,
+  internals: Record<MechLocation, number>,
+): Record<MechLocation, LocationState> {
+  const entries = LOCATIONS.map((location) => [
+    location,
+    {
+      armour: armour[location],
+      armourMax: armour[location],
+      internal: internals[location],
+      internalMax: internals[location],
+      destroyed: false,
+    } satisfies LocationState,
+  ]);
+  return Object.fromEntries(entries) as Record<MechLocation, LocationState>;
+}
+
+export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams): MechEntity {
+  const design = catalog.designs.get(params.designId);
+  if (design === undefined) throw new Error(`unknown design "${params.designId}"`);
+
+  const chassis = catalog.chassis.get(design.chassisId);
+  if (chassis === undefined) throw new Error(`unknown chassis "${design.chassisId}"`);
+
+  const pilot = catalog.pilots.get(params.pilotId);
+  if (pilot === undefined) throw new Error(`unknown pilot "${params.pilotId}"`);
+
+  const caseLocations = new Set(
+    design.equipment
+      .filter((fit) => catalog.equipment.get(fit.equipmentId)?.stats.ammo_blast_containment)
+      .map((fit) => fit.location),
+  );
+
+  const weapons: WeaponMount[] = design.mounts.map((mount, index) => ({
+    index,
+    weaponId: mount.weaponId,
+    location: mount.location,
+    cooldown: 0,
+    destroyed: false,
+  }));
+
+  const ammoBins: AmmoBin[] = design.ammo.map((load, index) => {
+    const weapon = catalog.weapons.get(load.weaponId);
+    const rounds = load.tons * (weapon?.ammoPerTon ?? 0);
+    return {
+      index,
+      weaponId: load.weaponId,
+      location: load.location,
+      rounds,
+      roundsMax: rounds,
+      protectedByCase: caseLocations.has(load.location),
+      destroyed: false,
+    };
+  });
+
+  let incomingAccuracyFactor = 1;
+  let outgoingAccuracyFactor = 1;
+  for (const fit of design.equipment) {
+    const stats = catalog.equipment.get(fit.equipmentId)?.stats ?? {};
+    incomingAccuracyFactor *= stats.incoming_accuracy_factor ?? 1;
+    outgoingAccuracyFactor *= stats.accuracy_factor ?? 1;
+  }
+
+  const sinkStats = catalog.equipment.get(design.heatSinkId)?.stats ?? {};
+  const dissipationPerSink = sinkStats.dissipation ?? 1;
+
+  const walkSpeed = (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor;
+
+  return {
+    id: params.id,
+    team: params.team,
+    name: design.name,
+    designId: design.id,
+    chassisId: chassis.id,
+    tonnage: chassis.tonnage,
+    pilot: {
+      id: pilot.id,
+      name: pilot.name,
+      gunnery: pilot.gunnery,
+      piloting: pilot.piloting,
+      sensors: pilot.sensors,
+      dead: false,
+      ejected: false,
+    },
+
+    pos: { x: params.spawn.x, y: params.spawn.y },
+    facing: params.facingDegrees * DEGREES_TO_RADIANS,
+    motion: 'stationary',
+    walkSpeed,
+    runSpeed: walkSpeed * rules.movement.runMultiplier,
+    turnRate:
+      rules.movement.turnRateDegreesPerSecond *
+      (rules.movement.turnRateReferenceTonnage / chassis.tonnage) *
+      DEGREES_TO_RADIANS,
+
+    locations: buildLocations(design.armour, chassis.internals),
+    weapons,
+    ammoBins,
+
+    heat: 0,
+    heatCapacity: rules.heat.capacityBase + rules.heat.capacityPerSink * design.heatSinks,
+    heatSinks: design.heatSinks,
+    dissipationPerSecond:
+      design.heatSinks * dissipationPerSink * rules.heat.dissipationPerSinkPerSecond,
+    shutdownRemaining: 0,
+
+    incomingAccuracyFactor,
+    outgoingAccuracyFactor,
+    destroyed: false,
+    killMethod: null,
+
+    targetId: null,
+    calledShot: null,
+    path: [],
+    pathIndex: 0,
+    nextPathTick: 0,
+
+    stats: {
+      damageDealt: 0,
+      damageTaken: 0,
+      shotsFired: 0,
+      shotsHit: 0,
+      ammoSpent: 0,
+      heatPeak: 0,
+      kills: 0,
+    },
+  };
+}
