@@ -1,0 +1,10 @@
+{
+  "id": "tag",
+  "name": "TAG",
+  "category": "targeting",
+  "tonnage": 1,
+  "slots": 1,
+  "cost": 50000,
+  "stats": { "designator_range": 450, "designator_seconds": 3 },
+  "tags": []
+}

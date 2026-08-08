@@ -1,0 +1,22 @@
+{
+  "id": "er_large_laser",
+  "name": "ER Large Laser",
+  "type": "energy",
+  "tonnage": 5,
+  "slots": 2,
+  "damage": 16,
+  "projectiles": 1,
+  "heat": 12,
+  "cooldown": 3.5,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 130,
+    "medium": 260,
+    "long": 390
+  },
+  "ammoPerTon": null,
+  "cost": 200000,
+  "recoil": 0.0,
+  "accuracy": 1.0
+}

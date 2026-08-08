@@ -1,0 +1,25 @@
+{
+  "id": "streak_srm4",
+  "name": "Streak SRM 4",
+  "type": "missile",
+  "tonnage": 3,
+  "slots": 1,
+  "damage": 2.1,
+  "projectiles": 4,
+  "heat": 3,
+  "cooldown": 3.0,
+  "velocity": 180,
+  "range": {
+    "min": 0,
+    "short": 50,
+    "medium": 100,
+    "long": 150
+  },
+  "ammoPerTon": 25,
+  "cost": 90000,
+  "recoil": 0.05,
+  "accuracy": 1.5,
+  "tags": [
+    "spread"
+  ]
+}

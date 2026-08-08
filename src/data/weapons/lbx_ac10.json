@@ -1,0 +1,25 @@
+{
+  "id": "lbx_ac10",
+  "name": "LB 10-X AC",
+  "type": "ballistic",
+  "tonnage": 11,
+  "slots": 6,
+  "damage": 1.2,
+  "projectiles": 10,
+  "heat": 2,
+  "cooldown": 3.0,
+  "velocity": 600,
+  "range": {
+    "min": 0,
+    "short": 120,
+    "medium": 240,
+    "long": 360
+  },
+  "ammoPerTon": 10,
+  "cost": 400000,
+  "recoil": 0.18,
+  "accuracy": 1.1,
+  "tags": [
+    "spread"
+  ]
+}

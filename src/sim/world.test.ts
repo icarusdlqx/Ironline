@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catalog } from '../../tests/support';
+import { catalog, spawnDesign } from '../../tests/support';
 import { LOCATIONS } from '../schema/common';
 import { createMech } from './entity';
 import { isOperational } from './types';
@@ -70,9 +70,20 @@ describe('createMech', () => {
   });
 
   it('gives lighter mechs a faster turn rate', () => {
-    const light = world.entities.find((entity) => entity.chassisId === 'wisp_wsp1');
-    const heavy = world.entities.find((entity) => entity.chassisId === 'bulwark_bwk3');
-    expect(light?.turnRate ?? 0).toBeGreaterThan(heavy?.turnRate ?? 0);
+    const light = spawnDesign(world, 'wisp_scout');
+    const heavy = spawnDesign(world, 'colossus_siege');
+    expect(light.turnRate).toBeGreaterThan(heavy.turnRate);
+  });
+
+  it('spreads walking speed across the weight classes', () => {
+    const speeds = ['wisp_scout', 'sentinel_sniper', 'warden_lancer', 'colossus_siege'].map(
+      (designId) => spawnDesign(world, designId).walkSpeed,
+    );
+    // §3.3 wants a real spread: a scout should roughly triple an assault's pace.
+    for (let index = 1; index < speeds.length; index += 1) {
+      expect(speeds[index] ?? 0).toBeLessThan(speeds[index - 1] ?? 0);
+    }
+    expect((speeds[0] ?? 0) / (speeds[speeds.length - 1] ?? 1)).toBeGreaterThan(2.5);
   });
 
   it('rejects unknown content', () => {

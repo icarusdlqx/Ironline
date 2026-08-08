@@ -21,6 +21,7 @@ function run(world: World, ticks: number): void {
 function freeze(active: World): void {
   for (const entity of active.entities) {
     entity.autopilot = false;
+    entity.controller = 'orders';
     entity.orders.move = null;
     entity.path = [];
     entity.pathIndex = 0;
@@ -352,5 +353,5 @@ describe('determinism with objectives', () => {
     const first = runBattle(catalog, { seed: 'mission:9', missionId: MISSION, playerTeam: 0 });
     const second = runBattle(catalog, { seed: 'mission:9', missionId: MISSION, playerTeam: 0 });
     expect(first).toEqual(second);
-  });
+  }, 30_000);
 });

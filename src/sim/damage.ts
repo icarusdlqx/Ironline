@@ -41,6 +41,24 @@ export function detonateAmmoBin(world: World, entity: MechEntity, bin: AmmoBin):
   if (core.internal <= 0) destroyLocation(world, entity, 'centre_torso', 'ammo_explosion');
 }
 
+/** A breached power store venting into the centre torso, the way an ammo bin does. */
+function detonateVolatile(world: World, entity: MechEntity, damage: number): void {
+  emit(world.events, {
+    type: 'ammo_explosion',
+    tick: world.tick,
+    entityId: entity.id,
+    location: 'centre_torso',
+    damage,
+  });
+
+  const core = entity.locations.centre_torso;
+  if (core.destroyed) return;
+
+  core.internal -= damage;
+  entity.stats.damageTaken += damage;
+  if (core.internal <= 0) destroyLocation(world, entity, 'centre_torso', 'ammo_explosion');
+}
+
 export function destroyLocation(
   world: World,
   entity: MechEntity,
@@ -61,7 +79,14 @@ export function destroyLocation(
   });
 
   for (const mount of entity.weapons) {
-    if (mount.location === location) mount.destroyed = true;
+    if (mount.location !== location || mount.destroyed) continue;
+    mount.destroyed = true;
+
+    // A Gauss rifle's capacitors dump into the mech when the mount is breached.
+    // That risk is what the fifteen tons and the low heat are paying for.
+    const weapon = world.catalog.weapons.get(mount.weaponId);
+    if (weapon === undefined || !weapon.tags.includes('volatile')) continue;
+    detonateVolatile(world, entity, weapon.damage * world.rules.damage.volatileExplosionFactor);
   }
 
   for (const bin of entity.ammoBins) {

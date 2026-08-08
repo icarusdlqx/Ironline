@@ -1,0 +1,48 @@
+{
+  "id": "warden_lancer",
+  "name": "Warden WRD-5 'Lancer'",
+  "chassisId": "warden_wrd5",
+  "armour": {
+    "head": 21,
+    "centre_torso": 81,
+    "left_torso": 60,
+    "right_torso": 60,
+    "left_arm": 45,
+    "right_arm": 45,
+    "left_leg": 54,
+    "right_leg": 54
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 17,
+  "mounts": [
+    {
+      "weaponId": "large_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "large_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "srm6",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "centre_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "srm6",
+      "location": "left_torso",
+      "tons": 2
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    }
+  ]
+}

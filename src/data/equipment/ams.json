@@ -1,0 +1,10 @@
+{
+  "id": "ams",
+  "name": "Anti-Missile System",
+  "category": "defensive",
+  "tonnage": 1.5,
+  "slots": 1,
+  "cost": 100000,
+  "stats": { "ams_missile_factor": 0.68 },
+  "tags": []
+}

@@ -46,6 +46,7 @@ export type SimEvent =
       objectiveId: string;
       status: 'complete' | 'failed';
     }
+  | { type: 'unit_withdrew'; tick: number; entityId: EntityId; team: number }
   | { type: 'trigger_fired'; tick: number; triggerId: string }
   | { type: 'mission_message'; tick: number; text: string }
   | { type: 'unit_spawned'; tick: number; entityId: EntityId; team: number; name: string }

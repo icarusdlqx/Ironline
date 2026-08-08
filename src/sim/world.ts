@@ -2,16 +2,18 @@ import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import type { Pilot } from '../schema/pilot';
-import { runBasicAi } from './ai/basic';
+import { decideBaseline } from './ai/baseline';
+import { difficultyTier, resolveDisengagement, runTeamAi } from './ai/tactical';
 import { resolveProjectiles, updateWeapons } from './combat';
 import { createMech, type LocationDamage } from './entity';
 import { emit } from './events';
+import { updateDesignation } from './designation';
 import { updateHeat } from './heat';
 import { createObjectives, evaluateMission, updateObjectives } from './objectives';
 import { createSupportState, updateSupport } from './support';
 import { createTriggers, updateTriggers } from './triggers';
 import { createZones, updateZones } from './zones';
-import { updateMovement } from './movement';
+import { updateMovement, updateTorso } from './movement';
 import { updatePlayerControl } from './orders';
 import { createRng, type RngSeed } from './rng';
 import { createVision, updateVision } from './sensors';
@@ -24,6 +26,8 @@ export interface LanceEntry {
   damage?: Partial<Record<MechLocation, LocationDamage>>;
 }
 
+export type ControllerId = 'orders' | 'tactical' | 'baseline';
+
 export interface WorldOptions {
   seed: RngSeed;
   missionId: string;
@@ -31,6 +35,11 @@ export interface WorldOptions {
   playerTeam?: number;
   /** Replaces the mission's own player lance with campaign mechs and pilots. */
   playerLance?: LanceEntry[];
+  /** How the player's own lance is driven when nobody is at the controls. */
+  playerController?: ControllerId;
+  /** Which side each opposing lance is driven by, and how well. */
+  enemyController?: ControllerId;
+  difficulty?: string;
 }
 
 export interface UnitCondition {
@@ -49,6 +58,7 @@ export interface UnitResult {
   killMethod: string | null;
   pilotDead: boolean;
   pilotEjected: boolean;
+  withdrew: boolean;
   legged: boolean;
   damageDealt: number;
   damageTaken: number;
@@ -82,6 +92,10 @@ export interface BattleResult {
   weapons: { weaponId: string; shots: number; hits: number; damage: number; heat: number }[];
 }
 
+function clampSkill(value: number): number {
+  return Math.max(1, Math.min(5, value));
+}
+
 export function createWorld(catalog: Catalog, options: WorldOptions): World {
   const mission = catalog.missions.get(options.missionId);
   if (mission === undefined) throw new Error(`unknown mission "${options.missionId}"`);
@@ -90,6 +104,11 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
   if (mapData === undefined) throw new Error(`unknown map "${mission.mapId}"`);
 
   const playerTeam = options.playerTeam ?? null;
+  const playerController = options.playerController ?? 'orders';
+  const enemyController = options.enemyController ?? 'tactical';
+  const tier = catalog.rules.difficulty.tiers[
+    options.difficulty ?? catalog.rules.difficulty.default
+  ];
   const entities: MechEntity[] = [];
   let nextId = 1;
 
@@ -108,6 +127,7 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
           spawn: unit.spawn,
           facingDegrees: unit.facingDegrees,
           autopilot: lance.team !== playerTeam,
+          controller: lance.team === playerTeam ? playerController : enemyController,
           ...(entry === undefined ? {} : { design: entry.design, pilot: entry.pilot }),
           ...(entry?.damage === undefined ? {} : { damage: entry.damage }),
         }),
@@ -118,6 +138,16 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
 
   if (options.playerLance !== undefined && options.playerLance.length === 0) {
     throw new Error('a player lance must contain at least one mech');
+  }
+
+  // Difficulty adjusts who the enemy are, never how much punishment they soak.
+  if (tier !== undefined && tier.skillDelta !== 0) {
+    for (const entity of entities) {
+      if (entity.team === playerTeam) continue;
+      entity.pilot.gunnery = clampSkill(entity.pilot.gunnery + tier.skillDelta);
+      entity.pilot.piloting = clampSkill(entity.pilot.piloting + tier.skillDelta);
+      entity.pilot.sensors = clampSkill(entity.pilot.sensors + tier.skillDelta);
+    }
   }
 
   const hitLocationTable = LOCATIONS.map((location: MechLocation) => ({
@@ -156,6 +186,7 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
     })),
     missionStatus: 'active',
     missionReason: null,
+    difficulty: options.difficulty ?? catalog.rules.difficulty.default,
 
     finished: false,
     winner: null,
@@ -253,16 +284,26 @@ export function stepWorld(world: World, maxTicks: number): void {
   if (world.vision !== null) updateVision(world, world.vision);
 
   if ((world.tick - 1) % world.rules.simulation.aiDecisionIntervalTicks === 0) {
+    const tier = difficultyTier(world, world.difficulty);
+
+    for (const team of new Set(world.entities.map((entity) => entity.team))) {
+      runTeamAi(world, team, tier);
+    }
+
     for (const entity of world.entities) {
-      if (entity.autopilot) runBasicAi(world, entity);
-      else updatePlayerControl(world, entity);
+      if (entity.controller === 'baseline') decideBaseline(world, entity);
+      else if (entity.controller === 'orders') updatePlayerControl(world, entity);
     }
   }
 
+  updateDesignation(world);
+
   for (const entity of world.entities) updateMovement(world, entity);
+  for (const entity of world.entities) updateTorso(world, entity);
   for (const entity of world.entities) updateWeapons(world, entity);
 
   resolveProjectiles(world);
+  resolveDisengagement(world);
   updateSupport(world);
   updateZones(world);
   updateObjectives(world);
@@ -297,6 +338,7 @@ export function toResult(world: World, seed: RngSeed, maxTicks: number): BattleR
       killMethod: entity.killMethod,
       pilotDead: entity.pilot.dead,
       pilotEjected: entity.pilot.ejected,
+      withdrew: entity.withdrawn,
       legged: entity.locations.left_leg.destroyed && entity.locations.right_leg.destroyed,
       damageDealt: entity.stats.damageDealt,
       damageTaken: entity.stats.damageTaken,

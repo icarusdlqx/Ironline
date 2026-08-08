@@ -8,8 +8,11 @@ import { TerrainMapSchema, type TerrainMapData } from './map';
 import { MissionSchema, type Mission } from './mission';
 import { PilotSchema, type Pilot } from './pilot';
 import {
+  AiRulesSchema,
+  BalanceRulesSchema,
   CombatRulesSchema,
   ConstructionRulesSchema,
+  DifficultyRulesSchema,
   DamageRulesSchema,
   EconomyRulesSchema,
   HeatRulesSchema,
@@ -198,6 +201,9 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const salvage = parseRule('salvage', SalvageRulesSchema, byStem, issues);
   const economy = parseRule('economy', EconomyRulesSchema, byStem, issues);
   const support = parseRule('support', SupportRulesSchema, byStem, issues);
+  const ai = parseRule('ai', AiRulesSchema, byStem, issues);
+  const balance = parseRule('balance', BalanceRulesSchema, byStem, issues);
+  const difficulty = parseRule('difficulty', DifficultyRulesSchema, byStem, issues);
 
   if (
     simulation === null ||
@@ -210,7 +216,10 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     construction === null ||
     salvage === null ||
     economy === null ||
-    support === null
+    support === null ||
+    ai === null ||
+    balance === null ||
+    difficulty === null
   ) {
     return null;
   }
@@ -227,6 +236,9 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     salvage,
     economy,
     support,
+    ai,
+    balance,
+    difficulty,
   };
 }
 

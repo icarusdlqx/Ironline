@@ -76,7 +76,36 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   messages and reveals. Resource Points earned from zones and objectives and
   spent on all six support calls. Mission success and failure conditions, a
   briefing screen and an in-battle objective tracker.
-- Phase 6 — AI depth & balance: next.
+- **Phase 6 — AI depth & balance: complete.** Utility-scoring target selection,
+  lance focus fire, cover and elevation seeking, flanking, graduated heat
+  discipline that sheds the least efficient weapon group rather than going dark,
+  called shots at the legs to leave salvage on the field, withdrawal and
+  disengagement, and four difficulty tiers that change behaviour and pilot skill
+  but never hit points or damage. Torso twist so guns bear independently of the
+  hull. Content pass to twenty-eight weapons, ten equipment items and eight
+  chassis spanning 25 to 100 tons. `npm run sim` reports damage-per-ton-per-heat
+  against each class median.
+- Phase 7 — Polish: next.
+
+### Phase 6 acceptance
+
+Both criteria are asserted in `src/sim/balance.test.ts`:
+
+- **Weapon balance.** `damagePerTonPerHeat = dps / (tonnage + heatPerSecond /
+  dissipationPerSink)` — a mount costs its own tonnage plus the heat sinks
+  needed to keep it firing, and accuracy is folded into the numerator so pulse
+  and Streak launchers pay for their aim. Cooldown cancels out, leaving rate of
+  fire free for feel. All 28 weapons land within 5% of their class median
+  against a ±20% band.
+- **AI strength.** `mirror_ridge` fields identical lances on mirrored spawns;
+  the tactical controller and the `baseline` controller (nearest target, range
+  bracket, heat discipline — nothing else) swap sides every other run so no
+  corner of the map flatters either. The tactical AI takes 57.5% of 40 runs.
+
+Known finding: light mechs are near-unsurvivable in a stand-up 4v4, because
+`lanceFocus` correctly concentrates on the weakest target. That is doctrine
+working as intended rather than a balance fault — lights belong on scouting and
+flanking work — but it means a line lance should not be built around one.
 
 ## Controls
 

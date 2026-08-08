@@ -1,4 +1,5 @@
 import type { Catalog } from '../schema/load';
+import { balanceByClass } from '../sim/balance';
 import type { BattleResult, UnitResult } from '../sim/world';
 
 export interface DesignAggregate {
@@ -220,6 +221,37 @@ export function formatReport(summary: Aggregate, catalog: Catalog): string {
       weaponRows,
     ),
   );
+
+  sections.push(formatBalance(catalog));
+
+  return sections.join('\n\n');
+}
+
+/** §11's acceptance metric: every weapon inside ±band of its class median. */
+export function formatBalance(catalog: Catalog): string {
+  const sections: string[] = [];
+
+  for (const group of balanceByClass(catalog)) {
+    const rows: Row[] = group.entries.map((entry) => [
+      entry.name,
+      entry.dps.toFixed(2),
+      entry.heatPerSecond.toFixed(2),
+      entry.effectiveTons.toFixed(1),
+      entry.damagePerTonPerHeat.toFixed(4),
+      `${entry.deviation >= 0 ? '+' : ''}${(entry.deviation * 100).toFixed(1)}%`,
+      entry.withinBand ? 'ok' : 'OUT',
+    ]);
+
+    const failures = group.entries.filter((entry) => !entry.withinBand).length;
+    sections.push(
+      `${group.type} — median ${group.median.toFixed(4)} dmg/s per effective ton, ` +
+        `band ±${(group.band * 100).toFixed(0)}%, ${failures} outside\n` +
+        renderTable(
+          ['Weapon', 'Dmg/s', 'Heat/s', 'EffTons', 'Metric', 'vs median', ''],
+          rows,
+        ),
+    );
+  }
 
   return sections.join('\n\n');
 }

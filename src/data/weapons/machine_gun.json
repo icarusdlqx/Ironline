@@ -1,0 +1,22 @@
+{
+  "id": "machine_gun",
+  "name": "Machine Gun",
+  "type": "ballistic",
+  "tonnage": 0.5,
+  "slots": 1,
+  "damage": 0.6,
+  "projectiles": 1,
+  "heat": 0.5,
+  "cooldown": 0.5,
+  "velocity": 600,
+  "range": {
+    "min": 0,
+    "short": 30,
+    "medium": 60,
+    "long": 90
+  },
+  "ammoPerTon": 200,
+  "cost": 5000,
+  "recoil": 0.05,
+  "accuracy": 1.0
+}

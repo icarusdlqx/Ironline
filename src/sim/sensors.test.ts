@@ -9,7 +9,7 @@ let enemy: MechEntity;
 
 beforeEach(() => {
   world = playerWorld('sensors');
-  scout = unitOf(world, 'wisp_scout');
+  scout = unitOf(world, 'hornet_spotter');
   enemy = unitOf(world, 'bulwark_burner');
 });
 
@@ -20,10 +20,21 @@ describe('sensorRangeFor', () => {
     expect(sensorRangeFor(rules, 5)).toBeGreaterThan(sensorRangeFor(rules, 2));
   });
 
-  it('is stamped onto each mech at spawn', () => {
+  it('is stamped onto each mech at spawn, scaled by anything it carries', () => {
     for (const entity of world.entities) {
-      expect(entity.sensorRange).toBe(sensorRangeFor(catalog.rules.sensors, entity.pilot.sensors));
+      const fromSkill = sensorRangeFor(catalog.rules.sensors, entity.pilot.sensors);
+      const design = catalog.designs.get(entity.designId);
+      const factor = (design?.equipment ?? []).reduce(
+        (total, fit) => total * (catalog.equipment.get(fit.equipmentId)?.stats.sensor_range_factor ?? 1),
+        1,
+      );
+      expect(entity.sensorRange).toBeCloseTo(fromSkill * factor, 6);
     }
+  });
+
+  it('gives an Active Probe carrier more reach than its pilot alone would have', () => {
+    const fromSkill = sensorRangeFor(catalog.rules.sensors, scout.pilot.sensors);
+    expect(scout.sensorRange).toBeGreaterThan(fromSkill);
   });
 });
 

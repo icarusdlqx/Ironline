@@ -31,6 +31,8 @@ export const MovementRulesSchema = z.strictObject({
   jumpHeatPerJet: z.number().nonnegative(),
   jumpCooldownSeconds: z.number().positive(),
   moveAlignmentDegrees: z.number().positive().max(180),
+  torsoTwistDegrees: z.number().positive().max(180),
+  torsoTurnRateDegreesPerSecond: z.number().positive(),
   waypointRadius: z.number().positive(),
   arrivalRadius: z.number().positive(),
 });
@@ -106,6 +108,7 @@ export const DamageRulesSchema = z
     transfer: perLocation(MechLocationSchema.nullable()),
     ammoExplosionDamagePerRound: z.number().nonnegative(),
     ammoExplosionCap: z.number().positive(),
+    volatileExplosionFactor: z.number().nonnegative(),
     headDestroyedEjectionChance: Probability,
     legDestroyedSpeedFactor: Probability,
   })
@@ -125,6 +128,76 @@ export const TerrainTypeSchema = z.strictObject({
   losObstruction: z.number().min(0).max(4),
   heatDissipationMultiplier: Factor,
   passable: z.boolean(),
+});
+
+export const AiRulesSchema = z.strictObject({
+  id: z.literal('ai'),
+  target: z.strictObject({
+    vulnerabilityWeight: z.number().nonnegative(),
+    threatWeight: z.number().nonnegative(),
+    distancePenaltyPower: z.number().nonnegative().max(4),
+    exposurePenaltyWeight: z.number().nonnegative(),
+    focusFireBonus: z.number().min(1).max(4),
+    switchHysteresis: z.number().min(1).max(4),
+  }),
+  positioning: z.strictObject({
+    rangeSampleStep: z.number().positive(),
+    rangeTolerance: z.number().positive(),
+    repositionStep: z.number().positive(),
+    candidateDirections: z.number().int().min(4).max(32),
+    coverWeight: z.number().nonnegative(),
+    elevationWeight: z.number().nonnegative(),
+    flankWeight: z.number().nonnegative(),
+    flankAngleDegrees: z.number().positive().max(180),
+    spacingRadius: z.number().nonnegative(),
+    spacingWeight: z.number().nonnegative(),
+    backOffAdvantage: z.number().min(1).max(4),
+    dpsWeight: z.number().nonnegative(),
+    rangeErrorWeight: z.number().nonnegative(),
+    closingWeight: z.number().nonnegative(),
+    losPenalty: z.number().nonnegative(),
+  }),
+  heat: z.strictObject({
+    holdFireFraction: Probability,
+    resumeFraction: Probability,
+    finisherOverrideFraction: Probability,
+    sustainFactor: z.number().positive().max(2),
+  }),
+  withdrawal: z.strictObject({
+    structureFraction: Probability,
+    resumeStructureFraction: Probability,
+    disengageRangeFactor: z.number().min(1).max(4),
+    mapEdgeDistance: z.number().positive(),
+    losingStrengthRatio: z.number().positive().max(2),
+    openRangeWeight: z.number().nonnegative(),
+    concealmentBonus: z.number().nonnegative(),
+  }),
+  calledShot: z.strictObject({
+    targetStructureFraction: Probability,
+    chance: Probability,
+  }),
+});
+
+export const BalanceRulesSchema = z.strictObject({
+  id: z.literal('balance'),
+  /** How far a weapon may sit from its class median before the report flags it. */
+  weaponBandFraction: z.number().positive().max(1),
+});
+
+export const DifficultyTierSchema = z.strictObject({
+  skillDelta: z.number().int().min(-2).max(3),
+  aggression: z.number().positive().max(3),
+  lanceSizeDelta: z.number().int().min(-3).max(3),
+  focusFire: z.boolean(),
+  flanking: z.boolean(),
+  coverSeeking: z.boolean(),
+  calledShots: z.boolean(),
+});
+
+export const DifficultyRulesSchema = z.strictObject({
+  id: z.literal('difficulty'),
+  default: IdSchema,
+  tiers: z.record(IdSchema, DifficultyTierSchema),
 });
 
 const SupportCallBase = { cost: z.number().int().nonnegative(), delaySeconds: z.number().nonnegative().max(60) };
@@ -250,6 +323,10 @@ export type ConstructionRules = z.infer<typeof ConstructionRulesSchema>;
 export type SalvageRules = z.infer<typeof SalvageRulesSchema>;
 export type EconomyRules = z.infer<typeof EconomyRulesSchema>;
 export type SupportRules = z.infer<typeof SupportRulesSchema>;
+export type AiRules = z.infer<typeof AiRulesSchema>;
+export type BalanceRules = z.infer<typeof BalanceRulesSchema>;
+export type DifficultyRules = z.infer<typeof DifficultyRulesSchema>;
+export type DifficultyTier = z.infer<typeof DifficultyTierSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
 
 export interface Rules {
@@ -264,6 +341,9 @@ export interface Rules {
   readonly salvage: SalvageRules;
   readonly economy: EconomyRules;
   readonly support: SupportRules;
+  readonly ai: AiRules;
+  readonly balance: BalanceRules;
+  readonly difficulty: DifficultyRules;
 }
 
 export const RULE_SCHEMAS = {
@@ -278,6 +358,9 @@ export const RULE_SCHEMAS = {
   salvage: SalvageRulesSchema,
   economy: EconomyRulesSchema,
   support: SupportRulesSchema,
+  ai: AiRulesSchema,
+  balance: BalanceRulesSchema,
+  difficulty: DifficultyRulesSchema,
 } as const;
 
 export type RuleId = keyof typeof RULE_SCHEMAS;

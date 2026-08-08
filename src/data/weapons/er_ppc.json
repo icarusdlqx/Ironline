@@ -1,0 +1,22 @@
+{
+  "id": "er_ppc",
+  "name": "ER PPC",
+  "type": "energy",
+  "tonnage": 7,
+  "slots": 3,
+  "damage": 20,
+  "projectiles": 1,
+  "heat": 13,
+  "cooldown": 4.0,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 140,
+    "medium": 280,
+    "long": 420
+  },
+  "ammoPerTon": null,
+  "cost": 300000,
+  "recoil": 0.0,
+  "accuracy": 1.0
+}

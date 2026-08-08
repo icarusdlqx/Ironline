@@ -83,6 +83,8 @@ export interface MechEntity {
 
   pos: Vec2;
   facing: number;
+  /** Weapon bearing relative to the hull, so a mech can move one way and shoot another. */
+  torsoOffset: number;
   motion: MotionState;
   walkSpeed: number;
   runSpeed: number;
@@ -100,10 +102,20 @@ export interface MechEntity {
 
   incomingAccuracyFactor: number;
   outgoingAccuracyFactor: number;
+  /** Anti-missile fire thinning an incoming volley. 1 means no AMS aboard. */
+  amsMissileFactor: number;
+  /** How far a TAG or NARC carrier can paint a target, and for how long. */
+  designatorRange: number;
+  designatorSeconds: number;
+  /** Tick until which someone has this mech painted for the whole lance. */
+  designatedUntilTick: number;
   destroyed: boolean;
+  withdrawn: boolean;
   killMethod: KillMethod | null;
 
   autopilot: boolean;
+  controller: 'orders' | 'tactical' | 'baseline';
+  ai: { withdrawing: boolean; coolingDown: boolean; focusTargetId: EntityId | null };
   orders: OrderState;
   groupEnabled: boolean[];
   sensorRange: number;
@@ -159,13 +171,14 @@ export interface World {
   reserves: { designId: string; pilotId: string; facingDegrees: number }[];
   missionStatus: 'active' | 'success' | 'failure';
   missionReason: string | null;
+  difficulty: string;
 
   finished: boolean;
   winner: number | null;
 }
 
 export function isOperational(entity: MechEntity): boolean {
-  return !entity.destroyed && !entity.pilot.dead && !entity.pilot.ejected;
+  return !entity.destroyed && !entity.withdrawn && !entity.pilot.dead && !entity.pilot.ejected;
 }
 
 export function isImmobile(entity: MechEntity): boolean {

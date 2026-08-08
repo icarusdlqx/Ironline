@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { testWorld, unitOf } from '../../tests/support';
+import { catalog, testWorld, unitOf } from '../../tests/support';
+import { resolveProjectiles } from './combat';
 import { eventsOfType } from './events';
 import { addHeat, currentHeatTier, heatTierFor, updateHeat } from './heat';
 import type { MechEntity, World } from './types';
@@ -95,5 +96,55 @@ describe('updateHeat', () => {
     expect(mech.shutdownRemaining).toBe(0);
     expect(currentHeatTier(world, mech).fraction).toBe(0);
     expect(eventsOfType(world.events, 'shutdown')).toHaveLength(0);
+  });
+});
+
+describe('flamers', () => {
+  it('dumps heat into whatever it hits', () => {
+    const flamer = catalog.weapons.get('flamer');
+    expect(flamer).toBeDefined();
+    if (flamer === undefined) return;
+    expect(flamer.targetHeat).toBeGreaterThan(0);
+
+    const shooter = unitOf(world, 'sentinel_brawler');
+    const target = unitOf(world, 'bulwark_burner');
+    target.pos = { x: shooter.pos.x + 20, y: shooter.pos.y };
+    target.heat = 0;
+
+    world.projectiles = [
+      {
+        shooterId: shooter.id,
+        targetId: target.id,
+        weaponId: 'flamer',
+        hit: true,
+        location: 'centre_torso',
+        damage: flamer.damage,
+        impactTick: world.tick,
+      },
+    ];
+    resolveProjectiles(world);
+
+    expect(target.heat).toBe(flamer.targetHeat);
+  });
+
+  it('leaves the target cold when an ordinary weapon lands', () => {
+    const shooter = unitOf(world, 'sentinel_brawler');
+    const target = unitOf(world, 'bulwark_burner');
+    target.heat = 0;
+
+    world.projectiles = [
+      {
+        shooterId: shooter.id,
+        targetId: target.id,
+        weaponId: 'medium_laser',
+        hit: true,
+        location: 'centre_torso',
+        damage: 5,
+        impactTick: world.tick,
+      },
+    ];
+    resolveProjectiles(world);
+
+    expect(target.heat).toBe(0);
   });
 });

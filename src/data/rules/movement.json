@@ -10,5 +10,7 @@
   "jumpCooldownSeconds": 6,
   "moveAlignmentDegrees": 60,
   "waypointRadius": 8,
-  "arrivalRadius": 6
+  "arrivalRadius": 6,
+  "torsoTwistDegrees": 110,
+  "torsoTurnRateDegreesPerSecond": 130
 }

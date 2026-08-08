@@ -1,0 +1,10 @@
+{
+  "id": "narc",
+  "name": "NARC Beacon",
+  "category": "targeting",
+  "tonnage": 3,
+  "slots": 2,
+  "cost": 100000,
+  "stats": { "designator_range": 200, "designator_seconds": 30 },
+  "tags": []
+}

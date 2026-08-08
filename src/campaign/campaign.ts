@@ -243,6 +243,8 @@ export function runMission(catalog: Catalog, state: CampaignState): MissionRun {
     missionId: deployment.missionId,
     playerTeam: deployment.playerTeam,
     playerLance: deployment.entries,
+    // Auto-resolving a contract should play the lance properly, not park it.
+    playerController: 'tactical',
   });
   return resolveMission(catalog, state, battle, deployment.lance);
 }
@@ -267,7 +269,9 @@ export function resolveMission(
       if (pair === undefined) return;
 
       pair.mech.condition = unit.condition;
-      if (unit.alive) {
+      // A mech that walked off the field is off the field, not lost — pulling a
+      // cripple out before it dies is the whole point of ordering a withdrawal.
+      if (unit.alive || unit.withdrew) {
         pair.mech.status = 'ready';
       } else {
         pair.mech.status = 'hulk';

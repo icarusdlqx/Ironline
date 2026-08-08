@@ -67,7 +67,12 @@ export class Renderer {
 
   snapshot(world: World): void {
     for (const entity of world.entities) {
-      const cur: Interpolated = { x: entity.pos.x, y: entity.pos.y, facing: entity.facing };
+      const cur: Interpolated = {
+        x: entity.pos.x,
+        y: entity.pos.y,
+        facing: entity.facing,
+        torso: entity.torsoOffset,
+      };
       const existing = this.samples.get(entity.id);
       this.samples.set(entity.id, { prev: existing?.cur ?? cur, cur });
     }
@@ -95,6 +100,7 @@ export class Renderer {
           x: entity.pos.x,
           y: entity.pos.y,
           facing: entity.facing,
+          torso: entity.torsoOffset,
         });
         continue;
       }
@@ -104,6 +110,7 @@ export class Renderer {
         facing: normaliseAngle(
           sample.prev.facing + angleDifference(sample.prev.facing, sample.cur.facing) * alpha,
         ),
+        torso: sample.prev.torso + (sample.cur.torso - sample.prev.torso) * alpha,
       });
     }
   }
@@ -165,6 +172,7 @@ export class Renderer {
         x: entity.pos.x,
         y: entity.pos.y,
         facing: entity.facing,
+        torso: entity.torsoOffset,
       };
 
       this.markers
@@ -173,11 +181,22 @@ export class Renderer {
 
       const halfArc = (world.rules.combat.firingArcDegrees / 2) * (Math.PI / 180);
       const arcRadius = 90;
+      const aim = at.facing + at.torso;
       this.markers
         .moveTo(at.x, at.y)
-        .arc(at.x, at.y, arcRadius, at.facing - halfArc, at.facing + halfArc)
+        .arc(at.x, at.y, arcRadius, aim - halfArc, aim + halfArc)
         .lineTo(at.x, at.y)
         .fill({ color: UI.selection, alpha: 0.07 });
+
+      // How far the torso is wound off the hull, and which way it can still swing.
+      const twistLimit = world.rules.movement.torsoTwistDegrees * (Math.PI / 180);
+      this.markers
+        .arc(at.x, at.y, arcRadius * 0.5, at.facing - twistLimit, at.facing + twistLimit)
+        .stroke({ width: 1, color: UI.selection, alpha: 0.2 });
+      this.markers
+        .moveTo(at.x, at.y)
+        .lineTo(at.x + Math.cos(aim) * arcRadius * 0.5, at.y + Math.sin(aim) * arcRadius * 0.5)
+        .stroke({ width: 2, color: UI.selection, alpha: 0.55 });
 
       if (entity.path.length > 0) {
         this.markers.moveTo(at.x, at.y);

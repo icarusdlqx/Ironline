@@ -1,0 +1,26 @@
+{
+  "id": "lrm20",
+  "name": "LRM 20",
+  "type": "missile",
+  "tonnage": 10,
+  "slots": 5,
+  "damage": 2.05,
+  "projectiles": 20,
+  "heat": 6,
+  "cooldown": 4.0,
+  "velocity": 200,
+  "range": {
+    "min": 60,
+    "short": 180,
+    "medium": 350,
+    "long": 540
+  },
+  "ammoPerTon": 6,
+  "cost": 250000,
+  "recoil": 0.05,
+  "accuracy": 1.0,
+  "tags": [
+    "spread",
+    "indirect_fire"
+  ]
+}

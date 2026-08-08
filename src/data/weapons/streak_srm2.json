@@ -1,0 +1,22 @@
+{
+  "id": "streak_srm2",
+  "name": "Streak SRM 2",
+  "type": "missile",
+  "tonnage": 1.5,
+  "slots": 1,
+  "damage": 2.45,
+  "projectiles": 2,
+  "heat": 2,
+  "cooldown": 3.0,
+  "velocity": 180,
+  "range": {
+    "min": 0,
+    "short": 50,
+    "medium": 100,
+    "long": 150
+  },
+  "ammoPerTon": 50,
+  "cost": 15000,
+  "recoil": 0.05,
+  "accuracy": 1.5
+}

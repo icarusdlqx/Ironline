@@ -1,0 +1,25 @@
+{
+  "id": "mrm30",
+  "name": "MRM 30",
+  "type": "missile",
+  "tonnage": 10,
+  "slots": 5,
+  "damage": 1.7,
+  "projectiles": 30,
+  "heat": 9,
+  "cooldown": 3.5,
+  "velocity": 190,
+  "range": {
+    "min": 0,
+    "short": 80,
+    "medium": 160,
+    "long": 240
+  },
+  "ammoPerTon": 4,
+  "cost": 175000,
+  "recoil": 0.1,
+  "accuracy": 0.85,
+  "tags": [
+    "spread"
+  ]
+}

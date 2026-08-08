@@ -1,0 +1,81 @@
+{
+  "id": "warden_wrd5",
+  "name": "Warden WRD-5",
+  "class": "heavy",
+  "tonnage": 60,
+  "baseCost": 4900000,
+  "engineRating": 300,
+  "internalHeatSinks": 10,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 2,
+      "slots": 8
+    },
+    "right_torso": {
+      "energy": 0,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 8
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 6
+    },
+    "right_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 6
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    }
+  },
+  "armourMax": {
+    "head": 21,
+    "centre_torso": 81,
+    "left_torso": 60,
+    "right_torso": 60,
+    "left_arm": 45,
+    "right_arm": 45,
+    "left_leg": 54,
+    "right_leg": 54
+  },
+  "internals": {
+    "head": 8,
+    "centre_torso": 45,
+    "left_torso": 28,
+    "right_torso": 28,
+    "left_arm": 19,
+    "right_arm": 19,
+    "left_leg": 28,
+    "right_leg": 28
+  },
+  "traits": []
+}

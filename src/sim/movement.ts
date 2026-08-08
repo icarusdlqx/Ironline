@@ -34,6 +34,30 @@ function clearPath(entity: MechEntity): void {
   entity.motion = 'stationary';
 }
 
+/** Swings the torso toward the target within its twist limit, independent of the hull. */
+export function updateTorso(world: World, entity: MechEntity): void {
+  if (!isOperational(entity) || entity.shutdownRemaining > 0) return;
+
+  const target = findEntity(world, entity.targetId);
+  const limit = world.rules.movement.torsoTwistDegrees * DEGREES_TO_RADIANS;
+  const rate = world.rules.movement.torsoTurnRateDegreesPerSecond * DEGREES_TO_RADIANS * world.dt;
+
+  if (target === null) {
+    const settle = Math.min(Math.abs(entity.torsoOffset), rate);
+    entity.torsoOffset -= settle * Math.sign(entity.torsoOffset);
+    return;
+  }
+
+  const desired = angleDifference(entity.facing, bearing(entity.pos, target.pos));
+  const wanted = Math.max(-limit, Math.min(limit, desired));
+  const step = Math.min(Math.abs(wanted - entity.torsoOffset), rate);
+  entity.torsoOffset += step * Math.sign(wanted - entity.torsoOffset);
+}
+
+export function weaponBearing(entity: MechEntity): number {
+  return normaliseAngle(entity.facing + entity.torsoOffset);
+}
+
 export function updateMovement(world: World, entity: MechEntity): void {
   if (!isOperational(entity) || entity.shutdownRemaining > 0 || isImmobile(entity)) {
     entity.motion = 'stationary';

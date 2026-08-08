@@ -13,5 +13,6 @@
   "ammoExplosionDamagePerRound": 1.0,
   "ammoExplosionCap": 180,
   "headDestroyedEjectionChance": 0.4,
-  "legDestroyedSpeedFactor": 0.5
+  "legDestroyedSpeedFactor": 0.5,
+  "volatileExplosionFactor": 1.0
 }

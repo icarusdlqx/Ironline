@@ -1,0 +1,57 @@
+{
+  "id": "colossus_siege",
+  "name": "Colossus CLS-1 'Siege'",
+  "chassisId": "colossus_cls1",
+  "armour": {
+    "head": 35,
+    "centre_torso": 136,
+    "left_torso": 101,
+    "right_torso": 101,
+    "left_arm": 74,
+    "right_arm": 74,
+    "left_leg": 90,
+    "right_leg": 90
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 25,
+  "mounts": [
+    {
+      "weaponId": "gauss_rifle",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "large_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "large_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "lrm15",
+      "location": "left_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "gauss_rifle",
+      "location": "right_torso",
+      "tons": 2
+    },
+    {
+      "weaponId": "lrm15",
+      "location": "left_torso",
+      "tons": 2
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    },
+    {
+      "equipmentId": "case",
+      "location": "right_torso"
+    }
+  ]
+}

@@ -4,15 +4,19 @@
   "type": "energy",
   "tonnage": 5,
   "slots": 2,
-  "damage": 8,
+  "damage": 12,
   "projectiles": 1,
   "heat": 8,
   "cooldown": 3.5,
   "velocity": null,
-  "range": { "min": 0, "short": 100, "medium": 200, "long": 300 },
+  "range": {
+    "min": 0,
+    "short": 100,
+    "medium": 200,
+    "long": 300
+  },
   "ammoPerTon": null,
   "cost": 100000,
-  "recoil": 0,
-  "accuracy": 1,
-  "tags": []
+  "recoil": 0.0,
+  "accuracy": 1.0
 }

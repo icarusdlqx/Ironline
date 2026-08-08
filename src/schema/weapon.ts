@@ -37,6 +37,8 @@ export const WeaponSchema = z
     cost: z.number().int().positive(),
     recoil: z.number().min(0).max(1),
     accuracy: z.number().positive().max(2).default(1),
+    /** Heat dumped into the target on a hit — the flamer's whole purpose. */
+    targetHeat: z.number().nonnegative().default(0),
     tags: z.array(IdSchema).default([]),
   })
   .superRefine((weapon, ctx) => {

@@ -1,0 +1,47 @@
+{
+  "id": "ai",
+  "target": {
+    "vulnerabilityWeight": 1.4,
+    "threatWeight": 0.8,
+    "distancePenaltyPower": 0.6,
+    "exposurePenaltyWeight": 0.9,
+    "focusFireBonus": 1.7,
+    "switchHysteresis": 1.25
+  },
+  "positioning": {
+    "rangeSampleStep": 20,
+    "rangeTolerance": 35,
+    "repositionStep": 90,
+    "candidateDirections": 12,
+    "coverWeight": 1.6,
+    "elevationWeight": 0.5,
+    "flankWeight": 1.3,
+    "flankAngleDegrees": 70,
+    "spacingRadius": 40,
+    "spacingWeight": 0.8,
+    "backOffAdvantage": 1.25,
+    "dpsWeight": 0.05,
+    "rangeErrorWeight": 0.03,
+    "closingWeight": 0.006,
+    "losPenalty": 3
+  },
+  "heat": {
+    "holdFireFraction": 0.78,
+    "resumeFraction": 0.55,
+    "finisherOverrideFraction": 0.25,
+    "sustainFactor": 0.9
+  },
+  "withdrawal": {
+    "structureFraction": 0.32,
+    "resumeStructureFraction": 0.6,
+    "disengageRangeFactor": 1.6,
+    "mapEdgeDistance": 30,
+    "openRangeWeight": 0.02,
+    "concealmentBonus": 2,
+    "losingStrengthRatio": 0.7
+  },
+  "calledShot": {
+    "targetStructureFraction": 0.55,
+    "chance": 0.45
+  }
+}

@@ -3,17 +3,17 @@
   "name": "Wisp WSP-1 'Scout'",
   "chassisId": "wisp_wsp1",
   "armour": {
-    "head": 12,
-    "centre_torso": 40,
-    "left_torso": 30,
-    "right_torso": 30,
-    "left_arm": 20,
-    "right_arm": 20,
-    "left_leg": 28,
-    "right_leg": 28
+    "head": 9,
+    "centre_torso": 34,
+    "left_torso": 25,
+    "right_torso": 25,
+    "left_arm": 19,
+    "right_arm": 19,
+    "left_leg": 22,
+    "right_leg": 22
   },
   "heatSinkId": "heat_sink",
-  "heatSinks": 12,
+  "heatSinks": 10,
   "mounts": [
     {
       "weaponId": "medium_laser",
@@ -22,31 +22,21 @@
     {
       "weaponId": "medium_laser",
       "location": "right_arm"
-    },
-    {
-      "weaponId": "medium_laser",
-      "location": "centre_torso"
-    },
-    {
-      "weaponId": "srm6",
-      "location": "left_torso"
     }
   ],
-  "ammo": [
-    {
-      "weaponId": "srm6",
-      "location": "right_torso",
-      "tons": 2
-    }
-  ],
+  "ammo": [],
   "equipment": [
     {
-      "equipmentId": "case",
+      "equipmentId": "active_probe",
       "location": "right_torso"
     },
     {
-      "equipmentId": "ecm_suite",
-      "location": "left_torso"
+      "equipmentId": "jump_jet",
+      "location": "left_leg"
+    },
+    {
+      "equipmentId": "jump_jet",
+      "location": "right_leg"
     }
   ]
 }

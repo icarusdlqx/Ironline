@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { testWorld, unitOf } from '../../tests/support';
+import { spawnDesign, testWorld, unitOf } from '../../tests/support';
 import { applyDamage, destroyLocation } from './damage';
 import { eventsOfType } from './events';
 import { isImmobile, isOperational, type MechEntity, type World } from './types';
@@ -122,7 +122,7 @@ describe('ammo explosions', () => {
   });
 
   it('contains the blast when CASE is fitted', () => {
-    const scout = unitOf(world, 'wisp_scout');
+    const scout = unitOf(world, 'hornet_spotter');
     const bin = scout.ammoBins.find((entry) => entry.protectedByCase);
     expect(bin).toBeDefined();
 
@@ -144,5 +144,38 @@ describe('ammo explosions', () => {
     for (const explosion of explosions) {
       expect(explosion.damage).toBeLessThanOrEqual(world.rules.damage.ammoExplosionCap);
     }
+  });
+});
+
+describe('volatile mounts', () => {
+  it('dumps a Gauss rifle into the centre torso when its mount is breached', () => {
+    const siege = spawnDesign(world, 'colossus_siege');
+    const gauss = siege.weapons.find((mount) => mount.weaponId === 'gauss_rifle');
+    expect(gauss).toBeDefined();
+    if (gauss === undefined) return;
+
+    const before = siege.locations.centre_torso.internal;
+    destroyLocation(world, siege, gauss.location);
+
+    const blasts = eventsOfType(world.events, 'ammo_explosion').filter(
+      (event) => event.entityId === siege.id,
+    );
+    expect(blasts.length).toBeGreaterThan(0);
+    expect(siege.locations.centre_torso.internal).toBeLessThan(before);
+  });
+
+  it('leaves an ordinary mount to fail quietly', () => {
+    const brawler = unitOf(world, 'sentinel_brawler');
+    const mount = brawler.weapons.find((entry) => entry.weaponId !== 'gauss_rifle');
+    expect(mount).toBeDefined();
+    if (mount === undefined) return;
+
+    const before = brawler.locations.centre_torso.internal;
+    destroyLocation(world, brawler, mount.location);
+
+    expect(mount.destroyed).toBe(true);
+    // Any drop here would be an ammo bin going up, not the gun itself.
+    const blasts = eventsOfType(world.events, 'ammo_explosion');
+    if (blasts.length === 0) expect(brawler.locations.centre_torso.internal).toBe(before);
   });
 });

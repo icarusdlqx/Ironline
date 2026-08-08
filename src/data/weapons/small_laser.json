@@ -1,0 +1,22 @@
+{
+  "id": "small_laser",
+  "name": "Small Laser",
+  "type": "energy",
+  "tonnage": 0.5,
+  "slots": 1,
+  "damage": 2,
+  "projectiles": 1,
+  "heat": 2,
+  "cooldown": 2.0,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 40,
+    "medium": 80,
+    "long": 120
+  },
+  "ammoPerTon": null,
+  "cost": 12000,
+  "recoil": 0.0,
+  "accuracy": 1.0
+}

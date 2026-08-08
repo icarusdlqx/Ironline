@@ -1,0 +1,25 @@
+{
+  "id": "lrm5",
+  "name": "LRM 5",
+  "type": "missile",
+  "tonnage": 2,
+  "slots": 1,
+  "damage": 2,
+  "projectiles": 5,
+  "heat": 2,
+  "cooldown": 4.0,
+  "velocity": 200,
+  "range": {
+    "min": 60,
+    "short": 180,
+    "medium": 350,
+    "long": 540
+  },
+  "ammoPerTon": 24,
+  "cost": 30000,
+  "recoil": 0.05,
+  "accuracy": 1.0,
+  "tags": [
+    "indirect_fire"
+  ]
+}

@@ -4,15 +4,23 @@
   "type": "missile",
   "tonnage": 5,
   "slots": 2,
-  "damage": 2,
+  "damage": 2.25,
   "projectiles": 10,
   "heat": 4,
   "cooldown": 4.0,
   "velocity": 200,
-  "range": { "min": 60, "short": 180, "medium": 350, "long": 540 },
+  "range": {
+    "min": 60,
+    "short": 180,
+    "medium": 350,
+    "long": 540
+  },
   "ammoPerTon": 12,
   "cost": 100000,
   "recoil": 0.05,
-  "accuracy": 1,
-  "tags": ["spread", "indirect_fire"]
+  "accuracy": 1.0,
+  "tags": [
+    "spread",
+    "indirect_fire"
+  ]
 }

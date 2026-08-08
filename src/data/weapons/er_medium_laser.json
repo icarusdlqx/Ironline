@@ -1,0 +1,22 @@
+{
+  "id": "er_medium_laser",
+  "name": "ER Medium Laser",
+  "type": "energy",
+  "tonnage": 1,
+  "slots": 1,
+  "damage": 7,
+  "projectiles": 1,
+  "heat": 7,
+  "cooldown": 2.5,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 90,
+    "medium": 180,
+    "long": 270
+  },
+  "ammoPerTon": null,
+  "cost": 80000,
+  "recoil": 0.0,
+  "accuracy": 1.0
+}

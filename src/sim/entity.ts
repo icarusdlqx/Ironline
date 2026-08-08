@@ -28,6 +28,7 @@ export interface SpawnParams {
   spawn: Vec2;
   facingDegrees: number;
   autopilot?: boolean;
+  controller?: 'orders' | 'tactical' | 'baseline';
   /** Overrides the catalogue lookup, for refitted or salvaged campaign mechs. */
   design?: Design;
   pilot?: Pilot;
@@ -115,10 +116,21 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
 
   let incomingAccuracyFactor = 1;
   let outgoingAccuracyFactor = 1;
+  let amsMissileFactor = 1;
+  let sensorRangeFactor = 1;
+  let designatorRange = 0;
+  let designatorSeconds = 0;
   for (const fit of design.equipment) {
     const stats = catalog.equipment.get(fit.equipmentId)?.stats ?? {};
     incomingAccuracyFactor *= stats.incoming_accuracy_factor ?? 1;
     outgoingAccuracyFactor *= stats.accuracy_factor ?? 1;
+    amsMissileFactor *= stats.ams_missile_factor ?? 1;
+    sensorRangeFactor *= stats.sensor_range_factor ?? 1;
+    // The longest-reaching designator wins, and it carries its own dwell time.
+    if ((stats.designator_range ?? 0) > designatorRange) {
+      designatorRange = stats.designator_range ?? 0;
+      designatorSeconds = stats.designator_seconds ?? 0;
+    }
   }
 
   const sinkStats = catalog.equipment.get(design.heatSinkId)?.stats ?? {};
@@ -159,6 +171,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
 
     pos: { x: params.spawn.x, y: params.spawn.y },
     facing: params.facingDegrees * DEGREES_TO_RADIANS,
+    torsoOffset: 0,
     motion: 'stationary',
     walkSpeed,
     runSpeed: walkSpeed * rules.movement.runMultiplier,
@@ -181,12 +194,19 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     incomingAccuracyFactor,
     outgoingAccuracyFactor,
     destroyed: false,
+    withdrawn: false,
     killMethod: null,
 
     autopilot: params.autopilot ?? true,
+    controller: params.controller ?? ((params.autopilot ?? true) ? 'tactical' : 'orders'),
+    ai: { withdrawing: false, coolingDown: false, focusTargetId: null },
     orders: emptyOrders(),
     groupEnabled: Array.from({ length: WEAPON_GROUPS }, () => true),
-    sensorRange: sensorRangeFor(rules.sensors, pilot.sensors),
+    sensorRange: sensorRangeFor(rules.sensors, pilot.sensors) * sensorRangeFactor,
+    amsMissileFactor,
+    designatorRange,
+    designatorSeconds,
+    designatedUntilTick: -1,
 
     targetId: null,
     calledShot: null,

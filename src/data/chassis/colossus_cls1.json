@@ -1,0 +1,81 @@
+{
+  "id": "colossus_cls1",
+  "name": "Colossus CLS-1",
+  "class": "assault",
+  "tonnage": 100,
+  "baseCost": 9200000,
+  "engineRating": 300,
+  "internalHeatSinks": 10,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1
+    },
+    "centre_torso": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 2,
+      "slots": 12
+    },
+    "right_torso": {
+      "energy": 0,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 12
+    },
+    "left_arm": {
+      "energy": 0,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 10
+    },
+    "right_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    }
+  },
+  "armourMax": {
+    "head": 35,
+    "centre_torso": 136,
+    "left_torso": 101,
+    "right_torso": 101,
+    "left_arm": 74,
+    "right_arm": 74,
+    "left_leg": 90,
+    "right_leg": 90
+  },
+  "internals": {
+    "head": 13,
+    "centre_torso": 75,
+    "left_torso": 47,
+    "right_torso": 47,
+    "left_arm": 32,
+    "right_arm": 32,
+    "left_leg": 47,
+    "right_leg": 47
+  },
+  "traits": []
+}

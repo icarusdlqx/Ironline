@@ -1,0 +1,52 @@
+{
+  "id": "hornet_spotter",
+  "name": "Hornet HNT-2 'Spotter'",
+  "chassisId": "hornet_hnt2",
+  "armour": {
+    "head": 11,
+    "centre_torso": 43,
+    "left_torso": 32,
+    "right_torso": 32,
+    "left_arm": 23,
+    "right_arm": 23,
+    "left_leg": 28,
+    "right_leg": 28
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 11,
+  "mounts": [
+    {
+      "weaponId": "medium_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "lrm5",
+      "location": "left_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "lrm5",
+      "location": "left_torso",
+      "tons": 1
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "tag",
+      "location": "centre_torso"
+    },
+    {
+      "equipmentId": "active_probe",
+      "location": "right_torso"
+    },
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    }
+  ]
+}

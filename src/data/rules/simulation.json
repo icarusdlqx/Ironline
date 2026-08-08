@@ -3,6 +3,6 @@
   "tickRate": 20,
   "aiDecisionIntervalTicks": 10,
   "aiPathIntervalTicks": 40,
-  "maxBattleTicks": 6000,
+  "maxBattleTicks": 12000,
   "pathfindMaxNodes": 4000
 }

@@ -14,6 +14,8 @@ export interface Interpolated {
   x: number;
   y: number;
   facing: number;
+  /** Torso twist relative to the hull, in radians. */
+  torso: number;
 }
 
 function radiusFor(tonnage: number): number {
@@ -41,6 +43,42 @@ function damageSignature(entity: MechEntity): string {
   return `${lost}|${Math.round(healthFraction(entity) * 20)}|${entity.destroyed ? 'x' : 'o'}`;
 }
 
+function tintOf(entity: MechEntity, colour: number, alpha: number): { color: number; alpha: number } {
+  const health = healthFraction(entity);
+  return {
+    color: entity.destroyed ? 0x3a3a3a : shade(colour, 0.45 + 0.55 * health),
+    alpha,
+  };
+}
+
+/** The legs and hips, which face wherever the mech is walking. */
+export function drawHull(
+  hull: Graphics,
+  entity: MechEntity,
+  colour: number,
+  alpha: number,
+): void {
+  hull.clear();
+
+  const radius = radiusFor(entity.tonnage);
+  const fill = tintOf(entity, colour, alpha);
+
+  if (!entity.locations.left_leg.destroyed) {
+    hull.rect(-0.95 * radius, -0.5 * radius, 0.5 * radius, 0.38 * radius).fill(fill);
+  }
+  if (!entity.locations.right_leg.destroyed) {
+    hull.rect(-0.95 * radius, 0.12 * radius, 0.5 * radius, 0.38 * radius).fill(fill);
+  }
+
+  // The hull centreline: with the torso twisted away, this is what shows you
+  // which way the mech will actually walk.
+  hull
+    .moveTo(0, 0)
+    .lineTo(1.35 * radius, 0)
+    .stroke({ width: 1, color: shade(colour, 1.5), alpha: alpha * 0.45 });
+}
+
+/** Everything above the waist, which turns with the guns. */
 export function drawSilhouette(
   body: Graphics,
   entity: MechEntity,
@@ -50,21 +88,13 @@ export function drawSilhouette(
   body.clear();
 
   const radius = radiusFor(entity.tonnage);
-  const health = healthFraction(entity);
-  const tint = entity.destroyed ? 0x3a3a3a : shade(colour, 0.45 + 0.55 * health);
-  const fill = { color: tint, alpha };
+  const fill = tintOf(entity, colour, alpha);
 
   if (!entity.locations.left_arm.destroyed) {
     body.rect(-0.2 * radius, -0.85 * radius, 0.7 * radius, 0.35 * radius).fill(fill);
   }
   if (!entity.locations.right_arm.destroyed) {
     body.rect(-0.2 * radius, 0.5 * radius, 0.7 * radius, 0.35 * radius).fill(fill);
-  }
-  if (!entity.locations.left_leg.destroyed) {
-    body.rect(-0.95 * radius, -0.5 * radius, 0.5 * radius, 0.38 * radius).fill(fill);
-  }
-  if (!entity.locations.right_leg.destroyed) {
-    body.rect(-0.95 * radius, 0.12 * radius, 0.5 * radius, 0.38 * radius).fill(fill);
   }
 
   body
@@ -99,7 +129,10 @@ export function drawSilhouette(
 
 export class MechLayer {
   readonly container = new Container();
-  private readonly views = new Map<EntityId, { root: Container; body: Graphics; signature: string }>();
+  private readonly views = new Map<
+    EntityId,
+    { root: Container; torso: Container; hull: Graphics; body: Graphics; signature: string }
+  >();
   private readonly overlay = new Graphics();
 
   constructor() {
@@ -120,10 +153,13 @@ export class MechLayer {
 
       if (view === undefined) {
         const root = new Container();
+        const hull = new Graphics();
+        const torso = new Container();
         const body = new Graphics();
-        root.addChild(body);
+        torso.addChild(body);
+        root.addChild(hull, torso);
         this.container.addChild(root);
-        view = { root, body, signature: '' };
+        view = { root, torso, hull, body, signature: '' };
         this.views.set(entity.id, view);
       }
 
@@ -132,6 +168,7 @@ export class MechLayer {
 
       const signature = damageSignature(entity);
       if (signature !== view.signature) {
+        drawHull(view.hull, entity, teamColour(entity.team), 1);
         drawSilhouette(view.body, entity, teamColour(entity.team), 1);
         view.signature = signature;
       }
@@ -139,6 +176,7 @@ export class MechLayer {
       const interpolated = positions.get(entity.id);
       view.root.position.set(interpolated?.x ?? entity.pos.x, interpolated?.y ?? entity.pos.y);
       view.root.rotation = interpolated?.facing ?? entity.facing;
+      view.torso.rotation = interpolated?.torso ?? entity.torsoOffset;
       view.root.alpha = entity.destroyed ? 0.55 : 1;
 
       const radius = radiusFor(entity.tonnage);

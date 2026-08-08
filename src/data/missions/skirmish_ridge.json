@@ -28,7 +28,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "wisp_scout",
+          "designId": "hornet_spotter",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 204,
@@ -70,7 +70,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "wisp_harasser",
+          "designId": "hornet_striker",
           "pilotId": "juno_reyes",
           "spawn": {
             "x": 876,

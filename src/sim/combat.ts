@@ -6,6 +6,7 @@ import { emit } from './events';
 import { addHeat, currentHeatTier } from './heat';
 import { coverFactorAt, lineOfSight } from './los';
 import { angleDifference, bearing, clamp, distance as distanceBetween } from './math';
+import { weaponBearing } from './movement';
 import {
   findAmmoBin,
   findEntity,
@@ -42,6 +43,8 @@ export function hitChance(
   chance *= coverFactorAt(world.terrain, target.pos);
   chance *= target.incomingAccuracyFactor;
   chance *= shooter.outgoingAccuracyFactor;
+  if (weapon.type === 'missile') chance *= target.amsMissileFactor;
+  if (world.tick <= target.designatedUntilTick) chance *= rules.tagFactor;
   chance *= weapon.accuracy;
   chance *= currentHeatTier(world, shooter).accuracyFactor;
   if (shooter.calledShot !== null) chance *= rules.calledShot.accuracyFactor;
@@ -126,7 +129,8 @@ export function updateWeapons(world: World, shooter: MechEntity): void {
 
   const range = distanceBetween(shooter.pos, target.pos);
   const halfArc = (world.rules.combat.firingArcDegrees / 2) * (Math.PI / 180);
-  if (Math.abs(angleDifference(shooter.facing, bearing(shooter.pos, target.pos))) > halfArc) return;
+  const aim = angleDifference(weaponBearing(shooter), bearing(shooter.pos, target.pos));
+  if (Math.abs(aim) > halfArc) return;
 
   if (!lineOfSight(world.terrain, shooter.pos, target.pos).clear) return;
 
@@ -177,6 +181,10 @@ export function resolveProjectiles(world: World): void {
 
     const absorbed = applyDamage(world, target, projectile.location, projectile.damage);
     target.stats.damageTaken += absorbed;
+
+    // A flamer barely scratches the armour; what it does is cook the reactor.
+    const fired = world.catalog.weapons.get(projectile.weaponId);
+    if (fired !== undefined && fired.targetHeat > 0) addHeat(target, fired.targetHeat);
 
     const stat = world.weaponStats.get(projectile.weaponId);
     if (stat !== undefined) stat.damage += absorbed;
