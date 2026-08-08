@@ -1,8 +1,27 @@
 import { create } from 'zustand';
 import type { MechLocation } from '../schema/common';
+import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
 
 export type OrderMode = 'move' | 'run' | 'attack' | 'called_shot' | null;
+
+export interface ObjectiveView {
+  id: string;
+  label: string;
+  required: boolean;
+  status: string;
+  progress: number;
+}
+
+export interface ZoneView {
+  id: string;
+  name: string;
+  owner: number | null;
+  contender: number | null;
+  progress: number;
+  captureSeconds: number;
+  contested: boolean;
+}
 
 export interface WeaponSnapshot {
   index: number;
@@ -65,11 +84,24 @@ export interface GameState {
   units: UnitSnapshot[];
   enemies: UnitSnapshot[];
   log: string[];
+
+  skirmishMissionId: string;
+  missionName: string;
+  briefing: string;
+  briefingSeen: boolean;
+  resourcePoints: number;
+  objectives: ObjectiveView[];
+  zones: ZoneView[];
+  missionStatus: 'active' | 'success' | 'failure';
+  missionReason: string | null;
+  supportMode: SupportCallId | null;
+  reservesLeft: number;
 }
 
 export interface GameActions {
   setSelection: (ids: EntityId[]) => void;
   setOrderMode: (mode: OrderMode) => void;
+  setSupportMode: (call: SupportCallId | null) => void;
   setCalledShotLocation: (location: MechLocation | null) => void;
   patch: (partial: Partial<GameState>) => void;
   pushLog: (line: string) => void;
@@ -96,8 +128,21 @@ export const useGame = create<GameState & GameActions>((set) => ({
   enemies: [],
   log: [],
 
+  skirmishMissionId: 'skirmish_ridge',
+  missionName: '',
+  briefing: '',
+  briefingSeen: false,
+  resourcePoints: 0,
+  objectives: [],
+  zones: [],
+  missionStatus: 'active',
+  missionReason: null,
+  supportMode: null,
+  reservesLeft: 0,
+
   setSelection: (ids) => set({ selection: ids }),
-  setOrderMode: (mode) => set({ orderMode: mode }),
+  setOrderMode: (mode) => set({ orderMode: mode, supportMode: null }),
+  setSupportMode: (call) => set({ supportMode: call, orderMode: null }),
   setCalledShotLocation: (location) => set({ calledShotLocation: location }),
   patch: (partial) => set(partial),
   pushLog: (line) =>

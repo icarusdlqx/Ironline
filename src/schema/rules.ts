@@ -127,6 +127,45 @@ export const TerrainTypeSchema = z.strictObject({
   passable: z.boolean(),
 });
 
+const SupportCallBase = { cost: z.number().int().nonnegative(), delaySeconds: z.number().nonnegative().max(60) };
+
+export const SupportRulesSchema = z.strictObject({
+  id: z.literal('support'),
+  sensor_probe: z.strictObject({
+    ...SupportCallBase,
+    radius: z.number().positive(),
+    durationSeconds: z.number().positive(),
+  }),
+  artillery_strike: z.strictObject({
+    ...SupportCallBase,
+    radius: z.number().positive(),
+    damage: z.number().positive(),
+    shots: z.number().int().positive().max(24),
+    scatter: z.number().nonnegative(),
+  }),
+  air_strike: z.strictObject({
+    ...SupportCallBase,
+    length: z.number().positive(),
+    width: z.number().positive(),
+    damage: z.number().positive(),
+    shots: z.number().int().positive().max(24),
+  }),
+  repair_truck: z.strictObject({
+    ...SupportCallBase,
+    radius: z.number().positive(),
+    armourPerSecond: z.number().positive(),
+    durationSeconds: z.number().positive(),
+  }),
+  minelayer: z.strictObject({
+    ...SupportCallBase,
+    radius: z.number().positive(),
+    mines: z.number().int().positive().max(40),
+    damage: z.number().positive(),
+    durationSeconds: z.number().positive(),
+  }),
+  reinforcement: z.strictObject({ ...SupportCallBase }),
+});
+
 export const SalvageRulesSchema = z.strictObject({
   id: z.literal('salvage'),
   chassisRecoveryByOutcome: z.strictObject({
@@ -210,6 +249,7 @@ export type SensorRules = z.infer<typeof SensorRulesSchema>;
 export type ConstructionRules = z.infer<typeof ConstructionRulesSchema>;
 export type SalvageRules = z.infer<typeof SalvageRulesSchema>;
 export type EconomyRules = z.infer<typeof EconomyRulesSchema>;
+export type SupportRules = z.infer<typeof SupportRulesSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
 
 export interface Rules {
@@ -223,6 +263,7 @@ export interface Rules {
   readonly construction: ConstructionRules;
   readonly salvage: SalvageRules;
   readonly economy: EconomyRules;
+  readonly support: SupportRules;
 }
 
 export const RULE_SCHEMAS = {
@@ -236,6 +277,7 @@ export const RULE_SCHEMAS = {
   construction: ConstructionRulesSchema,
   salvage: SalvageRulesSchema,
   economy: EconomyRulesSchema,
+  support: SupportRulesSchema,
 } as const;
 
 export type RuleId = keyof typeof RULE_SCHEMAS;

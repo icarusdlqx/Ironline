@@ -3,6 +3,7 @@ import type { MechLocation } from '../schema/common';
 import { loadCatalog } from '../schema/load';
 import { Renderer } from '../render/scene';
 import { issueAttack, issueMove, issueStop, setGroupEnabled, setHoldFire } from '../sim/orders';
+import { callSupport, type SupportCallId } from '../sim/support';
 import { findEntity, isOperational, type EntityId, type Vec2, type World } from '../sim/types';
 import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
 import { attachInput } from './input';
@@ -144,6 +145,20 @@ export class Engine {
       } else if (event.type === 'shutdown') {
         const entity = findEntity(this.world, event.entityId as EntityId);
         push(`${entity?.name ?? 'Unit'} shut down from heat`);
+      } else if (event.type === 'mission_message') {
+        push(String(event.text));
+      } else if (event.type === 'zone_captured') {
+        const zone = this.world.zones.find((entry) => entry.id === event.zoneId);
+        push(`${zone?.name ?? 'Zone'} taken by team ${String(event.team)} (+${String(event.resourcePoints)} RP)`);
+      } else if (event.type === 'objective_settled') {
+        const objective = this.world.objectives.find((entry) => entry.id === event.objectiveId);
+        push(`${objective?.label ?? 'Objective'}: ${String(event.status)}`);
+      } else if (event.type === 'unit_spawned') {
+        push(`${String(event.name)} arrives on the field`);
+      } else if (event.type === 'support_resolved') {
+        push(`${String(event.call).replace(/_/g, ' ')} on target`);
+      } else if (event.type === 'mission_ended') {
+        push(`Mission ${String(event.status)} — ${String(event.reason)}`);
       } else if (event.type === 'battle_ended') {
         const winner = event.winner;
         push(winner === null ? 'Battle ended — draw' : `Battle ended — team ${String(winner)} wins`);
@@ -169,6 +184,26 @@ export class Engine {
       units,
       enemies,
       playerTeam,
+      resourcePoints: Math.floor(this.world.resources.get(playerTeam) ?? 0),
+      reservesLeft: this.world.reserves.length,
+      missionStatus: this.world.missionStatus,
+      missionReason: this.world.missionReason,
+      objectives: this.world.objectives.map((objective) => ({
+        id: objective.id,
+        label: objective.label,
+        required: objective.required,
+        status: objective.status,
+        progress: objective.progress,
+      })),
+      zones: this.world.zones.map((zone) => ({
+        id: zone.id,
+        name: zone.name,
+        owner: zone.owner,
+        contender: zone.contender,
+        progress: zone.progress,
+        captureSeconds: zone.captureSeconds,
+        contested: zone.contested,
+      })),
       ...(selection.length === state.selection.length ? {} : { selection }),
     });
   }
@@ -222,6 +257,14 @@ export class Engine {
     useGame.getState().setOrderMode(mode);
   }
 
+  callSupport(call: SupportCallId, target: Vec2): { ok: boolean; reason: string | null } {
+    const team = this.world.playerTeam ?? 0;
+    const heading = this.cursorWorld === null ? 0 : 0;
+    const result = callSupport(this.world, team, call, target, heading);
+    if (!result.ok && result.reason !== null) useGame.getState().pushLog(result.reason);
+    return result;
+  }
+
   result(): BattleResult {
     return toResult(this.world, String(this.world.rng.save().w), this.maxTicks);
   }
@@ -264,6 +307,11 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   useGame.getState().patch({
     ready: true,
     playerTeam,
+    missionName: mission?.name ?? missionId,
+    briefing: mission?.briefing ?? '',
+    briefingSeen: false,
+    paused: true,
+    supportMode: null,
     heatTiers: catalog.rules.heat.tiers.map((tier) => tier.fraction),
   });
   engine.start();

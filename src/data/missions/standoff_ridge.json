@@ -98,5 +98,23 @@
         }
       ]
     }
+  ],
+  "briefing": "The Steel Legion has a reinforced company on the ridge. Everything is committed.",
+  "startingResourcePoints": 300,
+  "objectives": [
+    {
+      "id": "wipe_them_out",
+      "label": "Destroy the opposing lance",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
   ]
 }

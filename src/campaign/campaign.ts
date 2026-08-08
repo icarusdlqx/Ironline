@@ -256,7 +256,7 @@ export function resolveMission(
   const contract = state.contract;
   if (contract === null) throw new Error('no active contract');
 
-  const won = battle.winner === PLAYER_TEAM;
+  const won = battle.missionStatus === 'success';
   const casualties: string[] = [];
   const mechsLost: string[] = [];
 

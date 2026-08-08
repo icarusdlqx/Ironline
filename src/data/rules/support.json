@@ -1,0 +1,9 @@
+{
+  "id": "support",
+  "sensor_probe": { "cost": 200, "radius": 260, "durationSeconds": 30, "delaySeconds": 0 },
+  "artillery_strike": { "cost": 400, "radius": 70, "damage": 55, "shots": 5, "delaySeconds": 6, "scatter": 34 },
+  "air_strike": { "cost": 700, "length": 280, "width": 46, "damage": 42, "shots": 7, "delaySeconds": 4 },
+  "repair_truck": { "cost": 500, "radius": 45, "armourPerSecond": 7, "durationSeconds": 30, "delaySeconds": 3 },
+  "minelayer": { "cost": 350, "radius": 70, "mines": 8, "damage": 45, "durationSeconds": 180, "delaySeconds": 2 },
+  "reinforcement": { "cost": 1200, "delaySeconds": 8 }
+}

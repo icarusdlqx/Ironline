@@ -7,6 +7,10 @@ import { resolveProjectiles, updateWeapons } from './combat';
 import { createMech, type LocationDamage } from './entity';
 import { emit } from './events';
 import { updateHeat } from './heat';
+import { createObjectives, evaluateMission, updateObjectives } from './objectives';
+import { createSupportState, updateSupport } from './support';
+import { createTriggers, updateTriggers } from './triggers';
+import { createZones, updateZones } from './zones';
 import { updateMovement } from './movement';
 import { updatePlayerControl } from './orders';
 import { createRng, type RngSeed } from './rng';
@@ -56,9 +60,20 @@ export interface UnitResult {
   condition: Record<MechLocation, UnitCondition>;
 }
 
+export interface ObjectiveResult {
+  id: string;
+  label: string;
+  required: boolean;
+  status: string;
+  progress: number;
+}
+
 export interface BattleResult {
   seed: RngSeed;
   missionId: string;
+  missionStatus: 'active' | 'success' | 'failure';
+  missionReason: string | null;
+  objectives: ObjectiveResult[];
   ticks: number;
   durationSeconds: number;
   winner: number | null;
@@ -125,6 +140,23 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
     weaponStats: new Map(),
     playerTeam,
     vision: null,
+
+    resources: new Map(
+      mission.lances.map((lance) => [lance.team, mission.startingResourcePoints]),
+    ),
+    zones: createZones(mission.zones),
+    objectives: createObjectives(mission.objectives),
+    triggers: createTriggers(mission.triggers),
+    support: createSupportState(),
+    reveals: [],
+    reserves: mission.reserves.map((unit) => ({
+      designId: unit.designId,
+      pilotId: unit.pilotId,
+      facingDegrees: unit.facingDegrees,
+    })),
+    missionStatus: 'active',
+    missionReason: null,
+
     finished: false,
     winner: null,
   };
@@ -152,6 +184,34 @@ function finish(world: World, winner: number | null): void {
 }
 
 function checkBattleEnd(world: World, maxTicks: number): void {
+  const timedOut = world.tick >= maxTicks;
+
+  if (world.objectives.length > 0) {
+    const playerTeam = world.playerTeam ?? 0;
+    const verdict = evaluateMission(world, playerTeam, timedOut);
+
+    if (verdict.status !== 'active') {
+      world.missionStatus = verdict.status;
+      world.missionReason = verdict.reason;
+      emit(world.events, {
+        type: 'mission_ended',
+        tick: world.tick,
+        status: verdict.status,
+        reason: verdict.reason ?? '',
+      });
+      if (verdict.status === 'success') {
+        finish(world, playerTeam);
+      } else {
+        // A failed mission still has a victor if exactly one other side is left.
+        const others = teamsWithSurvivors(world).filter((team) => team !== playerTeam);
+        finish(world, others.length === 1 ? (others[0] ?? null) : null);
+      }
+      return;
+    }
+
+    if (!timedOut) return;
+  }
+
   const survivors = teamsWithSurvivors(world);
 
   if (survivors.length <= 1) {
@@ -203,6 +263,10 @@ export function stepWorld(world: World, maxTicks: number): void {
   for (const entity of world.entities) updateWeapons(world, entity);
 
   resolveProjectiles(world);
+  updateSupport(world);
+  updateZones(world);
+  updateObjectives(world);
+  updateTriggers(world);
   checkBattleEnd(world, maxTicks);
 }
 
@@ -210,6 +274,15 @@ export function toResult(world: World, seed: RngSeed, maxTicks: number): BattleR
   return {
     seed,
     missionId: world.mission.id,
+    missionStatus: world.missionStatus,
+    missionReason: world.missionReason,
+    objectives: world.objectives.map((objective) => ({
+      id: objective.id,
+      label: objective.label,
+      required: objective.required,
+      status: objective.status,
+      progress: objective.progress,
+    })),
     ticks: world.tick,
     durationSeconds: world.tick * world.dt,
     winner: world.winner,

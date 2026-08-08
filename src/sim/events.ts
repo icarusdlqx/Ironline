@@ -31,7 +31,47 @@ export type SimEvent =
   | { type: 'restart'; tick: number; entityId: EntityId }
   | { type: 'pilot_ejected'; tick: number; entityId: EntityId }
   | { type: 'mech_destroyed'; tick: number; entityId: EntityId; method: KillMethod }
-  | { type: 'battle_ended'; tick: number; winner: number | null };
+  | { type: 'battle_ended'; tick: number; winner: number | null }
+  | {
+      type: 'zone_captured';
+      tick: number;
+      zoneId: string;
+      team: number;
+      previousOwner: number | null;
+      resourcePoints: number;
+    }
+  | {
+      type: 'objective_settled';
+      tick: number;
+      objectiveId: string;
+      status: 'complete' | 'failed';
+    }
+  | { type: 'trigger_fired'; tick: number; triggerId: string }
+  | { type: 'mission_message'; tick: number; text: string }
+  | { type: 'unit_spawned'; tick: number; entityId: EntityId; team: number; name: string }
+  | {
+      type: 'support_called';
+      tick: number;
+      team: number;
+      call: string;
+      x: number;
+      y: number;
+      cost: number;
+    }
+  | {
+      type: 'support_resolved';
+      tick: number;
+      team: number;
+      call: string;
+      x: number;
+      y: number;
+    }
+  | {
+      type: 'mission_ended';
+      tick: number;
+      status: 'success' | 'failure';
+      reason: string;
+    };
 
 export type SimEventType = SimEvent['type'];
 

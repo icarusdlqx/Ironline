@@ -18,6 +18,7 @@ import {
   SalvageRulesSchema,
   SensorRulesSchema,
   SimulationRulesSchema,
+  SupportRulesSchema,
   TerrainRulesSchema,
   type Rules,
 } from './rules';
@@ -196,6 +197,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const construction = parseRule('construction', ConstructionRulesSchema, byStem, issues);
   const salvage = parseRule('salvage', SalvageRulesSchema, byStem, issues);
   const economy = parseRule('economy', EconomyRulesSchema, byStem, issues);
+  const support = parseRule('support', SupportRulesSchema, byStem, issues);
 
   if (
     simulation === null ||
@@ -207,7 +209,8 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     sensors === null ||
     construction === null ||
     salvage === null ||
-    economy === null
+    economy === null ||
+    support === null
   ) {
     return null;
   }
@@ -223,6 +226,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     construction,
     salvage,
     economy,
+    support,
   };
 }
 

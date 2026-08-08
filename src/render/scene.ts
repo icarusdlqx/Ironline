@@ -108,8 +108,55 @@ export class Renderer {
     }
   }
 
+  private drawZones(world: World): void {
+    for (const zone of world.zones) {
+      const colour = zone.owner === null ? UI.ghost : teamColour(zone.owner);
+      this.markers
+        .circle(zone.x, zone.y, zone.radius)
+        .fill({ color: colour, alpha: zone.contested ? 0.14 : 0.08 })
+        .stroke({ width: 2, color: colour, alpha: 0.7 });
+
+      if (zone.contender !== null && zone.progress > 0) {
+        const sweep = (zone.progress / zone.captureSeconds) * Math.PI * 2;
+        this.markers
+          .moveTo(zone.x, zone.y)
+          .arc(zone.x, zone.y, zone.radius * 0.72, -Math.PI / 2, -Math.PI / 2 + sweep)
+          .lineTo(zone.x, zone.y)
+          .fill({ color: teamColour(zone.contender), alpha: 0.3 });
+      }
+    }
+
+    for (const reveal of world.reveals) {
+      this.markers
+        .circle(reveal.x, reveal.y, reveal.radius)
+        .stroke({ width: 1.5, color: UI.selection, alpha: 0.35 });
+    }
+
+    for (const pending of world.support.pending) {
+      this.markers
+        .circle(pending.target.x, pending.target.y, 26)
+        .stroke({ width: 2, color: UI.attackMarker, alpha: 0.85 });
+      this.markers
+        .circle(pending.target.x, pending.target.y, 8)
+        .fill({ color: UI.attackMarker, alpha: 0.6 });
+    }
+
+    for (const field of world.support.minefields) {
+      this.markers
+        .circle(field.pos.x, field.pos.y, field.radius)
+        .stroke({ width: 1.5, color: UI.explosion, alpha: 0.5 });
+    }
+
+    for (const truck of world.support.trucks) {
+      this.markers
+        .circle(truck.pos.x, truck.pos.y, truck.radius)
+        .stroke({ width: 1.5, color: 0x7fe08c, alpha: 0.6 });
+    }
+  }
+
   private drawMarkers(world: World, view: ViewState): void {
     this.markers.clear();
+    this.drawZones(world);
 
     for (const entity of world.entities) {
       if (!view.selection.has(entity.id) || !isOperational(entity)) continue;

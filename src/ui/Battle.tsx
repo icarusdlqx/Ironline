@@ -2,12 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import { prepareDeployment, resolveMission } from '../campaign/campaign';
 import { loadCampaign, saveCampaign } from '../campaign/save';
 import { getCatalog } from '../schema/load';
+import { SUPPORT_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
-import { EventLog, HeatBar, LanceBar, WeaponGroups } from './Panels';
+import { Briefing, EventLog, HeatBar, LanceBar, ObjectiveList, SupportPalette, WeaponGroups, type SupportOption } from './Panels';
 import { PaperDoll } from './PaperDoll';
 import { selectedUnit, useGame } from './store';
+
+const SUPPORT_HINTS: Record<string, string> = {
+  sensor_probe: 'Reveals a map region',
+  artillery_strike: 'Delayed area damage',
+  air_strike: 'Fast linear strafe',
+  repair_truck: 'Repairs armour nearby',
+  minelayer: 'Lays a defensive minefield',
+  reinforcement: 'Drops a reserve mech',
+};
 
 function formatClock(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -22,12 +32,13 @@ export function Battle() {
   const unit = selectedUnit(state);
 
   const [resolved, setResolved] = useState(false);
+  const missionId = useGame((game) => game.skirmishMissionId);
 
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) return;
 
-    let options = {};
+    let options: Record<string, unknown> = { missionId };
     if (useGame.getState().campaignPending) {
       const saved = loadCampaign().state;
       if (saved !== null) {
@@ -59,7 +70,7 @@ export function Battle() {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, []);
+  }, [missionId]);
 
   const onReturnToCampaign = (): void => {
     const engine = engineRef.current;
@@ -99,12 +110,22 @@ export function Battle() {
 
   const playerControlled = unit !== null && unit.team === state.playerTeam && unit.alive;
 
+  const supportOptions: SupportOption[] = SUPPORT_CALLS.map((id) => ({
+    id,
+    label: id
+      .split('_')
+      .map((word) => `${(word[0] ?? '').toUpperCase()}${word.slice(1)}`)
+      .join(' '),
+    cost: getCatalog().rules.support[id].cost,
+    hint: SUPPORT_HINTS[id] ?? '',
+  }));
+
   return (
     <div className="app">
       <div className="viewport" ref={hostRef} data-testid="viewport" />
 
       <header className="topbar" data-testid="topbar">
-        <span className="mission">Skirmish — Ridge Pass</span>
+        <span className="mission">{state.missionName}</span>
         <span className="clock" data-testid="clock">
           {formatClock(state.elapsedSeconds)}
         </span>
@@ -132,8 +153,33 @@ export function Battle() {
         >
           Campaign
         </button>
+        <select
+          className="pause"
+          value={missionId}
+          disabled={state.campaignPending}
+          onChange={(event) => state.patch({ skirmishMissionId: event.target.value })}
+          data-testid="mission-picker"
+        >
+          {[...getCatalog().missions.values()].map((mission) => (
+            <option key={mission.id} value={mission.id}>
+              {mission.name}
+            </option>
+          ))}
+        </select>
         <span className="hint">Space pauses · right-click orders · wheel zooms</span>
       </header>
+
+      {!state.briefingSeen && state.briefing !== '' && !state.finished ? (
+        <Briefing
+          name={state.missionName}
+          text={state.briefing}
+          objectives={state.objectives}
+          resourcePoints={state.resourcePoints}
+          onDeploy={() => state.patch({ briefingSeen: true, paused: false })}
+        />
+      ) : null}
+
+      <ObjectiveList objectives={state.objectives} zones={state.zones} />
 
       {state.paused && !state.finished ? (
         <div className="paused-banner" data-testid="paused-banner">
@@ -144,11 +190,13 @@ export function Battle() {
       {state.finished ? (
         <div className="outcome" data-testid="outcome">
           <span>
-            {state.winner === null
-              ? 'Stalemate'
-              : state.winner === state.playerTeam
-                ? 'Mission accomplished'
-                : 'Lance destroyed'}
+            {state.missionStatus === 'success'
+              ? 'Mission accomplished'
+              : state.missionStatus === 'failure'
+                ? `Mission failed — ${state.missionReason ?? ''}`
+                : state.winner === state.playerTeam
+                  ? 'Mission accomplished'
+                  : 'Lance destroyed'}
           </span>
           {state.campaignPending ? (
             <button type="button" onClick={onReturnToCampaign} data-testid="return-to-campaign">
@@ -202,6 +250,13 @@ export function Battle() {
           enabled={playerControlled}
           holdingFire={unit?.holdingFire ?? false}
           onCommand={onCommand}
+        />
+        <SupportPalette
+          options={supportOptions}
+          resourcePoints={state.resourcePoints}
+          active={state.supportMode}
+          reservesLeft={state.reservesLeft}
+          onPick={(call) => state.setSupportMode(state.supportMode === call ? null : call)}
         />
       </footer>
     </div>

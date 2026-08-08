@@ -70,7 +70,13 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   each enemy was taken out, refit from stores, repair queue with day
   advancement, pilot XP and injuries, and save/load that round-trips exactly
   including the campaign random stream.
-- Phase 5 — Objectives & support: next.
+- **Phase 5 — Objectives & support: complete.** Mission scripting from JSON —
+  capture zones, five objective types, and triggers on elapsed time, zone
+  capture, objective completion or losses, firing spawns, resource awards,
+  messages and reveals. Resource Points earned from zones and objectives and
+  spent on all six support calls. Mission success and failure conditions, a
+  briefing screen and an in-battle objective tracker.
+- Phase 6 — AI depth & balance: next.
 
 ## Controls
 
@@ -84,3 +90,6 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
 | 1–4 | Toggle a weapon group |
 | Tab | Cycle through your lance |
 | Arrows / WASD | Pan · wheel zooms · middle-drag pans |
+
+Support calls are picked from the palette and then placed with a left click.
+Esc cancels an armed call.

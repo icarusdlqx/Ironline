@@ -80,5 +80,23 @@
         }
       ]
     }
+  ],
+  "briefing": "Militia irregulars are dug in at the pass. Break them and withdraw.",
+  "startingResourcePoints": 300,
+  "objectives": [
+    {
+      "id": "wipe_them_out",
+      "label": "Destroy the opposing lance",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
   ]
 }

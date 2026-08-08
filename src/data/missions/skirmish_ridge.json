@@ -1,6 +1,6 @@
 {
   "id": "skirmish_ridge",
-  "name": "Skirmish — Ridge Pass",
+  "name": "Skirmish \u2014 Ridge Pass",
   "type": "skirmish",
   "mapId": "ridge_pass",
   "maxDurationSeconds": 300,
@@ -9,21 +9,103 @@
       "team": 0,
       "name": "Ironline Lance",
       "units": [
-        { "designId": "sentinel_brawler", "pilotId": "kessa_vale", "spawn": { "x": 108, "y": 852 }, "facingDegrees": -45 },
-        { "designId": "bulwark_assault", "pilotId": "dorn_hess", "spawn": { "x": 156, "y": 876 }, "facingDegrees": -45 },
-        { "designId": "wisp_scout", "pilotId": "marek_sud", "spawn": { "x": 204, "y": 828 }, "facingDegrees": -45 },
-        { "designId": "sentinel_sniper", "pilotId": "ilse_brant", "spawn": { "x": 132, "y": 780 }, "facingDegrees": -45 }
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 108,
+            "y": 852
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": {
+            "x": 156,
+            "y": 876
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 204,
+            "y": 828
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 132,
+            "y": 780
+          },
+          "facingDegrees": -45
+        }
       ]
     },
     {
       "team": 1,
       "name": "Wolfhound Detachment",
       "units": [
-        { "designId": "bulwark_burner", "pilotId": "nadia_ostrow", "spawn": { "x": 852, "y": 108 }, "facingDegrees": 135 },
-        { "designId": "sentinel_brawler", "pilotId": "cato_ferrin", "spawn": { "x": 804, "y": 132 }, "facingDegrees": 135 },
-        { "designId": "wisp_harasser", "pilotId": "juno_reyes", "spawn": { "x": 876, "y": 180 }, "facingDegrees": 135 },
-        { "designId": "sentinel_sniper", "pilotId": "willem_torrance", "spawn": { "x": 828, "y": 84 }, "facingDegrees": 135 }
+        {
+          "designId": "bulwark_burner",
+          "pilotId": "nadia_ostrow",
+          "spawn": {
+            "x": 852,
+            "y": 108
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "cato_ferrin",
+          "spawn": {
+            "x": 804,
+            "y": 132
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "wisp_harasser",
+          "pilotId": "juno_reyes",
+          "spawn": {
+            "x": 876,
+            "y": 180
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "willem_torrance",
+          "spawn": {
+            "x": 828,
+            "y": 84
+          },
+          "facingDegrees": 135
+        }
       ]
+    }
+  ],
+  "briefing": "A regular lance holds the crossing at Ridge Pass. Clear it.",
+  "startingResourcePoints": 300,
+  "objectives": [
+    {
+      "id": "wipe_them_out",
+      "label": "Destroy the opposing lance",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
     }
   ]
 }

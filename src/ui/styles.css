@@ -1112,3 +1112,174 @@ button {
   padding: 6px 14px;
   font-size: 12px;
 }
+
+/* ---- Phase 5: objectives, support, briefing ---- */
+
+.objectives {
+  position: absolute;
+  top: 52px;
+  left: 12px;
+  width: 250px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.objectives h4 {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.objectives ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.objectives li {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+
+.objectives li.complete {
+  color: var(--accent);
+}
+
+.objectives li.failed {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.objective-mark {
+  width: 10px;
+}
+
+.objective-label {
+  flex: 1;
+}
+
+.objective-progress {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+
+.objectives .zones {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.objectives .zones li {
+  justify-content: space-between;
+}
+
+.objectives .zones .held {
+  color: var(--accent);
+}
+
+.objectives .zones .lost {
+  color: var(--muted);
+}
+
+.support {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rp {
+  font-variant-numeric: tabular-nums;
+  color: var(--warn);
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 192, 97, 0.35);
+  border-radius: 4px;
+}
+
+.support-call {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 5px 9px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.support-call:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.support-call.active {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.support-cost {
+  color: var(--muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.briefing {
+  position: absolute;
+  inset: 12% 28%;
+  z-index: 10;
+  padding: 22px 26px;
+  background: rgba(9, 12, 16, 0.97);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  overflow-y: auto;
+}
+
+.briefing h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  color: var(--accent);
+}
+
+.briefing h4 {
+  margin: 14px 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.briefing p {
+  margin: 0;
+  line-height: 1.55;
+  font-size: 12px;
+}
+
+.briefing ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+
+.briefing-rp {
+  margin-top: 14px !important;
+  color: var(--warn);
+}
+
+.briefing button {
+  margin-top: 18px;
+  background: rgba(140, 224, 255, 0.14);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  padding: 8px 22px;
+  font-size: 13px;
+}

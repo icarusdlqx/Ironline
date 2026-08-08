@@ -37,6 +37,12 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     const state = useGame.getState();
 
+    if (state.supportMode !== null && event.button === 0) {
+      engine.callSupport(state.supportMode, world);
+      state.setSupportMode(null);
+      return;
+    }
+
     if (event.button === 2) {
       const target = engine.renderer.entityAt(engine.world, world, PICK_RADIUS);
       if (target !== null && target.team !== state.playerTeam && isOperational(target)) {
@@ -133,6 +139,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
         return;
       case 'Escape':
         state.setOrderMode(null);
+        state.setSupportMode(null);
         state.setSelection([]);
         return;
       case 'Digit1':

@@ -108,10 +108,22 @@ async function main() {
       boot.entities.filter((entity) => entity.team === 1).every((entity) => entity.autopilot),
     );
 
+    process.stdout.write('\nbriefing\n');
+    await page.waitForSelector('[data-testid="briefing"]');
+    check('the mission opens on a briefing', (await page.locator('[data-testid="briefing"]').count()) === 1);
+    check(
+      'the briefing lists the objectives',
+      (await page.locator('[data-testid="briefing"] li').count()) >= 2,
+    );
+    const beforeBriefing = (await sim(page)).tick;
+    await sleep(600);
+    check('the sim is held while briefing', (await sim(page)).tick === beforeBriefing);
+    await page.screenshot({ path: `${SHOTS}/01-boot.png` });
+
+    await page.locator('[data-testid="briefing-deploy"]').click();
     await sleep(1200);
     const running = await sim(page);
-    check('simulation advances', running.tick > boot.tick, `${boot.tick} → ${running.tick}`);
-    await page.screenshot({ path: `${SHOTS}/01-boot.png` });
+    check('deploying starts the clock', running.tick > beforeBriefing, `${beforeBriefing} → ${running.tick}`);
 
     process.stdout.write('\nselection\n');
     await page.locator('[data-testid="lance-bar"] button').first().click();
@@ -226,6 +238,117 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/04-outcome.png` });
     await page.evaluate(() => localStorage.clear());
 
+    process.stdout.write('\nobjectives and support\n');
+    await page.locator('[data-testid="mission-picker"]').selectOption('base_capture_ridge');
+    await page.waitForSelector('[data-testid="briefing"]');
+    check(
+      'switching mission shows its briefing',
+      (await page.locator('[data-testid="briefing"] h2').innerText()).includes('Base Capture'),
+    );
+    await page.locator('[data-testid="briefing-deploy"]').click();
+    await page.waitForSelector('[data-testid="objective-list"]');
+
+    const mission = await page.evaluate(() => {
+      const { world } = globalThis.__ironline;
+      return {
+        id: world.mission.id,
+        zones: world.zones.length,
+        objectives: world.objectives.length,
+        triggers: world.triggers.length,
+        rp: world.resources.get(0),
+        reserves: world.reserves.length,
+      };
+    });
+    check('the base capture mission is loaded', mission.id === 'base_capture_ridge', mission.id);
+    check('it has two comm posts and three objectives', mission.zones === 2 && mission.objectives === 3);
+    check('the objective tracker is on screen', (await page.locator('[data-testid="objective-list"] li').count()) >= 3);
+    check('the zone tracker lists both posts', (await page.locator('[data-testid="zone-list"] li').count()) === 2);
+    check('resource points are shown', (await page.locator('[data-testid="resource-points"]').innerText()).includes('RP'));
+    check('all six support calls are offered', (await page.locator('.support-call').count()) === 6);
+
+    const rpText = async () =>
+      Number((await page.locator('[data-testid="resource-points"]').innerText()).replace(/[^0-9]/g, ''));
+    const rpBefore = await rpText();
+
+    const canvasBox = await page.locator('.viewport canvas').boundingBox();
+    await page.locator('[data-testid="support-artillery_strike"]').click();
+    check('picking a support call arms it', (await state(page)).supportMode === 'artillery_strike');
+    await page.mouse.click(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
+
+    const afterCall = await page.evaluate(() => {
+      const { world } = globalThis.__ironline;
+      return { rp: world.resources.get(0), pending: world.support.pending.length };
+    });
+    check('calling artillery spends resource points', afterCall.rp === mission.rp - 400, `${mission.rp} → ${afterCall.rp}`);
+    check('the strike is queued with a delay', afterCall.pending === 1);
+    check('the HUD reflects the spend', (await rpText()) < rpBefore);
+    await page.screenshot({ path: `${SHOTS}/09-support.png` });
+
+    const resolvedStrike = await page.evaluate(async () => {
+      const { engine } = globalThis.__ironline;
+      for (let step = 0; step < 200; step += 1) engine.forceStep();
+      return engine.world.support.pending.length;
+    });
+    check('the strike resolves after its delay', resolvedStrike === 0);
+
+    const supportOutcome = await page.evaluate(async () => {
+      const { engine } = globalThis.__ironline;
+      const world = engine.world;
+      const calls = ['sensor_probe', 'air_strike', 'repair_truck', 'minelayer', 'reinforcement'];
+      const mod = await import('/src/sim/support.ts');
+      world.resources.set(0, 20000);
+      const results = {};
+      for (const call of calls) {
+        const enemy = world.entities.find((e) => e.team === 1 && !e.destroyed);
+        const point = enemy ? { x: enemy.pos.x, y: enemy.pos.y } : { x: 500, y: 500 };
+        results[call] = mod.callSupport(world, 0, call, point, 0).ok;
+      }
+      for (let step = 0; step < 400 && !world.finished; step += 1) engine.forceStep();
+      return {
+        results,
+        resolved: [...new Set(world.events.filter((e) => e.type === 'support_resolved').map((e) => e.call))],
+        reserves: world.reserves.length,
+      };
+    });
+    check(
+      'every remaining support call was accepted',
+      Object.values(supportOutcome.results).every(Boolean),
+      JSON.stringify(supportOutcome.results),
+    );
+    check('the reinforcement emptied the dropship', supportOutcome.reserves === 0);
+
+    const triggered = await page.evaluate(async () => {
+      const { engine } = globalThis.__ironline;
+      const world = engine.world;
+      const zone = world.zones.find((z) => z.id === 'south_post');
+      for (const entity of world.entities) {
+        if (entity.team === 0) entity.pos = { x: zone.x, y: zone.y };
+        else entity.pos = { x: 30, y: 30 };
+      }
+      const enemiesBefore = world.entities.filter((e) => e.team === 1).length;
+      for (let step = 0; step < 400 && !world.finished; step += 1) engine.forceStep();
+      return {
+        owner: world.zones.find((z) => z.id === 'south_post').owner,
+        enemiesBefore,
+        enemiesAfter: world.entities.filter((e) => e.team === 1).length,
+        spawnLog: globalThis.__ironline.useGame.getState().log.join(' | '),
+      };
+    });
+    check('holding a comm post captures it', triggered.owner === 0);
+    check(
+      'capturing the south post calls in the relief lance',
+      triggered.enemiesAfter === triggered.enemiesBefore + 2,
+      `${triggered.enemiesBefore} → ${triggered.enemiesAfter}`,
+    );
+    // The engine drains world.events into the renderer each step, so the visible
+    // battle log is the durable record of what the trigger announced.
+    check(
+      'the relief lance was announced to the player',
+      /relief lance/i.test(triggered.spawnLog),
+      triggered.spawnLog.slice(0, 120),
+    );
+    await page.screenshot({ path: `${SHOTS}/10-objectives.png` });
+
     process.stdout.write('\nmechbay\n');
     await page.locator('[data-testid="open-mechbay"]').click();
     await page.waitForSelector('[data-testid="mechbay"]');
@@ -339,6 +462,9 @@ async function main() {
     const cashBefore = await cash();
     await page.locator('[data-testid="camp-deploy"]').click();
     await page.waitForSelector('[data-testid="lance-bar"]');
+    await page.waitForSelector('[data-testid="briefing"]');
+    check('the contracted mission opens on its briefing', true);
+    await page.locator('[data-testid="briefing-deploy"]').click();
     check('deploying launches the contracted mission', (await page.locator('.viewport canvas').count()) === 1);
 
     const deployed = await page.evaluate(() => {

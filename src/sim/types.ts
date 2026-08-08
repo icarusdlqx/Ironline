@@ -3,10 +3,14 @@ import type { Catalog } from '../schema/load';
 import type { Mission } from '../schema/mission';
 import type { Rules } from '../schema/rules';
 import type { SimEvent } from './events';
+import type { ObjectiveState } from './objectives';
 import type { OrderState } from './orders';
 import type { Rng } from './rng';
 import type { TeamVision } from './sensors';
+import type { Reveal, SupportState } from './support';
 import type { TerrainGrid } from './terrain';
+import type { TriggerState } from './triggers';
+import type { ZoneState } from './zones';
 
 export type EntityId = number;
 
@@ -145,6 +149,17 @@ export interface World {
   weaponStats: Map<string, WeaponStat>;
   playerTeam: number | null;
   vision: TeamVision | null;
+
+  resources: Map<number, number>;
+  zones: ZoneState[];
+  objectives: ObjectiveState[];
+  triggers: TriggerState[];
+  support: SupportState;
+  reveals: Reveal[];
+  reserves: { designId: string; pilotId: string; facingDegrees: number }[];
+  missionStatus: 'active' | 'success' | 'failure';
+  missionReason: string | null;
+
   finished: boolean;
   winner: number | null;
 }

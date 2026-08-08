@@ -1,4 +1,5 @@
-import type { UnitSnapshot, WeaponSnapshot } from './store';
+import type { SupportCallId } from '../sim/support';
+import type { ObjectiveView, UnitSnapshot, WeaponSnapshot, ZoneView } from './store';
 
 export function HeatBar({
   heat,
@@ -145,5 +146,134 @@ export function EventLog({ lines }: { lines: readonly string[] }) {
         <li key={`${index}-${line}`}>{line}</li>
       ))}
     </ul>
+  );
+}
+
+export function ObjectiveList({
+  objectives,
+  zones,
+}: {
+  objectives: readonly ObjectiveView[];
+  zones: readonly ZoneView[];
+}) {
+  if (objectives.length === 0) return null;
+
+  return (
+    <div className="objectives" data-testid="objective-list">
+      <h4>Objectives</h4>
+      <ul>
+        {objectives.map((objective) => (
+          <li key={objective.id} className={objective.status} data-testid={`objective-${objective.id}`}>
+            <span className="objective-mark">
+              {objective.status === 'complete' ? '✓' : objective.status === 'failed' ? '✗' : '•'}
+            </span>
+            <span className="objective-label">
+              {objective.label}
+              {objective.required ? '' : ' (optional)'}
+            </span>
+            <span className="objective-progress">{Math.round(objective.progress * 100)}%</span>
+          </li>
+        ))}
+      </ul>
+      {zones.length === 0 ? null : (
+        <ul className="zones" data-testid="zone-list">
+          {zones.map((zone) => (
+            <li key={zone.id} data-testid={`zone-${zone.id}`}>
+              <span>{zone.name}</span>
+              <span className={zone.owner === 0 ? 'held' : 'lost'}>
+                {zone.contested
+                  ? 'contested'
+                  : zone.owner === 0
+                    ? 'held'
+                    : zone.contender === 0
+                      ? `${Math.round((zone.progress / zone.captureSeconds) * 100)}%`
+                      : 'enemy'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export interface SupportOption {
+  id: SupportCallId;
+  label: string;
+  cost: number;
+  hint: string;
+}
+
+export function SupportPalette({
+  options,
+  resourcePoints,
+  active,
+  reservesLeft,
+  onPick,
+}: {
+  options: readonly SupportOption[];
+  resourcePoints: number;
+  active: SupportCallId | null;
+  reservesLeft: number;
+  onPick: (call: SupportCallId) => void;
+}) {
+  return (
+    <div className="support" data-testid="support-palette">
+      <span className="rp" data-testid="resource-points">
+        {resourcePoints} RP
+      </span>
+      {options.map((option) => {
+        const unaffordable = resourcePoints < option.cost;
+        const noReserves = option.id === 'reinforcement' && reservesLeft === 0;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            className={`support-call ${active === option.id ? 'active' : ''}`}
+            disabled={unaffordable || noReserves}
+            title={noReserves ? 'The dropship has no reserves left' : `${option.hint} — ${option.cost} RP`}
+            onClick={() => onPick(option.id)}
+            data-testid={`support-${option.id}`}
+          >
+            <span className="support-label">{option.label}</span>
+            <span className="support-cost">{option.cost}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Briefing({
+  name,
+  text,
+  objectives,
+  resourcePoints,
+  onDeploy,
+}: {
+  name: string;
+  text: string;
+  objectives: readonly ObjectiveView[];
+  resourcePoints: number;
+  onDeploy: () => void;
+}) {
+  return (
+    <div className="briefing" data-testid="briefing">
+      <h2>{name}</h2>
+      <p>{text}</p>
+      <h4>Objectives</h4>
+      <ul>
+        {objectives.map((objective) => (
+          <li key={objective.id}>
+            {objective.label}
+            {objective.required ? '' : ' (optional)'}
+          </li>
+        ))}
+      </ul>
+      <p className="briefing-rp">{resourcePoints} Resource Points on the books.</p>
+      <button type="button" onClick={onDeploy} data-testid="briefing-deploy">
+        Deploy
+      </button>
+    </div>
   );
 }
