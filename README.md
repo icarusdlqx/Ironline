@@ -4,8 +4,10 @@ Real-time-with-pause tactical mech combat. See [`IRONLINE_DESIGN.md`](IRONLINE_D
 for the full design and build specification; [`CLAUDE.md`](CLAUDE.md) holds the
 agent working rules; [`docs/HOSTING.md`](docs/HOSTING.md) covers publishing it.
 
-**Play it:** <https://icarusdlqx.github.io/Ironline/> — published from `main` on
-every push, and playable in Safari on a phone as well as on a desktop.
+**Play it:** published to Cloudflare Pages from `main` on every push, and
+playable in Safari on a phone as well as on a desktop. See
+[`docs/HOSTING.md`](docs/HOSTING.md) for the build settings and how to deploy
+without pushing.
 
 ## Layout
 

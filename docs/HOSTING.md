@@ -3,25 +3,43 @@
 The game is a static site — no server, no database, no API. Anything that can
 serve files can host it.
 
-## GitHub Pages (what this repo is set up for)
+## Cloudflare Pages (what this repo is set up for)
 
-`.github/workflows/deploy.yml` builds and publishes on every push to `main`,
-and can be run by hand from the **Actions** tab → **Deploy** → **Run workflow**
-when you want to publish without pushing.
+Cloudflare builds straight from the repository, so a push to `main` is a
+deploy. It works with a private repo, which GitHub Pages does not without a
+paid plan.
 
-**One-time setup**, on GitHub:
+**Settings**, in the Cloudflare dashboard under **Workers & Pages → your
+project → Settings → Build**:
 
-1. Repository **Settings** → **Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+| Field                  | Value           |
+| ---------------------- | --------------- |
+| Build command          | `npm run build` |
+| Build output directory | `dist`          |
+| Production branch      | `main`          |
 
-That is the whole of it. The next push to `main` publishes to:
+Node version comes from `.node-version` in the repository root, so there is
+nothing to set for it.
 
-    https://icarusdlqx.github.io/Ironline/
+`npm run build` runs `tsc --noEmit` before Vite, so a type error fails the
+Cloudflare build and never reaches the live site. The rest of the checks —
+lint, and the test suite — run on GitHub Actions (`.github/workflows/ci.yml`)
+and mark the commit rather than blocking the deploy.
 
-The workflow refuses to publish a build that does not compile, does not lint,
-or fails its tests, so the live site is never a broken one. It also copies the
-self-contained `ironline.html` alongside, at
-`https://icarusdlqx.github.io/Ironline/ironline.html`, for playing offline.
+### Deploying on command rather than on push
+
+Every push to `main` deploys. To publish without pushing, open the project in
+the dashboard, go to **Deployments**, and use **Retry deployment** on the
+latest one, or **Create deployment**. Pushing to any other branch produces a
+preview deployment on its own URL and leaves production alone — which is the
+way to look at a change before it is live.
+
+### Caching
+
+`public/_headers` is copied into the build output and read by Cloudflare.
+Fingerprinted assets are cached for a year; `index.html` is not cached at all.
+Without that second rule a phone that has played once keeps loading the build
+it first saw, and no amount of pushing changes what you get.
 
 ## Playing on a phone
 
@@ -35,12 +53,12 @@ The site works in Safari on iOS and macOS. On a phone:
 Add it to the home screen (Share → Add to Home Screen) and it opens full
 screen with no browser chrome.
 
-## Somewhere other than GitHub Pages
+## Somewhere else
 
 `npm run build` writes a plain static site to `dist/`. Upload that directory
-anywhere — Cloudflare Pages, Netlify, an S3 bucket, a folder on a web server.
-The build uses relative asset paths, so it works from a domain root or from a
-subdirectory without configuration.
+anywhere — Netlify, an S3 bucket, a folder on a web server. The build uses
+relative asset paths, so it works from a domain root or from a subdirectory
+without configuration.
 
 `npm run build:single` writes `dist-single/ironline.html`: the entire game,
 including every asset, as one file that can be emailed or opened from a disk.

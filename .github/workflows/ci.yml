@@ -1,0 +1,39 @@
+# Checks every push. Cloudflare Pages does the publishing — it builds from the
+# repository directly — so this exists to catch a break early and to put a red
+# mark on the commit that caused it, not to deploy anything.
+#
+# `npm run build` runs `tsc --noEmit` before Vite, so a type error also fails
+# the Cloudflare build and never reaches the live site.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx eslint .
+
+      # Balance and browser suites are left out: they are slow, and they gate
+      # design decisions rather than whether the game builds and runs.
+      - run: npx vitest run --exclude "**/balance/**" --exclude "**/e2e/**"
+
+      - run: npm run build
+      - run: npm run build:single
