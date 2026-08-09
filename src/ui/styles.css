@@ -585,7 +585,10 @@ button {
   gap: 12px;
   height: 100%;
   padding: 12px;
-  overflow: hidden;
+  /* Scrolls only when it has to. The layout is built to fit the window, and
+     at any normal width it does — but squeeze the window past what three
+     columns need and `hidden` cuts the bottom off with no way to reach it. */
+  overflow: auto;
 }
 
 .bay-top {
@@ -593,6 +596,10 @@ button {
   display: flex;
   gap: 10px;
   align-items: center;
+  /* The row carries a name field, a picker and four buttons. On a narrow
+     screen it has to wrap, or the last button — which is the way out of the
+     mechbay — sits off the edge with nothing to scroll it into view. */
+  flex-wrap: wrap;
 }
 
 .bay-name {
@@ -1791,7 +1798,14 @@ button {
    Nothing is hidden. A control the player cannot find is worse than a
    cramped one, and the touch grammar — drag to pan, pinch to zoom, tap a
    mech, tap the ground — already replaces the keyboard. */
-@media (max-width: 900px) {
+/* The compact layout is for fingers, not for narrow windows.
+   A Mac window half a screen wide is under 900px and was getting the phone
+   treatment: the campaign stacked into a column, and the mechbay — which is
+   the tallest screen in the game — stacked with it. Gating on a coarse
+   pointer keeps a desktop window on the desktop grid, which fits and scrolls
+   inside its own panels, while a real phone still gets the stack. The bare
+   width case is left in for a window genuinely too narrow for two columns. */
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
   .app {
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -1926,7 +1940,8 @@ button {
 
 /* A phone on its side has almost no height to give away, so the readout
    card goes back up the right-hand edge where it costs nothing. */
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 640px) and (orientation: landscape),
+  (pointer: coarse) and (max-width: 940px) and (orientation: landscape) {
   .sidebar {
     top: calc(44px + var(--safe-top));
     bottom: auto;
@@ -1938,15 +1953,19 @@ button {
    panels side by side. On a phone the columns collapse to a stack and the
    whole page scrolls, which is the one screen here where scrolling is the
    right answer — it is paperwork, not a battlefield. */
-@media (max-width: 900px) {
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
   .camp,
   .bay {
     grid-template-columns: 1fr;
     grid-template-rows: none;
     grid-template-areas: none;
-    height: auto;
-    min-height: 100dvh;
+    /* Stays the height of the screen and scrolls inside itself. Setting this
+       to auto lets the grid grow to its content — four thousand pixels of
+       mechbay — and then nothing scrolls at all, because the page behind it
+       does not scroll either. Everything below the fold becomes unreachable. */
+    height: 100dvh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: calc(10px + env(safe-area-inset-top, 0px)) 10px
       calc(10px + env(safe-area-inset-bottom, 0px));
   }
@@ -1955,6 +1974,15 @@ button {
   .bay > * {
     grid-area: auto;
     min-width: 0;
+    /* Stacked, a panel is as tall as its content and the page scrolls past
+       it. Leaving them stretchable lets the grid squash eight panels into one
+       screen instead, a few unreadable pixels each. */
+    min-height: min-content;
+  }
+
+  .camp,
+  .bay {
+    grid-auto-rows: min-content;
   }
 
   .camp-map {

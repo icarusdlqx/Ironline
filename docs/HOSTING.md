@@ -3,11 +3,18 @@
 The game is a static site — no server, no database, no API. Anything that can
 serve files can host it.
 
-## Cloudflare Pages (what this repo is set up for)
+## Cloudflare (what this repo is set up for)
 
 Cloudflare builds straight from the repository, so a push to `main` is a
 deploy. It works with a private repo, which GitHub Pages does not without a
 paid plan.
+
+Connecting a repo now creates a **Worker serving static assets** rather than a
+Pages project — same thing for a static site, but the dashboard looks different
+and the address is `*.workers.dev` rather than `*.pages.dev`. The live URL is
+under **Workers & Pages → the project → Domains**, and it has an enable switch
+that is **off by default**: with it off the Overview tab reads "No URLs
+enabled" and nothing is reachable however well the build went.
 
 **Settings**, in the Cloudflare dashboard under **Workers & Pages → your
 project → Settings → Build**:
@@ -29,10 +36,9 @@ and mark the commit rather than blocking the deploy.
 ### Deploying on command rather than on push
 
 Every push to `main` deploys. To publish without pushing, open the project in
-the dashboard, go to **Deployments**, and use **Retry deployment** on the
-latest one, or **Create deployment**. Pushing to any other branch produces a
-preview deployment on its own URL and leaves production alone — which is the
-way to look at a change before it is live.
+the dashboard, go to **Deployments**, and use **New deployment**. Pushing to
+any other branch produces a preview deployment on its own URL and leaves
+production alone — which is the way to look at a change before it is live.
 
 ### Caching
 
