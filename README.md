@@ -2,7 +2,10 @@
 
 Real-time-with-pause tactical mech combat. See [`IRONLINE_DESIGN.md`](IRONLINE_DESIGN.md)
 for the full design and build specification; [`CLAUDE.md`](CLAUDE.md) holds the
-agent working rules.
+agent working rules; [`docs/HOSTING.md`](docs/HOSTING.md) covers publishing it.
+
+**Play it:** <https://icarusdlqx.github.io/Ironline/> — published from `main` on
+every push, and playable in Safari on a phone as well as on a desktop.
 
 ## Layout
 
@@ -10,7 +13,8 @@ agent working rules.
 src/sim       pure, deterministic simulation (no DOM, Pixi or React)
 src/data      all game content as JSON
 src/schema    Zod schemas + the validating content loader
-src/render    PixiJS tactical renderer — reads sim state, never mutates it
+src/render    shared art description — blueprints, palettes, silhouettes
+src/render3d  Three.js tactical renderer — reads sim state, never mutates it
 src/ui        React shell, Zustand store, fixed-step game loop and input
 src/ui/mechbay loadout editor, construction validation, heat calculator
 src/campaign  economy, salvage, refit, repair, roster, time, save/load

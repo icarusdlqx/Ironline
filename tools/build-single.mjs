@@ -39,7 +39,7 @@ const page = [
   // every middle dot, en dash and curly quote in the game comes out as
   // mojibake. This has to sit inside the first 1024 bytes to be honoured.
   '<meta charset="utf-8">',
-  '<meta name="viewport" content="width=device-width, initial-scale=1">',
+  '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">',
   '<title>IRONLINE</title>',
   `<style>\n${pick('.css')}\n${fill}</style>`,
   body,

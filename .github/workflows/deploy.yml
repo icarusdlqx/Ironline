@@ -1,0 +1,65 @@
+# Publishes the game to GitHub Pages.
+#
+# Runs on every push to main, and can be run by hand from the Actions tab
+# (Deploy → Run workflow) when you want to publish without pushing anything.
+#
+# The site is built with a relative base, so it works under the project
+# subpath (icarusdlqx.github.io/Ironline/) without any extra configuration.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. A queued run is allowed to finish rather than being
+# cancelled, so a push during a deploy does not leave the site half-written.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The site is not published unless the game actually compiles and its
+      # rules still hold. Balance and browser suites are left out: they are
+      # slow and they gate design decisions, not deployability.
+      - run: npx tsc --noEmit
+      - run: npx eslint .
+      - run: npx vitest run --exclude "**/balance/**" --exclude "**/e2e/**"
+
+      - run: npm run build
+
+      # The single-file build rides along, so there is always a current
+      # ironline.html to download and play offline.
+      - run: npm run build:single
+      - run: cp dist-single/ironline.html dist/ironline.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -36,6 +36,19 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const held = new Set<string>();
   let panning = false;
   let lastPan: Vec2 | null = null;
+  /**
+   * Fingers currently on the glass, by pointer id.
+   *
+   * A phone has no second mouse button, no scroll wheel and no keyboard, so
+   * the touch grammar has to carry the whole game: drag the ground to pan,
+   * pinch to zoom, tap a mech to select or attack it, tap the ground to send
+   * the selection there.
+   */
+  const touches = new Map<number, Vec2>();
+  /** Distance between two fingers when the pinch began, and the zoom then. */
+  let pinchFrom: number | null = null;
+  /** Set once a touch has moved far enough to be a drag rather than a tap. */
+  let touchDragged = false;
   /** Timestamp of the last order given from a pointer event, to de-duplicate. */
   let orderedAt = -1_000;
   /** Where a left-drag started, in world space, while a marquee is open. */
@@ -113,6 +126,101 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     canvas.style.cursor = attackable ? 'crosshair' : 'default';
   };
 
+  /** How far apart the two fingers on the glass are. */
+  const pinchSpan = (): number => {
+    const [a, b] = [...touches.values()];
+    if (a === undefined || b === undefined) return 0;
+    return Math.hypot(b.x - a.x, b.y - a.y);
+  };
+
+  /** Below this a touch is a tap; above it, the player is dragging the map. */
+  const TAP_SLOP = 10;
+
+  const onTouchMove = (event: PointerEvent): void => {
+    const now = pointerToScreen(canvas, event);
+    const was = touches.get(event.pointerId);
+    touches.set(event.pointerId, now);
+
+    if (touches.size >= 2) {
+      // Pinch, measured against the span the gesture is currently at rather
+      // than the one it started at, so the zoom tracks the fingers.
+      const span = pinchSpan();
+      if (pinchFrom !== null && pinchFrom > 0 && span > 0) {
+        engine.renderer.camera.zoomBy(span / pinchFrom);
+        pinchFrom = span;
+      }
+      return;
+    }
+
+    if (was === undefined || lastPan === null) return;
+    if (Math.hypot(now.x - lastPan.x, now.y - lastPan.y) > TAP_SLOP) touchDragged = true;
+    if (!touchDragged) return;
+
+    // Drag the ground rather than a selection box. With no keyboard and no
+    // wheel this is the only way to see the rest of the battlefield.
+    const scale = engine.renderer.camera.distance * PAN_PER_PIXEL;
+    engine.renderer.camera.panBy((was.x - now.x) * scale, (now.y - was.y) * scale);
+  };
+
+  /**
+   * A tap, resolved when the finger comes off. Taps do what a click does — pick
+   * a mech, attack a hostile — and a tap on open ground sends the selection
+   * there, which on a desktop is what the second mouse button is for.
+   */
+  const onTouchEnd = (event: PointerEvent): void => {
+    const screen = touches.get(event.pointerId) ?? pointerToScreen(canvas, event);
+    touches.delete(event.pointerId);
+    if (touches.size < 2) pinchFrom = null;
+
+    const dragged = touchDragged;
+    touchDragged = false;
+    lastPan = null;
+    if (dragged || touches.size > 0) return;
+
+    const state = useGame.getState();
+    const world = engine.renderer.camera.screenToWorld(
+      screen,
+      viewport(),
+      engine.renderer.groundMesh,
+    );
+
+    if (state.supportMode !== null) {
+      engine.callSupport(state.supportMode, world);
+      state.setSupportMode(null);
+      return;
+    }
+
+    const picked = pickAt(screen);
+
+    if (state.orderMode !== null) {
+      if (state.orderMode === 'move' || state.orderMode === 'run') {
+        engine.orderMove(world, state.orderMode === 'run');
+      } else if (state.orderMode === 'jump') {
+        engine.orderJump(world);
+      } else if (picked !== null && picked.team !== state.playerTeam) {
+        engine.orderAttack(
+          picked.id,
+          state.orderMode === 'called_shot' ? state.calledShotLocation : null,
+        );
+      }
+      state.setOrderMode(null);
+      return;
+    }
+
+    if (picked === null) {
+      if (engine.selectedEntities().length > 0) engine.orderMove(world, false);
+      return;
+    }
+
+    if (picked.team !== state.playerTeam && isOperational(picked)) {
+      if (engine.selectedEntities().length > 0) engine.orderAttack(picked.id, null);
+      else state.setSelection([picked.id]);
+      return;
+    }
+
+    state.setSelection([picked.id]);
+  };
+
   const onPointerDown = (event: PointerEvent): void => {
     // Capture keeps a drag alive when the pointer leaves the canvas. It is a
     // convenience, and browsers differ on when the id is capturable, so a
@@ -123,14 +231,32 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       // No capture; drags that leave the canvas just end early.
     }
     const world = toWorld(event);
+    const state = useGame.getState();
+
+    if (event.pointerType === 'touch') {
+      touches.set(event.pointerId, pointerToScreen(canvas, event));
+      if (touches.size === 2) {
+        // A second finger turns the gesture into a pinch. Whatever the first
+        // finger had started doing is abandoned rather than fought with.
+        pinchFrom = pinchSpan();
+        panning = false;
+        lastPan = null;
+        marqueeFrom = null;
+        marqueeScreenFrom = null;
+        engine.selectionBox = null;
+        state.patch({ marquee: null });
+        return;
+      }
+      touchDragged = false;
+      lastPan = pointerToScreen(canvas, event);
+      return;
+    }
 
     if (event.button === 1) {
       panning = true;
       lastPan = pointerToScreen(canvas, event);
       return;
     }
-
-    const state = useGame.getState();
 
     if (state.supportMode !== null && event.button === 0 && !event.ctrlKey) {
       // A strafing run needs a direction as well as a point: press to aim, drag
@@ -209,6 +335,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onPointerMove = (event: PointerEvent): void => {
+    if (event.pointerType === 'touch') {
+      onTouchMove(event);
+      return;
+    }
+
     engine.cursorWorld = toWorld(event);
     updateHover(pointerToScreen(canvas, event));
 
@@ -248,6 +379,12 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const onPointerUp = (event: PointerEvent): void => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+
+    if (event.pointerType === 'touch') {
+      onTouchEnd(event);
+      return;
+    }
+
     panning = false;
     lastPan = null;
 
@@ -451,6 +588,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
+  // Safari cancels a touch when its own gestures take over, and a cancelled
+  // finger that stays in the map leaves the game convinced a pinch is still in
+  // progress and refusing every tap after it.
+  canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.addEventListener('contextmenu', onContextMenu);
   window.addEventListener('keydown', onKeyDown);
@@ -462,6 +603,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);
+    canvas.removeEventListener('pointercancel', onPointerUp);
     canvas.removeEventListener('wheel', onWheel);
     canvas.removeEventListener('contextmenu', onContextMenu);
     window.removeEventListener('keydown', onKeyDown);
