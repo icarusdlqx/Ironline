@@ -10,9 +10,24 @@ const ZOOM_STEP = 1.12;
 /** Ground metres panned per pixel dragged, per metre of camera distance. */
 const PAN_PER_PIXEL = 0.0022;
 
-function pointerToScreen(canvas: HTMLCanvasElement, event: PointerEvent | WheelEvent): Vec2 {
+function pointerToScreen(
+  canvas: HTMLCanvasElement,
+  event: PointerEvent | WheelEvent | MouseEvent,
+): Vec2 {
   const bounds = canvas.getBoundingClientRect();
   return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+}
+
+/**
+ * Whether this is a secondary click — the one that gives orders.
+ *
+ * It is not enough to check for button two. On macOS a Ctrl+click is the
+ * standard secondary click, and Firefox reports it as button zero with the
+ * control key held; several trackpad configurations do the same. Reading only
+ * button two means orders silently do nothing on a Mac.
+ */
+function isSecondary(event: PointerEvent | MouseEvent): boolean {
+  return event.button === 2 || (event.button === 0 && event.ctrlKey);
 }
 
 export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => void {
@@ -21,6 +36,8 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const held = new Set<string>();
   let panning = false;
   let lastPan: Vec2 | null = null;
+  /** Timestamp of the last order given from a pointer event, to de-duplicate. */
+  let orderedAt = -1_000;
   /** Where a left-drag started, in world space, while a marquee is open. */
   let marqueeFrom: Vec2 | null = null;
   let marqueeScreenFrom: Vec2 | null = null;
@@ -65,7 +82,14 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     );
 
   const onPointerDown = (event: PointerEvent): void => {
-    canvas.setPointerCapture(event.pointerId);
+    // Capture keeps a drag alive when the pointer leaves the canvas. It is a
+    // convenience, and browsers differ on when the id is capturable, so a
+    // refusal here must not be allowed to take the click down with it.
+    try {
+      canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // No capture; drags that leave the canvas just end early.
+    }
     const world = toWorld(event);
 
     if (event.button === 1) {
@@ -76,7 +100,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     const state = useGame.getState();
 
-    if (state.supportMode !== null && event.button === 0) {
+    if (state.supportMode !== null && event.button === 0 && !event.ctrlKey) {
       // A strafing run needs a direction as well as a point: press to aim, drag
       // to lay the run-in, release to call it. Everything else fires on the press.
       if (engine.supportNeedsHeading(state.supportMode)) {
@@ -88,7 +112,8 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
-    if (event.button === 2) {
+    if (isSecondary(event)) {
+      orderedAt = event.timeStamp;
       const target = engine.renderer.entityAtScreen(
         engine.world,
         pointerToScreen(canvas, event),
@@ -136,6 +161,20 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       marqueeScreenFrom = pointerToScreen(canvas, event);
       engine.selectionBox = { a: world, b: world };
       state.patch({ marquee: null });
+      return;
+    }
+
+    // Left-clicking a hostile while your own machines are selected is an
+    // attack order. Right-click is still the usual way to give one, but a
+    // trackpad with no configured secondary click would otherwise leave the
+    // player no way at all to pick a target — and selecting an enemy on its
+    // own does nothing except throw away the selection they had.
+    if (
+      picked.team !== state.playerTeam &&
+      isOperational(picked) &&
+      engine.selectedEntities().length > 0
+    ) {
+      engine.orderAttack(picked.id, null);
       return;
     }
 
@@ -221,7 +260,33 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     engine.renderer.camera.zoomBy(event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
   };
 
-  const onContextMenu = (event: MouseEvent): void => event.preventDefault();
+  /**
+   * Backstop for browsers that route the secondary click straight to the
+   * context menu without a pointerdown carrying button two. If the pointer
+   * path already handled this click, the timestamp check swallows it so the
+   * order is not given twice.
+   */
+  const onContextMenu = (event: MouseEvent): void => {
+    event.preventDefault();
+    if (event.timeStamp - orderedAt < 400) return;
+
+    const state = useGame.getState();
+    if (state.supportMode !== null) return;
+
+    const screen = pointerToScreen(canvas, event);
+    const world = engine.renderer.camera.screenToWorld(
+      screen,
+      viewport(),
+      engine.renderer.groundMesh,
+    );
+    const target = engine.renderer.entityAtScreen(engine.world, screen, PICK_RADIUS);
+    if (target !== null && target.team !== state.playerTeam && isOperational(target)) {
+      engine.orderAttack(target.id, null);
+    } else {
+      engine.orderMove(world, event.shiftKey);
+    }
+    state.setOrderMode(null);
+  };
 
   const onKeyDown = (event: KeyboardEvent): void => {
     const state = useGame.getState();

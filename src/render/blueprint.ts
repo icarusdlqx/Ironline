@@ -71,9 +71,11 @@ const FRAMES: Record<Silhouette['form'], Frame> = {
   // Upright, even, and armed like a soldier. The shape everything else is read against.
   humanoid: { leg: 1.0, hip: 0.42, knee: 0.06, long: 0.95, wide: 0.86, tall: 0.86, pitch: 0.04, shoulder: 0.72, arms: true },
   // Low and planted, all width. Made to stand somewhere and not be moved.
-  squat: { leg: 0.95, hip: 0.58, knee: 0, long: 1.0, wide: 1.12, tall: 0.7, pitch: 0, shoulder: 0.9, arms: true },
-  // A gun emplacement that walks. Barely legs at all under a slab of armour.
-  siege: { leg: 1.05, hip: 0.62, knee: -0.05, long: 1.15, wide: 1.2, tall: 0.78, pitch: 0, shoulder: 1.0, arms: false },
+  squat: { leg: 1.12, hip: 0.58, knee: 0, long: 1.0, wide: 1.12, tall: 0.7, pitch: 0, shoulder: 0.9, arms: true },
+  // A gun emplacement that walks. Short legs under a slab of armour — but
+  // still legs: the heavy chassis take a leg multiplier well under one, and a
+  // low base on top of that leaves a hull sitting on its own feet.
+  siege: { leg: 1.3, hip: 0.62, knee: -0.05, long: 1.15, wide: 1.2, tall: 0.78, pitch: 0, shoulder: 1.0, arms: false },
 };
 
 /**
@@ -96,8 +98,10 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
   };
 
   const parts: BlueprintPart[] = [];
-  // A hundred tonnes cannot stand on a scout's shins: leg mass tracks hull width.
-  const thighT = (has('reinforced_legs') ? 0.4 : 0.32) * (0.55 + frame.wide * 0.5);
+  // A hundred tonnes cannot stand on a scout's shins: leg mass tracks hull
+  // width, but only so far. Past the cap the thigh gets thicker than it is
+  // long and the machine stops reading as something that walks.
+  const thighT = (has('reinforced_legs') ? 0.4 : 0.32) * Math.min(1.2, 0.55 + frame.wide * 0.5);
   const digitigrade = frame.knee > 0.2;
 
   // ------------------------------------------------------------------- legs
@@ -107,17 +111,20 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
       part(side < 0 ? 'left_leg' : 'right_leg', 'limb',
         [-frame.knee * 0.5, frame.leg * 0.72, z],
         [thighT * 1.15, frame.leg * 0.62, thighT * 0.82], 'deep'),
-      // Knee, which is what tells the eye which way the leg bends.
+      // Knee, which is what tells the eye which way the leg bends. Painted
+      // like the plate around it: a bright joint reads as a bearing left
+      // exposed, and four of them per mech is all anyone looks at.
       part(side < 0 ? 'left_leg' : 'right_leg', 'sphere',
         [frame.knee * 0.1, frame.leg * 0.46, z],
-        [thighT * 1.05, thighT * 1.05, thighT * 1.05], 'accent'),
+        [thighT * 1.05, thighT * 1.05, thighT * 1.05], 'plate'),
       part(side < 0 ? 'left_leg' : 'right_leg', 'limb',
         [frame.knee * 0.5, frame.leg * 0.26, z],
         [thighT * 0.9, frame.leg * 0.56, thighT * 1.05], 'plate'),
-      // Foot. A digitigrade frame stands on a long splayed pad; a walker on a boot.
+      // Foot. A digitigrade frame stands on a long splayed pad; a walker on a
+      // boot. Deep enough to be a foot rather than a board laid on the ground.
       part(side < 0 ? 'left_leg' : 'right_leg', 'box',
-        [frame.knee + (digitigrade ? 0.16 : 0.04), 0.06, z],
-        [digitigrade ? 0.62 : 0.46, 0.12, thighT * 1.15], 'deep'),
+        [frame.knee + (digitigrade ? 0.16 : 0.04), 0.09, z],
+        [digitigrade ? 0.62 : 0.46, 0.18, thighT * 1.15], 'deep'),
     );
   }
   // Hips, which is what makes a wide stance read as wide.
@@ -157,16 +164,19 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
     part('head', 'sphere', [headX + 0.14, headY, 0], [0.2, 0.2, 0.2], 'glass'),
   );
 
+  // Masts and aerials are kept short. They are a marking on the machine, not a
+  // second machine: a tall one pushes the frame up until the mech under it is
+  // drawn half size to fit.
   if (has('sensor_mast')) {
     parts.push(
-      part('head', 'cylinder', [headX - 0.2, headY + 0.55, 0], [0.05, 0.9, 0.05], 'accent'),
-      part('head', 'sphere', [headX - 0.2, headY + 1.0, 0], [0.16, 0.16, 0.16], 'accent'),
+      part('head', 'cylinder', [headX - 0.2, headY + 0.36, 0], [0.07, 0.5, 0.07], 'accent'),
+      part('head', 'sphere', [headX - 0.2, headY + 0.66, 0], [0.18, 0.18, 0.18], 'accent'),
     );
   }
   if (has('command_console')) {
     for (const side of [-1, 1]) {
       parts.push(part('head', 'box',
-        [headX - 0.3, headY + 0.4, side * 0.22], [0.08, 0.6, 0.06], 'accent'));
+        [headX - 0.3, headY + 0.28, side * 0.22], [0.09, 0.36, 0.07], 'accent'));
     }
   }
 
@@ -176,7 +186,7 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
       const z = side * frame.shoulder;
       parts.push(
         part(side < 0 ? 'left_arm' : 'right_arm', 'sphere',
-          [-frame.long * 0.16, frame.tall * 0.2, z], [0.4, 0.4, 0.4], 'plate'),
+          [-frame.long * 0.16, frame.tall * 0.2, z], [0.34, 0.34, 0.34], 'deep'),
         part(side < 0 ? 'left_arm' : 'right_arm', 'limb',
           [frame.long * 0.18, -frame.tall * 0.05, z], [0.34, frame.long * 0.7, 0.26], 'deep', Math.PI / 2),
       );

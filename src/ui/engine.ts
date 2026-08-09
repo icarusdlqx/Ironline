@@ -278,8 +278,16 @@ export class Engine {
     });
   }
 
+  /**
+   * What an order applies to. Clicking a hostile can put it in the selection so
+   * the player can read its state, and an order must never reach it: without
+   * this filter, a right-click on open ground walks the enemy mech there.
+   */
   selectedEntities(): EntityId[] {
-    return useGame.getState().selection;
+    const team = this.world.playerTeam ?? 0;
+    return useGame
+      .getState()
+      .selection.filter((id) => findEntity(this.world, id)?.team === team);
   }
 
   orderMove(to: Vec2, run: boolean): void {
@@ -304,10 +312,22 @@ export class Engine {
   }
 
   orderAttack(targetId: EntityId, calledShot: MechLocation | null): void {
+    let ordered = 0;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot || entity.id === targetId) continue;
       issueAttack(entity, targetId, calledShot);
+      ordered += 1;
+    }
+
+    // Say so out loud. A target order that silently does nothing — because
+    // nothing was selected, or the click missed — is the single hardest thing
+    // to tell apart from a control that is simply broken.
+    const target = findEntity(this.world, targetId);
+    const push = useGame.getState().pushLog;
+    if (ordered === 0) push('No mech selected to give that order to.');
+    else if (target !== null) {
+      push(`${ordered} mech${ordered === 1 ? '' : 's'} targeting ${target.name}.`);
     }
   }
 

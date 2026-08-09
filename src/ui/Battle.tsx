@@ -204,7 +204,8 @@ export function Battle() {
           ))}
         </select>
         <span className="hint">
-          Space pauses · right-click orders · drag to select · middle-drag or WASD pans · wheel zooms
+          Space pauses · click an enemy to attack · right-click orders a move · drag to select ·
+          WASD pans · wheel zooms
         </span>
       </header>
 

@@ -1533,38 +1533,51 @@ button {
 }
 
 /* The chassis outline in the bay, drawn from the same blueprint the
-   battlefield builds its models from. */
+   battlefield builds its models from. Plates carry an outline: without one the
+   whole machine collapses into a single grey mass. */
 .chassis-silhouette {
   display: block;
   width: 100%;
-  height: 230px;
+  height: 250px;
   margin: 4px 0 12px;
 }
 
-.sil-plate { fill: #5d6a73; }
-.sil-deep { fill: #3c464d; }
-.sil-trim { fill: var(--accent); opacity: 0.75; }
-.sil-glass { fill: #9fdcff; }
-.sil-accent { fill: #7d8b95; }
-
-.sil-far { opacity: 0.35; }
-
-.sil-lit {
-  fill: var(--warn);
+/* Every plate carries an outline. Face shading alone still lets two plates of
+   the same tone melt into one another where they meet. */
+.sil-edge {
+  stroke: #0b1014;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
 }
 
-/* Strokes are in blueprint units, so they have to be thin. */
-.sil-mount {
-  fill: #101418;
+.sil-leader {
   stroke: var(--accent);
-  stroke-width: 0.04;
-  paint-order: stroke;
+  stroke-width: 1;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.sil-mount {
+  fill: rgba(8, 12, 16, 0.85);
+  stroke: var(--accent);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
 }
 
 .sil-mount-count {
   fill: var(--accent);
   text-anchor: middle;
   font-family: inherit;
+}
+
+/* The hardpoint the player is editing right now. */
+.sil-lit .sil-mount {
+  stroke: var(--warn);
+}
+
+.sil-lit .sil-mount-count {
+  fill: var(--warn);
 }
 
 .marquee {
