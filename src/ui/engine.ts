@@ -439,9 +439,11 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   globalThis.addEventListener('resize', onResize);
   engine.onDestroy(() => globalThis.removeEventListener('resize', onResize));
 
-  if (import.meta.env.DEV) {
-    (globalThis as unknown as { __ironline?: unknown }).__ironline = { engine, world, useGame };
-  }
+  // A handle on the running battle from the browser console. Kept in the built
+  // game as well as in development: this is a single-player game with nothing
+  // to cheat at but yourself, and it is the only way to tell a control that is
+  // broken apart from a control that is working on something else.
+  (globalThis as unknown as { __ironline?: unknown }).__ironline = { engine, world, useGame };
 
   useGame.getState().patch({
     ready: true,

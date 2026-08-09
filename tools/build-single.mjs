@@ -34,6 +34,12 @@ html, body { height: 100%; margin: 0; overflow: hidden; background: #0d1013; }
 `;
 
 const page = [
+  // Opened from a desktop rather than served, there is no Content-Type header
+  // to say what encoding this is, so the browser falls back to a legacy one and
+  // every middle dot, en dash and curly quote in the game comes out as
+  // mojibake. This has to sit inside the first 1024 bytes to be honoured.
+  '<meta charset="utf-8">',
+  '<meta name="viewport" content="width=device-width, initial-scale=1">',
   '<title>IRONLINE</title>',
   `<style>\n${pick('.css')}\n${fill}</style>`,
   body,
