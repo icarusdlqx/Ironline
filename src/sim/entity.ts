@@ -210,6 +210,9 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     jumpHeat,
     jumpCooldown: 0,
     jump: null,
+    posture: 'free',
+    threatenedBy: null,
+    threatenedUntilTick: 0,
     turnRate:
       rules.movement.turnRateDegreesPerSecond *
       (rules.movement.turnRateReferenceTonnage / chassis.tonnage) *

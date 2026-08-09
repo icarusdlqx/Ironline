@@ -63,6 +63,7 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     jumpRange: entity.jumpRange,
     jumpCooldown: entity.jumpCooldown,
     canJump: canJump(entity),
+    posture: entity.posture,
   };
 }
 

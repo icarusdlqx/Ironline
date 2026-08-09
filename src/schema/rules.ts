@@ -33,11 +33,42 @@ export const MovementRulesSchema = z.strictObject({
   jumpCooldownSeconds: z.number().positive(),
   /** Ground speed while airborne. Sets how long a mech spends off the ground. */
   jumpSpeed: z.number().positive(),
+  /**
+   * Speed multiplier for walking straight backwards, tapering to 1 head-on.
+   * A mech holding its nose on a target while it repositions is crabbing, and
+   * that costs pace.
+   */
+  offAxisSpeedFactor: Factor,
   moveAlignmentDegrees: z.number().positive().max(180),
   torsoTwistDegrees: z.number().positive().max(180),
   torsoTurnRateDegreesPerSecond: z.number().positive(),
   waypointRadius: z.number().positive(),
   arrivalRadius: z.number().positive(),
+});
+
+/** Which side of a mech a shot came in on. */
+export const ATTACK_ARCS = ['front', 'side', 'rear'] as const;
+export type AttackArc = (typeof ATTACK_ARCS)[number];
+
+/**
+ * Hit locations named relative to the shot rather than to the mech, so one
+ * table serves both flanks. "near" is the side the fire is coming from.
+ */
+const ArcHitWeightsSchema = z.strictObject({
+  head: z.number().nonnegative(),
+  centre_torso: z.number().nonnegative(),
+  near_torso: z.number().nonnegative(),
+  far_torso: z.number().nonnegative(),
+  near_arm: z.number().nonnegative(),
+  far_arm: z.number().nonnegative(),
+  near_leg: z.number().nonnegative(),
+  far_leg: z.number().nonnegative(),
+});
+
+const ArcProfileSchema = z.strictObject({
+  /** Multiplies incoming damage. Rear plating is thinner than the glacis. */
+  damageFactor: z.number().positive().max(4),
+  hitLocationWeights: ArcHitWeightsSchema,
 });
 
 export const CombatRulesSchema = z.strictObject({
@@ -56,12 +87,27 @@ export const CombatRulesSchema = z.strictObject({
   firingArcDegrees: z.number().positive().max(360),
   hitChanceFloor: Probability,
   hitChanceCeiling: Probability,
+  /** Used by fire that arrives from above — artillery, air strikes, mines. */
   hitLocationWeights: perLocation(z.number().nonnegative()),
+  /**
+   * Where a shot lands and what it does depends on the side it came in on.
+   * The two arc widths are measured across the nose and across the tail; what
+   * is left over on each flank is the side arc.
+   */
+  attackArcs: z.strictObject({
+    frontDegrees: z.number().positive().max(360),
+    rearDegrees: z.number().positive().max(360),
+    front: ArcProfileSchema,
+    side: ArcProfileSchema,
+    rear: ArcProfileSchema,
+  }),
   calledShot: z.strictObject({
     accuracyFactor: Factor,
     locationChance: Probability,
   }),
   tagFactor: Factor,
+  /** How long a mech under return-fire orders remembers who shot at it. */
+  returnFireSeconds: z.number().positive(),
 });
 
 export const HeatTierSchema = z.strictObject({

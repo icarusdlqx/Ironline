@@ -10,6 +10,7 @@ import {
   isOperational,
   type EntityId,
   type MechEntity,
+  type Posture,
   type Vec2,
   type World,
 } from './types';
@@ -33,11 +34,32 @@ export function emptyOrders(): OrderState {
   return { move: null, attack: null };
 }
 
+/** True while the stance has the mech rooted to the ground it is standing on. */
+export function isRooted(entity: MechEntity): boolean {
+  return entity.posture === 'hold_position' || entity.posture === 'return_fire';
+}
+
+export function setPosture(entity: MechEntity, posture: Posture): void {
+  entity.posture = posture;
+  if (!isRooted(entity)) return;
+
+  // Told to hold this ground: whatever it was walking towards is cancelled.
+  entity.orders.move = null;
+  entity.path = [];
+  entity.pathIndex = 0;
+  entity.motion = 'stationary';
+  entity.intendedMotion = 'stationary';
+}
+
 export function issueMove(world: World, entity: MechEntity, to: Vec2, run: boolean): boolean {
   if (!isOperational(entity)) return false;
 
   const path = findPath(world.terrain, entity.pos, to, world.rules.simulation.pathfindMaxNodes);
   if (path === null) return false;
+
+  // A move order is the pilot being told to go somewhere, which overrides an
+  // order to stand still. Keep-facing survives — moving is the point of it.
+  if (isRooted(entity)) entity.posture = 'free';
 
   entity.orders.move = { to: { x: to.x, y: to.y }, run };
   entity.path = path;
@@ -144,7 +166,7 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
   // the player is looking somewhere else. Overridable, but on by default.
   if (entity.heatSafety) applyHeatGovernor(world, entity, false);
 
-  const order = entity.orders.move;
+  const order = isRooted(entity) ? null : entity.orders.move;
   if (order === null) {
     entity.path = [];
     entity.pathIndex = 0;
@@ -189,5 +211,21 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
 
   entity.orders.attack = null;
   entity.calledShot = null;
-  entity.targetId = isHoldingFire(entity) ? null : (autoAcquire(world, entity)?.id ?? null);
+
+  if (isHoldingFire(entity)) {
+    entity.targetId = null;
+    return;
+  }
+
+  // Return-fire orders mean stay quiet until someone commits: the mech shoots
+  // back at whoever last put fire on it and picks nothing of its own. An
+  // explicit attack order still overrides this, above.
+  if (entity.posture === 'return_fire') {
+    const threat = findEntity(world, entity.threatenedBy);
+    const remembered = world.tick <= entity.threatenedUntilTick;
+    entity.targetId = remembered && threat !== null && isOperational(threat) ? threat.id : null;
+    return;
+  }
+
+  entity.targetId = autoAcquire(world, entity)?.id ?? null;
 }

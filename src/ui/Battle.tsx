@@ -107,8 +107,8 @@ export function Battle() {
       engine.toggleHoldFire();
       return;
     }
-    if (command.id === 'guard') {
-      engine.orderStop();
+    if (command.id === 'hold_position' || command.id === 'return_fire' || command.id === 'keep_facing') {
+      engine.setPosture(command.id);
       return;
     }
     if (command.id === 'heat_safety') {
@@ -279,6 +279,7 @@ export function Battle() {
               ? null
               : { ready: unit.canJump, range: unit.jumpRange, cooldown: unit.jumpCooldown }
           }
+          posture={unit?.posture ?? 'free'}
           onCommand={onCommand}
         />
         <SupportPalette

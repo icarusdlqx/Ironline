@@ -1,4 +1,5 @@
 import type { MechLocation } from '../schema/common';
+import type { ArcTables } from './arcs';
 import type { Catalog } from '../schema/load';
 import type { Mission } from '../schema/mission';
 import type { Rules } from '../schema/rules';
@@ -20,6 +21,24 @@ export interface Vec2 {
 }
 
 export type MotionState = 'stationary' | 'walk' | 'run' | 'jump';
+
+/**
+ * A standing instruction the pilot follows between orders.
+ *
+ * - `free` takes orders and shoots at whatever it can reach.
+ * - `hold_position` will not move, and engages at will from where it stands.
+ * - `return_fire` will not move and stays quiet until something shoots it.
+ * - `keep_facing` moves where told while holding its nose on the target, so
+ *   the thick plating stays between the pilot and the guns.
+ */
+export type Posture = 'free' | 'hold_position' | 'return_fire' | 'keep_facing';
+
+export const POSTURES: readonly Posture[] = [
+  'free',
+  'hold_position',
+  'return_fire',
+  'keep_facing',
+];
 
 /** A jump in flight. The mech is off the ground and nothing on it can stop the arc. */
 export interface JumpState {
@@ -152,6 +171,12 @@ export interface MechEntity {
   withdrawn: boolean;
   killMethod: KillMethod | null;
 
+  /** The standing instruction this mech is following between orders. */
+  posture: Posture;
+  /** Who last put fire on this mech, and the tick that memory expires. */
+  threatenedBy: EntityId | null;
+  threatenedUntilTick: number;
+
   autopilot: boolean;
   controller: 'orders' | 'tactical' | 'baseline';
   ai: AiState;
@@ -179,7 +204,15 @@ export interface Projectile {
   targetId: EntityId;
   weaponId: string;
   hit: boolean;
-  location: MechLocation;
+  /**
+   * Where the shot was fired from. The arc it lands on is worked out at impact
+   * against this, not against wherever the shooter has walked to since — but
+   * against the target's facing at impact, so turning to meet incoming fire is
+   * worth doing.
+   */
+  from: Vec2;
+  /** The location the pilot called, if any. Resolved with the arc at impact. */
+  calledShot: MechLocation | null;
   damage: number;
   impactTick: number;
 }
@@ -202,7 +235,10 @@ export interface World {
   entities: MechEntity[];
   projectiles: Projectile[];
   events: SimEvent[];
+  /** Fire arriving from above — artillery, air strikes, mines — has no arc. */
   hitLocationTable: readonly { value: MechLocation; weight: number }[];
+  /** One table per attack arc and flank, resolved once at world creation. */
+  arcHitTables: ArcTables;
   weaponStats: Map<string, WeaponStat>;
   playerTeam: number | null;
   vision: TeamVision | null;

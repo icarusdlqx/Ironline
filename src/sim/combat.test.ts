@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { LOCATIONS } from '../schema/common';
 import { testWorld, unitOf } from '../../tests/support';
 import { hitChance, resolveProjectiles, updateWeapons } from './combat';
 import { eventsOfType } from './events';
@@ -13,6 +14,15 @@ function weapon(id: string) {
   const found = world.catalog.weapons.get(id);
   if (found === undefined) throw new Error(`missing weapon ${id}`);
   return found;
+}
+
+/**
+ * A point squarely off the target's nose. Incoming damage is multiplied by the
+ * arc a shot arrives on, so any fixture asserting exact numbers has to say
+ * which side of the mech it is shooting at.
+ */
+function offTheNose(of: MechEntity): { x: number; y: number } {
+  return { x: of.pos.x + Math.cos(of.facing) * 100, y: of.pos.y + Math.sin(of.facing) * 100 };
 }
 
 beforeEach(() => {
@@ -181,7 +191,8 @@ describe('resolveProjectiles', () => {
       targetId: target.id,
       weaponId: 'ac5',
       hit: true,
-      location: 'left_arm',
+      from: offTheNose(target),
+      calledShot: null,
       damage: 5,
       impactTick: world.tick,
     });
@@ -190,7 +201,14 @@ describe('resolveProjectiles', () => {
 
     expect(shooter.stats.damageDealt).toBe(5);
     expect(target.stats.damageTaken).toBe(5);
-    expect(target.locations.left_arm.armour).toBe(target.locations.left_arm.armourMax - 5);
+
+    // The location is rolled at impact now, so the fixture cannot name it —
+    // but exactly one plate should be five points down.
+    const lost = LOCATIONS.reduce(
+      (sum, location) => sum + (target.locations[location].armourMax - target.locations[location].armour),
+      0,
+    );
+    expect(lost).toBe(5);
   });
 
   it('reports misses without dealing damage', () => {
@@ -199,7 +217,8 @@ describe('resolveProjectiles', () => {
       targetId: target.id,
       weaponId: 'ac5',
       hit: false,
-      location: 'centre_torso',
+      from: offTheNose(target),
+      calledShot: null,
       damage: 5,
       impactTick: world.tick,
     });
@@ -215,7 +234,8 @@ describe('resolveProjectiles', () => {
       targetId: target.id,
       weaponId: 'ac5',
       hit: true,
-      location: 'left_arm',
+      from: offTheNose(target),
+      calledShot: null,
       damage: 5,
       impactTick: world.tick + 5,
     });
@@ -232,7 +252,8 @@ describe('resolveProjectiles', () => {
         targetId: target.id,
         weaponId: 'gauss_rifle',
         hit: true,
-        location: 'centre_torso',
+        from: offTheNose(target),
+        calledShot: null,
         damage: 10_000,
         impactTick: world.tick,
       });

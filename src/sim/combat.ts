@@ -1,6 +1,7 @@
 import type { MechLocation } from '../schema/common';
 import type { CombatRules } from '../schema/rules';
 import type { Weapon } from '../schema/weapon';
+import { arcTableKey, attackArcFrom, type ArcHit } from './arcs';
 import { applyDamage } from './damage';
 import { emit } from './events';
 import { addHeat, currentHeatTier } from './heat';
@@ -14,6 +15,7 @@ import {
   type AmmoBin,
   type MechEntity,
   type Projectile,
+  type Vec2,
   type WeaponMount,
   type World,
 } from './types';
@@ -68,12 +70,24 @@ function lanceGunnery(world: World, shooter: MechEntity): number {
   return factor;
 }
 
-function rollHitLocation(world: World, shooter: MechEntity): MechLocation {
-  const called = shooter.calledShot;
+/**
+ * Where a shot lands, rolled at impact so it can account for the side it came
+ * in on. A called shot still overrides it: the pilot aimed at a specific plate,
+ * and that does not change because the mech turned while the shell was flying.
+ */
+function rollHitLocation(
+  world: World,
+  target: MechEntity,
+  from: Vec2,
+  called: MechLocation | null,
+): { location: MechLocation; arc: ArcHit } {
+  const arc = attackArcFrom(world.rules.combat, target, from);
+
   if (called !== null && world.rng.chance(world.rules.combat.calledShot.locationChance)) {
-    return called;
+    return { location: called, arc };
   }
-  return world.rng.weighted(world.hitLocationTable);
+
+  return { location: world.rng.weighted(world.arcHitTables[arcTableKey(arc)]), arc };
 }
 
 function recordShot(world: World, weapon: Weapon, hit: boolean): void {
@@ -116,6 +130,8 @@ function fireWeapon(
   const travelTicks =
     weapon.velocity === null ? 0 : Math.ceil(range / weapon.velocity / world.dt);
 
+  const from = { x: shooter.pos.x, y: shooter.pos.y };
+
   for (let shot = 0; shot < weapon.projectiles; shot += 1) {
     const hit = world.rng.chance(hitChance(world, shooter, target, weapon, range, heatAccuracy));
     shooter.stats.shotsFired += 1;
@@ -127,7 +143,8 @@ function fireWeapon(
       targetId: target.id,
       weaponId: weapon.id,
       hit,
-      location: hit ? rollHitLocation(world, shooter) : 'centre_torso',
+      from,
+      calledShot: shooter.calledShot,
       damage: weapon.damage,
       impactTick: world.tick + travelTicks,
     });
@@ -196,6 +213,14 @@ export function resolveProjectiles(world: World): void {
     const shooter = findEntity(world, projectile.shooterId);
     if (target === null || !isOperational(target)) continue;
 
+    // A near miss gives the firing position away as surely as a hit does, so
+    // both wake a mech that has been told to hold fire until fired upon.
+    if (shooter !== null && isOperational(shooter)) {
+      target.threatenedBy = shooter.id;
+      target.threatenedUntilTick =
+        world.tick + Math.round(world.rules.combat.returnFireSeconds / world.dt);
+    }
+
     if (!projectile.hit) {
       emit(world.events, {
         type: 'projectile_miss',
@@ -207,7 +232,18 @@ export function resolveProjectiles(world: World): void {
       continue;
     }
 
-    const absorbed = applyDamage(world, target, projectile.location, projectile.damage);
+    // The side the shot comes in on is settled here, at impact, against the
+    // hull's facing right now — so turning to meet incoming fire is worth doing,
+    // and a shell already in the air can be met head-on.
+    const { location, arc } = rollHitLocation(
+      world,
+      target,
+      projectile.from,
+      projectile.calledShot,
+    );
+    const factor = world.rules.combat.attackArcs[arc.arc].damageFactor;
+
+    const absorbed = applyDamage(world, target, location, projectile.damage * factor);
     target.stats.damageTaken += absorbed;
 
     // A flamer barely scratches the armour; what it does is cook the reactor.
@@ -228,7 +264,8 @@ export function resolveProjectiles(world: World): void {
       shooterId: projectile.shooterId,
       targetId: projectile.targetId,
       weaponId: projectile.weaponId,
-      location: projectile.location,
+      location,
+      arc: arc.arc,
       damage: absorbed,
     });
   }

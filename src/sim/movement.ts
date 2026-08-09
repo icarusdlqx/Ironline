@@ -164,6 +164,16 @@ export function weaponBearing(entity: MechEntity): number {
   return normaliseAngle(entity.facing + entity.torsoOffset);
 }
 
+/**
+ * What walking off-axis costs. Full pace straight ahead, tapering to the rules
+ * factor going straight backwards — a mech sidesteps, it does not strafe.
+ */
+function offAxisFactor(world: World, offset: number): number {
+  const worst = world.rules.movement.offAxisSpeedFactor;
+  const away = (1 - Math.cos(offset)) / 2;
+  return 1 - (1 - worst) * away;
+}
+
 export function updateMovement(world: World, entity: MechEntity): void {
   // Airborne: the arc owns the mech's position until it comes down.
   if (updateJump(world, entity)) return;
@@ -175,7 +185,12 @@ export function updateMovement(world: World, entity: MechEntity): void {
 
   const waypoint = entity.path[entity.pathIndex] ?? null;
   const target = findEntity(world, entity.targetId);
-  const focus = waypoint ?? target?.pos ?? null;
+
+  // Under keep-facing orders the hull tracks the target and the legs do the
+  // walking, so the mech crabs to its destination rather than turning its
+  // back. With nothing to face it is an ordinary march.
+  const crabbing = entity.posture === 'keep_facing' && target !== null;
+  const focus = crabbing ? target.pos : (waypoint ?? target?.pos ?? null);
 
   if (focus === null) {
     entity.motion = 'stationary';
@@ -189,25 +204,33 @@ export function updateMovement(world: World, entity: MechEntity): void {
     return;
   }
 
-  const alignment = world.rules.movement.moveAlignmentDegrees * DEGREES_TO_RADIANS;
-  if (Math.abs(misalignment) > alignment) {
-    // Pivoting on the spot is not movement. Reporting it as a run handed the
-    // mech the running evasion bonus for free and told the HUD it was moving.
-    entity.motion = 'stationary';
-    return;
+  let heading = entity.facing;
+  let pace = 1;
+
+  if (crabbing) {
+    heading = bearing(entity.pos, waypoint);
+    pace = offAxisFactor(world, angleDifference(entity.facing, heading));
+  } else {
+    const alignment = world.rules.movement.moveAlignmentDegrees * DEGREES_TO_RADIANS;
+    if (Math.abs(misalignment) > alignment) {
+      // Pivoting on the spot is not movement. Reporting it as a run handed the
+      // mech the running evasion bonus for free and told the HUD it was moving.
+      entity.motion = 'stationary';
+      return;
+    }
   }
 
   // Aligned and about to move: report the pace the controller actually asked for.
   entity.motion = entity.intendedMotion === 'stationary' ? 'walk' : entity.intendedMotion;
 
-  const step = speedFor(world, entity) * world.dt;
+  const step = speedFor(world, entity) * pace * world.dt;
   if (step <= 0) {
     entity.motion = 'stationary';
     return;
   }
 
-  const dx = Math.cos(entity.facing) * step;
-  const dy = Math.sin(entity.facing) * step;
+  const dx = Math.cos(heading) * step;
+  const dy = Math.sin(heading) * step;
   const next: Vec2 = { x: entity.pos.x + dx, y: entity.pos.y + dy };
 
   if (!passableAt(world, next)) {

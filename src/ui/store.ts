@@ -68,6 +68,8 @@ export interface UnitSnapshot {
   /** Seconds until the jets recharge, 0 when they are ready. */
   jumpCooldown: number;
   canJump: boolean;
+  /** The standing order this mech is following between orders. */
+  posture: string;
 }
 
 export type Screen = 'battle' | 'mechbay' | 'campaign';

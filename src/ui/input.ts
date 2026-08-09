@@ -222,7 +222,13 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
         engine.toggleHoldFire();
         return;
       case 'KeyG':
-        engine.orderStop();
+        engine.setPosture('hold_position');
+        return;
+      case 'KeyB':
+        engine.setPosture('return_fire');
+        return;
+      case 'KeyK':
+        engine.setPosture('keep_facing');
         return;
       case 'KeyT':
         engine.toggleHeatSafety();

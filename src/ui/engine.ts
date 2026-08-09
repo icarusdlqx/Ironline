@@ -11,9 +11,18 @@ import {
   issueStop,
   setGroupEnabled,
   setHoldFire,
+  setPosture,
 } from '../sim/orders';
 import { callSupport, headingBetween, isDirectional, type SupportCallId } from '../sim/support';
-import { findEntity, isOperational, type EntityId, type Vec2, type World } from '../sim/types';
+import {
+  findEntity,
+  isOperational,
+  type EntityId,
+  type MechEntity,
+  type Posture,
+  type Vec2,
+  type World,
+} from '../sim/types';
 import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
 import { attachInput } from './input';
 import { snapshotUnits } from './snapshot';
@@ -295,6 +304,21 @@ export class Engine {
       if (entity === null || entity.autopilot || entity.id === targetId) continue;
       issueAttack(entity, targetId, calledShot);
     }
+  }
+
+  /**
+   * Sets a standing order on the selection, or clears it if they are all
+   * already following it — so the same key both commits and releases.
+   */
+  setPosture(posture: Posture): void {
+    const ids = this.selectedEntities();
+    const mechs = ids
+      .map((id) => findEntity(this.world, id))
+      .filter((entity): entity is MechEntity => entity !== null && !entity.autopilot);
+    if (mechs.length === 0) return;
+
+    const already = mechs.every((entity) => entity.posture === posture);
+    for (const entity of mechs) setPosture(entity, already ? 'free' : posture);
   }
 
   orderStop(): void {

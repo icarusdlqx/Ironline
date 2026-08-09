@@ -1,4 +1,5 @@
 import type { MechLocation } from '../schema/common';
+import type { AttackArc } from '../schema/rules';
 import type { EntityId, KillMethod } from './types';
 
 export type SimEvent =
@@ -11,6 +12,8 @@ export type SimEvent =
       weaponId: string;
       location: MechLocation;
       damage: number;
+      /** Which side of the target the shot came in on. */
+      arc: AttackArc;
     }
   | {
       type: 'projectile_miss';

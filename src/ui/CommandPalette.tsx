@@ -15,7 +15,27 @@ export const COMMANDS: readonly Command[] = [
   { id: 'attack', label: 'Attack', key: 'F', mode: 'attack' },
   { id: 'called_shot', label: 'Called Shot', key: 'C', mode: 'called_shot' },
   { id: 'hold_fire', label: 'Hold Fire', key: 'H', mode: null },
-  { id: 'guard', label: 'Guard', key: 'G', mode: null },
+  {
+    id: 'hold_position',
+    label: 'Guard',
+    key: 'G',
+    mode: null,
+    title: 'Hold this ground and engage at will. Press again to release (G)',
+  },
+  {
+    id: 'return_fire',
+    label: 'Return Fire',
+    key: 'B',
+    mode: null,
+    title: 'Hold this ground and stay quiet until something shoots at you (B)',
+  },
+  {
+    id: 'keep_facing',
+    label: 'Keep Facing',
+    key: 'K',
+    mode: null,
+    title: 'Move as ordered but keep the nose on the target — thick plating forward (K)',
+  },
   {
     id: 'heat_safety',
     label: 'Heat Safety',
@@ -39,6 +59,8 @@ interface Props {
   heatSafety: boolean;
   /** Jets aboard, charged and free to fire. Null when nothing is selected. */
   jump: { ready: boolean; range: number; cooldown: number } | null;
+  /** The standing order the selected mech is following. */
+  posture: string;
   onCommand: (command: Command) => void;
 }
 
@@ -55,6 +77,7 @@ export function CommandPalette({
   holdingFire,
   heatSafety,
   jump,
+  posture,
   onCommand,
 }: Props) {
   return (
@@ -63,7 +86,8 @@ export function CommandPalette({
         const active =
           (command.mode !== null && command.mode === orderMode) ||
           (command.id === 'hold_fire' && holdingFire) ||
-          (command.id === 'heat_safety' && heatSafety);
+          (command.id === 'heat_safety' && heatSafety) ||
+          command.id === posture;
 
         const isJump = command.id === 'jump';
         const disabled = command.disabled === true || !enabled || (isJump && jump?.ready !== true);

@@ -9,6 +9,7 @@
   "jumpHeatPerJet": 3,
   "jumpCooldownSeconds": 6,
   "jumpSpeed": 60,
+  "offAxisSpeedFactor": 0.45,
   "moveAlignmentDegrees": 60,
   "waypointRadius": 8,
   "arrivalRadius": 6,

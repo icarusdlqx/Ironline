@@ -19,6 +19,50 @@
     "left_leg": 12,
     "right_leg": 12
   },
+  "attackArcs": {
+    "frontDegrees": 120,
+    "rearDegrees": 100,
+    "front": {
+      "damageFactor": 1.0,
+      "hitLocationWeights": {
+        "head": 2,
+        "centre_torso": 20,
+        "near_torso": 13,
+        "far_torso": 13,
+        "near_arm": 14,
+        "far_arm": 14,
+        "near_leg": 12,
+        "far_leg": 12
+      }
+    },
+    "side": {
+      "damageFactor": 1.15,
+      "hitLocationWeights": {
+        "head": 2,
+        "centre_torso": 14,
+        "near_torso": 24,
+        "far_torso": 3,
+        "near_arm": 22,
+        "far_arm": 3,
+        "near_leg": 20,
+        "far_leg": 2
+      }
+    },
+    "rear": {
+      "damageFactor": 1.5,
+      "hitLocationWeights": {
+        "head": 2,
+        "centre_torso": 26,
+        "near_torso": 18,
+        "far_torso": 18,
+        "near_arm": 4,
+        "far_arm": 4,
+        "near_leg": 14,
+        "far_leg": 14
+      }
+    }
+  },
   "calledShot": { "accuracyFactor": 0.55, "locationChance": 0.7 },
-  "tagFactor": 1.15
+  "tagFactor": 1.15,
+  "returnFireSeconds": 6
 }
