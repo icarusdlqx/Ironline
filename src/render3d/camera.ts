@@ -25,26 +25,28 @@ export function toWorld(point: Vec2, height = 0): Vector3 {
 }
 
 /**
- * An orbiting tactical camera: it looks at a point on the ground from a chosen
- * bearing and tilt. Pan moves that point, and it moves in the direction the
- * player is looking rather than along the world axes — dragging right has to
- * push the map right whichever way the camera has been spun.
+ * A fixed tactical camera: it looks down at the battlefield from one bearing
+ * and one tilt, and the player pans and zooms. Nothing rotates.
+ *
+ * That is a deliberate simplification. A camera that can be spun means every
+ * control which turns a click into an order has to be right in a rotated
+ * frame, and it means the player can lose which way is north mid-fight. The
+ * bearing and tilt are still fields, so a mission or a cutscene can choose a
+ * different fixed angle without any of this having to change.
  */
-export class OrbitCamera {
+export class TacticalCamera {
   readonly camera = new PerspectiveCamera(45, 1, 1, 6_000);
 
   /** The ground point the camera is looking at. */
   target: Vec2 = { x: 0, y: 0 };
   distance = 470;
-  /** Bearing round the target, in radians. */
-  azimuth = -Math.PI / 2;
-  /** Tilt above the horizon. Clamped away from both the horizon and straight down. */
-  elevation = 58 * DEGREES_TO_RADIANS;
+  /** Bearing the camera looks from. Fixed: looking down the map from the south. */
+  readonly azimuth = -Math.PI / 2;
+  /** Tilt above the horizon. High enough to read the ground, low enough for depth. */
+  readonly elevation = 50 * DEGREES_TO_RADIANS;
 
-  minDistance = 140;
-  maxDistance = 1_600;
-  minElevation = 14 * DEGREES_TO_RADIANS;
-  maxElevation = 84 * DEGREES_TO_RADIANS;
+  minDistance = 160;
+  maxDistance = 1_100;
 
   private boundsWidth = 0;
   private boundsHeight = 0;
@@ -71,14 +73,6 @@ export class OrbitCamera {
       y: this.target.y + right.y * dx + forward.y * dy,
     };
     this.clamp();
-  }
-
-  orbitBy(azimuth: number, elevation: number): void {
-    this.azimuth += azimuth;
-    this.elevation = Math.min(
-      this.maxElevation,
-      Math.max(this.minElevation, this.elevation + elevation),
-    );
   }
 
   zoomBy(factor: number): void {

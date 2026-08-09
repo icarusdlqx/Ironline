@@ -106,6 +106,8 @@ export interface GameState {
   missionReason: string | null;
   supportMode: SupportCallId | null;
   reservesLeft: number;
+  /** The drag-select box in screen pixels, while one is open. */
+  marquee: { x: number; y: number; width: number; height: number } | null;
 }
 
 export interface GameActions {
@@ -151,6 +153,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   missionReason: null,
   supportMode: null,
   reservesLeft: 0,
+  marquee: null,
 
   setSelection: (ids) => set({ selection: ids }),
   assignControlGroup: (slot, ids) =>

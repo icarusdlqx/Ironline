@@ -6,8 +6,6 @@ import { useGame } from './store';
 const PICK_RADIUS = 26;
 const PAN_SPEED = 620;
 const ZOOM_STEP = 1.12;
-/** Radians of camera swing per pixel dragged. */
-const ORBIT_PER_PIXEL = 0.006;
 /** Ground metres panned per pixel dragged, per metre of camera distance. */
 const PAN_PER_PIXEL = 0.0022;
 
@@ -21,7 +19,6 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const held = new Set<string>();
   let panning = false;
-  let orbiting = false;
   let lastPan: Vec2 | null = null;
   /** Where a left-drag started, in world space, while a marquee is open. */
   let marqueeFrom: Vec2 | null = null;
@@ -71,9 +68,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     const world = toWorld(event);
 
     if (event.button === 1) {
-      // Middle drag pans; hold shift to swing the camera round instead.
-      panning = !event.shiftKey;
-      orbiting = event.shiftKey;
+      panning = true;
       lastPan = pointerToScreen(canvas, event);
       return;
     }
@@ -127,6 +122,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       marqueeFrom = world;
       marqueeScreenFrom = pointerToScreen(canvas, event);
       engine.selectionBox = { a: world, b: world };
+      state.patch({ marquee: null });
       return;
     }
 
@@ -151,22 +147,25 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     if (marqueeFrom !== null) {
       engine.selectionBox = { a: marqueeFrom, b: toWorld(event) };
+      // The box the player is dragging is a screen rectangle, so it is drawn
+      // as one over the canvas rather than projected back onto the ground.
+      const now = pointerToScreen(canvas, event);
+      if (marqueeScreenFrom !== null) {
+        useGame.getState().patch({
+          marquee: {
+            x: Math.min(marqueeScreenFrom.x, now.x),
+            y: Math.min(marqueeScreenFrom.y, now.y),
+            width: Math.abs(now.x - marqueeScreenFrom.x),
+            height: Math.abs(now.y - marqueeScreenFrom.y),
+          },
+        });
+      }
       return;
     }
 
-    if (lastPan === null) return;
+    if (!panning || lastPan === null) return;
     const screen = pointerToScreen(canvas, event);
 
-    if (orbiting) {
-      engine.renderer.camera.orbitBy(
-        (screen.x - lastPan.x) * ORBIT_PER_PIXEL,
-        (screen.y - lastPan.y) * ORBIT_PER_PIXEL,
-      );
-      lastPan = screen;
-      return;
-    }
-
-    if (!panning) return;
     // Pan in the plane the player is looking at, scaled so a drag moves the
     // ground under the cursor by roughly the distance dragged.
     const scale = engine.renderer.camera.distance * PAN_PER_PIXEL;
@@ -177,7 +176,6 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const onPointerUp = (event: PointerEvent): void => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     panning = false;
-    orbiting = false;
     lastPan = null;
 
     const aim = engine.supportAim;
@@ -201,6 +199,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       marqueeFrom = null;
       marqueeScreenFrom = null;
       engine.selectionBox = null;
+      useGame.getState().patch({ marquee: null });
     }
   };
 

@@ -21,8 +21,8 @@ import { angleDifference, normaliseAngle } from '../sim/math';
 import { jumpHeight } from '../sim/movement';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../sim/types';
 import { teamColour, UI } from '../render/palette';
-import { radiusFor } from '../render/shape';
-import { OrbitCamera, type Viewport } from './camera';
+import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
+import { TacticalCamera, type Viewport } from './camera';
 import { FogLayer } from './fog';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
 import { buildTerrain, type TerrainMesh } from './terrain';
@@ -63,7 +63,7 @@ function damageSignature(entity: MechEntity): string {
 }
 
 export class Renderer {
-  readonly camera = new OrbitCamera();
+  readonly camera = new TacticalCamera();
   readonly scene = new Scene();
 
   private readonly renderer: WebGLRenderer;
@@ -84,7 +84,7 @@ export class Renderer {
     host.appendChild(this.renderer.domElement);
 
     this.scene.background = new Color(0x0d1013);
-    this.scene.fog = new Fog(0x0d1013, 900, 2_200);
+    this.scene.fog = new Fog(0x161c1f, 1_100, 3_000);
 
     this.terrain = buildTerrain(world.terrain, mapData);
     this.scene.add(this.terrain.mesh);
@@ -151,7 +151,12 @@ export class Renderer {
 
   resize(): void {
     const { width, height } = this.viewport;
-    this.renderer.setSize(width, height, false);
+    // The canvas has to be laid out at the size the pointer is measured
+    // against. Skipping the style update leaves it displayed at its drawing
+    // buffer size, so on any screen with a device pixel ratio above one the
+    // canvas covers twice the area the layout thinks it does and every click
+    // lands somewhere else entirely.
+    this.renderer.setSize(width, height);
     this.camera.update({ width, height });
   }
 
@@ -176,16 +181,28 @@ export class Renderer {
 
   consumeEvents(world: World, events: readonly SimEvent[]): void {
     for (const event of events) {
-      if (event.type !== 'weapon_fired') continue;
+      if (event.type !== 'weapon_fired' && event.type !== 'projectile_hit') continue;
+
+      const weapon = world.catalog.weapons.get(event.weaponId);
+      const colour =
+        weapon === undefined ? 0xffffff : parseInt(weapon.visual.colour.slice(1), 16);
+
+      if (event.type === 'projectile_hit') {
+        const at = this.positionOf(event.targetId);
+        if (at !== null) this.tracers.impact(at, this.terrain.heightAt(at.x, at.y), colour);
+        continue;
+      }
+
       const shooter = this.positionOf(event.shooterId);
       const target = this.positionOf(event.targetId);
       if (shooter === null || target === null) continue;
 
-      const weapon = world.catalog.weapons.get(event.weaponId);
       this.tracers.fire(
         shooter,
         target,
-        weapon === undefined ? 0xffffff : parseInt(weapon.visual.colour.slice(1), 16),
+        weapon?.type ?? 'energy',
+        weapon?.projectiles ?? 1,
+        colour,
         this.terrain.heightAt,
       );
     }
@@ -234,20 +251,16 @@ export class Renderer {
           location: mount.location,
           type: weapon?.type ?? ('energy' as const),
           tonnage: weapon?.tonnage ?? 1,
+          projectiles: weapon?.projectiles ?? 1,
         };
       });
 
     const model = buildMechModel(
-      chassis?.silhouette ?? {
-        form: 'humanoid',
-        torsoLength: 1,
-        torsoWidth: 1,
-        shoulder: 1,
-        legLength: 1,
-        stance: 1,
-      },
+      chassis?.silhouette ?? DEFAULT_SILHOUETTE,
+      chassis?.traits ?? [],
       entity.tonnage,
       teamColour(entity.team),
+      entity.destroyed,
       mounts,
     );
 

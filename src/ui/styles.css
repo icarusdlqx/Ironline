@@ -1531,3 +1531,45 @@ button {
   line-height: 1.65;
   color: var(--muted);
 }
+
+/* The chassis outline in the bay, drawn from the same blueprint the
+   battlefield builds its models from. */
+.chassis-silhouette {
+  display: block;
+  width: 100%;
+  height: 230px;
+  margin: 4px 0 12px;
+}
+
+.sil-plate { fill: #5d6a73; }
+.sil-deep { fill: #3c464d; }
+.sil-trim { fill: var(--accent); opacity: 0.75; }
+.sil-glass { fill: #9fdcff; }
+.sil-accent { fill: #7d8b95; }
+
+.sil-far { opacity: 0.35; }
+
+.sil-lit {
+  fill: var(--warn);
+}
+
+/* Strokes are in blueprint units, so they have to be thin. */
+.sil-mount {
+  fill: #101418;
+  stroke: var(--accent);
+  stroke-width: 0.04;
+  paint-order: stroke;
+}
+
+.sil-mount-count {
+  fill: var(--accent);
+  text-anchor: middle;
+  font-family: inherit;
+}
+
+.marquee {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: rgba(140, 224, 255, 0.1);
+  pointer-events: none;
+}

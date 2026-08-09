@@ -144,6 +144,19 @@ export function Battle() {
     <div className="app">
       <div className="viewport" ref={hostRef} data-testid="viewport" />
 
+      {state.marquee === null ? null : (
+        <div
+          className="marquee"
+          data-testid="marquee"
+          style={{
+            left: state.marquee.x,
+            top: state.marquee.y,
+            width: state.marquee.width,
+            height: state.marquee.height,
+          }}
+        />
+      )}
+
       <header className="topbar" data-testid="topbar">
         <span className="mission">{state.missionName}</span>
         <span className="clock" data-testid="clock">
@@ -190,7 +203,9 @@ export function Battle() {
             </option>
           ))}
         </select>
-        <span className="hint">Space pauses · right-click orders · wheel zooms</span>
+        <span className="hint">
+          Space pauses · right-click orders · drag to select · middle-drag or WASD pans · wheel zooms
+        </span>
       </header>
 
       {!state.briefingSeen && state.briefing !== '' && !state.finished ? (

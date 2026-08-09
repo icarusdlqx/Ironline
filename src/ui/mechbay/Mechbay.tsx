@@ -23,6 +23,7 @@ import {
   setHeatSinks,
   setName,
 } from './editor';
+import { ChassisSilhouette } from './ChassisSilhouette';
 import { LocationCard, type DropPayload } from './LocationCard';
 
 const catalog = getCatalog();
@@ -253,6 +254,7 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
             m/s
           </span>
         </h4>
+        <ChassisSilhouette chassis={chassis} design={design} />
         <p className="dossier-summary">{chassis.summary}</p>
         <p className="dossier-lore">{chassis.lore}</p>
         {chassis.traits.length === 0 ? null : (
