@@ -1,7 +1,6 @@
-import { Application } from 'pixi.js';
 import type { MechLocation } from '../schema/common';
 import { loadCatalog } from '../schema/load';
-import { Renderer } from '../render/scene';
+import { Renderer } from '../render3d/scene';
 import { restoreIntent } from '../sim/governor';
 import {
   isHoldingFire,
@@ -42,7 +41,6 @@ export interface EngineOptions {
 export class Engine {
   readonly world: World;
   readonly renderer: Renderer;
-  readonly app: Application;
   readonly maxTicks: number;
 
   private running = true;
@@ -52,8 +50,7 @@ export class Engine {
   private smokeTimer = 0;
   private detachInput: (() => void) | null = null;
 
-  constructor(app: Application, world: World, renderer: Renderer, maxTicks: number) {
-    this.app = app;
+  constructor(world: World, renderer: Renderer, maxTicks: number) {
     this.world = world;
     this.renderer = renderer;
     this.maxTicks = maxTicks;
@@ -86,10 +83,18 @@ export class Engine {
     requestAnimationFrame(frame);
   }
 
+  private readonly teardown: (() => void)[] = [];
+
+  /** Extra cleanup the creator wants run when the battle screen goes away. */
+  onDestroy(run: () => void): void {
+    this.teardown.push(run);
+  }
+
   destroy(): void {
     this.running = false;
     this.detachInput?.();
-    this.app.destroy(true, { children: true });
+    for (const run of this.teardown) run();
+    this.renderer.destroy();
   }
 
   // Fixed 20Hz simulation; the renderer interpolates between steps at display rate.
@@ -406,19 +411,13 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   const mapData = catalog.maps.get(mission?.mapId ?? '');
   if (mapData === undefined) throw new Error(`mission "${missionId}" has no map`);
 
-  const app = new Application();
-  await app.init({
-    background: 0x0d1013,
-    resizeTo: host,
-    antialias: true,
-    preference: 'webgl',
-  });
+  const renderer = new Renderer(host, world, mapData);
+  const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
+  engine.attach(renderer.canvas);
 
-  host.appendChild(app.canvas);
-
-  const renderer = new Renderer(app, world, mapData);
-  const engine = new Engine(app, world, renderer, catalog.rules.simulation.maxBattleTicks);
-  engine.attach(app.canvas);
+  const onResize = (): void => renderer.resize();
+  globalThis.addEventListener('resize', onResize);
+  engine.onDestroy(() => globalThis.removeEventListener('resize', onResize));
 
   if (import.meta.env.DEV) {
     (globalThis as unknown as { __ironline?: unknown }).__ironline = { engine, world, useGame };

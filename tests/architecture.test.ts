@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vitest';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SIM_DIR = join(ROOT, 'src', 'sim');
 
-const FORBIDDEN_LAYERS = ['render', 'ui', 'campaign'];
-const FORBIDDEN_PACKAGES = ['pixi.js', 'react', 'react-dom', 'zustand'];
+const FORBIDDEN_LAYERS = ['render', 'render3d', 'ui', 'campaign'];
+const FORBIDDEN_PACKAGES = ['three', 'react', 'react-dom', 'zustand'];
 
 function collectSources(directory: string): string[] {
   const found: string[] = [];
@@ -36,7 +36,7 @@ describe('/sim boundary', () => {
     expect(simSources.length).toBeGreaterThan(0);
   });
 
-  it.each(simSources)('%s does not import /render, /ui or /campaign', (path) => {
+  it.each(simSources)('%s does not import a rendering, UI or campaign layer', (path) => {
     const specifiers = importSpecifiers(readFileSync(path, 'utf8'));
     for (const specifier of specifiers) {
       for (const layer of FORBIDDEN_LAYERS) {
@@ -83,34 +83,28 @@ describe('lint configuration', () => {
   });
 });
 
-/**
- * `arc()` carries the Canvas rule that it joins the current point to the arc's
- * start. On a Graphics shared by every mech on the field, an arc drawn without
- * first moving onto the circumference trails a line back to whatever was drawn
- * before it — which showed up in play as long stray lines across the map from
- * mechs that were merely running hot.
- */
-describe('arc drawing', () => {
-  const renderSources = collectSources(join(ROOT, 'src', 'render')).filter(
-    (path) => !path.endsWith(`${'draw'}.ts`),
-  );
+describe('/render boundary', () => {
+  // The renderer is a leaf: it reads the simulation and draws it. Letting it
+  // reach into the store or the campaign is how a redraw ends up mutating game
+  // state, which is exactly the class of bug a rotating camera makes hard to see.
+  const renderSources = [
+    ...collectSources(join(ROOT, 'src', 'render')),
+    ...collectSources(join(ROOT, 'src', 'render3d')),
+  ].filter((path) => !path.endsWith('.test.ts'));
 
-  it.each(renderSources)('%s draws arcs through the draw helpers', (path) => {
-    const source = readFileSync(path, 'utf8');
-    const calls = source.match(/\.arc\(/g) ?? [];
-    expect(
-      calls.length,
-      `${path} calls .arc() directly; use strokeArc or fillWedge from render/draw`,
-    ).toBe(0);
+  it('contains source files to check', () => {
+    expect(renderSources.length).toBeGreaterThan(0);
   });
 
-  it('starts a stroked arc on the circumference, not wherever the pen was', () => {
-    const helper = readFileSync(join(ROOT, 'src', 'render', 'draw.ts'), 'utf8');
-    const strokeBody = helper.slice(helper.indexOf('export function strokeArc'));
-    const moveAt = strokeBody.indexOf('.moveTo(');
-    const arcAt = strokeBody.indexOf('.arc(');
-    expect(moveAt).toBeGreaterThan(-1);
-    expect(moveAt).toBeLessThan(arcAt);
-    expect(strokeBody).toContain('Math.cos(from) * radius');
+  it.each(renderSources)('%s does not import /ui or /campaign', (path) => {
+    const specifiers = importSpecifiers(readFileSync(path, 'utf8'));
+    for (const specifier of specifiers) {
+      for (const layer of ['ui', 'campaign']) {
+        expect(
+          new RegExp(`(^|/)${layer}(/|$)`).test(specifier),
+          `${path} imports "${specifier}" from the ${layer} layer`,
+        ).toBe(false);
+      }
+    }
   });
 });

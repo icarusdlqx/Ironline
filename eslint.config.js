@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const SIM_FORBIDDEN_LAYERS = ['render', 'ui', 'campaign'];
+const SIM_FORBIDDEN_LAYERS = ['render', 'render3d', 'ui', 'campaign'];
 
 const simForbiddenPatterns = SIM_FORBIDDEN_LAYERS.flatMap((layer) => [
   `**/${layer}`,
@@ -36,7 +36,7 @@ export default tseslint.config(
               group: simForbiddenPatterns,
               allowTypeImports: false,
               message:
-                '/sim is pure and deterministic: it must never import from /render, /ui or /campaign.',
+                '/sim is pure and deterministic: it must never import from a rendering, UI or campaign layer.',
             },
           ],
         },

@@ -6,6 +6,10 @@ import { useGame } from './store';
 const PICK_RADIUS = 26;
 const PAN_SPEED = 620;
 const ZOOM_STEP = 1.12;
+/** Radians of camera swing per pixel dragged. */
+const ORBIT_PER_PIXEL = 0.006;
+/** Ground metres panned per pixel dragged, per metre of camera distance. */
+const PAN_PER_PIXEL = 0.0022;
 
 function pointerToScreen(canvas: HTMLCanvasElement, event: PointerEvent | WheelEvent): Vec2 {
   const bounds = canvas.getBoundingClientRect();
@@ -13,13 +17,11 @@ function pointerToScreen(canvas: HTMLCanvasElement, event: PointerEvent | WheelE
 }
 
 export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => void {
-  const viewport = (): { width: number; height: number } => ({
-    width: engine.app.screen.width,
-    height: engine.app.screen.height,
-  });
+  const viewport = (): { width: number; height: number } => engine.renderer.viewport;
 
   const held = new Set<string>();
   let panning = false;
+  let orbiting = false;
   let lastPan: Vec2 | null = null;
   /** Where a left-drag started, in world space, while a marquee is open. */
   let marqueeFrom: Vec2 | null = null;
@@ -54,15 +56,24 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     state.setSelection(add ? [...new Set([...state.selection, ...inside])] : inside);
   };
 
+  // Every click has to become a point on the battlefield, whichever way the
+  // camera has been spun. The terrain mesh is offered to the ray first so that
+  // clicking a ridge means the ridge and not the flat ground behind it.
   const toWorld = (event: PointerEvent | WheelEvent): Vec2 =>
-    engine.renderer.camera.screenToWorld(pointerToScreen(canvas, event), viewport());
+    engine.renderer.camera.screenToWorld(
+      pointerToScreen(canvas, event),
+      viewport(),
+      engine.renderer.groundMesh,
+    );
 
   const onPointerDown = (event: PointerEvent): void => {
     canvas.setPointerCapture(event.pointerId);
     const world = toWorld(event);
 
     if (event.button === 1) {
-      panning = true;
+      // Middle drag pans; hold shift to swing the camera round instead.
+      panning = !event.shiftKey;
+      orbiting = event.shiftKey;
       lastPan = pointerToScreen(canvas, event);
       return;
     }
@@ -143,16 +154,30 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
-    if (!panning || lastPan === null) return;
+    if (lastPan === null) return;
     const screen = pointerToScreen(canvas, event);
-    const zoom = engine.renderer.camera.zoom;
-    engine.renderer.camera.panBy((lastPan.x - screen.x) / zoom, (lastPan.y - screen.y) / zoom);
+
+    if (orbiting) {
+      engine.renderer.camera.orbitBy(
+        (screen.x - lastPan.x) * ORBIT_PER_PIXEL,
+        (screen.y - lastPan.y) * ORBIT_PER_PIXEL,
+      );
+      lastPan = screen;
+      return;
+    }
+
+    if (!panning) return;
+    // Pan in the plane the player is looking at, scaled so a drag moves the
+    // ground under the cursor by roughly the distance dragged.
+    const scale = engine.renderer.camera.distance * PAN_PER_PIXEL;
+    engine.renderer.camera.panBy((lastPan.x - screen.x) * scale, (screen.y - lastPan.y) * scale);
     lastPan = screen;
   };
 
   const onPointerUp = (event: PointerEvent): void => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     panning = false;
+    orbiting = false;
     lastPan = null;
 
     const aim = engine.supportAim;
@@ -181,8 +206,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const onWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
-    engine.renderer.camera.zoomAt(factor, pointerToScreen(canvas, event), viewport());
+    engine.renderer.camera.zoomBy(event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
   };
 
   const onContextMenu = (event: MouseEvent): void => event.preventDefault();
@@ -310,8 +334,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     if (held.has('ArrowDown') || held.has('KeyS')) dy += 1;
 
     if (dx !== 0 || dy !== 0) {
-      const speed = (PAN_SPEED * delta) / engine.renderer.camera.zoom;
-      engine.renderer.camera.panBy(dx * speed, dy * speed);
+      const speed = PAN_SPEED * delta * (engine.renderer.camera.distance / 620);
+      // Screen-space directions, so the keys keep meaning the same thing on
+      // screen after the camera has been swung round.
+      engine.renderer.camera.panBy(dx * speed, -dy * speed);
     }
 
     if (cameraRunning) requestAnimationFrame(cameraFrame);
