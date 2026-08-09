@@ -1,10 +1,12 @@
+// Ground tones for Tessell: dry upland grass, exposed shale, deep conifer,
+// cold meltwater. Distinct enough to read at a glance without going lurid.
 export const TERRAIN_COLOURS: Record<string, number> = {
-  open: 0x2f3a2c,
-  rough: 0x46402f,
-  forest: 0x1d3220,
-  water: 0x1b3247,
-  road: 0x4a4438,
-  building: 0x57524b,
+  open: 0x3c4a33,
+  rough: 0x5c5340,
+  forest: 0x1f3a24,
+  water: 0x1d3f5c,
+  road: 0x59513f,
+  building: 0x5f5a53,
   impassable: 0x24262a,
 };
 

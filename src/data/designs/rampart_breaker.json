@@ -3,14 +3,14 @@
   "name": "Rampart RMP-4 'Breaker'",
   "chassisId": "rampart_rmp4",
   "armour": {
-    "head": 20,
-    "centre_torso": 110,
-    "left_torso": 88,
-    "right_torso": 88,
-    "left_arm": 62,
-    "right_arm": 62,
-    "left_leg": 80,
-    "right_leg": 80
+    "head": 26,
+    "centre_torso": 144,
+    "left_torso": 98,
+    "right_torso": 98,
+    "left_arm": 40,
+    "right_arm": 40,
+    "left_leg": 72,
+    "right_leg": 72
   },
   "heatSinkId": "heat_sink",
   "heatSinks": 19,

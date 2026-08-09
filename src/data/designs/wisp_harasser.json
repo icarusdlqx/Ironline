@@ -4,13 +4,13 @@
   "chassisId": "wisp_wsp1",
   "armour": {
     "head": 8,
-    "centre_torso": 29,
-    "left_torso": 21,
-    "right_torso": 21,
-    "left_arm": 16,
-    "right_arm": 16,
-    "left_leg": 19,
-    "right_leg": 19
+    "centre_torso": 26,
+    "left_torso": 19,
+    "right_torso": 19,
+    "left_arm": 11,
+    "right_arm": 11,
+    "left_leg": 27,
+    "right_leg": 27
   },
   "heatSinkId": "heat_sink",
   "heatSinks": 10,

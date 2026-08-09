@@ -3,12 +3,12 @@
   "name": "Warden WRD-5 'Lancer'",
   "chassisId": "warden_wrd5",
   "armour": {
-    "head": 21,
-    "centre_torso": 81,
-    "left_torso": 60,
-    "right_torso": 60,
-    "left_arm": 45,
-    "right_arm": 45,
+    "head": 20,
+    "centre_torso": 82,
+    "left_torso": 63,
+    "right_torso": 63,
+    "left_arm": 42,
+    "right_arm": 42,
     "left_leg": 54,
     "right_leg": 54
   },

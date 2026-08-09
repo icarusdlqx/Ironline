@@ -1,0 +1,12 @@
+{
+  "id": "the_employers",
+  "title": "Who Pays",
+  "order": 2,
+  "summary": "Four powers who cannot afford armies, and can afford contracts.",
+  "body": [
+    "KESTREL COMBINE owns the rolling stock and most of the eastern line. They pay best, they pay in cash, and they deduct for damage to anything they will later have to fix. Take a Kestrel contract and you will be handed a list of structures you are not to shoot.",
+    "HALLORAN FREIGHT runs the western grade on older stock and thinner margins. Cash-poor, salvage-rich: they take the contracts Kestrel will not touch, and they pay you in whatever is left standing on the field.",
+    "THE RIDGEWARD ASSEMBLY is the farm towns along the central climb. They cannot match anyone's rate and they know it. What they offer instead is that they will remember, and on a continent this small that is not nothing.",
+    "SARN METALLURGICAL runs the foundries. Neutral by policy, armed by necessity, selling plate to every side at the same price, and quietly preferring that the fighting continue at roughly its present volume."
+  ]
+}

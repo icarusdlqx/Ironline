@@ -3,14 +3,14 @@
   "name": "Colossus CLS-1 'Hammer'",
   "chassisId": "colossus_cls1",
   "armour": {
-    "head": 35,
-    "centre_torso": 136,
-    "left_torso": 101,
-    "right_torso": 101,
-    "left_arm": 74,
-    "right_arm": 74,
-    "left_leg": 90,
-    "right_leg": 90
+    "head": 29,
+    "centre_torso": 175,
+    "left_torso": 119,
+    "right_torso": 119,
+    "left_arm": 46,
+    "right_arm": 46,
+    "left_leg": 83,
+    "right_leg": 83
   },
   "heatSinkId": "heat_sink",
   "heatSinks": 26,

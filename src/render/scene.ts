@@ -274,6 +274,12 @@ export class Renderer {
       visible,
       view.selection,
       (chassisId) => world.catalog.chassis.get(chassisId)?.silhouette,
+      (weaponId) => {
+        const weapon = world.catalog.weapons.get(weaponId);
+        return weapon === undefined
+          ? undefined
+          : { type: weapon.type, tonnage: weapon.tonnage };
+      },
     );
 
     if (world.vision !== null) {

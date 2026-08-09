@@ -1,4 +1,5 @@
 import type { ZodType } from 'zod';
+import { LoreEntrySchema, type LoreEntry } from './lore';
 import { CampaignSchema, type Campaign } from './campaign';
 import { ChassisSchema, type Chassis } from './chassis';
 import { DesignSchema, type Design } from './design';
@@ -10,6 +11,7 @@ import { PilotSchema, type Pilot } from './pilot';
 import {
   AiRulesSchema,
   BalanceRulesSchema,
+  TraitRulesSchema,
   CombatRulesSchema,
   ConstructionRulesSchema,
   DifficultyRulesSchema,
@@ -54,6 +56,7 @@ export interface Catalog {
   readonly maps: ReadonlyMap<string, TerrainMapData>;
   readonly missions: ReadonlyMap<string, Mission>;
   readonly campaigns: ReadonlyMap<string, Campaign>;
+  readonly lore: ReadonlyMap<string, LoreEntry>;
 }
 
 type RawFiles = Record<string, unknown>;
@@ -87,6 +90,10 @@ const missionFiles = import.meta.glob('../data/missions/*.json', {
   import: 'default',
 }) as RawFiles;
 const campaignFiles = import.meta.glob('../data/campaigns/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+const loreFiles = import.meta.glob('../data/lore/*.json', {
   eager: true,
   import: 'default',
 }) as RawFiles;
@@ -203,6 +210,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const support = parseRule('support', SupportRulesSchema, byStem, issues);
   const ai = parseRule('ai', AiRulesSchema, byStem, issues);
   const balance = parseRule('balance', BalanceRulesSchema, byStem, issues);
+  const traits = parseRule('traits', TraitRulesSchema, byStem, issues);
   const difficulty = parseRule('difficulty', DifficultyRulesSchema, byStem, issues);
 
   if (
@@ -219,6 +227,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     support === null ||
     ai === null ||
     balance === null ||
+    traits === null ||
     difficulty === null
   ) {
     return null;
@@ -238,6 +247,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     support,
     ai,
     balance,
+    traits,
     difficulty,
   };
 }
@@ -255,6 +265,7 @@ export function loadCatalog(): Catalog {
     maps: parseCollection('map', mapFiles, TerrainMapSchema, issues),
     missions: parseCollection('mission', missionFiles, MissionSchema, issues),
     campaigns: parseCollection('campaign', campaignFiles, CampaignSchema, issues),
+    lore: parseCollection('lore', loreFiles, LoreEntrySchema, issues),
   };
 
   if (rules === null || issues.length > 0) throw new ContentValidationError(issues);

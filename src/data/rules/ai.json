@@ -27,7 +27,8 @@
     "commitSeconds": 2.5,
     "approachArcDegrees": 75,
     "approachProgressWeight": 0.02,
-    "approachExposureWeight": 1.1
+    "approachExposureWeight": 1.1,
+    "stationWeight": 0.012
   },
   "heat": {
     "holdFireFraction": 0.78,

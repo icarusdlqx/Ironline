@@ -26,11 +26,22 @@ import { LocationCard, type DropPayload } from './LocationCard';
 
 const catalog = getCatalog();
 
-function Draggable({ payload, label, detail }: { payload: DropPayload; label: string; detail: string }) {
+function Draggable({
+  payload,
+  label,
+  detail,
+  note,
+}: {
+  payload: DropPayload;
+  label: string;
+  detail: string;
+  note?: string;
+}) {
   return (
     <li
       draggable
       className="bay-stock"
+      title={note}
       data-testid={`stock-${payload.kind}-${payload.id}`}
       onDragStart={(event) => {
         event.dataTransfer.setData('application/ironline', JSON.stringify(payload));
@@ -39,6 +50,7 @@ function Draggable({ payload, label, detail }: { payload: DropPayload; label: st
     >
       <span className="stock-name">{label}</span>
       <span className="stock-detail">{detail}</span>
+      {note === undefined ? null : <span className="stock-note">{note}</span>}
     </li>
   );
 }
@@ -213,6 +225,34 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
         </ul>
       </section>
 
+      <section className="bay-dossier" data-testid="bay-dossier">
+        <h4>
+          {chassis.name}
+          <span className="dossier-class">
+            {chassis.class} · {chassis.tonnage}t · {(
+              (chassis.engineRating / chassis.tonnage) *
+              catalog.rules.movement.walkSpeedFactor
+            ).toFixed(0)}
+            m/s
+          </span>
+        </h4>
+        <p className="dossier-summary">{chassis.summary}</p>
+        <p className="dossier-lore">{chassis.lore}</p>
+        {chassis.traits.length === 0 ? null : (
+          <ul className="dossier-traits">
+            {chassis.traits.map((traitId) => {
+              const trait = catalog.rules.traits.entries[traitId];
+              if (trait === undefined) return null;
+              return (
+                <li key={traitId} title={trait.note}>
+                  {trait.label}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <section className="bay-grid" data-testid="bay-grid">
         {LOCATIONS.map((location) => (
           <LocationCard
@@ -263,7 +303,8 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
               key={weapon.id}
               payload={{ kind: 'weapon', id: weapon.id }}
               label={weapon.name}
-              detail={`${weapon.tonnage}t · ${weapon.slots} slots · ${weapon.heat} heat`}
+              detail={`${weapon.tonnage}t · ${weapon.slots} slots · ${weapon.heat} heat · ${weapon.range.long}m`}
+              note={weapon.summary}
             />
           ))}
         </ul>

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { IdSchema, MechLocationSchema, perLocation } from './common';
 
 const Factor = z.number().positive().max(4);
+const NameLike = z.string().min(1).max(60);
 const Probability = z.number().min(0).max(1);
 
 const MotionFactorsSchema = z.strictObject({
@@ -160,6 +161,7 @@ export const AiRulesSchema = z.strictObject({
     approachArcDegrees: z.number().positive().max(180),
     approachProgressWeight: z.number().nonnegative(),
     approachExposureWeight: z.number().nonnegative(),
+    stationWeight: z.number().nonnegative(),
   }),
   heat: z.strictObject({
     holdFireFraction: Probability,
@@ -180,6 +182,24 @@ export const AiRulesSchema = z.strictObject({
     targetStructureFraction: Probability,
     chance: Probability,
   }),
+});
+
+export const TraitSchema = z.strictObject({
+  label: NameLike,
+  note: z.string().min(1).max(240),
+  speedFactor: z.number().positive().max(2).default(1),
+  incomingAccuracyFactor: z.number().positive().max(2).default(1),
+  movingAccuracyFactor: z.number().positive().max(2).default(1),
+  dissipationFactor: z.number().positive().max(2).default(1),
+  sensorRangeFactor: z.number().positive().max(2).default(1),
+  damageTakenFactor: z.number().positive().max(2).default(1),
+  legLossFactor: z.number().positive().max(2).default(1),
+  lanceAccuracyFactor: z.number().positive().max(2).default(1),
+});
+
+export const TraitRulesSchema = z.strictObject({
+  id: z.literal('traits'),
+  entries: z.record(IdSchema, TraitSchema),
 });
 
 export const BalanceRulesSchema = z.strictObject({
@@ -329,6 +349,8 @@ export type EconomyRules = z.infer<typeof EconomyRulesSchema>;
 export type SupportRules = z.infer<typeof SupportRulesSchema>;
 export type AiRules = z.infer<typeof AiRulesSchema>;
 export type BalanceRules = z.infer<typeof BalanceRulesSchema>;
+export type Trait = z.infer<typeof TraitSchema>;
+export type TraitRules = z.infer<typeof TraitRulesSchema>;
 export type DifficultyRules = z.infer<typeof DifficultyRulesSchema>;
 export type DifficultyTier = z.infer<typeof DifficultyTierSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
@@ -347,6 +369,7 @@ export interface Rules {
   readonly support: SupportRules;
   readonly ai: AiRules;
   readonly balance: BalanceRules;
+  readonly traits: TraitRules;
   readonly difficulty: DifficultyRules;
 }
 
@@ -364,6 +387,7 @@ export const RULE_SCHEMAS = {
   support: SupportRulesSchema,
   ai: AiRulesSchema,
   balance: BalanceRulesSchema,
+  traits: TraitRulesSchema,
   difficulty: DifficultyRulesSchema,
 } as const;
 

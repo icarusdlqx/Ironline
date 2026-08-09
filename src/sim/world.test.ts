@@ -61,9 +61,16 @@ describe('createMech', () => {
     });
 
     const chassis = catalog.chassis.get('wisp_wsp1');
+    // Traits are part of the hull, so a long-strided frame walks faster than the
+    // bare engine formula says it should.
+    const traitFactor = (chassis?.traits ?? []).reduce(
+      (total, id) => total * (catalog.rules.traits.entries[id]?.speedFactor ?? 1),
+      1,
+    );
     const expected =
       ((chassis?.engineRating ?? 0) / (chassis?.tonnage ?? 1)) *
-      catalog.rules.movement.walkSpeedFactor;
+      catalog.rules.movement.walkSpeedFactor *
+      traitFactor;
 
     expect(mech.walkSpeed).toBeCloseTo(expected, 6);
     expect(mech.runSpeed).toBeCloseTo(expected * catalog.rules.movement.runMultiplier, 6);

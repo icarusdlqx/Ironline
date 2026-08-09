@@ -114,8 +114,29 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     };
   });
 
+  // Chassis traits are the hull's own character, applied before anything bolted on.
   let incomingAccuracyFactor = 1;
   let outgoingAccuracyFactor = 1;
+  let movingAccuracyFactor = 1;
+  let speedFactor = 1;
+  let dissipationFactor = 1;
+  let damageTakenFactor = 1;
+  let legLossFactor = 1;
+  let lanceAccuracyFactor = 1;
+  let traitSensorFactor = 1;
+
+  for (const traitId of chassis.traits) {
+    const trait = rules.traits.entries[traitId];
+    if (trait === undefined) continue;
+    incomingAccuracyFactor *= trait.incomingAccuracyFactor;
+    movingAccuracyFactor *= trait.movingAccuracyFactor;
+    speedFactor *= trait.speedFactor;
+    dissipationFactor *= trait.dissipationFactor;
+    damageTakenFactor *= trait.damageTakenFactor;
+    legLossFactor *= trait.legLossFactor;
+    traitSensorFactor *= trait.sensorRangeFactor;
+    lanceAccuracyFactor *= trait.lanceAccuracyFactor;
+  }
   let amsMissileFactor = 1;
   let sensorRangeFactor = 1;
   let designatorRange = 0;
@@ -136,7 +157,8 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
   const sinkStats = catalog.equipment.get(design.heatSinkId)?.stats ?? {};
   const dissipationPerSink = sinkStats.dissipation ?? 1;
 
-  const walkSpeed = (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor;
+  const walkSpeed =
+    (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor * speedFactor;
 
   const locations = buildLocations(design.armour, chassis.internals);
   if (params.damage !== undefined) applyStartingDamage(locations, params.damage);
@@ -188,7 +210,10 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     heatCapacity: rules.heat.capacityBase + rules.heat.capacityPerSink * design.heatSinks,
     heatSinks: design.heatSinks,
     dissipationPerSecond:
-      design.heatSinks * dissipationPerSink * rules.heat.dissipationPerSinkPerSecond,
+      design.heatSinks *
+      dissipationPerSink *
+      rules.heat.dissipationPerSinkPerSecond *
+      dissipationFactor,
     shutdownRemaining: 0,
 
     incomingAccuracyFactor,
@@ -211,8 +236,13 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     groupEnabled: Array.from({ length: WEAPON_GROUPS }, () => true),
     groupIntent: Array.from({ length: WEAPON_GROUPS }, () => true),
     heatSafety: true,
-    sensorRange: sensorRangeFor(rules.sensors, pilot.sensors) * sensorRangeFactor,
+    sensorRange: sensorRangeFor(rules.sensors, pilot.sensors) * sensorRangeFactor * traitSensorFactor,
     amsMissileFactor,
+    movingAccuracyFactor,
+    damageTakenFactor,
+    legLossFactor,
+    lanceAccuracyFactor,
+    traits: [...chassis.traits],
     designatorRange,
     designatorSeconds,
     designatedUntilTick: -1,

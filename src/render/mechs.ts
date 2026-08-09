@@ -1,13 +1,15 @@
 import { Container, Graphics } from 'pixi.js';
 import type { MechLocation } from '../schema/common';
 import { isImmobile, isOperational, type EntityId, type MechEntity } from '../sim/types';
-import { shade, teamColour, UI } from './palette';
+import { teamColour, UI } from './palette';
 import {
   DEFAULT_SILHOUETTE,
   drawLegs,
   drawTorso,
   radiusFor,
+  type MountArt,
   type Silhouette,
+  type WeaponArtLookup,
 } from './silhouettes';
 
 /** Resolves a chassis id to the outline that chassis is drawn with. */
@@ -36,15 +38,25 @@ function damageSignature(entity: MechEntity): string {
     .filter(([, state]) => state.destroyed)
     .map(([location]) => location)
     .join(',');
-  return `${lost}|${Math.round(healthFraction(entity) * 20)}|${entity.destroyed ? 'x' : 'o'}`;
+  const guns = entity.weapons.map((mount) => (mount.destroyed ? '0' : '1')).join('');
+  return `${lost}|${guns}|${Math.round(healthFraction(entity) * 20)}|${entity.destroyed ? 'x' : 'o'}`;
 }
 
-function tintOf(entity: MechEntity, colour: number, alpha: number): { color: number; alpha: number } {
-  const health = healthFraction(entity);
-  return {
-    color: entity.destroyed ? 0x3a3a3a : shade(colour, 0.45 + 0.55 * health),
-    alpha,
-  };
+/** The hardware bolted to this hull, in the order it should be drawn. */
+function mountsOf(entity: MechEntity, weaponArt: WeaponArtLookup): MountArt[] {
+  const art: MountArt[] = [];
+  for (const mount of entity.weapons) {
+    const weapon = weaponArt(mount.weaponId);
+    if (weapon === undefined) continue;
+    art.push({
+      location: mount.location,
+      type: weapon.type,
+      tonnage: weapon.tonnage,
+      destroyed: mount.destroyed,
+    });
+  }
+  // Heaviest last so the big hardware sits on top of the small.
+  return art.sort((a, b) => a.tonnage - b.tonnage);
 }
 
 /** The legs and hips, which face wherever the mech is walking. */
@@ -56,15 +68,7 @@ export function drawHull(
   alpha: number,
 ): void {
   hull.clear();
-  const radius = radiusFor(entity.tonnage);
-  drawLegs(hull, entity, shape, radius, tintOf(entity, colour, alpha));
-
-  // Hull centreline: with the torso twisted away, this is the only thing that
-  // says which way the mech will actually walk.
-  hull
-    .moveTo(0, 0)
-    .lineTo(1.3 * radius, 0)
-    .stroke({ width: 1, color: shade(colour, 1.5), alpha: alpha * 0.4 });
+  drawLegs(hull, entity, shape, radiusFor(entity.tonnage), colour, alpha);
 }
 
 /** Everything above the waist, which turns with the guns. */
@@ -74,10 +78,11 @@ export function drawSilhouette(
   shape: Silhouette,
   colour: number,
   alpha: number,
+  mounts: readonly MountArt[],
 ): void {
   body.clear();
   const radius = radiusFor(entity.tonnage);
-  drawTorso(body, entity, shape, radius, tintOf(entity, colour, alpha), colour, alpha);
+  drawTorso(body, entity, shape, radius, colour, alpha, mounts);
 
   if (isImmobile(entity) && !entity.destroyed) {
     body.circle(0, 0, radius * 1.1).stroke({ width: 2, color: 0xff6b6b, alpha: 0.8 });
@@ -102,6 +107,7 @@ export class MechLayer {
     visible: (entity: MechEntity) => boolean,
     selection: ReadonlySet<EntityId>,
     silhouetteOf: SilhouetteLookup,
+    weaponArt: WeaponArtLookup,
   ): void {
     this.overlay.clear();
 
@@ -128,7 +134,14 @@ export class MechLayer {
       if (signature !== view.signature) {
         const shape = silhouetteOf(entity.chassisId) ?? DEFAULT_SILHOUETTE;
         drawHull(view.hull, entity, shape, teamColour(entity.team), 1);
-        drawSilhouette(view.body, entity, shape, teamColour(entity.team), 1);
+        drawSilhouette(
+          view.body,
+          entity,
+          shape,
+          teamColour(entity.team),
+          1,
+          mountsOf(entity, weaponArt),
+        );
         view.signature = signature;
       }
 

@@ -25,5 +25,6 @@
     "colour": "#ff7be0",
     "width": 4.2,
     "arc": 0
-  }
+  },
+  "summary": "Throws a bolt of confined plasma. Does real damage and floods the target's heat sinks doing it."
 }

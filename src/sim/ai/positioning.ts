@@ -3,6 +3,7 @@ import { coverFactorAt, lineOfSight } from '../los';
 import { angleDifference, bearing, distance } from '../math';
 import { nearestPassable } from '../pathfind';
 import { isOperational, type MechEntity, type Stance, type Vec2, type World } from '../types';
+import { lanceFrontage, roleOf } from './roles';
 import { exchangeRatio, expectedDps, healthFraction, preferredRange } from './utility';
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
@@ -59,6 +60,8 @@ function scorePoint(
   preferred: number,
   /** Multiplies the gunnery term: standing still is worth real accuracy. */
   gunneryFactor: number,
+  /** Where this mech wants to sit relative to the rest of the lance. */
+  station: { standoff: number; frontage: number } | null,
 ): number {
   const rules = world.rules.ai.positioning;
   const range = distance(point, target.pos);
@@ -86,6 +89,14 @@ function scorePoint(
   }
 
   if (!lineOfSight(world.terrain, point, target.pos).clear) score -= rules.losPenalty;
+
+  // A missile carrier belongs behind the hull that can take the return fire, and
+  // a brawler belongs in front of it. Distance from the lance's leading edge is
+  // what actually expresses that.
+  if (station !== null) {
+    const wanted = station.frontage + station.standoff;
+    score -= Math.abs(range - wanted) * rules.stationWeight;
+  }
 
   if (tier.flanking && targetIsEngagedElsewhere(mech, target)) {
     const fromTarget = bearing(target.pos, point);
@@ -126,6 +137,11 @@ export function choosePosition(
   const preferred = preferredRange(world, mech, target);
   const step = rules.repositionStep;
   const motion = world.rules.combat.shooterMotion;
+  const profile = roleOf(world, mech);
+  const station =
+    stance === 'withdraw'
+      ? null
+      : { standoff: profile.standoff, frontage: lanceFrontage(world, mech, target) };
 
   const candidates: Candidate[] = [];
 
@@ -146,7 +162,7 @@ export function choosePosition(
 
     candidates.push({
       point,
-      score: scorePoint(world, mech, target, point, stance, tier, preferred, motion.walk),
+      score: scorePoint(world, mech, target, point, stance, tier, preferred, motion.walk, station),
     });
   }
 
@@ -159,6 +175,7 @@ export function choosePosition(
     tier,
     preferred,
     motion.stationary,
+    station,
   );
 
   if (candidates.length === 0) return null;

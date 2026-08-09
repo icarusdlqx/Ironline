@@ -25,6 +25,7 @@
     "width": 1.6,
     "arc": 0
   },
+  "summary": "Cluster autocannon. Spreads a shell across the target instead of concentrating it \u2014 strips armour, rarely kills.",
   "tags": [
     "spread"
   ]

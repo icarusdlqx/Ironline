@@ -1,0 +1,12 @@
+{
+  "id": "the_line",
+  "title": "The Ironline",
+  "order": 0,
+  "summary": "Four thousand kilometres of rail, relay and buried conduit that nobody built and nobody can switch off.",
+  "body": [
+    "The Aurelian Compact came to Tessell to strip it, and in ninety years of stripping they built exactly one thing worth keeping. The Ironline runs four thousand kilometres from the interior smelters down to the deepwater cranes at Barrow Reach: maglev freight rail, fusion relay masts every eleven kilometres, and a buried conduit carrying power the other way. It was built to run without people, because the Compact did not intend to leave any.",
+    "When the charter lapsed they were gone inside a year. The Ironline kept running. It still does — automated, self-diagnosing, drawing on sealed reactors that nobody now living knows how to open, and repairing its own track with machines that surface at night and go back under before dawn.",
+    "Everything left on Tessell hangs off it. The pumps that keep the Ridgeward farms watered. The furnaces at Sarn. Every tonne of ore and every crate of anything that moves further than a cart can haul it. Two million people, and one piece of infrastructure none of them can build, mend or replace.",
+    "It is four thousand kilometres long. Nobody can hold all of it. So it is held in sections — and sections change hands."
+  ]
+}

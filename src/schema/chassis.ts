@@ -47,6 +47,9 @@ export const ChassisSchema = z
         legLength: 1,
         stance: 1,
       }),
+    /** One line for the bay list; the paragraph for the detail panel. */
+    summary: z.string().min(1).max(160).default(''),
+    lore: z.string().min(1).max(900).default(''),
     traits: z.array(IdSchema).default([]),
   })
   .superRefine((chassis, ctx) => {

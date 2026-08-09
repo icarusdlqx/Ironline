@@ -3,6 +3,7 @@ import { emit } from '../events';
 import type { ZoneState } from '../zones';
 import { applyHeatGovernor } from '../governor';
 import { assignZones } from './mission';
+import { roleOf } from './roles';
 import { distance } from '../math';
 import { findPath } from '../pathfind';
 import { isVisibleTo } from '../sensors';
@@ -18,6 +19,7 @@ import {
   canStillFight,
   coreFraction,
   healthFraction,
+  preferredRange,
   scoreTargets,
   structureFraction,
 } from './utility';
@@ -210,7 +212,13 @@ export function decideTactical(
     return;
   }
 
-  if (stance === 'close' && chosen.range > approachThreshold && zone === null) {
+  // A long-range machine has no business marching into the teeth of a lance, but
+  // it does have to close when the target is genuinely out of its reach.
+  const marchesIn =
+    roleOf(world, mech).aggression >= 1 ||
+    chosen.range > preferredRange(world, mech, chosen.target) * 1.3;
+
+  if (stance === 'close' && chosen.range > approachThreshold && zone === null && marchesIn) {
     if (stanceChanged || !holdingCommitment(world, mech)) {
       commitTo(world, mech, approachPoint(world, mech, chosen.target, tier), true);
     }
@@ -229,7 +237,8 @@ export function decideTactical(
 
   // Backing off only reaches the range you want if you outpace the thing chasing
   // you — and stanceFor has already established that you do.
-  const run = stance === 'back_off' || (stance === 'close' && tier.aggression >= 1);
+  const drive = tier.aggression * roleOf(world, mech).aggression;
+  const run = stance === 'back_off' || (stance === 'close' && drive >= 1);
   commitTo(world, mech, destination, run);
 }
 

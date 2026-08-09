@@ -38,11 +38,15 @@ export function hitChance(
   let chance = gunnery;
   chance *= rangeFactor(rules, weapon, range);
   if (range < weapon.range.min) chance *= rules.minimumRangeFactor;
-  chance *= rules.shooterMotion[shooter.motion];
+  const motionPenalty = rules.shooterMotion[shooter.motion];
+  chance *= shooter.motion === 'stationary'
+    ? motionPenalty
+    : Math.min(1, motionPenalty * shooter.movingAccuracyFactor);
   chance *= rules.targetMotion[target.motion];
   chance *= coverFactorAt(world.terrain, target.pos);
   chance *= target.incomingAccuracyFactor;
   chance *= shooter.outgoingAccuracyFactor;
+  chance *= lanceGunnery(world, shooter);
   if (weapon.type === 'missile') chance *= target.amsMissileFactor;
   if (world.tick <= target.designatedUntilTick) chance *= rules.tagFactor;
   chance *= weapon.accuracy;
@@ -50,6 +54,16 @@ export function hitChance(
   if (shooter.calledShot !== null) chance *= rules.calledShot.accuracyFactor;
 
   return clamp(chance, rules.hitChanceFloor, rules.hitChanceCeiling);
+}
+
+/** A command console on the field lifts everyone on that side, not just its own guns. */
+function lanceGunnery(world: World, shooter: MechEntity): number {
+  let factor = 1;
+  for (const mate of world.entities) {
+    if (mate.team !== shooter.team || !isOperational(mate)) continue;
+    if (mate.lanceAccuracyFactor !== 1) factor *= mate.lanceAccuracyFactor;
+  }
+  return factor;
 }
 
 function rollHitLocation(world: World, shooter: MechEntity): MechLocation {

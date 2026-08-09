@@ -119,7 +119,7 @@ export function applyDamage(
   location: MechLocation,
   amount: number,
 ): number {
-  let remaining = amount;
+  let remaining = amount * target.damageTakenFactor;
   let absorbed = 0;
   let current: MechLocation | null = location;
   const visited = new Set<MechLocation>();

@@ -3,12 +3,12 @@
   "name": "Bulwark BWK-3 'Burner'",
   "chassisId": "bulwark_bwk3",
   "armour": {
-    "head": 18,
-    "centre_torso": 96,
-    "left_torso": 76,
-    "right_torso": 76,
-    "left_arm": 54,
-    "right_arm": 54,
+    "head": 23,
+    "centre_torso": 118,
+    "left_torso": 81,
+    "right_torso": 81,
+    "left_arm": 36,
+    "right_arm": 36,
     "left_leg": 68,
     "right_leg": 68
   },

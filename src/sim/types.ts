@@ -117,6 +117,12 @@ export interface MechEntity {
   outgoingAccuracyFactor: number;
   /** Anti-missile fire thinning an incoming volley. 1 means no AMS aboard. */
   amsMissileFactor: number;
+  /** Trait-derived: steadier on the move, tougher, better legs, lance-wide gunnery. */
+  movingAccuracyFactor: number;
+  damageTakenFactor: number;
+  legLossFactor: number;
+  lanceAccuracyFactor: number;
+  traits: string[];
   /** How far a TAG or NARC carrier can paint a target, and for how long. */
   designatorRange: number;
   designatorSeconds: number;
@@ -207,7 +213,9 @@ export function isImmobile(entity: MechEntity): boolean {
 export function legPenaltyFactor(entity: MechEntity, singleLegFactor: number): number {
   if (isImmobile(entity)) return 0;
   const lost = entity.locations.left_leg.destroyed || entity.locations.right_leg.destroyed;
-  return lost ? singleLegFactor : 1;
+  if (!lost) return 1;
+  // Reinforced actuators claw back part of the loss, never more than all of it.
+  return Math.min(1, singleLegFactor * entity.legLossFactor);
 }
 
 export function findEntity(world: World, id: EntityId | null): MechEntity | null {

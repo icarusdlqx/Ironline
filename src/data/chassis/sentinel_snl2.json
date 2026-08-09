@@ -85,5 +85,7 @@
     "legLength": 1.0,
     "stance": 1.0
   },
+  "summary": "The line's workhorse medium. Balanced, unremarkable, and everywhere.",
+  "lore": "The SNL frame was Compact garrison equipment, built in numbers that mean there is still a Sentinel in every bay on the continent. Nothing about it is exceptional, which is precisely the appeal: parts are cheap, the hardpoints take almost anything, and a lance commander who loses one can usually replace it inside a month. Two Sentinels of the same mark can be completely different machines, and usually are.",
   "traits": []
 }

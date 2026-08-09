@@ -24,5 +24,6 @@
     "colour": "#ffcf6b",
     "width": 2.4,
     "arc": 8
-  }
+  },
+  "summary": "Locking short-range pair. Will not launch until it has a solution, and then does not miss."
 }

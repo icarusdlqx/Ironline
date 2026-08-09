@@ -58,14 +58,14 @@
     }
   },
   "armourMax": {
-    "head": 9,
-    "centre_torso": 34,
-    "left_torso": 25,
-    "right_torso": 25,
-    "left_arm": 19,
-    "right_arm": 19,
-    "left_leg": 22,
-    "right_leg": 22
+    "head": 10,
+    "centre_torso": 31,
+    "left_torso": 23,
+    "right_torso": 23,
+    "left_arm": 13,
+    "right_arm": 13,
+    "left_leg": 32,
+    "right_leg": 32
   },
   "internals": {
     "head": 4,
@@ -85,5 +85,11 @@
     "legLength": 1.25,
     "stance": 0.7
   },
-  "traits": []
+  "summary": "Depot-recovered scout frame. Fast, blind-spot small, and made of promises.",
+  "lore": "The WSP hulls came out of the Kell Reach depot stacked four deep, which is how everyone knows the Compact considered them expendable. Sarn rebuilds them on a stretched leg assembly that trades every gram of plate for stride length. A Wisp does not fight; it finds, it counts, and it is somewhere else before the counting is noticed. Pilots who treat it as a light brawler are a recognised category in the Barrow Reach mortality tables.",
+  "traits": [
+    "long_stride",
+    "sensor_mast",
+    "narrow_profile"
+  ]
 }

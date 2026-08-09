@@ -52,7 +52,8 @@ export function LocationCard({
     (type) => usage.hardpointsUsed[type] > usage.hardpointsAvailable[type],
   );
 
-  const classes = ['bay-location'];
+  // The location's place on the body plan, so the bay reads as a mech.
+  const classes = ['bay-location', `loc-${location}`];
   if (slotsOver || hardpointOver) classes.push('invalid');
 
   return (

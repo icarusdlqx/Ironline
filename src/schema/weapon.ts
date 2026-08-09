@@ -49,6 +49,8 @@ export const WeaponSchema = z
         arc: z.number().nonnegative().max(120).default(0),
       })
       .default({ style: 'tracer', colour: '#ffd489', width: 2, arc: 0 }),
+    /** What it is for, in the words a quartermaster would use. */
+    summary: z.string().min(1).max(200).default(''),
     tags: z.array(IdSchema).default([]),
   })
   .superRefine((weapon, ctx) => {

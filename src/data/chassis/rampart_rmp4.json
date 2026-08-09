@@ -58,14 +58,14 @@
     }
   },
   "armourMax": {
-    "head": 20,
-    "centre_torso": 110,
-    "left_torso": 88,
-    "right_torso": 88,
-    "left_arm": 62,
-    "right_arm": 62,
-    "left_leg": 80,
-    "right_leg": 80
+    "head": 26,
+    "centre_torso": 144,
+    "left_torso": 98,
+    "right_torso": 98,
+    "left_arm": 40,
+    "right_arm": 40,
+    "left_leg": 72,
+    "right_leg": 72
   },
   "internals": {
     "head": 6,
@@ -85,5 +85,10 @@
     "legLength": 0.78,
     "stance": 1.35
   },
-  "traits": []
+  "summary": "Assault-weight breaching hull. Slow, ugly, and the argument that ends arguments.",
+  "lore": "Nothing about the RMP-4 is subtle: an eighty-five tonne frame with the shoulders built out into weapon blocks and a mantlet slab bolted across the front, because the original Compact cockpit glazing turned out to be the first thing anybody shot at. Halloran keeps two and rents them out by the day at rates that assume you will bring them back damaged.",
+  "traits": [
+    "hardened_mantlet",
+    "wide_stance"
+  ]
 }

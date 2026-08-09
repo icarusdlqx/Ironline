@@ -1,0 +1,52 @@
+{
+  "id": "traits",
+  "entries": {
+    "long_stride": {
+      "label": "Long Stride",
+      "note": "Stretched leg assembly. Faster than the tonnage suggests, and lightly built for it.",
+      "speedFactor": 1.12,
+      "damageTakenFactor": 1.06
+    },
+    "narrow_profile": {
+      "label": "Narrow Profile",
+      "note": "Slab-sided hull presents very little to shoot at from the front.",
+      "incomingAccuracyFactor": 0.9
+    },
+    "wide_stance": {
+      "label": "Wide Stance",
+      "note": "Widened hips. Steadier gun platform on the move, and hard to knock over.",
+      "movingAccuracyFactor": 1.14
+    },
+    "reinforced_legs": {
+      "label": "Reinforced Legs",
+      "note": "Overbuilt actuators. Losing one hurts far less than it should.",
+      "legLossFactor": 1.4
+    },
+    "oversized_sinks": {
+      "label": "Oversized Sinks",
+      "note": "Compact-pattern heat exchangers the foundry never worked out how to shrink.",
+      "dissipationFactor": 1.18
+    },
+    "sensor_mast": {
+      "label": "Sensor Mast",
+      "note": "Dedicated mast above the cockpit line. Sees a long way before it is seen.",
+      "sensorRangeFactor": 1.3
+    },
+    "hardened_mantlet": {
+      "label": "Hardened Mantlet",
+      "note": "Slab of Sarn plate bolted across the front. Shrugs off what lesser hulls absorb.",
+      "damageTakenFactor": 0.92
+    },
+    "command_console": {
+      "label": "Command Console",
+      "note": "Second seat running the lance net. Everyone shoots a little better with it on the field.",
+      "lanceAccuracyFactor": 1.06
+    },
+    "unstable_capacitors": {
+      "label": "Unstable Capacitors",
+      "note": "Foundry-built power train that has never once passed inspection first time.",
+      "dissipationFactor": 0.94,
+      "damageTakenFactor": 0.96
+    }
+  }
+}

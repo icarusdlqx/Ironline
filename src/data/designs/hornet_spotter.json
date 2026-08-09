@@ -3,14 +3,14 @@
   "name": "Hornet HNT-2 'Spotter'",
   "chassisId": "hornet_hnt2",
   "armour": {
-    "head": 11,
-    "centre_torso": 43,
+    "head": 12,
+    "centre_torso": 44,
     "left_torso": 32,
     "right_torso": 32,
-    "left_arm": 23,
-    "right_arm": 23,
-    "left_leg": 28,
-    "right_leg": 28
+    "left_arm": 20,
+    "right_arm": 20,
+    "left_leg": 30,
+    "right_leg": 30
   },
   "heatSinkId": "heat_sink",
   "heatSinks": 11,

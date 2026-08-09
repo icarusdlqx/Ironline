@@ -3,14 +3,14 @@
   "name": "Hornet HNT-2 'Striker'",
   "chassisId": "hornet_hnt2",
   "armour": {
-    "head": 12,
-    "centre_torso": 48,
-    "left_torso": 35,
-    "right_torso": 35,
-    "left_arm": 26,
-    "right_arm": 26,
-    "left_leg": 31,
-    "right_leg": 31
+    "head": 13,
+    "centre_torso": 49,
+    "left_torso": 36,
+    "right_torso": 36,
+    "left_arm": 22,
+    "right_arm": 22,
+    "left_leg": 33,
+    "right_leg": 33
   },
   "heatSinkId": "heat_sink",
   "heatSinks": 11,

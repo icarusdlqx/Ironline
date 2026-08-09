@@ -85,7 +85,12 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   hull. Content pass to twenty-eight weapons, ten equipment items and eight
   chassis spanning 25 to 100 tons. `npm run sim` reports damage-per-ton-per-heat
   against each class median.
-- Phase 7 — Polish: next.
+- **Setting.** IRONLINE is set on Tessell, where a departed colonial Compact left
+  behind four thousand kilometres of self-repairing freight rail that everything
+  else on the planet now depends on. Nobody can build a mech; every machine is a
+  depot hull cut apart and rebuilt. The world, its four employers and the informal
+  code of the line are in `src/data/lore`, readable in-game under Field Manual.
+- Phase 7 — Polish: in progress.
 
 ### Phase 6 acceptance
 

@@ -458,11 +458,12 @@ button {
 .bay {
   display: grid;
   grid-template-columns: 240px 1fr 280px;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   grid-template-areas:
-    'top    top   top'
-    'budget grid  side'
-    'act    act   act';
+    'top    top      top'
+    'budget dossier  side'
+    'budget grid     side'
+    'act    act      act';
   gap: 12px;
   height: 100%;
   padding: 12px;
@@ -605,10 +606,39 @@ button {
 .bay-grid {
   grid-area: grid;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   overflow-y: auto;
   align-content: start;
+  /* Laid out as the machine itself: head over torso, arms outboard, legs under. */
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-areas:
+    '.  .  head .  .'
+    'la lt ct   rt ra'
+    '.  ll .    rl .';
+}
+
+.loc-head { grid-area: head; }
+.loc-left_arm { grid-area: la; }
+.loc-left_torso { grid-area: lt; }
+.loc-centre_torso { grid-area: ct; }
+.loc-right_torso { grid-area: rt; }
+.loc-right_arm { grid-area: ra; }
+.loc-left_leg { grid-area: ll; }
+.loc-right_leg { grid-area: rl; }
+
+.loc-centre_torso {
+  border-color: rgba(140, 224, 255, 0.36);
+}
+
+@media (max-width: 1100px) {
+  .bay-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-areas: none;
+  }
+
+  .bay-grid > * {
+    grid-area: auto;
+  }
 }
 
 .bay-location {
@@ -1357,4 +1387,132 @@ button {
   color: var(--accent);
   padding: 8px 22px;
   font-size: 13px;
+}
+
+.bay-dossier {
+  grid-area: dossier;
+  padding: 10px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.bay-dossier h4 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 6px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.dossier-class {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.dossier-summary {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dossier-lore {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.dossier-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dossier-traits li {
+  padding: 2px 7px;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  cursor: help;
+}
+
+.stock-note {
+  display: none;
+}
+
+.camp-manual {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 7, 10, 0.78);
+}
+
+.manual-sheet {
+  width: min(760px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.manual-sheet > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.manual-sheet h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.manual-sheet article {
+  padding: 14px 0;
+  border-top: 1px solid var(--edge);
+}
+
+.manual-sheet h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.manual-summary {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--accent);
+}
+
+.manual-sheet p {
+  margin: 0 0 9px;
+  max-width: 72ch;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--muted);
 }
