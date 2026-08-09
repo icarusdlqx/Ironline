@@ -3,7 +3,8 @@ import { isOperational } from '../sim/types';
 import type { Engine } from './engine';
 import { useGame } from './store';
 
-const PICK_RADIUS = 26;
+/** How far off a mech, in screen pixels, a click still counts as hitting it. */
+const PICK_RADIUS = 34;
 const PAN_SPEED = 620;
 const ZOOM_STEP = 1.12;
 /** Ground metres panned per pixel dragged, per metre of camera distance. */
@@ -88,7 +89,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     }
 
     if (event.button === 2) {
-      const target = engine.renderer.entityAt(engine.world, world, PICK_RADIUS);
+      const target = engine.renderer.entityAtScreen(
+        engine.world,
+        pointerToScreen(canvas, event),
+        PICK_RADIUS,
+      );
       if (target !== null && target.team !== state.playerTeam && isOperational(target)) {
         engine.orderAttack(target.id, null);
       } else {
@@ -104,7 +109,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       } else if (state.orderMode === 'jump') {
         engine.orderJump(world);
       } else {
-        const target = engine.renderer.entityAt(engine.world, world, PICK_RADIUS);
+        const target = engine.renderer.entityAtScreen(
+          engine.world,
+          pointerToScreen(canvas, event),
+          PICK_RADIUS,
+        );
         if (target !== null && target.team !== state.playerTeam) {
           engine.orderAttack(
             target.id,
@@ -116,7 +125,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
-    const picked = engine.renderer.entityAt(engine.world, world, PICK_RADIUS);
+    const picked = engine.renderer.entityAtScreen(
+      engine.world,
+      pointerToScreen(canvas, event),
+      PICK_RADIUS,
+    );
     if (picked === null) {
       // Empty ground: open a marquee. A plain click closes it as a deselect.
       marqueeFrom = world;

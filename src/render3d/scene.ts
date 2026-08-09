@@ -1,14 +1,17 @@
 import {
-  AmbientLight,
+  ACESFilmicToneMapping,
   BufferGeometry,
   Color,
   DirectionalLight,
   Fog,
+  HemisphereLight,
   Group,
   Line,
   LineBasicMaterial,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
+  PCFSoftShadowMap,
   PlaneGeometry,
   RingGeometry,
   Scene,
@@ -81,6 +84,9 @@ export class Renderer {
     this.renderer = new WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio ?? 1));
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.renderer.toneMapping = ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     host.appendChild(this.renderer.domElement);
 
     this.scene.background = new Color(0x0d1013);
@@ -111,14 +117,41 @@ export class Renderer {
     this.scene.add(this.markers);
     this.scene.add(this.tracers.group);
 
-    // A low sun across the map so the hills have a lit and a shadowed face.
-    const sun = new DirectionalLight(0xfff0dc, 1.5);
-    sun.position.set(-420, 700, -260);
-    sun.castShadow = true;
-    this.scene.add(sun, new AmbientLight(0x6f8296, 1.1));
-
     const width = world.terrain.width * world.terrain.tileSize;
     const height = world.terrain.height * world.terrain.tileSize;
+
+    // A key light across the map so hills and hulls have a lit face and a
+    // shadowed one, a cool fill from the opposite side so the shadowed face is
+    // readable rather than black, and sky/ground ambience to grade the curves
+    // that the chamfered plates now have.
+    // A directional light shadows the box its own camera covers, and that
+    // camera follows the light's target — which defaults to the world origin,
+    // not the middle of the map. Left alone it lights one corner and draws a
+    // visible edge across the ground where its coverage stops.
+    const midpoint = new Object3D();
+    midpoint.position.set(width / 2, 0, height / 2);
+    this.scene.add(midpoint);
+
+    const sun = new DirectionalLight(0xfff2e0, 2.2);
+    sun.position.set(width / 2 - 620, 900, height / 2 - 420);
+    sun.target = midpoint;
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 80;
+    sun.shadow.camera.far = 2_600;
+    sun.shadow.bias = -0.0016;
+    const span = Math.max(width, height) * 0.78;
+    sun.shadow.camera.left = -span;
+    sun.shadow.camera.right = span;
+    sun.shadow.camera.top = span;
+    sun.shadow.camera.bottom = -span;
+
+    const fill = new DirectionalLight(0x8fb4d8, 0.75);
+    fill.position.set(width / 2 + 700, 380, height / 2 + 560);
+    fill.target = midpoint;
+
+    this.scene.add(sun, fill, new HemisphereLight(0xbcd8f0, 0x2c3a2a, 1.0));
+
     this.camera.setBounds(width, height);
 
     const lance = world.entities.filter((entity) => entity.team === (world.playerTeam ?? 0));
@@ -272,6 +305,7 @@ export class Renderer {
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
 
+    model.root.userData.entityId = entity.id;
     this.scene.add(model.root, ring);
     const view: EntityView = { model, signature, ring };
     this.views.set(entity.id, view);
@@ -376,16 +410,47 @@ export class Renderer {
     return this.interpolated.get(id) ?? this.samples.get(id)?.cur ?? null;
   }
 
-  entityAt(world: World, point: Vec2, radius: number): MechEntity | null {
-    let best: MechEntity | null = null;
-    let bestRange = radius;
+  /**
+   * The mech under a point on screen.
+   *
+   * This has to work off the screen, not off the ground. A click that looks
+   * like it lands on a mech's chest actually raycasts through to ground well
+   * behind its feet, because the camera is tilted and the machine is twenty
+   * metres tall — so picking by world distance from that ground point misses
+   * the thing the player was obviously pointing at. The hulls themselves are
+   * offered to the ray first; failing that, the nearest body centre within a
+   * screen-space radius catches a click that grazed the edge.
+   */
+  entityAtScreen(world: World, screen: Vec2, radiusPixels: number): MechEntity | null {
+    const viewport = this.viewport;
+    const visible = (entity: MechEntity): boolean =>
+      world.vision === null ||
+      entity.team === world.vision.team ||
+      world.vision.visible.has(entity.id);
 
+    const roots = world.entities
+      .filter((entity) => visible(entity) && isOperational(entity))
+      .map((entity) => this.views.get(entity.id)?.model.root)
+      .filter((root): root is Group => root !== undefined && root.visible);
+
+    const hit = this.camera.pick(screen, viewport, roots);
+    if (hit !== null) {
+      const id = hit.userData.entityId as EntityId | undefined;
+      const found = world.entities.find((entity) => entity.id === id);
+      if (found !== undefined) return found;
+    }
+
+    let best: MechEntity | null = null;
+    let bestRange = radiusPixels;
     for (const entity of world.entities) {
-      if (world.vision !== null && entity.team !== world.vision.team) {
-        if (!world.vision.visible.has(entity.id)) continue;
-      }
+      if (!visible(entity)) continue;
       const at = this.interpolated.get(entity.id) ?? entity.pos;
-      const range = Math.hypot(at.x - point.x, at.y - point.y);
+      const body = this.camera.worldToScreen(
+        at,
+        viewport,
+        this.terrain.heightAt(at.x, at.y) + radiusFor(entity.tonnage),
+      );
+      const range = Math.hypot(body.x - screen.x, body.y - screen.y);
       if (range < bestRange) {
         best = entity;
         bestRange = range;

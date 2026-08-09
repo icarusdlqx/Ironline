@@ -50,15 +50,43 @@ describe('tactical camera', () => {
     expect(forward.target.x).toBeCloseTo(480, 6);
   });
 
-  it('holds the target inside the map however far it is dragged', () => {
+  it('stops panning while the battlefield still fills the view', () => {
+    // Clamping to the map edge alone still lets the player park on a corner
+    // with most of the screen showing the ground beyond the map.
     const view = camera();
+    view.distance = 470;
     view.panBy(-10_000, -10_000);
-    expect(view.target.x).toBeGreaterThanOrEqual(0);
-    expect(view.target.y).toBeGreaterThanOrEqual(0);
+    expect(view.target.x).toBeGreaterThan(40);
+    expect(view.target.y).toBeGreaterThan(40);
 
-    view.panBy(10_000, 10_000);
-    expect(view.target.x).toBeLessThanOrEqual(960);
-    expect(view.target.y).toBeLessThanOrEqual(960);
+    view.panBy(20_000, 20_000);
+    expect(view.target.x).toBeLessThan(920);
+    expect(view.target.y).toBeLessThan(920);
+  });
+
+  it('never lets much of the screen be ground beyond the map', () => {
+    // The guarantee is a bounded share of off-map view at any zoom, not a
+    // fixed distance from the edge: what counts as "too far" depends on how
+    // much ground the camera can see from where it is.
+    for (const distance of [200, 470, 900, 1_100]) {
+      const view = camera();
+      view.distance = distance;
+      view.panBy(-10_000, -10_000);
+
+      const span = (2 * distance * Math.tan(22.5 * (Math.PI / 180))) / Math.sin(50 * (Math.PI / 180));
+      const offMap = span / 2 - view.target.x;
+      expect(offMap / span, `at distance ${distance}`).toBeLessThan(0.21);
+    }
+  });
+
+  it('pulls the view back over the map when it zooms out', () => {
+    const view = camera();
+    view.distance = view.minDistance;
+    view.panBy(-10_000, 0);
+    const close = view.target.x;
+
+    for (let step = 0; step < 20; step += 1) view.zoomBy(1 / 1.2);
+    expect(view.target.x, 'zooming out left the map edge off screen').toBeGreaterThan(close);
   });
 
   it('clamps how close and how far the camera can be pulled', () => {

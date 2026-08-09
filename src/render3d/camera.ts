@@ -48,6 +48,7 @@ export class TacticalCamera {
   minDistance = 160;
   maxDistance = 1_100;
 
+
   private boundsWidth = 0;
   private boundsHeight = 0;
   private readonly raycaster = new Raycaster();
@@ -77,6 +78,8 @@ export class TacticalCamera {
 
   zoomBy(factor: number): void {
     this.distance = Math.min(this.maxDistance, Math.max(this.minDistance, this.distance / factor));
+    // Zooming out shows more ground, so the bounds have to be re-applied.
+    this.clamp();
   }
 
   /** Where the camera sits, given its target, bearing and tilt. */
@@ -132,6 +135,26 @@ export class TacticalCamera {
     return { x: point.x, y: point.z };
   }
 
+  /**
+   * The nearest object under a screen point, returned as whichever ancestor
+   * carries an entity id — a mech is a tree of plates, and the plate that got
+   * hit is not what the player was pointing at.
+   */
+  pick(screen: Vec2, viewport: Viewport, roots: readonly Object3D[]): Object3D | null {
+    if (roots.length === 0) return null;
+    this.update(viewport);
+    this.raycaster.setFromCamera(this.ndc(screen, viewport), this.camera);
+
+    for (const hit of this.raycaster.intersectObjects(roots as Object3D[], true)) {
+      let node: Object3D | null = hit.object;
+      while (node !== null) {
+        if (node.userData.entityId !== undefined) return node;
+        node = node.parent;
+      }
+    }
+    return null;
+  }
+
   /** Where a battlefield point lands on screen, for HUD markers and marquees. */
   worldToScreen(point: Vec2, viewport: Viewport, height = 0): Vec2 {
     this.update(viewport);
@@ -142,9 +165,34 @@ export class TacticalCamera {
     };
   }
 
+  /**
+   * Roughly how much ground the camera can see across, given how far back it
+   * is. Used to keep the battlefield on screen rather than the void beside it.
+   */
+  private visibleSpan(): number {
+    const halfFov = (this.camera.fov / 2) * DEGREES_TO_RADIANS;
+    return (2 * this.distance * Math.tan(halfFov)) / Math.max(0.2, Math.sin(this.elevation));
+  }
+
+  /**
+   * Holds the view over the battlefield. Clamping the target to the map edge
+   * is not enough on its own: standing on the corner still fills most of the
+   * screen with the ground beyond the map. The target is pulled in by a share
+   * of what the camera can see, so panning stops when the map does — while
+   * still letting a zoomed-out camera sit at the middle of a map smaller than
+   * its own view.
+   */
   private clamp(): void {
     if (this.boundsWidth === 0 || this.boundsHeight === 0) return;
-    this.target.x = Math.min(this.boundsWidth, Math.max(0, this.target.x));
-    this.target.y = Math.min(this.boundsHeight, Math.max(0, this.target.y));
+
+    const inset = this.visibleSpan() * 0.3;
+    const limit = (value: number, size: number): number => {
+      const margin = Math.min(inset, size / 2);
+      return Math.min(size - margin, Math.max(margin, value));
+    };
+
+    this.target.x = limit(this.target.x, this.boundsWidth);
+    this.target.y = limit(this.target.y, this.boundsHeight);
   }
+
 }

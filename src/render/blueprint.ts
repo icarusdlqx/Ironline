@@ -9,7 +9,12 @@ import type { Silhouette } from './shape';
  */
 export type Tone = 'plate' | 'deep' | 'trim' | 'glass' | 'accent';
 
-export type PartShape = 'box' | 'cylinder' | 'sphere';
+/**
+ * `limb` is a tapered segment — wider at the joint than at the end. Straight
+ * prisms are what make legs read as scaffolding rather than as a machine that
+ * carries its own weight.
+ */
+export type PartShape = 'box' | 'cylinder' | 'sphere' | 'limb';
 
 export interface BlueprintPart {
   /** Which structural location this belongs to, so damage can grey it out. */
@@ -99,12 +104,16 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
   for (const side of [-1, 1]) {
     const z = side * frame.hip;
     parts.push(
-      part(side < 0 ? 'left_leg' : 'right_leg', 'box',
+      part(side < 0 ? 'left_leg' : 'right_leg', 'limb',
         [-frame.knee * 0.5, frame.leg * 0.72, z],
-        [thighT, frame.leg * 0.62, thighT], 'deep'),
-      part(side < 0 ? 'left_leg' : 'right_leg', 'box',
-        [frame.knee * 0.5, frame.leg * 0.28, z],
-        [thighT * 0.88, frame.leg * 0.58, thighT * 0.88], 'plate'),
+        [thighT * 1.15, frame.leg * 0.62, thighT * 0.82], 'deep'),
+      // Knee, which is what tells the eye which way the leg bends.
+      part(side < 0 ? 'left_leg' : 'right_leg', 'sphere',
+        [frame.knee * 0.1, frame.leg * 0.46, z],
+        [thighT * 1.05, thighT * 1.05, thighT * 1.05], 'accent'),
+      part(side < 0 ? 'left_leg' : 'right_leg', 'limb',
+        [frame.knee * 0.5, frame.leg * 0.26, z],
+        [thighT * 0.9, frame.leg * 0.56, thighT * 1.05], 'plate'),
       // Foot. A digitigrade frame stands on a long splayed pad; a walker on a boot.
       part(side < 0 ? 'left_leg' : 'right_leg', 'box',
         [frame.knee + (digitigrade ? 0.16 : 0.04), 0.06, z],
@@ -166,10 +175,10 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
     for (const side of [-1, 1]) {
       const z = side * frame.shoulder;
       parts.push(
-        part(side < 0 ? 'left_arm' : 'right_arm', 'box',
-          [-frame.long * 0.18, frame.tall * 0.22, z], [0.34, 0.36, 0.34], 'plate'),
-        part(side < 0 ? 'left_arm' : 'right_arm', 'box',
-          [frame.long * 0.18, -frame.tall * 0.05, z], [frame.long * 0.7, 0.3, 0.3], 'deep'),
+        part(side < 0 ? 'left_arm' : 'right_arm', 'sphere',
+          [-frame.long * 0.16, frame.tall * 0.2, z], [0.4, 0.4, 0.4], 'plate'),
+        part(side < 0 ? 'left_arm' : 'right_arm', 'limb',
+          [frame.long * 0.18, -frame.tall * 0.05, z], [0.34, frame.long * 0.7, 0.26], 'deep', Math.PI / 2),
       );
     }
   } else {
