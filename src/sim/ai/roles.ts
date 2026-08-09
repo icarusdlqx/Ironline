@@ -90,7 +90,11 @@ function classify(rules: AiRules['roles'], battery: Battery): CombatRole {
 export function lanceFrontage(world: World, mech: MechEntity, target: MechEntity): number {
   let nearest = Number.POSITIVE_INFINITY;
   for (const mate of world.entities) {
-    if (mate.team !== mech.team || !isOperational(mate)) continue;
+    // Measured over the REST of the lance. Counting the mech itself made the
+    // frontage its own range, so whichever machine was already at the front got
+    // told to stand its own standoff closer than wherever it happened to be —
+    // a pull with no fixed point, renewed every decision.
+    if (mate.id === mech.id || mate.team !== mech.team || !isOperational(mate)) continue;
     nearest = Math.min(nearest, distance(mate.pos, target.pos));
   }
   return Number.isFinite(nearest) ? nearest : distance(mech.pos, target.pos);

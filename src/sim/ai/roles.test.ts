@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalog, spawnDesign, testWorld } from '../../../tests/support';
-import { COMBAT_ROLES, roleOf, type CombatRole } from './roles';
+import { COMBAT_ROLES, lanceFrontage, roleOf, type CombatRole } from './roles';
 
 const world = testWorld('roles');
 
@@ -51,6 +51,22 @@ describe('combat roles', () => {
     // claims them. The long guns go first, and only what is left is artillery.
     expect(assigned.get('colossus_siege')).toBe('sniper');
     expect(assigned.get('warden_picket')).toBe('missile_boat');
+  });
+
+  it('measures the frontage over the rest of the lance, not the mech itself', () => {
+    const line = testWorld('frontage');
+    const target = spawnDesign(line, 'rampart_breaker', 1, { x: 600, y: 300 });
+    const front = spawnDesign(line, 'colossus_hammer', 0, { x: 300, y: 300 });
+    const back = spawnDesign(line, 'warden_picket', 0, { x: 100, y: 300 });
+    for (const other of line.entities) {
+      if (other !== target && other !== front && other !== back) other.destroyed = true;
+    }
+
+    // Counting itself made the frontage the mech's own range, so whoever was
+    // already in front was told to stand its standoff closer than wherever it
+    // was — a pull with no fixed point, every decision, for ever.
+    expect(lanceFrontage(line, front, target)).toBeCloseTo(500, 3);
+    expect(lanceFrontage(line, back, target)).toBeCloseTo(300, 3);
   });
 
   it('treats a disarmed mech as a spotter', () => {
