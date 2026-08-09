@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { eventsOfType } from './events';
+import { isVisibleTo, tileExplored, tileVisible } from './sensors';
 import { callSupport, SUPPORT_CALLS, type SupportCallId } from './support';
 import { isOperational, type MechEntity, type World } from './types';
 import { createWorld, runBattle, stepWorld } from './world';
@@ -265,6 +266,46 @@ describe('support calls', () => {
     expect(aside.stats.damageTaken).toBe(0);
   });
 
+  it('rakes the length of the run rather than damaging one flat rectangle', () => {
+    world.resources.set(0, 10_000);
+    const config = world.rules.support.air_strike;
+    const enemies = world.entities.filter((entity) => entity.team === 1);
+    const nose = enemies[0];
+    const tail = enemies[1];
+    if (nose === undefined || tail === undefined) return;
+
+    freeze(world);
+    // One at the aim point, one three quarters of the way down the run.
+    nose.pos = { x: 500, y: 400 };
+    tail.pos = { x: 500 + config.length * 0.375, y: 400 };
+    for (const other of enemies.slice(2)) other.pos = { x: 24, y: 900 };
+
+    callSupport(world, 0, 'air_strike', { x: 500, y: 400 }, 0);
+    run(world, Math.ceil(config.delaySeconds / world.dt) + 3);
+
+    // `shots` is a real number of bursts, not a decoration on the data file.
+    expect(nose.stats.damageTaken).toBeGreaterThan(0);
+    expect(tail.stats.damageTaken, 'the run stopped short of its own length').toBeGreaterThan(0);
+  });
+
+  it('turns with its heading instead of always flying east', () => {
+    world.resources.set(0, 10_000);
+    const config = world.rules.support.air_strike;
+    const north = world.entities.filter((entity) => entity.team === 1)[0];
+    if (north === undefined) return;
+
+    freeze(world);
+    for (const entity of world.entities) {
+      if (entity.team === 1) entity.pos = { x: 24, y: 900 };
+    }
+    north.pos = { x: 500, y: 400 - config.length * 0.375 };
+
+    callSupport(world, 0, 'air_strike', { x: 500, y: 400 }, -Math.PI / 2);
+    run(world, Math.ceil(config.delaySeconds / world.dt) + 3);
+
+    expect(north.stats.damageTaken).toBeGreaterThan(0);
+  });
+
   it('never damages the team that called it', () => {
     world.resources.set(0, 10_000);
     freeze(world);
@@ -307,6 +348,48 @@ describe('support calls', () => {
     callSupport(world, 0, 'sensor_probe', { x: 700, y: 300 });
     run(world, 3);
     expect(world.reveals.some((reveal) => reveal.x === 700)).toBe(true);
+  });
+
+  it('a sensor probe actually lifts the fog and spots what is under it', () => {
+    world.resources.set(0, 10_000);
+    freeze(world);
+
+    // Park the lance in a corner so nothing on the field can see the far side.
+    for (const entity of world.entities) {
+      entity.pos = entity.team === 0 ? { x: 40, y: 40 } : { x: 900, y: 900 };
+    }
+    run(world, 2);
+
+    const hidden = world.entities.find((entity) => entity.team === 1) as MechEntity;
+    const cell = (() => {
+      const tile = world.terrain.toTile(hidden.pos);
+      return tile.row * world.terrain.width + tile.column;
+    })();
+
+    expect(tileVisible(world.vision, cell), 'the far corner started out visible').toBe(false);
+    expect(isVisibleTo(world.vision, hidden)).toBe(false);
+
+    callSupport(world, 0, 'sensor_probe', { ...hidden.pos });
+    run(world, 3);
+
+    expect(tileVisible(world.vision, cell), 'the probe did not lift the fog').toBe(true);
+    expect(isVisibleTo(world.vision, hidden), 'the probe did not spot anything').toBe(true);
+    expect(tileExplored(world.vision, cell)).toBe(true);
+  });
+
+  it('a probe called by the other side does not light the map for the player', () => {
+    world.resources.set(1, 10_000);
+    freeze(world);
+    for (const entity of world.entities) {
+      entity.pos = entity.team === 0 ? { x: 40, y: 40 } : { x: 900, y: 900 };
+    }
+    run(world, 2);
+
+    const hidden = world.entities.find((entity) => entity.team === 1) as MechEntity;
+    callSupport(world, 1, 'sensor_probe', { ...hidden.pos });
+    run(world, 3);
+
+    expect(isVisibleTo(world.vision, hidden)).toBe(false);
   });
 
   it('a reinforcement drops a reserve mech and empties the dropship', () => {

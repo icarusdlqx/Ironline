@@ -70,6 +70,12 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     const state = useGame.getState();
 
     if (state.supportMode !== null && event.button === 0) {
+      // A strafing run needs a direction as well as a point: press to aim, drag
+      // to lay the run-in, release to call it. Everything else fires on the press.
+      if (engine.supportNeedsHeading(state.supportMode)) {
+        engine.supportAim = { call: state.supportMode, at: world, to: world };
+        return;
+      }
       engine.callSupport(state.supportMode, world);
       state.setSupportMode(null);
       return;
@@ -124,6 +130,12 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const onPointerMove = (event: PointerEvent): void => {
     engine.cursorWorld = toWorld(event);
 
+    const aim = engine.supportAim;
+    if (aim !== null) {
+      engine.supportAim = { ...aim, to: toWorld(event) };
+      return;
+    }
+
     if (marqueeFrom !== null) {
       engine.selectionBox = { a: marqueeFrom, b: toWorld(event) };
       return;
@@ -140,6 +152,14 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     panning = false;
     lastPan = null;
+
+    const aim = engine.supportAim;
+    if (aim !== null) {
+      engine.supportAim = null;
+      engine.callSupport(aim.call, aim.at, toWorld(event));
+      useGame.getState().setSupportMode(null);
+      return;
+    }
 
     if (marqueeFrom !== null) {
       const screen = pointerToScreen(canvas, event);

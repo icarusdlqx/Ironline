@@ -43,6 +43,8 @@ export interface Minefield {
 }
 
 export interface Reveal {
+  /** Whose sensors the sweep feeds. A probe must not light the map for the enemy. */
+  team: number;
   x: number;
   y: number;
   radius: number;
@@ -137,24 +139,30 @@ function resolveArtillery(world: World, pending: PendingCall): void {
   }
 }
 
+/**
+ * The aircraft rakes the ground along its heading rather than dropping one flat
+ * rectangle of damage: `shots` bursts walk down the length of the run, so a mech
+ * square on the line is caught by more than one and a mech clipping the edge is
+ * caught by none. The bursts are half a width across and spaced closer than that,
+ * which keeps the centre line unbroken while the flanks taper off.
+ */
 function resolveAirStrike(world: World, pending: PendingCall): void {
   const config = world.rules.support.air_strike;
-  const half = config.length / 2;
   const along = { x: Math.cos(pending.heading), y: Math.sin(pending.heading) };
+  const spacing = config.length / config.shots;
 
-  for (const entity of world.entities) {
-    if (entity.team === pending.team || !isOperational(entity)) continue;
-
-    const dx = entity.pos.x - pending.target.x;
-    const dy = entity.pos.y - pending.target.y;
-    const forward = dx * along.x + dy * along.y;
-    const lateral = Math.abs(-dx * along.y + dy * along.x);
-
-    if (Math.abs(forward) > half || lateral > config.width / 2) continue;
-
-    const location = world.rng.weighted(world.hitLocationTable);
-    const absorbed = applyDamage(world, entity, location, config.damage);
-    entity.stats.damageTaken += absorbed;
+  for (let shot = 0; shot < config.shots; shot += 1) {
+    const offset = -config.length / 2 + spacing * (shot + 0.5);
+    damageAt(
+      world,
+      pending.team,
+      {
+        x: pending.target.x + along.x * offset,
+        y: pending.target.y + along.y * offset,
+      },
+      config.width / 2,
+      config.damage,
+    );
   }
 }
 
@@ -178,6 +186,7 @@ function resolvePending(world: World, pending: PendingCall): void {
   switch (pending.call) {
     case 'sensor_probe':
       world.reveals.push({
+        team: pending.team,
         x: pending.target.x,
         y: pending.target.y,
         radius: config.sensor_probe.radius,
@@ -297,6 +306,15 @@ export function revealedAt(world: World, point: Vec2): boolean {
 
 export function headingBetween(from: Vec2, to: Vec2): number {
   return bearing(from, to);
+}
+
+/**
+ * A call that runs along a line rather than sitting on a point, so the caller
+ * has to say which way it goes. Read off the rules instead of listing ids here,
+ * so a new strafing call is directional the moment its data says it has a length.
+ */
+export function isDirectional(world: World, call: SupportCallId): boolean {
+  return 'length' in world.rules.support[call];
 }
 
 export function reservesFrom(mission: { reserves?: Deployment[] }): Deployment[] {

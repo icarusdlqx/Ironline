@@ -102,6 +102,9 @@ export function applyEffect(world: World, effect: TriggerEffect): void {
 
     case 'reveal':
       world.reveals.push({
+        // Scripted intel is handed to the side the mission is written for
+        // unless it names another; in a headless run that is team zero.
+        team: effect.team ?? world.playerTeam ?? 0,
         x: effect.x,
         y: effect.y,
         radius: effect.radius,

@@ -16,6 +16,8 @@ export interface ViewState {
   hovered: EntityId | null;
   cursor: Vec2 | null;
   selectionBox: { a: Vec2; b: Vec2 } | null;
+  /** The run-in the player is dragging out for a directional support call. */
+  supportRun: { at: Vec2; heading: number; length: number; width: number } | null;
   orderMode: 'move' | 'run' | 'attack' | 'called_shot' | null;
 }
 
@@ -145,6 +147,7 @@ export class Renderer {
     }
 
     for (const reveal of world.reveals) {
+      if (world.playerTeam !== null && reveal.team !== world.playerTeam) continue;
       this.markers
         .circle(reveal.x, reveal.y, reveal.radius)
         .stroke({ width: 1.5, color: UI.selection, alpha: 0.35 });
@@ -245,6 +248,28 @@ export class Renderer {
         .rect(x, y, Math.abs(box.b.x - box.a.x), Math.abs(box.b.y - box.a.y))
         .fill({ color: UI.selection, alpha: 0.08 })
         .stroke({ width: 1.5, color: UI.selection, alpha: 0.75 });
+    }
+
+    const run = view.supportRun;
+    if (run !== null) {
+      const along = { x: Math.cos(run.heading), y: Math.sin(run.heading) };
+      const across = { x: -along.y, y: along.x };
+      const half = run.length / 2;
+      const edge = run.width / 2;
+      const corner = (forward: number, lateral: number): Vec2 => ({
+        x: run.at.x + along.x * forward + across.x * lateral,
+        y: run.at.y + along.y * forward + across.y * lateral,
+      });
+
+      const nose = corner(half, 0);
+      this.markers
+        .poly([corner(-half, -edge), corner(half, -edge), corner(half, edge), corner(-half, edge)])
+        .fill({ color: UI.attackMarker, alpha: 0.12 })
+        .stroke({ width: 1.5, color: UI.attackMarker, alpha: 0.8 });
+      // An arrowhead at the exit end: the run has a direction, not just an axis.
+      this.markers
+        .poly([nose, corner(half - edge, -edge), corner(half - edge, edge)])
+        .fill({ color: UI.attackMarker, alpha: 0.7 });
     }
 
     if (view.cursor !== null && view.orderMode !== null && view.selection.size > 0) {

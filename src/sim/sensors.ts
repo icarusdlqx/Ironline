@@ -32,15 +32,15 @@ export function createVision(world: World, team: number): TeamVision {
   };
 }
 
-function markTiles(world: World, vision: TeamVision, observer: MechEntity, range: number): void {
+function markTiles(world: World, vision: TeamVision, at: Vec2, range: number): void {
   const { terrain } = world;
   const radius = Math.ceil(range / terrain.tileSize);
-  const centre = terrain.toTile(observer.pos);
+  const centre = terrain.toTile(at);
 
   for (let row = centre.row - radius; row <= centre.row + radius; row += 1) {
     for (let column = centre.column - radius; column <= centre.column + radius; column += 1) {
       if (!terrain.inBounds(column, row)) continue;
-      if (distance(observer.pos, terrain.tileCentre(column, row)) > range) continue;
+      if (distance(at, terrain.tileCentre(column, row)) > range) continue;
       const cell = row * terrain.width + column;
       vision.tiles[cell] = 1;
       vision.explored[cell] = 1;
@@ -57,17 +57,26 @@ export function updateVision(world: World, vision: TeamVision): void {
   );
 
   for (const observer of observers) {
-    markTiles(world, vision, observer, observer.sensorRange);
+    markTiles(world, vision, observer.pos, observer.sensorRange);
+  }
+
+  // A sensor probe, or a scripted recon sweep, looks at the ground from above:
+  // there is no observer standing on the field and no ridge to break the line.
+  const sweeps = world.reveals.filter((reveal) => reveal.team === vision.team);
+  for (const sweep of sweeps) {
+    markTiles(world, vision, { x: sweep.x, y: sweep.y }, sweep.radius);
   }
 
   for (const candidate of world.entities) {
     if (candidate.team === vision.team || !isOperational(candidate)) continue;
 
-    const spotted = observers.some(
-      (observer) =>
-        distance(observer.pos, candidate.pos) <= observer.sensorRange &&
-        lineOfSight(world.terrain, observer.pos, candidate.pos).clear,
-    );
+    const spotted =
+      observers.some(
+        (observer) =>
+          distance(observer.pos, candidate.pos) <= observer.sensorRange &&
+          lineOfSight(world.terrain, observer.pos, candidate.pos).clear,
+      ) ||
+      sweeps.some((sweep) => distance(candidate.pos, { x: sweep.x, y: sweep.y }) <= sweep.radius);
 
     if (!spotted) continue;
 

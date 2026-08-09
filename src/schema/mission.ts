@@ -87,6 +87,8 @@ export const TriggerEffectSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('message'), text: z.string().min(1).max(200) }),
   z.strictObject({
     type: z.literal('reveal'),
+    /** Omitted hands the intel to whichever side the mission is written for. */
+    team: z.number().int().min(0).max(7).optional(),
     x: z.number().nonnegative(),
     y: z.number().nonnegative(),
     radius: z.number().positive().max(600),

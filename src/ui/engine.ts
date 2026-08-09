@@ -11,7 +11,7 @@ import {
   setGroupEnabled,
   setHoldFire,
 } from '../sim/orders';
-import { callSupport, type SupportCallId } from '../sim/support';
+import { callSupport, headingBetween, isDirectional, type SupportCallId } from '../sim/support';
 import { findEntity, isOperational, type EntityId, type Vec2, type World } from '../sim/types';
 import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
 import { attachInput } from './input';
@@ -110,6 +110,7 @@ export class Engine {
       cursor: this.cursorWorld,
       orderMode: state.orderMode,
       selectionBox: this.selectionBox,
+      supportRun: this.supportRun(),
     });
 
     this.hudTimer += deltaSeconds;
@@ -122,6 +123,49 @@ export class Engine {
   cursorWorld: Vec2 | null = null;
   /** The marquee currently being dragged, in world space. */
   selectionBox: { a: Vec2; b: Vec2 } | null = null;
+  /** Aim point and cursor for the run-in the player is drawing, in world space. */
+  supportAim: { call: SupportCallId; at: Vec2; to: Vec2 } | null = null;
+
+  /** The footprint to draw for the run-in being dragged, or null when none is. */
+  private supportRun(): {
+    at: Vec2;
+    heading: number;
+    length: number;
+    width: number;
+  } | null {
+    const aim = this.supportAim;
+    if (aim === null || aim.call !== 'air_strike') return null;
+    const config = this.world.rules.support.air_strike;
+    return {
+      at: aim.at,
+      heading: this.headingFor(aim.at, aim.to),
+      length: config.length,
+      width: config.width,
+    };
+  }
+
+  /**
+   * The run-in the player dragged out. A press with no meaningful drag leaves
+   * the aircraft to come in over the lance that called it, which is both the
+   * safe default and the one a player would expect without being told.
+   */
+  private headingFor(at: Vec2, to: Vec2): number {
+    const drag = Math.hypot(to.x - at.x, to.y - at.y);
+    if (drag >= this.world.terrain.tileSize) return headingBetween(at, to);
+
+    const team = this.world.playerTeam ?? 0;
+    let x = 0;
+    let y = 0;
+    let count = 0;
+    for (const entity of this.world.entities) {
+      if (entity.team !== team || !isOperational(entity)) continue;
+      x += entity.pos.x;
+      y += entity.pos.y;
+      count += 1;
+    }
+    if (count === 0) return 0;
+    return headingBetween({ x: x / count, y: y / count }, at);
+  }
 
   forceStep(): void {
     if (this.world.finished) return;
@@ -286,10 +330,19 @@ export class Engine {
     useGame.getState().setOrderMode(mode);
   }
 
-  callSupport(call: SupportCallId, target: Vec2): { ok: boolean; reason: string | null } {
+  /** True when the call needs a run-in dragged out rather than a single point. */
+  supportNeedsHeading(call: SupportCallId): boolean {
+    return isDirectional(this.world, call);
+  }
+
+  callSupport(
+    call: SupportCallId,
+    target: Vec2,
+    /** Where the player dragged to; the aim point itself means "you choose". */
+    runTo: Vec2 = target,
+  ): { ok: boolean; reason: string | null } {
     const team = this.world.playerTeam ?? 0;
-    const heading = this.cursorWorld === null ? 0 : 0;
-    const result = callSupport(this.world, team, call, target, heading);
+    const result = callSupport(this.world, team, call, target, this.headingFor(target, runTo));
     if (!result.ok && result.reason !== null) useGame.getState().pushLog(result.reason);
     return result;
   }
