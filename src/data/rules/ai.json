@@ -48,5 +48,22 @@
   "calledShot": {
     "targetStructureFraction": 0.55,
     "chance": 0.45
+  },
+  "roles": {
+    "shortRangeMetres": 200,
+    "longRangeMetres": 330,
+    "scoutTonnage": 35,
+    "brawlerTonnage": 45,
+    "longShare": 0.5,
+    "indirectShare": 0.35,
+    "shortShare": 0.45,
+    "minimumRangeMetres": 60,
+    "profiles": {
+      "brawler": { "aggression": 1.35, "standoff": -30 },
+      "skirmisher": { "aggression": 1.1, "standoff": 0 },
+      "sniper": { "aggression": 0.85, "standoff": 45 },
+      "missile_boat": { "aggression": 0.7, "standoff": 70 },
+      "scout": { "aggression": 0.8, "standoff": 35 }
+    }
   }
 }

@@ -97,3 +97,47 @@ export function balanceOutliers(catalog: Catalog): BalanceEntry[] {
     .filter((entry) => !entry.withinBand)
     .sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation));
 }
+
+export interface Domination {
+  winner: string;
+  loser: string;
+}
+
+/**
+ * The efficiency score has no opinion about range, so two guns can sit on the
+ * class median while one of them is better in every way a pilot can feel. That
+ * is how the ER PPC came to be a Large Pulse Laser with twice the reach for the
+ * same tonnage. A weapon is dominated when a same-class rival of no greater
+ * tonnage or slot count beats or matches it on damage, heat, reach and aim, and
+ * is strictly better at something.
+ */
+export function dominatedWeapons(catalog: Catalog): Domination[] {
+  const found: Domination[] = [];
+
+  for (const loser of catalog.weapons.values()) {
+    for (const winner of catalog.weapons.values()) {
+      if (winner.id === loser.id || winner.type !== loser.type) continue;
+
+      // A weapon that does something the rival cannot — arc over a ridge, cook
+      // a reactor — is not dominated however the numbers compare.
+      if (loser.tags.some((tag) => !winner.tags.includes(tag))) continue;
+
+      const metrics: [number, number][] = [
+        [(winner.damage * winner.projectiles * winner.accuracy) / winner.cooldown,
+         (loser.damage * loser.projectiles * loser.accuracy) / loser.cooldown],
+        [loser.heat / loser.cooldown, winner.heat / winner.cooldown],
+        [winner.range.long, loser.range.long],
+        [loser.range.min, winner.range.min],
+        [loser.tonnage, winner.tonnage],
+        [loser.slots, winner.slots],
+        [winner.targetHeat, loser.targetHeat],
+      ];
+
+      if (!metrics.every(([better, worse]) => better >= worse)) continue;
+      if (!metrics.some(([better, worse]) => better > worse)) continue;
+      found.push({ winner: winner.id, loser: loser.id });
+    }
+  }
+
+  return found;
+}

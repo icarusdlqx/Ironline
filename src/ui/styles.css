@@ -1171,6 +1171,21 @@ button {
   color: var(--accent);
 }
 
+.pilot-mech {
+  max-width: 130px;
+  padding: 1px 3px;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+}
+
+.pilot-mech:disabled {
+  opacity: 0.4;
+}
+
 .pilot-buttons {
   display: flex;
   gap: 3px;

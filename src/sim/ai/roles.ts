@@ -1,8 +1,9 @@
+import type { AiRules } from '../../schema/rules';
 import { distance } from '../math';
 import { isOperational, type MechEntity, type World } from '../types';
 
-/** How a mech wants to fight, read off what it is actually carrying. */
-export type CombatRole = 'brawler' | 'skirmisher' | 'sniper' | 'missile_boat' | 'scout';
+export { COMBAT_ROLES, type CombatRole } from '../../schema/rules';
+import type { CombatRole } from '../../schema/rules';
 
 export interface RoleProfile {
   role: CombatRole;
@@ -12,27 +13,26 @@ export interface RoleProfile {
   standoff: number;
 }
 
-// Standoff is a preference, not a leash: enough to put the right machines in the
-// right rank, small enough that a lance still closes and settles the fight.
-const PROFILES: Record<CombatRole, { aggression: number; standoff: number }> = {
-  brawler: { aggression: 1.35, standoff: -30 },
-  skirmisher: { aggression: 1.1, standoff: 0 },
-  sniper: { aggression: 0.85, standoff: 45 },
-  missile_boat: { aggression: 0.7, standoff: 70 },
-  scout: { aggression: 0.8, standoff: 35 },
-};
+interface Battery {
+  short: number;
+  long: number;
+  indirect: number;
+  total: number;
+  minimumRange: number;
+  tonnage: number;
+}
 
-/**
- * Classifies by where a mech's damage actually lives. A hull carrying an AC/20
- * and a pair of SRM racks has no business behaving like one carrying an LRM 20,
- * and until this existed they behaved identically.
- */
-export function roleOf(world: World, mech: MechEntity): RoleProfile {
-  let short = 0;
-  let long = 0;
-  let indirect = 0;
-  let total = 0;
-  let minimumRange = 0;
+/** Where a mech's output sits, by range bracket and by whether it can arc over cover. */
+function batteryOf(world: World, mech: MechEntity): Battery {
+  const rules = world.rules.ai.roles;
+  const battery: Battery = {
+    short: 0,
+    long: 0,
+    indirect: 0,
+    total: 0,
+    minimumRange: 0,
+    tonnage: mech.tonnage,
+  };
 
   for (const mount of mech.weapons) {
     if (mount.destroyed) continue;
@@ -40,34 +40,46 @@ export function roleOf(world: World, mech: MechEntity): RoleProfile {
     if (weapon === undefined) continue;
 
     const output = (weapon.damage * weapon.projectiles) / weapon.cooldown;
-    total += output;
-    if (weapon.range.long <= 200) short += output;
-    if (weapon.range.long >= 330) long += output;
-    if (weapon.tags.includes('indirect_fire')) indirect += output;
-    minimumRange = Math.max(minimumRange, weapon.range.min);
+    battery.total += output;
+    if (weapon.range.long <= rules.shortRangeMetres) battery.short += output;
+    if (weapon.range.long >= rules.longRangeMetres) battery.long += output;
+    if (weapon.tags.includes('indirect_fire')) battery.indirect += output;
+    battery.minimumRange = Math.max(battery.minimumRange, weapon.range.min);
   }
 
-  const role = classify({ short, long, indirect, total, minimumRange, mech });
-  const profile = PROFILES[role];
+  return battery;
+}
+
+/**
+ * Classifies by where a mech's damage actually lives. A hull carrying an AC/20
+ * and a pair of SRM racks has no business behaving like one carrying an LRM 20,
+ * and until this existed they behaved identically.
+ */
+export function roleOf(world: World, mech: MechEntity): RoleProfile {
+  const rules = world.rules.ai.roles;
+  const role = classify(rules, batteryOf(world, mech));
+  const profile = rules.profiles[role];
   return { role, aggression: profile.aggression, standoff: profile.standoff };
 }
 
-function classify(input: {
-  short: number;
-  long: number;
-  indirect: number;
-  total: number;
-  minimumRange: number;
-  mech: MechEntity;
-}): CombatRole {
-  const { short, long, indirect, total, minimumRange, mech } = input;
+/**
+ * Order matters here. Long-range and indirect overlap almost completely — an LRM
+ * is both — so the direct-fire long guns are claimed first and only what is left
+ * over counts as a missile boat. The light check runs before either, because a
+ * scout hull carrying one launcher is a spotter, not artillery.
+ */
+function classify(rules: AiRules['roles'], battery: Battery): CombatRole {
+  const { short, long, indirect, total, minimumRange, tonnage } = battery;
 
   // Nothing worth shooting with: whatever else it is, it is a spotter now.
   if (total <= 0) return 'scout';
-  if (indirect / total > 0.5) return 'missile_boat';
-  if (long / total > 0.55 || minimumRange >= 60) return 'sniper';
-  if (short / total > 0.6) return mech.tonnage >= 55 ? 'brawler' : 'skirmisher';
-  if (mech.tonnage <= 35) return 'scout';
+  if (tonnage <= rules.scoutTonnage && long / total < rules.longShare) return 'scout';
+  if (long / total >= rules.longShare) return 'sniper';
+  if (indirect / total >= rules.indirectShare) return 'missile_boat';
+  if (minimumRange >= rules.minimumRangeMetres) return 'sniper';
+  if (short / total >= rules.shortShare) {
+    return tonnage >= rules.brawlerTonnage ? 'brawler' : 'skirmisher';
+  }
   return 'skirmisher';
 }
 

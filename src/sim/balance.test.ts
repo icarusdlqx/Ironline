@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
-import { balanceByClass, balanceOutliers, weaponEfficiency } from './balance';
+import { balanceByClass, balanceOutliers, dominatedWeapons, weaponEfficiency } from './balance';
 import { runBattle } from './world';
 
 describe('weapon balance', () => {
@@ -33,6 +33,15 @@ describe('weapon balance', () => {
       .map((entry) => `${entry.name} ${(entry.deviation * 100).toFixed(1)}%`)
       .join(', ');
     expect(outliers, `outside the band: ${detail}`).toHaveLength(0);
+  });
+
+  it('leaves no weapon a strictly worse version of another', () => {
+    // Sitting on the class median is not enough: the score says nothing about
+    // reach, so a gun can be balanced on paper and still be a rival's inferior
+    // in every respect a pilot can feel. Nothing in the bay should be a trap.
+    const dominated = dominatedWeapons(catalog);
+    const detail = dominated.map((pair) => `${pair.loser} < ${pair.winner}`).join(', ');
+    expect(dominated, `strictly dominated: ${detail}`).toHaveLength(0);
   });
 
   it('reports a median for each weapon class', () => {

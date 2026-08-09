@@ -131,6 +131,17 @@ export const TerrainTypeSchema = z.strictObject({
   passable: z.boolean(),
 });
 
+/** How a mech wants to fight, read off what it is actually carrying. */
+export const COMBAT_ROLES = ['brawler', 'skirmisher', 'sniper', 'missile_boat', 'scout'] as const;
+export type CombatRole = (typeof COMBAT_ROLES)[number];
+
+const RoleProfileSchema = z.strictObject({
+  /** Above 1 the mech presses; below 1 it gives ground and lets others lead. */
+  aggression: z.number().positive().max(3),
+  /** How far behind the lance's leading edge it prefers to sit, in metres. */
+  standoff: z.number().min(-200).max(400),
+});
+
 export const AiRulesSchema = z.strictObject({
   id: z.literal('ai'),
   target: z.strictObject({
@@ -181,6 +192,29 @@ export const AiRulesSchema = z.strictObject({
   calledShot: z.strictObject({
     targetStructureFraction: Probability,
     chance: Probability,
+  }),
+  roles: z.strictObject({
+    /** A weapon whose long bracket ends here or sooner counts as short-ranged. */
+    shortRangeMetres: z.number().positive(),
+    /** A weapon whose long bracket reaches this counts as long-ranged. */
+    longRangeMetres: z.number().positive(),
+    /** At or below this tonnage, a mech without a long-range battery scouts. */
+    scoutTonnage: z.number().positive(),
+    /** At or above this tonnage, a short-ranged mech brawls rather than skirmishes. */
+    brawlerTonnage: z.number().positive(),
+    /** Share of a mech's output that has to sit in a bracket to define its role. */
+    longShare: Probability,
+    indirectShare: Probability,
+    shortShare: Probability,
+    /** A minimum range this deep says the mech was built to shoot from the back. */
+    minimumRangeMetres: z.number().nonnegative(),
+    profiles: z.strictObject({
+      brawler: RoleProfileSchema,
+      skirmisher: RoleProfileSchema,
+      sniper: RoleProfileSchema,
+      missile_boat: RoleProfileSchema,
+      scout: RoleProfileSchema,
+    }),
   }),
 });
 

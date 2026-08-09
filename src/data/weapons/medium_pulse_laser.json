@@ -6,7 +6,7 @@
   "slots": 2,
   "damage": 5.5,
   "projectiles": 1,
-  "heat": 6,
+  "heat": 7,
   "cooldown": 2.0,
   "velocity": null,
   "range": {
@@ -18,12 +18,12 @@
   "ammoPerTon": null,
   "cost": 60000,
   "recoil": 0.0,
-  "accuracy": 1.15,
+  "accuracy": 1.3,
   "visual": {
     "style": "pulse",
     "colour": "#ff6cf0",
     "width": 2.6,
     "arc": 0
   },
-  "summary": "Cycles rather than beams, which makes it far easier to keep on a moving target. Pays for the accuracy in reach."
+  "summary": "Cycles rather than beams, which makes it far easier to keep on a moving target. Pays for the accuracy in reach and in heat."
 }

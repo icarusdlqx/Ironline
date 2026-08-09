@@ -4,7 +4,7 @@ import {
   stripToStore,
 } from '../../campaign/refit';
 import { estimateRepair, startRepair } from '../../campaign/repair';
-import { availableXp, raiseSkill, skillCost, SKILLS } from '../../campaign/roster';
+import { assign, availableXp, raiseSkill, skillCost, SKILLS } from '../../campaign/roster';
 import { isMechAvailable, isPilotAvailable, type CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { computeLoadout } from '../../sim/loadout';
@@ -97,6 +97,29 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
                     ? `${availableXp(pilot)} XP`
                     : `injured to day ${pilot.injuredUntilDay}`}
               </span>
+              {/* Seats are filled automatically after every battle, but a
+                  commander who wants their best gunner in the assault mech
+                  had no way to say so. Assigning an occupied mech evicts
+                  whoever is in it, so a swap is one pick, not two. */}
+              <select
+                className="pilot-mech"
+                disabled={pilot.dead}
+                value={pilot.mechId ?? ''}
+                onChange={(event) =>
+                  mutate((draft) => {
+                    assign(draft, pilot.id, event.target.value === '' ? null : event.target.value);
+                  }, `${pilot.name} reassigned.`)
+                }
+                data-testid={`camp-seat-${pilot.id}`}
+              >
+                <option value="">— no mech —</option>
+                {state.mechs.map((mech) => (
+                  <option key={mech.id} value={mech.id}>
+                    {mech.design.name}
+                    {mech.status === 'ready' ? '' : ` (${mech.status})`}
+                  </option>
+                ))}
+              </select>
               <span className="pilot-buttons">
                 {SKILLS.map((skill) => (
                   <button
