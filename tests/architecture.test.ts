@@ -82,3 +82,35 @@ describe('lint configuration', () => {
     expect(config).toContain("property: 'random'");
   });
 });
+
+/**
+ * `arc()` carries the Canvas rule that it joins the current point to the arc's
+ * start. On a Graphics shared by every mech on the field, an arc drawn without
+ * first moving onto the circumference trails a line back to whatever was drawn
+ * before it — which showed up in play as long stray lines across the map from
+ * mechs that were merely running hot.
+ */
+describe('arc drawing', () => {
+  const renderSources = collectSources(join(ROOT, 'src', 'render')).filter(
+    (path) => !path.endsWith(`${'draw'}.ts`),
+  );
+
+  it.each(renderSources)('%s draws arcs through the draw helpers', (path) => {
+    const source = readFileSync(path, 'utf8');
+    const calls = source.match(/\.arc\(/g) ?? [];
+    expect(
+      calls.length,
+      `${path} calls .arc() directly; use strokeArc or fillWedge from render/draw`,
+    ).toBe(0);
+  });
+
+  it('starts a stroked arc on the circumference, not wherever the pen was', () => {
+    const helper = readFileSync(join(ROOT, 'src', 'render', 'draw.ts'), 'utf8');
+    const strokeBody = helper.slice(helper.indexOf('export function strokeArc'));
+    const moveAt = strokeBody.indexOf('.moveTo(');
+    const arcAt = strokeBody.indexOf('.arc(');
+    expect(moveAt).toBeGreaterThan(-1);
+    expect(moveAt).toBeLessThan(arcAt);
+    expect(strokeBody).toContain('Math.cos(from) * radius');
+  });
+});

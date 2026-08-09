@@ -1,6 +1,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { MechLocation } from '../schema/common';
 import { isImmobile, isOperational, type EntityId, type MechEntity } from '../sim/types';
+import { strokeArc } from './draw';
 import { teamColour, UI } from './palette';
 import {
   DEFAULT_SILHOUETTE,
@@ -169,9 +170,15 @@ export class MechLayer {
         const fraction = Math.min(1, entity.heat / entity.heatCapacity);
         if (fraction > 0.4) {
           const sweep = Math.PI * 0.9 * fraction;
-          this.overlay
-            .arc(x, y, radius * 1.05, -Math.PI / 2 - sweep / 2, -Math.PI / 2 + sweep / 2)
-            .stroke({ width: 3, color: 0xffc042, alpha: 0.5 + 0.5 * fraction });
+          strokeArc(
+            this.overlay,
+            x,
+            y,
+            radius * 1.05,
+            -Math.PI / 2 - sweep / 2,
+            -Math.PI / 2 + sweep / 2,
+            { width: 3, color: 0xffc042, alpha: 0.5 + 0.5 * fraction },
+          );
         }
       }
 

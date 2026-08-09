@@ -6,6 +6,7 @@ import { isOperational, type EntityId, type MechEntity, type Vec2, type World } 
 import { Camera } from './camera';
 import { EffectLayer } from './effects';
 import { FogLayer } from './fog';
+import { fillWedge, strokeArc } from './draw';
 import { MechLayer, type Interpolated } from './mechs';
 import { teamColour, UI } from './palette';
 import { buildTilemap } from './tilemap';
@@ -136,11 +137,10 @@ export class Renderer {
 
       if (zone.contender !== null && zone.progress > 0) {
         const sweep = (zone.progress / zone.captureSeconds) * Math.PI * 2;
-        this.markers
-          .moveTo(zone.x, zone.y)
-          .arc(zone.x, zone.y, zone.radius * 0.72, -Math.PI / 2, -Math.PI / 2 + sweep)
-          .lineTo(zone.x, zone.y)
-          .fill({ color: teamColour(zone.contender), alpha: 0.3 });
+        fillWedge(this.markers, zone.x, zone.y, zone.radius * 0.72, -Math.PI / 2, -Math.PI / 2 + sweep, {
+          color: teamColour(zone.contender),
+          alpha: 0.3,
+        });
       }
     }
 
@@ -193,17 +193,18 @@ export class Renderer {
       const halfArc = (world.rules.combat.firingArcDegrees / 2) * (Math.PI / 180);
       const arcRadius = 90;
       const aim = at.facing + at.torso;
-      this.markers
-        .moveTo(at.x, at.y)
-        .arc(at.x, at.y, arcRadius, aim - halfArc, aim + halfArc)
-        .lineTo(at.x, at.y)
-        .fill({ color: UI.selection, alpha: 0.07 });
+      fillWedge(this.markers, at.x, at.y, arcRadius, aim - halfArc, aim + halfArc, {
+        color: UI.selection,
+        alpha: 0.07,
+      });
 
       // How far the torso is wound off the hull, and which way it can still swing.
       const twistLimit = world.rules.movement.torsoTwistDegrees * (Math.PI / 180);
-      this.markers
-        .arc(at.x, at.y, arcRadius * 0.5, at.facing - twistLimit, at.facing + twistLimit)
-        .stroke({ width: 1, color: UI.selection, alpha: 0.2 });
+      strokeArc(this.markers, at.x, at.y, arcRadius * 0.5, at.facing - twistLimit, at.facing + twistLimit, {
+        width: 1,
+        color: UI.selection,
+        alpha: 0.2,
+      });
       this.markers
         .moveTo(at.x, at.y)
         .lineTo(at.x + Math.cos(aim) * arcRadius * 0.5, at.y + Math.sin(aim) * arcRadius * 0.5)
