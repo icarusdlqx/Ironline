@@ -280,6 +280,8 @@ export class Renderer {
           ? undefined
           : { type: weapon.type, tonnage: weapon.tonnage };
       },
+      world.playerTeam ?? 0,
+      deltaSeconds,
     );
 
     if (world.vision !== null) {

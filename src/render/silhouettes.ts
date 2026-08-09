@@ -3,7 +3,7 @@ import type { MechLocation } from '../schema/common';
 import type { Chassis } from '../schema/chassis';
 import type { WeaponType } from '../schema/weapon';
 import type { MechEntity } from '../sim/types';
-import { shade } from './palette';
+import { mix, shade } from './palette';
 
 export type Silhouette = Chassis['silhouette'];
 
@@ -48,14 +48,15 @@ function paletteFor(entity: MechEntity, team: number, alpha: number): Palette {
   }
   const health = maximum === 0 ? 0 : current / maximum;
 
-  // Hulls are Sarn plate, not team paint. The team shows in the trim, which is
-  // how a lance is actually marked, and it reads far better against terrain.
-  const base = entity.destroyed ? 0x2b2b2d : shade(0x555f66, 0.55 + 0.45 * health);
+  // Sarn plate, but painted. Enough steel left in it to read as a machine, enough
+  // team colour that you never have to work out whose it is mid-fight.
+  const steel = shade(0x555f66, 0.55 + 0.45 * health);
+  const base = entity.destroyed ? 0x2b2b2d : mix(steel, team, 0.5);
   return {
     plate: base,
     deep: shade(base, 0.6),
     light: shade(base, 1.45),
-    trim: entity.destroyed ? 0x50494a : team,
+    trim: entity.destroyed ? 0x50494a : shade(team, 1.5),
     alpha,
   };
 }

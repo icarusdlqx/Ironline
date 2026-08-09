@@ -16,6 +16,8 @@ export const UI = {
   background: 0x0d1013,
   grid: 0x000000,
   selection: 0x8ce0ff,
+  friendly: 0x6fd7ff,
+  hostile: 0xff4d3a,
   moveMarker: 0x8ce0ff,
   attackMarker: 0xff8a6b,
   ghost: 0x8892a0,
@@ -30,6 +32,14 @@ export const UI = {
 
 export function teamColour(team: number): number {
   return TEAM_COLOURS[team % TEAM_COLOURS.length] ?? 0xffffff;
+}
+
+/** Blends two colours; t=0 is all of a, t=1 is all of b. */
+export function mix(a: number, b: number, t: number): number {
+  const clamp = Math.max(0, Math.min(1, t));
+  const channel = (shift: number): number =>
+    Math.round(((a >> shift) & 0xff) * (1 - clamp) + ((b >> shift) & 0xff) * clamp);
+  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
 }
 
 export function shade(colour: number, factor: number): number {

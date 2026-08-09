@@ -117,11 +117,15 @@ flanking work — but it means a line lance should not be built around one.
 | Input | Action |
 |---|---|
 | Left click | Select a mech (shift to add), or confirm a queued order |
+| Left drag | Box-select your lance |
+| 1–9 / Ctrl+1–9 | Recall a control group / bind the selection to one |
+| E | Select the whole lance |
+| Shift+1–4 | Toggle a weapon group |
+| T | Reactor governor (heat safety) on or off |
 | Right click | Attack the enemy under the cursor, or move there (shift to run) |
 | Space | Pause / resume — orders are still accepted while paused |
 | M / R / F / C | Move, Run, Attack, Called Shot |
 | H / G | Hold Fire, Guard (stop) |
-| 1–4 | Toggle a weapon group |
 | Tab | Cycle through your lance |
 | Arrows / WASD | Pan · wheel zooms · middle-drag pans |
 

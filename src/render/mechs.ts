@@ -96,6 +96,7 @@ export class MechLayer {
     { root: Container; torso: Container; hull: Graphics; body: Graphics; signature: string }
   >();
   private readonly overlay = new Graphics();
+  private elapsed = 0;
 
   constructor() {
     this.container.addChild(this.overlay);
@@ -108,8 +109,11 @@ export class MechLayer {
     selection: ReadonlySet<EntityId>,
     silhouetteOf: SilhouetteLookup,
     weaponArt: WeaponArtLookup,
+    playerTeam: number,
+    deltaSeconds: number,
   ): void {
     this.overlay.clear();
+    this.elapsed += deltaSeconds;
 
     for (const entity of entities) {
       const shown = visible(entity);
@@ -155,18 +159,19 @@ export class MechLayer {
       const x = interpolated?.x ?? entity.pos.x;
       const y = interpolated?.y ?? entity.pos.y;
 
-      if (selection.has(entity.id)) {
-        this.overlay
-          .circle(x, y, radius * 1.6)
-          .stroke({ width: 2, color: UI.selection, alpha: 0.9 });
-      }
+      const friendly = entity.team === playerTeam;
+      if (isOperational(entity)) this.drawAllegiance(x, y, radius, friendly);
+      if (selection.has(entity.id)) this.drawSelection(x, y, radius);
 
+      // Heat is an arc over the mech's shoulder, never a ring: a full ring is
+      // what says friend or foe, and the two must not be confusable.
       if (isOperational(entity) && entity.heat > 0) {
         const fraction = Math.min(1, entity.heat / entity.heatCapacity);
         if (fraction > 0.4) {
+          const sweep = Math.PI * 0.9 * fraction;
           this.overlay
-            .circle(x, y, radius * 1.25)
-            .stroke({ width: 2, color: 0xff7a3c, alpha: 0.25 + 0.5 * fraction });
+            .arc(x, y, radius * 1.05, -Math.PI / 2 - sweep / 2, -Math.PI / 2 + sweep / 2)
+            .stroke({ width: 3, color: 0xffc042, alpha: 0.5 + 0.5 * fraction });
         }
       }
 
@@ -175,6 +180,60 @@ export class MechLayer {
           .circle(x, y, radius * 1.45)
           .stroke({ width: 2, color: 0x6f7bff, alpha: 0.85 });
       }
+    }
+  }
+
+  /**
+   * Whose machine this is, told twice: colour and shape. A friendly stands on a
+   * closed ring, a hostile inside an open bracket, so the read survives a dark
+   * screen, a colour-blind player and a map full of smoke.
+   */
+  private drawAllegiance(x: number, y: number, radius: number, friendly: boolean): void {
+    const ring = radius * 1.25;
+
+    if (friendly) {
+      this.overlay
+        .circle(x, y, ring)
+        .stroke({ width: 2, color: UI.friendly, alpha: 0.75 });
+      this.overlay.circle(x, y, ring).fill({ color: UI.friendly, alpha: 0.09 });
+      return;
+    }
+
+    // Four corner ticks, rotated 45 degrees: an obviously different silhouette.
+    const arm = ring * 0.62;
+    for (let index = 0; index < 4; index += 1) {
+      const angle = Math.PI / 4 + (index * Math.PI) / 2;
+      const cx = x + Math.cos(angle) * ring;
+      const cy = y + Math.sin(angle) * ring;
+      this.overlay
+        .moveTo(cx - Math.cos(angle) * arm * 0.5, cy - Math.sin(angle) * arm * 0.5)
+        .lineTo(cx + Math.cos(angle) * arm * 0.35, cy + Math.sin(angle) * arm * 0.35)
+        .stroke({ width: 2.5, color: UI.hostile, alpha: 0.85 });
+    }
+    this.overlay.circle(x, y, ring).fill({ color: UI.hostile, alpha: 0.07 });
+  }
+
+  /** Selection reads as a targeting box that breathes, not a thin extra circle. */
+  private drawSelection(x: number, y: number, radius: number): void {
+    const pulse = 0.5 + 0.5 * Math.sin(this.elapsed * 3.4);
+    const box = radius * (1.75 + pulse * 0.1);
+    const corner = box * 0.45;
+
+    this.overlay.circle(x, y, radius * 1.45).fill({ color: UI.selection, alpha: 0.12 });
+
+    for (const [sx, sy] of [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ] as const) {
+      const cx = x + sx * box;
+      const cy = y + sy * box;
+      this.overlay
+        .moveTo(cx - sx * corner, cy)
+        .lineTo(cx, cy)
+        .lineTo(cx, cy - sy * corner)
+        .stroke({ width: 2.5, color: UI.selection, alpha: 0.7 + pulse * 0.3 });
     }
   }
 
