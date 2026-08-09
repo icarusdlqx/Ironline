@@ -7,6 +7,7 @@ import {
   addAmmo,
   addEquipment,
   addMount,
+  designIssues,
   exportDesign,
   InvalidBuildError,
   listStoredDesigns,
@@ -66,6 +67,11 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
   const chassis = catalog.chassis.get(design.chassisId);
   const loadout = useMemo(() => computeLoadout(catalog, design), [design]);
   const heat = useMemo(() => computeHeatProfile(catalog, design), [design]);
+  // The loadout rules are not the whole story — a blank name passes them and
+  // then writes a file that will not load back. Gate on everything saving
+  // checks, so the button state matches what the button will actually do.
+  const issues = useMemo(() => designIssues(catalog, design), [design]);
+  const saveable = issues.length === 0;
 
   if (chassis === undefined) return <div className="bay">unknown chassis {design.chassisId}</div>;
 
@@ -82,9 +88,14 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
 
   const onSave = (): void => {
     try {
-      saveToStorage(catalog, design);
+      const { replaced } = saveToStorage(catalog, design);
       setStored(listStoredDesigns());
-      setStatus({ tone: 'ok', text: `Saved "${design.name}".` });
+      setStatus({
+        tone: 'ok',
+        text: replaced
+          ? `Saved "${design.name}", replacing the build already under that name.`
+          : `Saved "${design.name}".`,
+      });
     } catch (error) {
       if (error instanceof InvalidBuildError) {
         setStatus({ tone: 'error', text: `Cannot save — ${error.issues.join('; ')}` });
@@ -141,13 +152,16 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
           data-testid="design-name"
         />
         <select
-          value={design.id}
+          // Renaming forks the design off the stock list, so the picker needs
+          // somewhere to sit that is not one of the factory builds.
+          value={catalog.designs.has(design.id) ? design.id : ''}
           onChange={(event) => {
             const picked = catalog.designs.get(event.target.value);
             if (picked !== undefined) apply(JSON.parse(JSON.stringify(picked)) as Design);
           }}
           data-testid="design-picker"
         >
+          {catalog.designs.has(design.id) ? null : <option value="">{design.name} (custom)</option>}
           {[...catalog.designs.values()].map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.name}
@@ -221,6 +235,9 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
               {issue.location === null ? '' : `${issue.location}: `}
               {issue.message}
             </li>
+          ))}
+          {issues.slice(loadout.issues.length).map((issue) => (
+            <li key={issue}>{issue}</li>
           ))}
         </ul>
       </section>
@@ -342,8 +359,8 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
         <button
           type="button"
           onClick={onSave}
-          disabled={!loadout.valid}
-          title={loadout.valid ? 'Save to browser storage' : 'Fix the build before saving'}
+          disabled={!saveable}
+          title={saveable ? 'Save to browser storage' : 'Fix the build before saving'}
           data-testid="bay-save"
         >
           Save build
@@ -351,7 +368,7 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
         <button
           type="button"
           onClick={onExport}
-          disabled={!loadout.valid}
+          disabled={!saveable}
           data-testid="bay-export"
         >
           Export JSON
@@ -395,7 +412,7 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
           data-testid="bay-status"
           role="status"
         >
-          {status?.text ?? (loadout.valid ? 'Build is legal.' : 'Build is not legal.')}
+          {status?.text ?? (saveable ? 'Build is legal.' : 'Build is not legal.')}
         </span>
       </footer>
     </div>

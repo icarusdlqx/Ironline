@@ -91,9 +91,29 @@ export function setHeatSinkId(design: Design, heatSinkId: string): Design {
   return next;
 }
 
+/**
+ * Turns a display name into a legal id. Ids are lower_snake_case and have to
+ * start with a letter, so a name of digits or punctuation alone falls back to
+ * a fixed stem rather than producing something the schema will not load.
+ */
+export function idFromName(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/^[^a-z]+/, '');
+  return slug === '' ? 'custom_design' : slug;
+}
+
+/**
+ * Renaming renames the design. Storage is keyed on the id, so leaving it pinned
+ * to whatever stock design the player started from meant the second variant
+ * they built silently replaced the first.
+ */
 export function setName(design: Design, name: string): Design {
   const next = copy(design);
   next.name = name;
+  next.id = idFromName(name);
   return next;
 }
 
@@ -137,11 +157,43 @@ export class InvalidBuildError extends Error {
   }
 }
 
-/** Refuses to persist anything the loadout rules reject. */
-export function saveToStorage(catalog: Catalog, design: Design): void {
+/**
+ * Everything that leaves the bay has to satisfy the loadout rules AND the
+ * schema. The loadout rules alone let a build with a blank name through, and
+ * the blank name only surfaces on the way back in, as a file that will not load.
+ */
+export function designIssues(catalog: Catalog, design: Design): string[] {
   const loadout = computeLoadout(catalog, design);
-  if (!loadout.valid) throw new InvalidBuildError(loadout.issues.map((issue) => issue.message));
-  globalThis.localStorage?.setItem(`${STORAGE_PREFIX}${design.id}`, serialiseDesign(design));
+  const issues = loadout.valid ? [] : loadout.issues.map((issue) => issue.message);
+
+  const parsed = DesignSchema.safeParse(design);
+  if (parsed.success) return issues;
+
+  return [
+    ...issues,
+    ...parsed.error.issues.map(
+      (issue) => `${issue.path.map(String).join('.') || '(root)'}: ${issue.message}`,
+    ),
+  ];
+}
+
+function checkOrThrow(catalog: Catalog, design: Design): void {
+  const issues = designIssues(catalog, design);
+  if (issues.length > 0) throw new InvalidBuildError(issues);
+}
+
+/**
+ * Refuses to persist anything the rules reject. Reports whether it replaced an
+ * existing entry, so a save that lands on a name already in use can say so
+ * instead of quietly discarding the earlier build.
+ */
+export function saveToStorage(catalog: Catalog, design: Design): { replaced: boolean } {
+  checkOrThrow(catalog, design);
+
+  const key = `${STORAGE_PREFIX}${design.id}`;
+  const replaced = globalThis.localStorage?.getItem(key) != null;
+  globalThis.localStorage?.setItem(key, serialiseDesign(design));
+  return { replaced };
 }
 
 export function listStoredDesigns(): string[] {
@@ -163,7 +215,6 @@ export function loadFromStorage(id: string): ParseResult {
 }
 
 export function exportDesign(catalog: Catalog, design: Design): Blob {
-  const loadout = computeLoadout(catalog, design);
-  if (!loadout.valid) throw new InvalidBuildError(loadout.issues.map((issue) => issue.message));
+  checkOrThrow(catalog, design);
   return new Blob([serialiseDesign(design)], { type: 'application/json' });
 }

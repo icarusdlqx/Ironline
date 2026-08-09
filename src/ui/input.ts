@@ -187,6 +187,16 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const onKeyDown = (event: KeyboardEvent): void => {
     const state = useGame.getState();
+
+    // A browser shortcut is not a battle order. Ctrl+R has to reload the page
+    // without also putting the lance into run mode, and Cmd+T has to open a tab
+    // without switching the heat governor off. Nor should the chorded key stick
+    // in `held` and pan the camera for ever once focus moves to the new tab.
+    // Control groups are the exception: those are bound with Ctrl or Cmd.
+    if ((event.ctrlKey || event.metaKey || event.altKey) && !event.code.startsWith('Digit')) {
+      return;
+    }
+
     held.add(event.code);
 
     switch (event.code) {
@@ -271,6 +281,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     held.delete(event.code);
   };
 
+  // Keyup lands on whoever has focus, so a key released after the window loses
+  // it is never cleared and the camera drifts on its own until it is pressed
+  // again. Losing focus means nothing is held any more.
+  const onBlur = (): void => held.clear();
+
   let lastCameraFrame = 0;
   const cameraFrame = (now: number): void => {
     const delta = lastCameraFrame === 0 ? 0 : Math.min(0.1, (now - lastCameraFrame) / 1000);
@@ -301,6 +316,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   canvas.addEventListener('contextmenu', onContextMenu);
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
 
   return () => {
     cameraRunning = false;
@@ -311,5 +327,6 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     canvas.removeEventListener('contextmenu', onContextMenu);
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('blur', onBlur);
   };
 }
