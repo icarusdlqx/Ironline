@@ -1,5 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { MechLocation } from '../schema/common';
+import { jumpHeight } from '../sim/movement';
 import { isImmobile, isOperational, type EntityId, type MechEntity } from '../sim/types';
 import { strokeArc } from './draw';
 import { teamColour, UI } from './palette';
@@ -159,6 +160,18 @@ export class MechLayer {
       const radius = radiusFor(entity.tonnage);
       const x = interpolated?.x ?? entity.pos.x;
       const y = interpolated?.y ?? entity.pos.y;
+
+      // Airborne: the hull grows and rides up the screen while its shadow stays
+      // on the ground beneath it, so height reads from a fixed overhead camera.
+      const height = jumpHeight(entity);
+      view.root.scale.set(1 + height * 0.35);
+      view.root.position.y -= height * radius * 1.6;
+      if (height > 0) {
+        const squash = 1 - height * 0.35;
+        this.overlay
+          .ellipse(x, y, radius * squash, radius * 0.55 * squash)
+          .fill({ color: 0x000000, alpha: 0.4 - height * 0.2 });
+      }
 
       const friendly = entity.team === playerTeam;
       if (isOperational(entity)) this.drawAllegiance(x, y, radius, friendly);

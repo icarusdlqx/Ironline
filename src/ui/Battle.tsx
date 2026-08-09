@@ -274,6 +274,11 @@ export function Battle() {
           enabled={playerControlled}
           holdingFire={unit?.holdingFire ?? false}
           heatSafety={unit?.heatSafety ?? false}
+          jump={
+            unit === null
+              ? null
+              : { ready: unit.canJump, range: unit.jumpRange, cooldown: unit.jumpCooldown }
+          }
           onCommand={onCommand}
         />
         <SupportPalette

@@ -31,6 +31,8 @@ export const MovementRulesSchema = z.strictObject({
   jumpDistancePerJet: z.number().positive(),
   jumpHeatPerJet: z.number().nonnegative(),
   jumpCooldownSeconds: z.number().positive(),
+  /** Ground speed while airborne. Sets how long a mech spends off the ground. */
+  jumpSpeed: z.number().positive(),
   moveAlignmentDegrees: z.number().positive().max(180),
   torsoTwistDegrees: z.number().positive().max(180),
   torsoTurnRateDegreesPerSecond: z.number().positive(),

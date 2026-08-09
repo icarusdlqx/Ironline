@@ -27,9 +27,8 @@ export const COMMANDS: readonly Command[] = [
     id: 'jump',
     label: 'Jump',
     key: 'J',
-    mode: null,
-    disabled: true,
-    title: 'Jump jets are modelled in data but not yet simulated',
+    mode: 'jump',
+    title: 'Fire the jets at a point inside their reach — heat now, cooldown after (J)',
   },
 ];
 
@@ -38,10 +37,26 @@ interface Props {
   enabled: boolean;
   holdingFire: boolean;
   heatSafety: boolean;
+  /** Jets aboard, charged and free to fire. Null when nothing is selected. */
+  jump: { ready: boolean; range: number; cooldown: number } | null;
   onCommand: (command: Command) => void;
 }
 
-export function CommandPalette({ orderMode, enabled, holdingFire, heatSafety, onCommand }: Props) {
+function jumpTitle(jump: Props['jump']): string {
+  if (jump === null || jump.range <= 0) return 'This mech has no jump jets';
+  if (jump.cooldown > 0) return `Jets recharging — ${jump.cooldown.toFixed(1)}s`;
+  if (!jump.ready) return 'The jets cannot fire right now';
+  return `Fire the jets up to ${Math.round(jump.range)}m — heat now, cooldown after (J)`;
+}
+
+export function CommandPalette({
+  orderMode,
+  enabled,
+  holdingFire,
+  heatSafety,
+  jump,
+  onCommand,
+}: Props) {
   return (
     <div className="palette" data-testid="command-palette">
       {COMMANDS.map((command) => {
@@ -50,13 +65,17 @@ export function CommandPalette({ orderMode, enabled, holdingFire, heatSafety, on
           (command.id === 'hold_fire' && holdingFire) ||
           (command.id === 'heat_safety' && heatSafety);
 
+        const isJump = command.id === 'jump';
+        const disabled = command.disabled === true || !enabled || (isJump && jump?.ready !== true);
+        const title = isJump ? jumpTitle(jump) : (command.title ?? `${command.label} (${command.key})`);
+
         return (
           <button
             key={command.id}
             type="button"
             className={`command ${active ? 'active' : ''}`}
-            disabled={command.disabled === true || !enabled}
-            title={command.title ?? `${command.label} (${command.key})`}
+            disabled={disabled}
+            title={title}
             onClick={() => onCommand(command)}
             data-testid={`command-${command.id}`}
           >

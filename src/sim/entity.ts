@@ -141,12 +141,20 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
   let sensorRangeFactor = 1;
   let designatorRange = 0;
   let designatorSeconds = 0;
+  let jumpRange = 0;
+  let jumpHeat = 0;
   for (const fit of design.equipment) {
     const stats = catalog.equipment.get(fit.equipmentId)?.stats ?? {};
     incomingAccuracyFactor *= stats.incoming_accuracy_factor ?? 1;
     outgoingAccuracyFactor *= stats.accuracy_factor ?? 1;
     amsMissileFactor *= stats.ams_missile_factor ?? 1;
     sensorRangeFactor *= stats.sensor_range_factor ?? 1;
+    // Each jet adds its own reach and its own heat. A chassis with no jump
+    // gear in its gyro cannot use them however many are bolted on.
+    if (chassis.jumpCapable) {
+      jumpRange += stats.jump_distance ?? 0;
+      jumpHeat += stats.heat_per_jump ?? 0;
+    }
     // The longest-reaching designator wins, and it carries its own dwell time.
     if ((stats.designator_range ?? 0) > designatorRange) {
       designatorRange = stats.designator_range ?? 0;
@@ -198,6 +206,10 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     intendedMotion: 'stationary',
     walkSpeed,
     runSpeed: walkSpeed * rules.movement.runMultiplier,
+    jumpRange,
+    jumpHeat,
+    jumpCooldown: 0,
+    jump: null,
     turnRate:
       rules.movement.turnRateDegreesPerSecond *
       (rules.movement.turnRateReferenceTonnage / chassis.tonnage) *

@@ -1,5 +1,5 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
-import { isHoldingFire } from '../sim/orders';
+import { canJump, isHoldingFire } from '../sim/orders';
 import { findEntity, isOperational, type MechEntity, type World } from '../sim/types';
 import type { LocationSnapshot, UnitSnapshot, WeaponSnapshot } from './store';
 
@@ -60,6 +60,9 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     holdingFire: isHoldingFire(entity),
     heatSafety: entity.heatSafety,
     hasMoveOrder: entity.orders.move !== null,
+    jumpRange: entity.jumpRange,
+    jumpCooldown: entity.jumpCooldown,
+    canJump: canJump(entity),
   };
 }
 

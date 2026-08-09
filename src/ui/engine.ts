@@ -6,6 +6,7 @@ import { restoreIntent } from '../sim/governor';
 import {
   isHoldingFire,
   issueAttack,
+  issueJump,
   issueMove,
   issueStop,
   setGroupEnabled,
@@ -273,6 +274,19 @@ export class Engine {
       if (entity === null || entity.autopilot) continue;
       issueMove(this.world, entity, to, run);
     }
+  }
+
+  /** Fires the jets of whatever is selected and can jump, toward one point. */
+  orderJump(to: Vec2): void {
+    let fired = 0;
+    let asked = 0;
+    for (const id of this.selectedEntities()) {
+      const entity = findEntity(this.world, id);
+      if (entity === null || entity.autopilot) continue;
+      asked += 1;
+      if (issueJump(this.world, entity, to)) fired += 1;
+    }
+    if (asked > 0 && fired === 0) useGame.getState().pushLog('No selected mech can jump there.');
   }
 
   orderAttack(targetId: EntityId, calledShot: MechLocation | null): void {

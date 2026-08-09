@@ -12,6 +12,9 @@ import { preferredRange } from './utility';
  * controller adds on top is what Phase 6 is measuring.
  */
 export function decideBaseline(world: World, mech: MechEntity): void {
+  // Airborne: the arc is committed, so there is nothing left to decide.
+  if (mech.jump !== null) return;
+
   if (!isOperational(mech) || mech.shutdownRemaining > 0) {
     mech.path = [];
     mech.pathIndex = 0;

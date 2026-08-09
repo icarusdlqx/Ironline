@@ -18,7 +18,7 @@ export interface ViewState {
   selectionBox: { a: Vec2; b: Vec2 } | null;
   /** The run-in the player is dragging out for a directional support call. */
   supportRun: { at: Vec2; heading: number; length: number; width: number } | null;
-  orderMode: 'move' | 'run' | 'attack' | 'called_shot' | null;
+  orderMode: 'move' | 'run' | 'attack' | 'called_shot' | 'jump' | null;
 }
 
 interface MotionSample {
@@ -192,6 +192,14 @@ export class Renderer {
       this.markers
         .circle(at.x, at.y, entity.sensorRange)
         .stroke({ width: 1, color: UI.selection, alpha: 0.18 });
+
+      // Aiming a jump: show how far the jets will actually throw this mech, so
+      // clicking past the ridge is an informed decision rather than a guess.
+      if (view.orderMode === 'jump' && entity.jumpRange > 0 && entity.jumpCooldown <= 0) {
+        this.markers
+          .circle(at.x, at.y, entity.jumpRange)
+          .stroke({ width: 1.5, color: UI.moveMarker, alpha: 0.5 });
+      }
 
       const halfArc = (world.rules.combat.firingArcDegrees / 2) * (Math.PI / 180);
       const arcRadius = 90;

@@ -29,6 +29,8 @@ export type SimEvent =
     }
   | { type: 'shutdown'; tick: number; entityId: EntityId; forced: boolean }
   | { type: 'restart'; tick: number; entityId: EntityId }
+  | { type: 'jump_started'; tick: number; entityId: EntityId; x: number; y: number }
+  | { type: 'jump_landed'; tick: number; entityId: EntityId; x: number; y: number }
   | { type: 'pilot_ejected'; tick: number; entityId: EntityId }
   | { type: 'mech_destroyed'; tick: number; entityId: EntityId; method: KillMethod }
   | { type: 'battle_ended'; tick: number; winner: number | null }

@@ -22,7 +22,8 @@ export interface LoadoutIssue {
     | 'slots'
     | 'armour'
     | 'heat_sinks'
-    | 'ammo';
+    | 'ammo'
+    | 'jump_jets';
   location: MechLocation | null;
   message: string;
 }
@@ -225,6 +226,17 @@ export function computeLoadout(catalog: Catalog, design: Design): Loadout {
     }
     payloadWeight += equipment.tonnage;
     perLocation[fit.location].slotsUsed += equipment.slots;
+
+    // Jets need the gyro and the reinforced actuators that come with a
+    // jump-capable chassis. Bolted to anything else they are dead weight, and
+    // the build should say so rather than quietly charging a tonne for nothing.
+    if (equipment.category === 'jump_jet' && !chassis.jumpCapable) {
+      issues.push({
+        code: 'jump_jets',
+        location: fit.location,
+        message: `the ${chassis.name} cannot mount jump jets`,
+      });
+    }
   }
 
   for (const location of LOCATIONS) {

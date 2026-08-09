@@ -303,6 +303,8 @@ export function runTeamAi(world: World, team: number, tier: DifficultyTier): voi
   const stations = assignZones(world, team);
   for (const mech of world.entities) {
     if (mech.team !== team || mech.controller !== 'tactical') continue;
+    // Airborne: the arc is committed, so there is nothing left to decide.
+    if (mech.jump !== null) continue;
     decideTactical(world, mech, focus, tier, stations.get(mech.id) ?? null);
   }
 }

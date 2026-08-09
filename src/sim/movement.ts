@@ -1,4 +1,5 @@
-import { currentHeatTier } from './heat';
+import { emit } from './events';
+import { addHeat, currentHeatTier } from './heat';
 import { angleDifference, bearing, distance, normaliseAngle } from './math';
 import {
   findEntity,
@@ -28,9 +29,108 @@ function turnToward(world: World, entity: MechEntity, focus: Vec2): number {
   return angleDifference(entity.facing, desired);
 }
 
-function passableAt(world: World, point: Vec2): boolean {
+export function passableAt(world: World, point: Vec2): boolean {
   const tile = world.terrain.toTile(point);
   return world.terrain.passable(tile.column, tile.row);
+}
+
+/** Where a mech would come down aiming at `to`, clamped to what its jets can reach. */
+export function jumpLanding(world: World, entity: MechEntity, to: Vec2): Vec2 | null {
+  if (entity.jumpRange <= 0) return null;
+
+  const dx = to.x - entity.pos.x;
+  const dy = to.y - entity.pos.y;
+  const reach = Math.hypot(dx, dy);
+  if (reach <= 0) return null;
+
+  // Asking for more than the jets have is an order to jump as far that way as
+  // they will go, not a refusal — a pilot pointing past the ridge means "clear it".
+  const scale = Math.min(1, entity.jumpRange / reach);
+  const landing = { x: entity.pos.x + dx * scale, y: entity.pos.y + dy * scale };
+  if (!passableAt(world, landing)) return null;
+  return landing;
+}
+
+/**
+ * Fires the jets. Nothing stops the arc once it starts: the mech is off the
+ * ground, so terrain, orders and the pathfinder all wait until it lands.
+ */
+export function beginJump(world: World, entity: MechEntity, to: Vec2): boolean {
+  if (!isOperational(entity) || entity.shutdownRemaining > 0 || isImmobile(entity)) return false;
+  if (entity.jump !== null || entity.jumpCooldown > 0) return false;
+
+  const landing = jumpLanding(world, entity, to);
+  if (landing === null) return false;
+
+  entity.jump = {
+    from: { x: entity.pos.x, y: entity.pos.y },
+    to: landing,
+    elapsed: 0,
+    duration: Math.max(world.dt, distance(entity.pos, landing) / world.rules.movement.jumpSpeed),
+  };
+  entity.jumpCooldown = world.rules.movement.jumpCooldownSeconds;
+  entity.motion = 'jump';
+  entity.intendedMotion = 'jump';
+  entity.path = [];
+  entity.pathIndex = 0;
+  entity.orders.move = null;
+  addHeat(entity, entity.jumpHeat);
+
+  emit(world.events, {
+    type: 'jump_started',
+    tick: world.tick,
+    entityId: entity.id,
+    x: landing.x,
+    y: landing.y,
+  });
+  return true;
+}
+
+/** Flies the arc. Returns true while the mech is still off the ground. */
+export function updateJump(world: World, entity: MechEntity): boolean {
+  if (entity.jumpCooldown > 0) entity.jumpCooldown = Math.max(0, entity.jumpCooldown - world.dt);
+
+  const jump = entity.jump;
+  if (jump === null) return false;
+
+  // A mech that dies mid-air comes down where it is rather than completing a
+  // graceful landing it is in no condition to make.
+  if (!isOperational(entity)) {
+    entity.jump = null;
+    entity.motion = 'stationary';
+    return false;
+  }
+
+  jump.elapsed += world.dt;
+  const progress = Math.min(1, jump.elapsed / jump.duration);
+  entity.pos = {
+    x: jump.from.x + (jump.to.x - jump.from.x) * progress,
+    y: jump.from.y + (jump.to.y - jump.from.y) * progress,
+  };
+  entity.motion = 'jump';
+
+  if (progress < 1) return true;
+
+  entity.pos = { x: jump.to.x, y: jump.to.y };
+  entity.jump = null;
+  entity.motion = 'stationary';
+  entity.intendedMotion = 'stationary';
+  emit(world.events, {
+    type: 'jump_landed',
+    tick: world.tick,
+    entityId: entity.id,
+    x: jump.to.x,
+    y: jump.to.y,
+  });
+  return false;
+}
+
+/** How high off the ground the mech is, 0 on the pads and 1 at the top of the arc. */
+export function jumpHeight(entity: MechEntity): number {
+  const jump = entity.jump;
+  if (jump === null) return 0;
+  const progress = Math.min(1, jump.elapsed / jump.duration);
+  return Math.sin(progress * Math.PI);
 }
 
 function clearPath(entity: MechEntity): void {
@@ -65,6 +165,9 @@ export function weaponBearing(entity: MechEntity): number {
 }
 
 export function updateMovement(world: World, entity: MechEntity): void {
+  // Airborne: the arc owns the mech's position until it comes down.
+  if (updateJump(world, entity)) return;
+
   if (!isOperational(entity) || entity.shutdownRemaining > 0 || isImmobile(entity)) {
     entity.motion = 'stationary';
     return;

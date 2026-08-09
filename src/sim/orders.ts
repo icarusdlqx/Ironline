@@ -1,10 +1,12 @@
 import type { MechLocation } from '../schema/common';
 import { applyHeatGovernor } from './governor';
 import { distance } from './math';
+import { beginJump } from './movement';
 import { findPath } from './pathfind';
 import { isVisibleTo } from './sensors';
 import {
   findEntity,
+  isImmobile,
   isOperational,
   type EntityId,
   type MechEntity,
@@ -57,6 +59,23 @@ export function issueAttack(
   entity.calledShot = calledShot;
 }
 
+/** Fires the jets toward a point, clamped to the reach the mech actually has. */
+export function issueJump(world: World, entity: MechEntity, to: Vec2): boolean {
+  return beginJump(world, entity, to);
+}
+
+/** Whether the jets are aboard, charged and free to fire right now. */
+export function canJump(entity: MechEntity): boolean {
+  return (
+    entity.jumpRange > 0 &&
+    entity.jump === null &&
+    entity.jumpCooldown <= 0 &&
+    isOperational(entity) &&
+    entity.shutdownRemaining <= 0 &&
+    !isImmobile(entity)
+  );
+}
+
 export function issueStop(entity: MechEntity): void {
   entity.orders.move = null;
   entity.path = [];
@@ -106,6 +125,18 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
   if (!isOperational(entity) || entity.shutdownRemaining > 0) {
     entity.motion = 'stationary';
     entity.intendedMotion = entity.motion;
+    return;
+  }
+
+  // Airborne: the arc is committed. Keep picking targets, leave the feet alone.
+  if (entity.jump !== null) {
+    const airborne = findEntity(world, entity.orders.attack?.targetId ?? null);
+    entity.targetId =
+      airborne !== null && isOperational(airborne)
+        ? airborne.id
+        : isHoldingFire(entity)
+          ? null
+          : (autoAcquire(world, entity)?.id ?? null);
     return;
   }
 

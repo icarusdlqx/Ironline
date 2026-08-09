@@ -3,7 +3,7 @@ import type { MechLocation } from '../schema/common';
 import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
 
-export type OrderMode = 'move' | 'run' | 'attack' | 'called_shot' | null;
+export type OrderMode = 'move' | 'run' | 'attack' | 'called_shot' | 'jump' | null;
 
 export interface ObjectiveView {
   id: string;
@@ -63,6 +63,11 @@ export interface UnitSnapshot {
   holdingFire: boolean;
   heatSafety: boolean;
   hasMoveOrder: boolean;
+  /** How far the jets can throw this mech; 0 when it has none. */
+  jumpRange: number;
+  /** Seconds until the jets recharge, 0 when they are ready. */
+  jumpCooldown: number;
+  canJump: boolean;
 }
 
 export type Screen = 'battle' | 'mechbay' | 'campaign';

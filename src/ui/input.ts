@@ -95,6 +95,8 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     if (state.orderMode !== null) {
       if (state.orderMode === 'move' || state.orderMode === 'run') {
         engine.orderMove(world, state.orderMode === 'run');
+      } else if (state.orderMode === 'jump') {
+        engine.orderJump(world);
       } else {
         const target = engine.renderer.entityAt(engine.world, world, PICK_RADIUS);
         if (target !== null && target.team !== state.playerTeam) {
@@ -224,6 +226,9 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
         return;
       case 'KeyT':
         engine.toggleHeatSafety();
+        return;
+      case 'KeyJ':
+        state.setOrderMode('jump');
         return;
       case 'Escape':
         state.setOrderMode(null);

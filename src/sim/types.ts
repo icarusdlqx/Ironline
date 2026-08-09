@@ -21,6 +21,15 @@ export interface Vec2 {
 
 export type MotionState = 'stationary' | 'walk' | 'run' | 'jump';
 
+/** A jump in flight. The mech is off the ground and nothing on it can stop the arc. */
+export interface JumpState {
+  from: Vec2;
+  to: Vec2;
+  /** Seconds flown and seconds the arc takes; height peaks halfway between. */
+  elapsed: number;
+  duration: number;
+}
+
 export type KillMethod = 'centre_torso' | 'head' | 'ammo_explosion';
 
 export interface LocationState {
@@ -105,6 +114,14 @@ export interface MechEntity {
   walkSpeed: number;
   runSpeed: number;
   turnRate: number;
+
+  /** How far the jets can throw this mech, and what they charge for it. */
+  jumpRange: number;
+  jumpHeat: number;
+  /** Seconds until the jets can fire again. */
+  jumpCooldown: number;
+  /** The arc currently being flown, or null when the mech is on the ground. */
+  jump: JumpState | null;
 
   locations: Record<MechLocation, LocationState>;
   weapons: WeaponMount[];
