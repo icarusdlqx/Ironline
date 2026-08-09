@@ -7,7 +7,7 @@ import {
   Object3D,
   SphereGeometry,
 } from 'three';
-import { chamferedBox, taperedLimb } from './panels';
+import { chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
 import type { WeaponType } from '../schema/weapon';
 import { chassisBlueprint, type BlueprintPart, type Tone } from '../render/blueprint';
@@ -58,6 +58,14 @@ function palette(team: number, destroyed: boolean): Record<Tone, MeshStandardMat
 
 function geometryFor(part: BlueprintPart, scale: number): BufferGeometry {
   const [w, h, d] = part.size;
+  // A shaped plate is cut to its own outline. Everything else falls back to
+  // the primitives, so a part only pays for a profile when it earns one.
+  if (part.profile !== undefined) {
+    return hullSlab(
+      part.profile.map(([x, y]) => [x * w * scale, y * h * scale] as [number, number]),
+      d * scale,
+    );
+  }
   if (part.shape === 'cylinder') {
     return new CylinderGeometry((w * scale) / 2, (w * scale) / 2, h * scale, 12);
   }
@@ -80,16 +88,26 @@ export function buildMechModel(
   team: number,
   destroyed: boolean,
   mounts: readonly MountArt[],
+  /** Locations shot off. Limbs go missing; the rest is left burnt in place. */
+  lost: ReadonlySet<MechLocation> = new Set(),
 ): MechModel {
   const scale = radiusFor(tonnage);
   const plan = chassisBlueprint(shape, traits);
   const tones = palette(team, destroyed);
+  const burnt = palette(team, true);
 
   const root = new Group();
   const torso = new Group();
 
   for (const part of plan.parts) {
-    const mesh = new Mesh(geometryFor(part, scale), tones[part.tone]);
+    // An arm or a head that has been blown off is gone: nothing tells a player
+    // a mech has stopped being dangerous like watching the arm leave. A torso
+    // or a leg stays — the machine is standing on it — but it stays burnt.
+    const gone = part.location !== null && lost.has(part.location);
+    const shed = gone && (part.location === 'left_arm' || part.location === 'right_arm' || part.location === 'head');
+    if (shed) continue;
+
+    const mesh = new Mesh(geometryFor(part, scale), gone ? burnt[part.tone] : tones[part.tone]);
     mesh.position.set(part.at[0] * scale, part.at[1] * scale, part.at[2] * scale);
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
     mesh.castShadow = true;

@@ -42,6 +42,53 @@ export function chamferedBox(width: number, height: number, depth: number): Buff
 }
 
 /**
+ * A slab of armour with a shaped side profile, extruded across its width.
+ *
+ * A box has six faces meeting at right angles, and no amount of shading makes
+ * that look like something a foundry built: what reads as armour is a sloped
+ * glacis, a tapered deck, a cut corner. The profile is given in the part's own
+ * units — x forward, y up — and the extrusion bevel does for the long edges
+ * what the chamfer does for a box.
+ *
+ * Profiles must be convex. The bevel insets the outline, and an inset reflex
+ * corner folds through itself.
+ */
+export function hullSlab(profile: readonly (readonly [number, number])[], depth: number): BufferGeometry {
+  const first = profile[0];
+  if (first === undefined) throw new Error('a hull needs a profile');
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of profile) {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+
+  const shape = new Shape();
+  shape.moveTo(first[0], first[1]);
+  for (const [x, y] of profile.slice(1)) shape.lineTo(x, y);
+  shape.closePath();
+
+  const bevel = Math.min(depth * 0.2, Math.min(maxX - minX, maxY - minY) * 0.14);
+  const usable = Math.max(depth * 0.2, depth - bevel * 2);
+  const geometry = new ExtrudeGeometry(shape, {
+    depth: usable,
+    bevelEnabled: bevel > 0.0005,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: 2,
+    curveSegments: 1,
+  });
+  geometry.translate(0, 0, -usable / 2);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/**
  * A tapered limb segment: wider at the joint than at the end, with the corners
  * rounded off. Straight prisms are what make legs read as scaffolding.
  */

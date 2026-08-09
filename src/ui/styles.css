@@ -328,13 +328,110 @@ button {
   flex: none;
 }
 
+/* Carried by a weapon that cannot reach what the mech is shooting at. Dimmed
+   rather than struck out: it is not broken, it is just too far away. */
+.weapon-group li.out-of-range {
+  opacity: 0.45;
+}
+
 .weapon-name {
   flex: 1;
+}
+
+.weapon-range {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.weapon-range.short {
+  color: var(--accent);
+}
+
+.weapon-range.over {
+  color: var(--danger);
 }
 
 .weapon-ammo {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Every hostile the lance can see, as a row of buttons. The battlefield click
+   is the natural way to pick a target and the first one to fail; this is the
+   same order given somewhere it cannot be missed. */
+.hostiles {
+  position: absolute;
+  top: 52px;
+  left: 274px;
+  right: 300px;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.hostiles-label {
+  align-self: center;
+  flex: none;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hostile {
+  flex: none;
+  min-width: 132px;
+  padding: 5px 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 77, 58, 0.45);
+  border-radius: 4px;
+  text-align: left;
+  font-size: 11px;
+}
+
+.hostile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.hostile:not(:disabled):hover {
+  border-color: var(--danger);
+}
+
+.hostile.targeted {
+  border-color: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.hostile-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hostile-range {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hostile-health {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.hostile-health span {
+  display: block;
+  height: 100%;
+  background: var(--danger);
 }
 
 .log {
@@ -1087,6 +1184,14 @@ button {
   max-height: 320px;
 }
 
+.camp-roster h4 {
+  margin: 10px 0 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
 .camp-contract {
   grid-area: contract;
 }
@@ -1152,6 +1257,39 @@ button {
 }
 
 .bay-mech-name,
+/* A pilot has a name, a speciality, three ratings, a seat and three spend
+   buttons, and the barracks column is under three hundred pixels wide. On one
+   line the name is the thing that loses, and collapses to nothing — which is
+   how the roster ended up listing four sets of numbers and no people. Two
+   lines: who they are, then what they can do. */
+.camp-roster li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-areas:
+    'name name name'
+    'skills seat buttons';
+  gap: 2px 6px;
+  align-items: center;
+}
+
+.camp-roster .pilot-name {
+  grid-area: name;
+}
+.camp-roster .pilot-skills {
+  grid-area: skills;
+}
+.camp-roster .pilot-state {
+  grid-area: skills;
+  justify-self: end;
+  padding-right: 4px;
+}
+.camp-roster .pilot-mech {
+  grid-area: seat;
+}
+.camp-roster .pilot-buttons {
+  grid-area: buttons;
+}
+
 .pilot-name {
   flex: 1;
   min-width: 0;
@@ -1585,4 +1723,40 @@ button {
   border: 1px solid var(--accent);
   background: rgba(140, 224, 255, 0.1);
   pointer-events: none;
+}
+
+/* The barracks. A pilot's speciality is the reason to pick them over a better
+   set of numbers, so it goes on the same line as the name. */
+.pilot-traits {
+  display: block;
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.camp-hires li {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.camp-hires button {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+.camp-hires button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.camp-empty {
+  color: var(--muted);
+  font-size: 11px;
 }

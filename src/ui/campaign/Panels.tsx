@@ -4,7 +4,16 @@ import {
   stripToStore,
 } from '../../campaign/refit';
 import { estimateRepair, startRepair } from '../../campaign/repair';
-import { assign, availableXp, raiseSkill, skillCost, SKILLS } from '../../campaign/roster';
+import {
+  assign,
+  availableHires,
+  availableXp,
+  hireCost,
+  hirePilot,
+  raiseSkill,
+  skillCost,
+  SKILLS,
+} from '../../campaign/roster';
 import { isMechAvailable, isPilotAvailable, type CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { computeLoadout } from '../../sim/loadout';
@@ -85,8 +94,17 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
         <h3>Barracks</h3>
         <ul>
           {state.pilots.map((pilot) => (
-            <li key={pilot.id} data-testid={`camp-pilot-${pilot.id}`}>
-              <span className="pilot-name">{pilot.name}</span>
+            <li key={pilot.id} data-testid={`camp-pilot-${pilot.id}`} title={pilot.bio}>
+              <span className="pilot-name">
+                {pilot.name}
+                {pilot.traits.length === 0 ? null : (
+                  <small className="pilot-traits">
+                    {pilot.traits
+                      .map((traitId) => catalog.rules.pilotTraits.entries[traitId]?.label ?? traitId)
+                      .join(' · ')}
+                  </small>
+                )}
+              </span>
               <span className="pilot-skills">
                 {pilot.gunnery}/{pilot.piloting}/{pilot.sensors}
               </span>
@@ -143,6 +161,50 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
               </span>
             </li>
           ))}
+        </ul>
+
+        {/* Who else is on the register. A company that loses a pilot and cannot
+            replace them is a company one bad drop from being over, and a
+            commander who wants a marksman should be able to go and buy one. */}
+        <h4>Hiring hall</h4>
+        <ul className="camp-hires">
+          {availableHires(catalog, state).slice(0, 6).map((hire) => {
+            const cost = hireCost(catalog, hire);
+            return (
+              <li key={hire.id} title={hire.bio} data-testid={`camp-hire-${hire.id}`}>
+                <span className="pilot-name">
+                  {hire.name}
+                  {hire.traits.length === 0 ? null : (
+                    <small className="pilot-traits">
+                      {hire.traits
+                        .map((traitId) => catalog.rules.pilotTraits.entries[traitId]?.label ?? traitId)
+                        .join(' · ')}
+                    </small>
+                  )}
+                </span>
+                <span className="pilot-skills">
+                  {hire.gunnery}/{hire.piloting}/{hire.sensors}
+                </span>
+                <span className="pilot-state">{cbills(cost)}</span>
+                <button
+                  type="button"
+                  disabled={state.cbills < cost}
+                  onClick={() =>
+                    mutate((draft) => {
+                      const result = hirePilot(catalog, draft, hire.id);
+                      if (!result.ok) setStatus(result.reason);
+                    }, `${hire.name} signed.`)
+                  }
+                  data-testid={`camp-sign-${hire.id}`}
+                >
+                  Sign
+                </button>
+              </li>
+            );
+          })}
+          {availableHires(catalog, state).length === 0 ? (
+            <li className="camp-empty">Nobody left on the register.</li>
+          ) : null}
         </ul>
       </section>
   );

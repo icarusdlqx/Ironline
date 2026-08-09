@@ -1,0 +1,12 @@
+{
+  "id": "silas_okonkwo",
+  "name": "Silas Okonkwo",
+  "gunnery": 4,
+  "piloting": 3,
+  "sensors": 2,
+  "traits": [
+    "marksman",
+    "cool_hand"
+  ],
+  "bio": "Compact-trained, Compact-mannered, and expensive. Okonkwo will tell you which of the two he is charging for."
+}

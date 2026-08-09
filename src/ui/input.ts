@@ -1,4 +1,4 @@
-import type { Vec2 } from '../sim/types';
+import type { MechEntity, Vec2 } from '../sim/types';
 import { isOperational } from '../sim/types';
 import type { Engine } from './engine';
 import { useGame } from './store';
@@ -81,6 +81,38 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       engine.renderer.groundMesh,
     );
 
+  /**
+   * The mech a click at this point would act on. Hostiles win ties: with a
+   * lance selected the interesting thing near the pointer is almost always the
+   * enemy, and a friendly standing in front of one should not shield it.
+   */
+  const pickAt = (screen: Vec2): MechEntity | null => {
+    const state = useGame.getState();
+    const hostile = engine.renderer.entityAtScreen(
+      engine.world,
+      screen,
+      PICK_RADIUS,
+      (entity) => entity.team !== state.playerTeam && isOperational(entity),
+    );
+    if (hostile !== null) return hostile;
+    return engine.renderer.entityAtScreen(engine.world, screen, PICK_RADIUS);
+  };
+
+  /**
+   * Marks what the pointer is over. The ring this draws is the only way a
+   * player can tell "the game does not think I am pointing at that mech" apart
+   * from "the click did nothing", so it is worth a raycast per move.
+   */
+  const updateHover = (screen: Vec2): void => {
+    const over = pickAt(screen);
+    engine.hoveredId = over?.id ?? null;
+
+    const state = useGame.getState();
+    const attackable =
+      over !== null && over.team !== state.playerTeam && engine.selectedEntities().length > 0;
+    canvas.style.cursor = attackable ? 'crosshair' : 'default';
+  };
+
   const onPointerDown = (event: PointerEvent): void => {
     // Capture keeps a drag alive when the pointer leaves the canvas. It is a
     // convenience, and browsers differ on when the id is capturable, so a
@@ -114,11 +146,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     if (isSecondary(event)) {
       orderedAt = event.timeStamp;
-      const target = engine.renderer.entityAtScreen(
-        engine.world,
-        pointerToScreen(canvas, event),
-        PICK_RADIUS,
-      );
+      const target = pickAt(pointerToScreen(canvas, event));
       if (target !== null && target.team !== state.playerTeam && isOperational(target)) {
         engine.orderAttack(target.id, null);
       } else {
@@ -134,11 +162,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       } else if (state.orderMode === 'jump') {
         engine.orderJump(world);
       } else {
-        const target = engine.renderer.entityAtScreen(
-          engine.world,
-          pointerToScreen(canvas, event),
-          PICK_RADIUS,
-        );
+        const target = pickAt(pointerToScreen(canvas, event));
         if (target !== null && target.team !== state.playerTeam) {
           engine.orderAttack(
             target.id,
@@ -150,11 +174,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
-    const picked = engine.renderer.entityAtScreen(
-      engine.world,
-      pointerToScreen(canvas, event),
-      PICK_RADIUS,
-    );
+    const picked = pickAt(pointerToScreen(canvas, event));
     if (picked === null) {
       // Empty ground: open a marquee. A plain click closes it as a deselect.
       marqueeFrom = world;
@@ -190,6 +210,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const onPointerMove = (event: PointerEvent): void => {
     engine.cursorWorld = toWorld(event);
+    updateHover(pointerToScreen(canvas, event));
 
     const aim = engine.supportAim;
     if (aim !== null) {
@@ -279,7 +300,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       viewport(),
       engine.renderer.groundMesh,
     );
-    const target = engine.renderer.entityAtScreen(engine.world, screen, PICK_RADIUS);
+    const target = pickAt(screen);
     if (target !== null && target.team !== state.playerTeam && isOperational(target)) {
       engine.orderAttack(target.id, null);
     } else {
@@ -315,6 +336,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
         return;
       case 'KeyF':
         state.setOrderMode('attack');
+        return;
+      case 'KeyQ':
+        // The one targeting control that needs no pointer at all.
+        engine.targetNearest();
         return;
       case 'KeyC':
         state.setOrderMode('called_shot');

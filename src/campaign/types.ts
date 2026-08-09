@@ -30,6 +30,8 @@ export interface PilotRecord {
   xp: number;
   spentXp: number;
   traits: string[];
+  /** Who they are, carried over from the register so the barracks can say. */
+  bio: string;
   injuredUntilDay: number;
   dead: boolean;
   /** Instance id of the mech this pilot is assigned to, if any. */

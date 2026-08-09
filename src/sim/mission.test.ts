@@ -3,7 +3,7 @@ import { catalog } from '../../tests/support';
 import { eventsOfType } from './events';
 import { isVisibleTo, tileExplored, tileVisible } from './sensors';
 import { callSupport, SUPPORT_CALLS, type SupportCallId } from './support';
-import { isOperational, type MechEntity, type World } from './types';
+import { isOperational, type MechEntity, type Vec2, type World } from './types';
 import { createWorld, runBattle, stepWorld } from './world';
 import { zoneById } from './zones';
 
@@ -31,14 +31,34 @@ function freeze(active: World): void {
 }
 
 /** Teleports the player lance onto a zone so a capture can be observed directly. */
+/**
+ * Puts one side inside a zone and the other well away from it.
+ *
+ * Mechs are spread around the middle of the zone rather than stacked on the
+ * marker: two of them cannot stand in the same spot any more, and a pile
+ * dropped on one point is shoved apart — some of it back out of the zone.
+ */
 function occupy(world: World, zoneId: string, team: number): void {
   const zone = zoneById(world, zoneId);
   if (zone === null) throw new Error(`no zone ${zoneId}`);
 
+  let index = 0;
   for (const entity of world.entities) {
-    if (entity.team === team) entity.pos = { x: zone.x, y: zone.y };
-    else entity.pos = { x: 24, y: 24 };
+    if (entity.team !== team) {
+      entity.pos = { x: 24, y: 24 };
+      continue;
+    }
+    entity.pos = ringAround(zone, index);
+    index += 1;
   }
+}
+
+/** A spot inside a zone, spaced far enough out that nothing overlaps. */
+function ringAround(zone: { x: number; y: number; radius: number }, index: number): Vec2 {
+  if (index === 0) return { x: zone.x, y: zone.y };
+  const angle = (index / 6) * Math.PI * 2;
+  const reach = zone.radius * 0.55;
+  return { x: zone.x + Math.cos(angle) * reach, y: zone.y + Math.sin(angle) * reach };
 }
 
 let world: World;
@@ -86,7 +106,11 @@ describe('zone capture', () => {
     const zone = zoneById(world, 'south_post');
     if (zone === null) return;
 
-    for (const entity of world.entities) entity.pos = { x: zone.x, y: zone.y };
+    // Both sides inside it, spread out — mechs no longer share a spot, and a
+    // heap dropped on the marker would simply shove itself back out again.
+    world.entities.forEach((entity, index) => {
+      entity.pos = ringAround(zone, index);
+    });
     run(world, 400);
 
     expect(zone.owner).toBe(1);
@@ -354,9 +378,12 @@ describe('support calls', () => {
     world.resources.set(0, 10_000);
     freeze(world);
 
-    // Park the lance in a corner so nothing on the field can see the far side.
+    // Park the lance in a corner and cut its reach, so the far side is dark for
+    // certain. The claim under test is what a probe does, not how far a good
+    // pilot can see with a mast on the roof.
     for (const entity of world.entities) {
       entity.pos = entity.team === 0 ? { x: 40, y: 40 } : { x: 900, y: 900 };
+      if (entity.team === 0) entity.sensorRange = 200;
     }
     run(world, 2);
 

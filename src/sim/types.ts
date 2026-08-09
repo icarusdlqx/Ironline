@@ -99,6 +99,12 @@ export interface PilotState {
   gunnery: number;
   piloting: number;
   sensors: number;
+  /** Specialities, which is what makes two pilots of the same rating differ. */
+  traits: string[];
+  /** How readily this pilot's fire finds something behind the plate. */
+  criticalChanceFactor: number;
+  /** Their odds of walking away from a wreck, applied by the campaign. */
+  survivalFactor: number;
   dead: boolean;
   ejected: boolean;
 }

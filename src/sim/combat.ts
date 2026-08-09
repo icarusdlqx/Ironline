@@ -2,6 +2,7 @@ import type { MechLocation } from '../schema/common';
 import type { CombatRules } from '../schema/rules';
 import type { Weapon } from '../schema/weapon';
 import { arcTableKey, attackArcFrom, type ArcHit } from './arcs';
+import { penetrates, resolveCritical } from './critical';
 import { applyDamage } from './damage';
 import { emit } from './events';
 import { addHeat, currentHeatTier } from './heat';
@@ -242,12 +243,24 @@ export function resolveProjectiles(world: World): void {
       projectile.calledShot,
     );
     const factor = world.rules.combat.attackArcs[arc.arc].damageFactor;
+    const fired = world.catalog.weapons.get(projectile.weaponId);
 
-    const absorbed = applyDamage(world, target, location, projectile.damage * factor);
+    // A critical is the shot that gets past the plate and finds the frame.
+    // Rolled before the damage lands, because whether the armour was still
+    // there is the whole question — once applyDamage has run it is not.
+    let damage = projectile.damage * factor;
+    if (fired !== undefined && penetrates(target, location, damage)) {
+      // A pilot who knows where a hull comes apart aims for the seam.
+      const proneness = fired.criticalChance * (shooter?.pilot.criticalChanceFactor ?? 1);
+      if (world.rng.chance(Math.min(1, proneness))) {
+        damage *= resolveCritical(world, target, location, shooter?.id ?? null);
+      }
+    }
+
+    const absorbed = applyDamage(world, target, location, damage);
     target.stats.damageTaken += absorbed;
 
     // A flamer barely scratches the armour; what it does is cook the reactor.
-    const fired = world.catalog.weapons.get(projectile.weaponId);
     if (fired !== undefined && fired.targetHeat > 0) addHeat(target, fired.targetHeat);
 
     const stat = world.weaponStats.get(projectile.weaponId);

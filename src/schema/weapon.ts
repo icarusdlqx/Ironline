@@ -37,6 +37,13 @@ export const WeaponSchema = z
     cost: z.number().int().positive(),
     recoil: z.number().min(0).max(1),
     accuracy: z.number().positive().max(2).default(1),
+    /**
+     * How often a shot that gets through the plate finds something behind it.
+     * A gauss slug punches clean through the frame and takes a weapon with it;
+     * a laser bores a shallow hole, and a missile mostly rattles the armour it
+     * lands on. This is what makes two guns of the same damage feel different.
+     */
+    criticalChance: z.number().min(0).max(1).default(0.08),
     /** Heat dumped into the target on a hit — the flamer's whole purpose. */
     targetHeat: z.number().nonnegative().default(0),
     /** How the shot looks. A gauss slug and a laser should never be confused. */

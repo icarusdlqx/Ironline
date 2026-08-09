@@ -34,12 +34,25 @@ function weaponsOf(world: World, entity: MechEntity): WeaponSnapshot[] {
       rounds: weapon?.ammoPerTon === null ? null : (bin?.rounds ?? 0),
       shortRange: weapon?.range.short ?? 0,
       longRange: weapon?.range.long ?? 0,
+      location: mount.location,
     };
   });
 }
 
+/** Metres to the closest machine on a given team, or null if that side is gone. */
+function rangeToTeam(world: World, entity: MechEntity, team: number): number | null {
+  let best: number | null = null;
+  for (const other of world.entities) {
+    if (other.team !== team || !isOperational(other)) continue;
+    const range = Math.hypot(other.pos.x - entity.pos.x, other.pos.y - entity.pos.y);
+    if (best === null || range < best) best = range;
+  }
+  return best;
+}
+
 export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
   const target = findEntity(world, entity.targetId);
+  const playerTeam = world.playerTeam ?? 0;
   return {
     id: entity.id,
     team: entity.team,
@@ -54,6 +67,12 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     shutdownRemaining: entity.shutdownRemaining,
     motion: entity.motion,
     targetName: target === null ? null : target.name,
+    targetRange:
+      target === null
+        ? null
+        : Math.hypot(target.pos.x - entity.pos.x, target.pos.y - entity.pos.y),
+    rangeToLance: entity.team === playerTeam ? null : rangeToTeam(world, entity, playerTeam),
+    lostLocations: LOCATIONS.filter((location) => entity.locations[location].destroyed),
     locations: locationsOf(entity),
     weapons: weaponsOf(world, entity),
     groupEnabled: [...entity.groupEnabled],

@@ -1,8 +1,11 @@
 {
   "id": "willem_torrance",
   "name": "Willem Torrance",
-  "gunnery": 3,
-  "piloting": 2,
+  "gunnery": 2,
+  "piloting": 4,
   "sensors": 3,
-  "traits": []
+  "traits": [
+    "snap_shot"
+  ],
+  "bio": "Torrance fires on the move because standing still is what killed the man who trained him. It should not work as well as it does."
 }

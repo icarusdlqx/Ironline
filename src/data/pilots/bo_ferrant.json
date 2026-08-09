@@ -1,0 +1,11 @@
+{
+  "id": "bo_ferrant",
+  "name": "Bo Ferrant",
+  "gunnery": 2,
+  "piloting": 3,
+  "sensors": 3,
+  "traits": [
+    "green"
+  ],
+  "bio": "Ferrant flew freight and thinks a mech is a truck that argues. He is not entirely wrong and it is not entirely helping."
+}

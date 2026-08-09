@@ -4,5 +4,8 @@
   "gunnery": 3,
   "piloting": 4,
   "sensors": 3,
-  "traits": []
+  "traits": [
+    "evasive"
+  ],
+  "bio": "Came off Ridgeward haulage, where the trick was never being where the road wanted you. She has not stopped doing it."
 }

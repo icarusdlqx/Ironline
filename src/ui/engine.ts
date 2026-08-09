@@ -121,7 +121,7 @@ export class Engine {
     const alpha = state.paused ? 1 : Math.min(1, this.accumulator / this.world.dt);
     this.renderer.draw(this.world, alpha, deltaSeconds, {
       selection: new Set(state.selection),
-      hovered: null,
+      hovered: this.hoveredId,
       cursor: this.cursorWorld,
       orderMode: state.orderMode,
       selectionBox: this.selectionBox,
@@ -136,6 +136,12 @@ export class Engine {
   }
 
   cursorWorld: Vec2 | null = null;
+  /**
+   * The mech under the pointer. Drawn as a ring, so the player can see what the
+   * game thinks they are pointing at before they commit to a click — which is
+   * the difference between "this control is broken" and "I missed".
+   */
+  hoveredId: EntityId | null = null;
   /** The marquee currently being dragged, in world space. */
   selectionBox: { a: Vec2; b: Vec2 } | null = null;
   /** Aim point and cursor for the run-in the player is drawing, in world space. */
@@ -212,6 +218,19 @@ export class Engine {
       } else if (event.type === 'ammo_explosion') {
         const entity = findEntity(this.world, event.entityId as EntityId);
         push(`${entity?.name ?? 'Unit'} ammo detonation in ${String(event.location)}`);
+      } else if (event.type === 'critical_hit') {
+        const entity = findEntity(this.world, event.entityId as EntityId);
+        const where = String(event.location).replace(/_/g, ' ');
+        const wrecked = event.component === null ? null : String(event.component);
+        push(
+          wrecked === null
+            ? `Critical hit on ${entity?.name ?? 'Unit'} — ${where}`
+            : `Critical hit on ${entity?.name ?? 'Unit'} — ${where} ${wrecked} wrecked`,
+        );
+      } else if (event.type === 'location_destroyed') {
+        const entity = findEntity(this.world, event.entityId as EntityId);
+        const where = String(event.location).replace(/_/g, ' ');
+        push(`${entity?.name ?? 'Unit'} lost its ${where}`);
       } else if (event.type === 'shutdown') {
         const entity = findEntity(this.world, event.entityId as EntityId);
         push(`${entity?.name ?? 'Unit'} shut down from heat`);
@@ -329,6 +348,40 @@ export class Engine {
     else if (target !== null) {
       push(`${ordered} mech${ordered === 1 ? '' : 's'} targeting ${target.name}.`);
     }
+  }
+
+  /**
+   * Puts the selection onto the nearest hostile anyone can see.
+   *
+   * A keyboard route to a target matters more than it looks. Clicking a mech
+   * is the natural way to pick one, and when that fails — a trackpad, an odd
+   * browser, a machine that is four pixels tall at this zoom — there has to be
+   * a way to fight that does not involve hitting anything with a pointer.
+   */
+  targetNearest(): void {
+    const ids = this.selectedEntities();
+    const anchor = findEntity(this.world, ids[0] ?? null);
+    if (anchor === null) {
+      useGame.getState().pushLog('No mech selected to give that order to.');
+      return;
+    }
+
+    let best: MechEntity | null = null;
+    let bestRange = Infinity;
+    for (const entity of this.world.entities) {
+      if (entity.team === anchor.team || !isOperational(entity)) continue;
+      if (this.world.vision !== null && !this.world.vision.visible.has(entity.id)) continue;
+      const range = Math.hypot(entity.pos.x - anchor.pos.x, entity.pos.y - anchor.pos.y);
+      if (range >= bestRange) continue;
+      best = entity;
+      bestRange = range;
+    }
+
+    if (best === null) {
+      useGame.getState().pushLog('Nothing hostile on sensors.');
+      return;
+    }
+    this.orderAttack(best.id, null);
   }
 
   /**

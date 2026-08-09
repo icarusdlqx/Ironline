@@ -1,0 +1,12 @@
+{
+  "id": "roz_havel",
+  "name": "Roz Havel",
+  "gunnery": 2,
+  "piloting": 2,
+  "sensors": 3,
+  "traits": [
+    "green",
+    "quick_study"
+  ],
+  "bio": "Two simulator hours and a signature. Havel is cheap, keen, and learning faster than anyone wants to admit."
+}

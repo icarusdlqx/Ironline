@@ -5,6 +5,7 @@ import type { Pilot } from '../schema/pilot';
 import { decideBaseline } from './ai/baseline';
 import { buildArcTables } from './arcs';
 import { difficultyTier, resolveDisengagement, runTeamAi } from './ai/tactical';
+import { separateBodies } from './collision';
 import { resolveProjectiles, updateWeapons } from './combat';
 import { createMech, type LocationDamage } from './entity';
 import { emit } from './events';
@@ -301,6 +302,9 @@ export function stepWorld(world: World, maxTicks: number): void {
   updateDesignation(world);
 
   for (const entity of world.entities) updateMovement(world, entity);
+  // After everything has moved, so contact is resolved against where the mechs
+  // ended the tick rather than against a half-updated field.
+  separateBodies(world);
   for (const entity of world.entities) updateTorso(world, entity);
   for (const entity of world.entities) updateWeapons(world, entity);
 

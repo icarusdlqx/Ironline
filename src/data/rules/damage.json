@@ -14,5 +14,12 @@
   "ammoExplosionCap": 180,
   "headDestroyedEjectionChance": 0.4,
   "legDestroyedSpeedFactor": 0.5,
-  "volatileExplosionFactor": 1.0
+  "volatileExplosionFactor": 1.0,
+  "critical": {
+    "damageMultiplier": 1.6,
+    "componentChance": 0.45,
+    "actuatorSpeedFactor": 0.85,
+    "actuatorAccuracyFactor": 0.88,
+    "sensorAccuracyFactor": 0.8
+  }
 }

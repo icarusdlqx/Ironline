@@ -71,15 +71,43 @@ export function WeaponGroups({
               {group}
             </button>
             <ul>
-              {mounted.map((weapon) => (
-                <li key={weapon.index} className={weapon.destroyed ? 'destroyed' : ''}>
-                  <CooldownRing weapon={weapon} />
-                  <span className="weapon-name">{weapon.name}</span>
-                  <span className="weapon-ammo">
-                    {weapon.destroyed ? 'wrecked' : weapon.rounds === null ? '—' : weapon.rounds}
-                  </span>
-                </li>
-              ))}
+              {mounted.map((weapon) => {
+                const lost = unit.lostLocations.includes(weapon.location);
+                const reach =
+                  unit.targetRange === null
+                    ? null
+                    : unit.targetRange <= weapon.shortRange
+                      ? 'short'
+                      : unit.targetRange <= weapon.longRange
+                        ? 'long'
+                        : 'over';
+                return (
+                  <li
+                    key={weapon.index}
+                    className={weapon.destroyed ? 'destroyed' : reach === 'over' ? 'out-of-range' : ''}
+                    title={
+                      lost
+                        ? `Lost with the ${weapon.location.replace(/_/g, ' ')}`
+                        : `Short ${Math.round(weapon.shortRange)}m · reaches ${Math.round(weapon.longRange)}m`
+                    }
+                  >
+                    <CooldownRing weapon={weapon} />
+                    <span className="weapon-name">{weapon.name}</span>
+                    <span className={`weapon-range ${reach ?? ''}`}>
+                      {Math.round(weapon.longRange)}m
+                    </span>
+                    <span className="weapon-ammo">
+                      {weapon.destroyed
+                        ? lost
+                          ? 'blown off'
+                          : 'wrecked'
+                        : weapon.rounds === null
+                          ? '—'
+                          : weapon.rounds}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
@@ -274,6 +302,73 @@ export function Briefing({
       <button type="button" onClick={onDeploy} data-testid="briefing-deploy">
         Deploy
       </button>
+    </div>
+  );
+}
+
+/**
+ * Every hostile the lance can see, as a list you can click.
+ *
+ * Picking a target by clicking the machine itself is the natural way to do it,
+ * and it is also the way that fails first: a mech eight pixels tall at the far
+ * end of the map, a trackpad with no second button, a browser that routes the
+ * click somewhere unexpected. This is the same order, given from a list that is
+ * always the same size and always in the same place.
+ */
+export function HostileBar({
+  enemies,
+  targetIds,
+  hasSelection,
+  onTarget,
+}: {
+  enemies: readonly UnitSnapshot[];
+  /** Which hostiles the current selection is already shooting at. */
+  targetIds: ReadonlySet<number>;
+  hasSelection: boolean;
+  onTarget: (id: number) => void;
+}) {
+  const standing = enemies.filter((enemy) => enemy.alive);
+
+  return (
+    <div className="hostiles" data-testid="hostile-bar">
+      <span className="hostiles-label">
+        {standing.length === 0 ? 'No contacts' : `Contacts ${standing.length}`}
+      </span>
+      {standing.map((enemy) => {
+        const structure = Object.values(enemy.locations).reduce(
+          (total, part) => total + part.armour + part.internal,
+          0,
+        );
+        const intact = Object.values(enemy.locations).reduce(
+          (total, part) => total + part.armourMax + part.internalMax,
+          0,
+        );
+        const health = intact === 0 ? 0 : structure / intact;
+
+        return (
+          <button
+            key={enemy.id}
+            type="button"
+            className={`hostile ${targetIds.has(enemy.id) ? 'targeted' : ''}`}
+            disabled={!hasSelection}
+            title={
+              hasSelection
+                ? `Target ${enemy.name}`
+                : 'Select one of your mechs first, then click a contact to attack it'
+            }
+            onClick={() => onTarget(enemy.id)}
+            data-testid={`hostile-${enemy.id}`}
+          >
+            <span className="hostile-name">{enemy.name}</span>
+            <span className="hostile-range">
+              {enemy.rangeToLance === null ? '—' : `${Math.round(enemy.rangeToLance)}m`}
+            </span>
+            <span className="hostile-health">
+              <span style={{ width: `${Math.round(health * 100)}%` }} />
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

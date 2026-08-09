@@ -20,15 +20,21 @@ describe('sensorRangeFor', () => {
     expect(sensorRangeFor(rules, 5)).toBeGreaterThan(sensorRangeFor(rules, 2));
   });
 
-  it('is stamped onto each mech at spawn, scaled by anything it carries', () => {
+  it('is stamped onto each mech at spawn, scaled by the kit and the pilot', () => {
     for (const entity of world.entities) {
       const fromSkill = sensorRangeFor(catalog.rules.sensors, entity.pilot.sensors);
       const design = catalog.designs.get(entity.designId);
-      const factor = (design?.equipment ?? []).reduce(
+      const kit = (design?.equipment ?? []).reduce(
         (total, fit) => total * (catalog.equipment.get(fit.equipmentId)?.stats.sensor_range_factor ?? 1),
         1,
       );
-      expect(entity.sensorRange).toBeCloseTo(fromSkill * factor, 6);
+      // A spotter sees further than their sensors rating alone would say — the
+      // speciality is part of the machine's reach, not a separate readout.
+      const speciality = entity.pilot.traits.reduce(
+        (total, traitId) => total * (catalog.rules.pilotTraits.entries[traitId]?.sensorRangeFactor ?? 1),
+        1,
+      );
+      expect(entity.sensorRange).toBeCloseTo(fromSkill * kit * speciality, 6);
     }
   });
 
@@ -99,8 +105,11 @@ describe('remembered ground and ghosts', () => {
     const tile = world.terrain.toTile(scout.pos);
     const cell = tile.row * world.terrain.width + tile.column;
 
+    // Far enough that the tile is outside every mech's reach, including the
+    // longest-sighted pilot in the lance.
+    const reach = Math.max(...world.entities.map((entity) => entity.sensorRange));
     for (const entity of world.entities) {
-      if (entity.team === 0) entity.pos = { x: 500, y: 12 };
+      if (entity.team === 0) entity.pos = { x: scout.pos.x + reach * 2, y: 12 };
     }
     updateVision(world, world.vision!);
 

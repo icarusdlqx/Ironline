@@ -19,6 +19,7 @@
   "cost": 40000,
   "recoil": 0.0,
   "accuracy": 1.0,
+  "criticalChance": 0.07,
   "visual": {
     "style": "beam",
     "colour": "#7bff4f",

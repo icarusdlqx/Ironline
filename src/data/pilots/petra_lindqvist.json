@@ -1,0 +1,12 @@
+{
+  "id": "petra_lindqvist",
+  "name": "Petra Lindqvist",
+  "gunnery": 3,
+  "piloting": 4,
+  "sensors": 4,
+  "traits": [
+    "spotter",
+    "evasive"
+  ],
+  "bio": "Scout by preference and by temperament. Lindqvist has never fired first at anything and has never been fired at twice."
+}

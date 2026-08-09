@@ -4,5 +4,8 @@
   "gunnery": 4,
   "piloting": 2,
   "sensors": 2,
-  "traits": []
+  "traits": [
+    "butcher"
+  ],
+  "bio": "Learned gunnery on salvage, cutting hulls apart for parts. He still aims at the joins."
 }

@@ -2,7 +2,10 @@
   "id": "marek_sud",
   "name": "Marek Sud",
   "gunnery": 2,
-  "piloting": 2,
-  "sensors": 2,
-  "traits": []
+  "piloting": 3,
+  "sensors": 4,
+  "traits": [
+    "spotter"
+  ],
+  "bio": "Ran a relay mast for eleven years and can tell a lance from a convoy by the shape of the return alone."
 }

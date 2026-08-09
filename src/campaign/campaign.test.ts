@@ -263,8 +263,8 @@ describe('pilot progression', () => {
   });
 
   it('prices a hire by skill', () => {
-    const green = { id: 'a', name: 'A', gunnery: 1, piloting: 1, sensors: 1, traits: [] };
-    const veteran = { id: 'b', name: 'B', gunnery: 4, piloting: 4, sensors: 4, traits: [] };
+    const green = { id: 'a', name: 'A', gunnery: 1, piloting: 1, sensors: 1, traits: [], bio: '' };
+    const veteran = { id: 'b', name: 'B', gunnery: 4, piloting: 4, sensors: 4, traits: [], bio: '' };
     expect(hireCost(catalog, veteran)).toBeGreaterThan(hireCost(catalog, green));
   });
 });

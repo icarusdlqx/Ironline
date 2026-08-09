@@ -4,5 +4,8 @@
   "gunnery": 3,
   "piloting": 3,
   "sensors": 3,
-  "traits": []
+  "traits": [
+    "veteran"
+  ],
+  "bio": "Twenty-two contracts. Ostrow has no speciality except having already seen it, which turns out to be one."
 }

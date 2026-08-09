@@ -137,6 +137,22 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     traitSensorFactor *= trait.sensorRangeFactor;
     lanceAccuracyFactor *= trait.lanceAccuracyFactor;
   }
+  // What the pilot brings on top of the hull. A speciality is the difference
+  // between two people with the same gunnery rating.
+  let criticalChanceFactor = 1;
+  let survivalFactor = 1;
+  for (const traitId of pilot.traits) {
+    const trait = rules.pilotTraits.entries[traitId];
+    if (trait === undefined) continue;
+    outgoingAccuracyFactor *= trait.accuracyFactor;
+    incomingAccuracyFactor *= trait.incomingAccuracyFactor;
+    movingAccuracyFactor *= trait.movingAccuracyFactor;
+    dissipationFactor *= trait.dissipationFactor;
+    traitSensorFactor *= trait.sensorRangeFactor;
+    criticalChanceFactor *= trait.criticalChanceFactor;
+    survivalFactor *= trait.survivalFactor;
+  }
+
   let amsMissileFactor = 1;
   let sensorRangeFactor = 1;
   let designatorRange = 0;
@@ -195,6 +211,9 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
       gunnery: pilot.gunnery,
       piloting: pilot.piloting,
       sensors: pilot.sensors,
+      traits: [...pilot.traits],
+      criticalChanceFactor,
+      survivalFactor,
       dead: false,
       ejected: false,
     },

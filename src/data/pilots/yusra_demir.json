@@ -1,0 +1,12 @@
+{
+  "id": "yusra_demir",
+  "name": "Yusra Demir",
+  "gunnery": 3,
+  "piloting": 2,
+  "sensors": 4,
+  "traits": [
+    "spotter",
+    "quick_study"
+  ],
+  "bio": "Sensors officer off a Kestrel picket. Demir reads a return the way other people read a face."
+}

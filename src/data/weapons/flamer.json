@@ -19,6 +19,7 @@
   "cost": 7500,
   "recoil": 0.0,
   "accuracy": 1.0,
+  "criticalChance": 0.02,
   "targetHeat": 4,
   "visual": {
     "style": "flame",

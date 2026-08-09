@@ -24,6 +24,16 @@ export type SimEvent =
     }
   | { type: 'location_destroyed'; tick: number; entityId: EntityId; location: MechLocation }
   | {
+      /** A shot that got past the plate and found something behind it. */
+      type: 'critical_hit';
+      tick: number;
+      entityId: EntityId;
+      shooterId: EntityId | null;
+      location: MechLocation;
+      /** What it wrecked, or null when the crit was only the harder hit. */
+      component: string | null;
+    }
+  | {
       type: 'ammo_explosion';
       tick: number;
       entityId: EntityId;

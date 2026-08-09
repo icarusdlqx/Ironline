@@ -31,6 +31,8 @@ const PilotRecordSchema = z.strictObject({
   xp: z.number().nonnegative(),
   spentXp: z.number().nonnegative(),
   traits: z.array(IdSchema),
+  // Saves written before the register carried biographies still load.
+  bio: z.string().default(''),
   injuredUntilDay: z.number().int(),
   dead: z.boolean(),
   mechId: z.string().nullable(),

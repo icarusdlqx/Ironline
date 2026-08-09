@@ -6,7 +6,17 @@ import { SUPPORT_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
-import { Briefing, EventLog, HeatBar, LanceBar, ObjectiveList, SupportPalette, WeaponGroups, type SupportOption } from './Panels';
+import {
+  Briefing,
+  EventLog,
+  HeatBar,
+  HostileBar,
+  LanceBar,
+  ObjectiveList,
+  SupportPalette,
+  WeaponGroups,
+  type SupportOption,
+} from './Panels';
 import { PaperDoll } from './PaperDoll';
 import { selectedUnit, useGame } from './store';
 
@@ -278,6 +288,24 @@ export function Battle() {
         )}
         <EventLog lines={state.log} />
       </aside>
+
+      <HostileBar
+        enemies={state.enemies}
+        targetIds={
+          new Set(
+            state.units
+              .filter((entry) => state.selection.includes(entry.id) && entry.targetName !== null)
+              .flatMap((entry) => {
+                const shot = state.enemies.find((foe) => foe.name === entry.targetName);
+                return shot === undefined ? [] : [shot.id];
+              }),
+          )
+        }
+        hasSelection={state.units.some(
+          (entry) => state.selection.includes(entry.id) && entry.alive,
+        )}
+        onTarget={(id) => engineRef.current?.orderAttack(id, null)}
+      />
 
       <footer className="bottombar">
         <LanceBar

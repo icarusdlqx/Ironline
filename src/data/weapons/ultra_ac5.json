@@ -19,6 +19,7 @@
   "cost": 200000,
   "recoil": 0.18,
   "accuracy": 1.0,
+  "criticalChance": 0.14,
   "visual": {
     "style": "tracer",
     "colour": "#ffd489",

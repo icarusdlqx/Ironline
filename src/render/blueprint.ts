@@ -16,6 +16,16 @@ export type Tone = 'plate' | 'deep' | 'trim' | 'glass' | 'accent';
  */
 export type PartShape = 'box' | 'cylinder' | 'sphere' | 'limb';
 
+/**
+ * A side profile in units of the part's own size: x forward, y up, each running
+ * -0.5 to 0.5. A plate given one is extruded across its width to that outline
+ * rather than being a box, which is how a hull gets a sloped glacis and a
+ * tapered deck instead of six faces at right angles.
+ *
+ * Must be convex and wound anticlockwise.
+ */
+export type Profile = readonly (readonly [number, number])[];
+
 export interface BlueprintPart {
   /** Which structural location this belongs to, so damage can grey it out. */
   location: MechLocation | null;
@@ -25,7 +35,59 @@ export interface BlueprintPart {
   tone: Tone;
   /** Lean about the lateral axis, in radians. Positive pitches the nose down. */
   tilt?: number;
+  /** Shaped side view. A plain rectangle when absent. */
+  profile?: Profile;
 }
+
+/**
+ * The outlines the hulls are cut to. Named for what they are on the machine,
+ * because that is how they get reused: a glacis is a glacis whether it is on a
+ * chest or a shoulder.
+ */
+const PROFILES = {
+  /** Sloped nose, tapered deck, cut-away rear. A hull, not a crate. */
+  hull: [
+    [-0.5, -0.42],
+    [0.34, -0.5],
+    [0.5, -0.18],
+    [0.38, 0.36],
+    [0.16, 0.5],
+    [-0.42, 0.5],
+    [-0.5, 0.2],
+  ],
+  /** A cockpit: flat floor, raked canopy, blunt back. */
+  canopy: [
+    [-0.5, -0.5],
+    [0.5, -0.42],
+    [0.5, 0.04],
+    [0.02, 0.5],
+    [-0.5, 0.5],
+  ],
+  /** Armour that overhangs: thick at the top, drawn back underneath. */
+  pauldron: [
+    [-0.42, -0.36],
+    [0.3, -0.5],
+    [0.5, -0.05],
+    [0.34, 0.5],
+    [-0.5, 0.42],
+  ],
+  /** A skirt plate over a hip, angled so the leg swings clear of it. */
+  skirt: [
+    [-0.5, 0.5],
+    [0.5, 0.32],
+    [0.34, -0.5],
+    [-0.34, -0.5],
+  ],
+  /** A shoulder weapon block, chopped at the front so the muzzles clear it. */
+  block: [
+    [-0.5, -0.5],
+    [0.32, -0.5],
+    [0.5, -0.16],
+    [0.5, 0.24],
+    [0.3, 0.5],
+    [-0.5, 0.5],
+  ],
+} as const satisfies Record<string, Profile>;
 
 export interface Blueprint {
   parts: BlueprintPart[];
@@ -45,6 +107,19 @@ function part(
   tilt?: number,
 ): BlueprintPart {
   return tilt === undefined ? { location, shape, at, size, tone } : { location, shape, at, size, tone, tilt };
+}
+
+/** A plate cut to a shaped outline rather than left as a box. */
+function shaped(
+  location: MechLocation | null,
+  profile: Profile,
+  at: [number, number, number],
+  size: [number, number, number],
+  tone: Tone,
+  tilt?: number,
+): BlueprintPart {
+  const base = part(location, 'box', at, size, tone, tilt);
+  return { ...base, profile };
 }
 
 /** Proportions each body plan works from. Everything else is derived. */
@@ -129,22 +204,48 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
   }
   // Hips, which is what makes a wide stance read as wide.
   parts.push(part(null, 'box', [0, frame.leg, 0], [frame.long * 0.5, 0.24, frame.hip * 2.1], 'deep'));
+  // Skirt plates over the hips. Armour that hangs is the cheapest way to stop a
+  // mech looking like a crate balanced on two poles.
+  for (const side of [-1, 1]) {
+    parts.push(shaped(null, PROFILES.skirt,
+      [frame.long * 0.04, frame.leg - 0.06, side * frame.hip * 0.92],
+      [frame.long * 0.46, 0.42, thighT * 0.55], 'plate'));
+  }
 
   // ------------------------------------------------------------------ torso
-  parts.push(part('centre_torso', 'box', [0, 0, 0], [frame.long, frame.tall, frame.wide], 'plate', frame.pitch));
+  // Cut to a hull outline rather than left as a box: a sloped nose, a deck that
+  // tapers back, a chamfered rear. Six faces at right angles is what reads as a
+  // stack of bricks however carefully it is lit.
+  parts.push(shaped('centre_torso', PROFILES.hull, [0, 0, 0],
+    [frame.long, frame.tall, frame.wide], 'plate', frame.pitch));
 
   // Side torsos, stepped out so the hull is not one slab.
   for (const side of [-1, 1]) {
-    parts.push(part(side < 0 ? 'left_torso' : 'right_torso', 'box',
+    parts.push(shaped(side < 0 ? 'left_torso' : 'right_torso', PROFILES.block,
       [-frame.long * 0.08, frame.tall * 0.06, side * frame.wide * 0.56],
       [frame.long * 0.82, frame.tall * 0.78, frame.wide * 0.3], 'deep', frame.pitch));
   }
 
+  // Panel breaks across the chest. Two thin strips proud of the plate is
+  // nothing on its own and is most of what separates a machine somebody built
+  // from a shape somebody extruded.
+  for (const level of [0.3, -0.24]) {
+    parts.push(part('centre_torso', 'box',
+      [frame.long * 0.3, frame.tall * level, 0],
+      [frame.long * 0.34, frame.tall * 0.12, frame.wide * 0.86], 'deep', frame.pitch));
+  }
+  // A vent block low on the flank, where the sinks would breathe.
+  for (const side of [-1, 1]) {
+    parts.push(part(side < 0 ? 'left_torso' : 'right_torso', 'box',
+      [-frame.long * 0.3, -frame.tall * 0.22, side * frame.wide * 0.6],
+      [frame.long * 0.3, frame.tall * 0.26, 0.08], 'accent', frame.pitch));
+  }
+
   if (has('hardened_mantlet')) {
     // A slab of frontal armour, and the whole reason these things survive.
-    parts.push(part('centre_torso', 'box',
-      [frame.long * 0.52, frame.tall * 0.05, 0],
-      [0.18, frame.tall * 1.05, frame.wide * 1.02], 'trim', frame.pitch));
+    parts.push(shaped('centre_torso', PROFILES.pauldron,
+      [frame.long * 0.5, frame.tall * 0.05, 0],
+      [0.24, frame.tall * 1.05, frame.wide * 1.02], 'trim', frame.pitch));
   }
 
   if (has('oversized_sinks')) {
@@ -160,8 +261,12 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
   const headX = digitigrade ? frame.long * 0.44 : frame.long * 0.3;
   const headY = frame.tall * 0.62 + 0.16;
   parts.push(
-    part('head', 'box', [headX, headY, 0], [0.42, 0.32, 0.44], 'deep'),
-    part('head', 'sphere', [headX + 0.14, headY, 0], [0.2, 0.2, 0.2], 'glass'),
+    // A cockpit, raked back over a flat floor, with the canopy set into it.
+    shaped('head', PROFILES.canopy, [headX, headY, 0], [0.48, 0.36, 0.46], 'deep'),
+    part('head', 'box', [headX + 0.16, headY + 0.02, 0], [0.12, 0.17, 0.3], 'glass'),
+    // Brow plate. The cockpit is the one part a player looks at to tell which
+    // way a mech is facing, so it gets an edge.
+    part('head', 'box', [headX + 0.02, headY + 0.19, 0], [0.34, 0.08, 0.4], 'plate'),
   );
 
   // Masts and aerials are kept short. They are a marking on the machine, not a
@@ -185,18 +290,31 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
     for (const side of [-1, 1]) {
       const z = side * frame.shoulder;
       parts.push(
+        // Pauldron over the shoulder joint, overhanging it the way armour does.
+        shaped(side < 0 ? 'left_arm' : 'right_arm', PROFILES.pauldron,
+          [-frame.long * 0.1, frame.tall * 0.34, z * 1.04],
+          [frame.long * 0.52, frame.tall * 0.4, 0.34], 'plate', frame.pitch),
         part(side < 0 ? 'left_arm' : 'right_arm', 'sphere',
-          [-frame.long * 0.16, frame.tall * 0.2, z], [0.34, 0.34, 0.34], 'deep'),
+          [-frame.long * 0.16, frame.tall * 0.14, z], [0.32, 0.32, 0.32], 'deep'),
         part(side < 0 ? 'left_arm' : 'right_arm', 'limb',
           [frame.long * 0.18, -frame.tall * 0.05, z], [0.34, frame.long * 0.7, 0.26], 'deep', Math.PI / 2),
+        // A forearm plate, so the arm is not one smooth tube.
+        part(side < 0 ? 'left_arm' : 'right_arm', 'box',
+          [frame.long * 0.3, -frame.tall * 0.02, z], [frame.long * 0.28, 0.2, 0.3], 'plate'),
       );
     }
   } else {
     // No arms: the weapons hang off shoulder blocks instead.
     for (const side of [-1, 1]) {
-      parts.push(part(side < 0 ? 'left_arm' : 'right_arm', 'box',
-        [-frame.long * 0.02, frame.tall * 0.3, side * frame.shoulder],
-        [frame.long * 0.6, frame.tall * 0.44, 0.34], 'plate', frame.pitch));
+      parts.push(
+        shaped(side < 0 ? 'left_arm' : 'right_arm', PROFILES.block,
+          [-frame.long * 0.02, frame.tall * 0.3, side * frame.shoulder],
+          [frame.long * 0.6, frame.tall * 0.44, 0.34], 'plate', frame.pitch),
+        // A cap over the block, stepped in, so the shoulder has a top edge.
+        part(side < 0 ? 'left_arm' : 'right_arm', 'box',
+          [-frame.long * 0.08, frame.tall * 0.54, side * frame.shoulder],
+          [frame.long * 0.4, 0.1, 0.28], 'deep', frame.pitch),
+      );
     }
   }
 

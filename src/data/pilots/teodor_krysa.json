@@ -1,0 +1,12 @@
+{
+  "id": "teodor_krysa",
+  "name": "Teodor Krysa",
+  "gunnery": 3,
+  "piloting": 3,
+  "sensors": 2,
+  "traits": [
+    "hard_to_kill",
+    "veteran"
+  ],
+  "bio": "Krysa was in the Barrow Reach column and does not discuss it. He is the last man anyone would bet against coming home."
+}

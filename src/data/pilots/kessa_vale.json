@@ -4,5 +4,8 @@
   "gunnery": 4,
   "piloting": 3,
   "sensors": 3,
-  "traits": []
+  "traits": [
+    "marksman"
+  ],
+  "bio": "Sarn foundry security before the line moved. Vale shoots the way she was taught to inspect castings: slowly, once, and at the flaw."
 }

@@ -1,0 +1,12 @@
+{
+  "id": "arne_gedde",
+  "name": "Arne Gedde",
+  "gunnery": 5,
+  "piloting": 2,
+  "sensors": 2,
+  "traits": [
+    "marksman",
+    "butcher"
+  ],
+  "bio": "Gedde is the best shot on the register and cannot walk a mech through a gate without scraping it. Both facts are load-bearing."
+}

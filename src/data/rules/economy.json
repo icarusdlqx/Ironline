@@ -29,7 +29,8 @@
     "missionSurvival": 60,
     "missionWin": 40,
     "skillCostBase": 400,
-    "skillCostGrowth": 1.9
+    "skillCostGrowth": 1.9,
+    "perHit": 1.5
   },
   "market": {
     "sellFraction": 0.45

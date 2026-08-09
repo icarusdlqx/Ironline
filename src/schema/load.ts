@@ -11,6 +11,7 @@ import { PilotSchema, type Pilot } from './pilot';
 import {
   AiRulesSchema,
   BalanceRulesSchema,
+  PilotTraitRulesSchema,
   TraitRulesSchema,
   CombatRulesSchema,
   ConstructionRulesSchema,
@@ -211,6 +212,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const ai = parseRule('ai', AiRulesSchema, byStem, issues);
   const balance = parseRule('balance', BalanceRulesSchema, byStem, issues);
   const traits = parseRule('traits', TraitRulesSchema, byStem, issues);
+  const pilotTraits = parseRule('pilotTraits', PilotTraitRulesSchema, byStem, issues);
   const difficulty = parseRule('difficulty', DifficultyRulesSchema, byStem, issues);
 
   if (
@@ -228,6 +230,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     ai === null ||
     balance === null ||
     traits === null ||
+    pilotTraits === null ||
     difficulty === null
   ) {
     return null;
@@ -248,6 +251,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     ai,
     balance,
     traits,
+    pilotTraits,
     difficulty,
   };
 }

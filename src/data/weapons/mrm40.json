@@ -19,6 +19,7 @@
   "cost": 230000,
   "recoil": 0.12,
   "accuracy": 0.85,
+  "criticalChance": 0.03,
   "visual": {
     "style": "missile",
     "colour": "#ff6a3a",

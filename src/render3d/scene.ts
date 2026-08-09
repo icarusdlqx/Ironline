@@ -18,6 +18,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import { LOCATIONS } from '../schema/common';
 import type { TerrainMapData } from '../schema/map';
 import type { SimEvent } from '../sim/events';
 import { angleDifference, normaliseAngle } from '../sim/math';
@@ -56,6 +57,8 @@ interface EntityView {
   model: MechModel;
   signature: string;
   ring: Mesh;
+  /** Drawn under the pointer, so the player can see what a click would hit. */
+  hoverRing: Mesh;
 }
 
 function damageSignature(entity: MechEntity): string {
@@ -271,7 +274,7 @@ export class Renderer {
     if (existing !== undefined && existing.signature === signature) return existing;
 
     if (existing !== undefined) {
-      this.scene.remove(existing.model.root, existing.ring);
+      this.scene.remove(existing.model.root, existing.ring, existing.hoverRing);
       disposeModel(existing.model.root);
     }
 
@@ -295,6 +298,7 @@ export class Renderer {
       teamColour(entity.team),
       entity.destroyed,
       mounts,
+      new Set(LOCATIONS.filter((location) => entity.locations[location].destroyed)),
     );
 
     const radius = radiusFor(entity.tonnage);
@@ -305,9 +309,23 @@ export class Renderer {
     ring.rotation.x = -Math.PI / 2;
     ring.visible = false;
 
+    // Wider than the selection ring and in the hostile colour, so hovering a
+    // mech says both "the game can see what you are pointing at" and "clicking
+    // here will start a fight".
+    const hoverRing = new Mesh(
+      new RingGeometry(radius * 1.5, radius * 1.66, 28),
+      new MeshBasicMaterial({
+        color: entity.team === world.playerTeam ? UI.friendly : UI.hostile,
+        transparent: true,
+        opacity: 0.85,
+      }),
+    );
+    hoverRing.rotation.x = -Math.PI / 2;
+    hoverRing.visible = false;
+
     model.root.userData.entityId = entity.id;
-    this.scene.add(model.root, ring);
-    const view: EntityView = { model, signature, ring };
+    this.scene.add(model.root, ring, hoverRing);
+    const view: EntityView = { model, signature, ring, hoverRing };
     this.views.set(entity.id, view);
     return view;
   }
@@ -324,6 +342,7 @@ export class Renderer {
       const shown = this.viewFor(world, entity);
       shown.model.root.visible = seen;
       shown.ring.visible = seen && view.selection.has(entity.id) && isOperational(entity);
+      shown.hoverRing.visible = seen && view.hovered === entity.id && isOperational(entity);
       if (!seen) continue;
 
       const at = this.interpolated.get(entity.id) ?? {
@@ -343,6 +362,7 @@ export class Renderer {
       shown.model.torso.rotation.y = -at.torso;
 
       shown.ring.position.set(at.x, ground + 1.2, at.y);
+      shown.hoverRing.position.set(at.x, ground + 1.1, at.y);
     }
 
     this.drawMarkers(world, view);
@@ -421,12 +441,19 @@ export class Renderer {
    * offered to the ray first; failing that, the nearest body centre within a
    * screen-space radius catches a click that grazed the edge.
    */
-  entityAtScreen(world: World, screen: Vec2, radiusPixels: number): MechEntity | null {
+  entityAtScreen(
+    world: World,
+    screen: Vec2,
+    radiusPixels: number,
+    /** Narrows what counts as a hit, so a caller can look only for hostiles. */
+    wanted: (entity: MechEntity) => boolean = () => true,
+  ): MechEntity | null {
     const viewport = this.viewport;
     const visible = (entity: MechEntity): boolean =>
-      world.vision === null ||
-      entity.team === world.vision.team ||
-      world.vision.visible.has(entity.id);
+      (world.vision === null ||
+        entity.team === world.vision.team ||
+        world.vision.visible.has(entity.id)) &&
+      wanted(entity);
 
     const roots = world.entities
       .filter((entity) => visible(entity) && isOperational(entity))

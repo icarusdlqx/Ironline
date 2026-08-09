@@ -14,5 +14,8 @@
   "waypointRadius": 8,
   "arrivalRadius": 6,
   "torsoTwistDegrees": 110,
-  "torsoTurnRateDegreesPerSecond": 130
+  "torsoTurnRateDegreesPerSecond": 130,
+  "bodyRadiusBase": 8,
+  "bodyRadiusPerTon": 0.14,
+  "separationRate": 0.5
 }

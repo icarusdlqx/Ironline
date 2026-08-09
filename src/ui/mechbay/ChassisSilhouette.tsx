@@ -1,7 +1,7 @@
 import type { Chassis } from '../../schema/chassis';
 import type { MechLocation } from '../../schema/common';
 import type { Design } from '../../schema/design';
-import { chassisBlueprint, type BlueprintPart, type Tone } from '../../render/blueprint';
+import { chassisBlueprint, type BlueprintPart, type Profile, type Tone } from '../../render/blueprint';
 import { mix, shade } from '../../render/palette';
 
 /**
@@ -96,31 +96,72 @@ interface Piece {
   spin: string | undefined;
 }
 
-/** The three faces of an axis-aligned plate that the eye can actually see. */
-function boxFacets(at: readonly [number, number, number], size: readonly [number, number, number], paint: (face: Face) => string): Facet[] {
-  const [cx, cy, cz] = at;
-  const hx = size[0] / 2;
-  const hy = size[1] / 2;
-  const hz = size[2] / 2;
-  const corner = (dx: number, dy: number, dz: number): Point => project(cx + dx, cy + dy, cz + dz);
+/** A plain rectangle, which is the profile a part without one is cut to. */
+const RECTANGLE: Profile = [
+  [-0.5, -0.5],
+  [0.5, -0.5],
+  [0.5, 0.5],
+  [-0.5, 0.5],
+];
 
-  return [
-    {
-      points: points([corner(-hx, hy, hz), corner(hx, hy, hz), corner(hx, -hy, hz), corner(-hx, -hy, hz)]),
-      fill: paint('side'),
+/**
+ * A plate as the eye actually sees it: the near face cut to its own outline,
+ * plus the rim of every edge turned toward the viewer.
+ *
+ * Everything on a mech is a prism — a shape extruded across its width — and
+ * drawing one properly is what lets a hull have a sloped nose and a tapered
+ * deck in the bay as well as on the field, from the same description. A box is
+ * just the case where the outline is a rectangle.
+ */
+function prismFacets(
+  at: readonly [number, number, number],
+  size: readonly [number, number, number],
+  profile: Profile,
+  paint: (face: Face) => string,
+): Facet[] {
+  const [cx, cy, cz] = at;
+  const hz = size[2] / 2;
+  const corner = (px: number, py: number, dz: number): Point =>
+    project(cx + px * size[0], cy + py * size[1], cz + dz);
+
+  const facets: Facet[] = [];
+
+  for (let index = 0; index < profile.length; index += 1) {
+    const from = profile[index];
+    const to = profile[(index + 1) % profile.length];
+    if (from === undefined || to === undefined) continue;
+
+    // The outward normal of this edge, in the profile's own plane. Anticlockwise
+    // winding puts the outside on the right of the direction of travel.
+    const edgeX = (to[0] - from[0]) * size[0];
+    const edgeY = (to[1] - from[1]) * size[1];
+    const normalX = edgeY;
+    const normalY = -edgeX;
+    // Which way the eye is looking, in that same plane.
+    if (normalX * SKEW_X + normalY * SKEW_Y <= 0) continue;
+
+    facets.push({
+      points: points([
+        corner(from[0], from[1], -hz),
+        corner(to[0], to[1], -hz),
+        corner(to[0], to[1], hz),
+        corner(from[0], from[1], hz),
+      ]),
+      // An edge whose outward normal points up is a deck; one pointing along
+      // the mech is a face. Shading them differently is what gives a cut
+      // corner an edge you can see.
+      fill: paint(normalY > Math.abs(normalX) * 0.6 ? 'top' : 'front'),
       outline: true,
-    },
-    {
-      points: points([corner(-hx, hy, -hz), corner(hx, hy, -hz), corner(hx, hy, hz), corner(-hx, hy, hz)]),
-      fill: paint('top'),
-      outline: true,
-    },
-    {
-      points: points([corner(hx, hy, -hz), corner(hx, hy, hz), corner(hx, -hy, hz), corner(hx, -hy, -hz)]),
-      fill: paint('front'),
-      outline: true,
-    },
-  ];
+    });
+  }
+
+  facets.push({
+    points: points(profile.map(([px, py]) => corner(px, py, hz))),
+    fill: paint('side'),
+    outline: true,
+  });
+
+  return facets;
 }
 
 /**
@@ -214,7 +255,7 @@ export function ChassisSilhouette({ chassis, design, active = null }: Props) {
     } else if (part.shape === 'limb') {
       facets.push(...limbFacets(at, part.size, paint));
     } else {
-      facets.push(...boxFacets(at, part.size, paint));
+      facets.push(...prismFacets(at, part.size, part.profile ?? RECTANGLE, paint));
     }
 
     for (const facet of facets) {

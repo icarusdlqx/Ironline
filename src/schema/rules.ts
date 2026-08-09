@@ -44,6 +44,20 @@ export const MovementRulesSchema = z.strictObject({
   torsoTurnRateDegreesPerSecond: z.number().positive(),
   waypointRadius: z.number().positive(),
   arrivalRadius: z.number().positive(),
+  /**
+   * How much room a mech takes up on the ground, so two of them cannot stand
+   * in the same spot. These have to agree with the radius the renderer draws a
+   * hull at, or mechs visibly overlap while the simulation believes they are
+   * clear of one another; a test holds the two together.
+   */
+  bodyRadiusBase: z.number().positive(),
+  bodyRadiusPerTon: z.number().positive(),
+  /**
+   * Share of an overlap pushed out per tick. Below one, contact is a shove
+   * rather than a snap, so two mechs squeezing through a gap ease past each
+   * other instead of being fired apart.
+   */
+  separationRate: Factor,
 });
 
 /** Which side of a mech a shot came in on. */
@@ -160,6 +174,24 @@ export const DamageRulesSchema = z
     volatileExplosionFactor: z.number().nonnegative(),
     headDestroyedEjectionChance: Probability,
     legDestroyedSpeedFactor: Probability,
+    /**
+     * What happens when a shot gets past the plate and into the frame. A
+     * critical is not simply more damage: it is the shot that finds the thing
+     * behind the armour, which is why it can silence a weapon the mech was
+     * relying on rather than just shortening the fight.
+     */
+    critical: z.strictObject({
+      /** Damage multiplier on the penetrating shot itself. */
+      damageMultiplier: z.number().min(1).max(5),
+      /** Chance the crit also wrecks something fitted in that location. */
+      componentChance: Probability,
+      /** A ruined leg actuator, as a share of the mech's pace. */
+      actuatorSpeedFactor: Factor,
+      /** A ruined arm actuator, as a share of the mech's gunnery. */
+      actuatorAccuracyFactor: Factor,
+      /** A wrecked sensor head, as a share of the mech's gunnery. */
+      sensorAccuracyFactor: Factor,
+    }),
   })
   .superRefine((rules, ctx) => {
     if (rules.transfer.centre_torso !== null || rules.transfer.head !== null) {
@@ -284,6 +316,36 @@ export const TraitRulesSchema = z.strictObject({
   entries: z.record(IdSchema, TraitSchema),
 });
 
+/**
+ * What a pilot brings that their skill numbers do not. Gunnery says how well
+ * someone shoots; a speciality says what they are actually good at — holding a
+ * gun steady at a dead run, riding a hot reactor, finding the seam in a hull.
+ */
+export const PilotTraitSchema = z.strictObject({
+  label: NameLike,
+  note: z.string().min(1).max(240),
+  /** Marksmanship, over and above gunnery. */
+  accuracyFactor: z.number().positive().max(2).default(1),
+  /** How hard this pilot is to hit — jinking, cover, never standing still. */
+  incomingAccuracyFactor: z.number().positive().max(2).default(1),
+  /** Shooting on the move, which most pilots are bad at. */
+  movingAccuracyFactor: z.number().positive().max(2).default(1),
+  /** Running the reactor hotter than the manual allows. */
+  dissipationFactor: z.number().positive().max(2).default(1),
+  sensorRangeFactor: z.number().positive().max(2).default(1),
+  /** Knowing where a hull comes apart. */
+  criticalChanceFactor: z.number().positive().max(3).default(1),
+  /** Walking away from a wreck they should not have walked away from. */
+  survivalFactor: z.number().positive().max(2).default(1),
+  /** How fast they learn. */
+  xpFactor: z.number().positive().max(2).default(1),
+});
+
+export const PilotTraitRulesSchema = z.strictObject({
+  id: z.literal('pilotTraits'),
+  entries: z.record(IdSchema, PilotTraitSchema),
+});
+
 export const BalanceRulesSchema = z.strictObject({
   id: z.literal('balance'),
   /** How far a weapon may sit from its class median before the report flags it. */
@@ -388,6 +450,7 @@ export const EconomyRulesSchema = z.strictObject({
     deathChanceOnMechLoss: Probability,
   }),
   xp: z.strictObject({
+    perHit: z.number().nonnegative(),
     perDamageDealt: z.number().nonnegative(),
     perKill: z.number().nonnegative(),
     missionSurvival: z.number().nonnegative(),
@@ -433,6 +496,8 @@ export type AiRules = z.infer<typeof AiRulesSchema>;
 export type BalanceRules = z.infer<typeof BalanceRulesSchema>;
 export type Trait = z.infer<typeof TraitSchema>;
 export type TraitRules = z.infer<typeof TraitRulesSchema>;
+export type PilotTrait = z.infer<typeof PilotTraitSchema>;
+export type PilotTraitRules = z.infer<typeof PilotTraitRulesSchema>;
 export type DifficultyRules = z.infer<typeof DifficultyRulesSchema>;
 export type DifficultyTier = z.infer<typeof DifficultyTierSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
@@ -452,6 +517,7 @@ export interface Rules {
   readonly ai: AiRules;
   readonly balance: BalanceRules;
   readonly traits: TraitRules;
+  readonly pilotTraits: PilotTraitRules;
   readonly difficulty: DifficultyRules;
 }
 
@@ -470,6 +536,7 @@ export const RULE_SCHEMAS = {
   ai: AiRulesSchema,
   balance: BalanceRulesSchema,
   traits: TraitRulesSchema,
+  pilotTraits: PilotTraitRulesSchema,
   difficulty: DifficultyRulesSchema,
 } as const;
 

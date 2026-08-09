@@ -33,6 +33,8 @@ export interface WeaponSnapshot {
   rounds: number | null;
   shortRange: number;
   longRange: number;
+  /** Where the weapon is bolted, so a lost arm explains a silent gun. */
+  location: MechLocation;
 }
 
 export interface LocationSnapshot {
@@ -57,6 +59,12 @@ export interface UnitSnapshot {
   shutdownRemaining: number;
   motion: string;
   targetName: string | null;
+  /** Metres to whatever this mech is shooting at, so ranges mean something. */
+  targetRange: number | null;
+  /** How far away this mech is from the player's nearest machine. */
+  rangeToLance: number | null;
+  /** Which structural locations have been shot off. */
+  lostLocations: MechLocation[];
   locations: Record<MechLocation, LocationSnapshot>;
   weapons: WeaponSnapshot[];
   groupEnabled: boolean[];

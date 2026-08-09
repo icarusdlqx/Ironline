@@ -4,5 +4,8 @@
   "gunnery": 3,
   "piloting": 3,
   "sensors": 2,
-  "traits": []
+  "traits": [
+    "hard_to_kill"
+  ],
+  "bio": "Has lost three mechs and walked out of all three. The company doctor has stopped writing it up as remarkable."
 }

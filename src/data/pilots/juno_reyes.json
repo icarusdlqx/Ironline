@@ -1,8 +1,11 @@
 {
   "id": "juno_reyes",
   "name": "Juno Reyes",
-  "gunnery": 2,
-  "piloting": 3,
-  "sensors": 4,
-  "traits": []
+  "gunnery": 3,
+  "piloting": 2,
+  "sensors": 3,
+  "traits": [
+    "cool_hand"
+  ],
+  "bio": "Runs a reactor past the amber and talks about the manual as a suggestion. Two techs have refused to sign her mech off."
 }

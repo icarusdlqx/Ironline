@@ -1,0 +1,12 @@
+{
+  "id": "mira_solvang",
+  "name": "Mira Solvang",
+  "gunnery": 4,
+  "piloting": 4,
+  "sensors": 3,
+  "traits": [
+    "snap_shot",
+    "marksman"
+  ],
+  "bio": "Solvang holds a gun steady at a dead run, which is the one thing gunnery ratings never capture. She charges accordingly."
+}

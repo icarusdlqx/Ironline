@@ -3,7 +3,7 @@ import type { Catalog } from '../schema/load';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
 import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
-import { asPilot, assign, awardXp, resolveCasualty } from './roster';
+import { asPilot, assign, awardXp, promote, resolveCasualty } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
 import {
   findMech,
@@ -82,6 +82,7 @@ export function startCampaign(catalog: Catalog, campaignId: string, seed: string
       xp: 0,
       spentXp: 0,
       traits: [...template.traits],
+      bio: template.bio,
       injuredUntilDay: state.day,
       dead: false,
       mechId: mech.id,
@@ -334,6 +335,15 @@ export function resolveMission(
       const casualty = withRng(state, (rng) =>
         resolveCasualty(catalog, rng, pair.pilot, unit, state.day),
       );
+
+      // A pilot who came home spends what they learned on the way. After the
+      // casualty roll on purpose: the dead do not get better at anything.
+      if (!casualty.died) {
+        for (const step of promote(catalog, pair.pilot)) {
+          log(state, `${pair.pilot.name} reached ${step.skill} ${step.level}.`);
+        }
+      }
+
       if (casualty.died) casualties.push(`${pair.pilot.name} (killed)`);
       else if (casualty.injuredDays > 0) {
         casualties.push(`${pair.pilot.name} (out ${casualty.injuredDays} days)`);
