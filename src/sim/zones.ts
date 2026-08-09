@@ -66,8 +66,13 @@ export function updateZones(world: World): void {
     }
 
     if (zone.contested || teams.length === 0) {
-      zone.contender = zone.contested ? zone.contender : null;
-      if (teams.length === 0) zone.progress = Math.max(0, zone.progress - world.dt);
+      if (teams.length === 0) {
+        // Nobody standing on it: the claim decays rather than evaporating, so a
+        // relief handoff — the occupier dies or steps out a tick before their
+        // squadmate arrives — does not restart a capture that was nearly done.
+        zone.progress = Math.max(0, zone.progress - world.dt);
+        if (zone.progress <= 0) zone.contender = null;
+      }
       continue;
     }
 

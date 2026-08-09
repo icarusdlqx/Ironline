@@ -37,6 +37,7 @@ function clearPath(entity: MechEntity): void {
   entity.path = [];
   entity.pathIndex = 0;
   entity.motion = 'stationary';
+  entity.intendedMotion = 'stationary';
 }
 
 /** Swings the torso toward the target within its twist limit, independent of the hull. */
@@ -86,10 +87,21 @@ export function updateMovement(world: World, entity: MechEntity): void {
   }
 
   const alignment = world.rules.movement.moveAlignmentDegrees * DEGREES_TO_RADIANS;
-  if (Math.abs(misalignment) > alignment) return;
+  if (Math.abs(misalignment) > alignment) {
+    // Pivoting on the spot is not movement. Reporting it as a run handed the
+    // mech the running evasion bonus for free and told the HUD it was moving.
+    entity.motion = 'stationary';
+    return;
+  }
+
+  // Aligned and about to move: report the pace the controller actually asked for.
+  entity.motion = entity.intendedMotion === 'stationary' ? 'walk' : entity.intendedMotion;
 
   const step = speedFor(world, entity) * world.dt;
-  if (step <= 0) return;
+  if (step <= 0) {
+    entity.motion = 'stationary';
+    return;
+  }
 
   const dx = Math.cos(entity.facing) * step;
   const dy = Math.sin(entity.facing) * step;

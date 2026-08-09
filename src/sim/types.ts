@@ -98,7 +98,10 @@ export interface MechEntity {
   facing: number;
   /** Weapon bearing relative to the hull, so a mech can move one way and shoot another. */
   torsoOffset: number;
+  /** What actually happened this tick. Combat reads this. */
   motion: MotionState;
+  /** What the controller asked for. Movement restores it once the mech is aligned. */
+  intendedMotion: MotionState;
   walkSpeed: number;
   runSpeed: number;
   turnRate: number;

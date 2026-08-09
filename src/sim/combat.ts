@@ -31,6 +31,8 @@ export function hitChance(
   target: MechEntity,
   weapon: Weapon,
   range: number,
+  /** Heat penalty as it stood when the volley began; see updateWeapons. */
+  heatAccuracy?: number,
 ): number {
   const rules = world.rules.combat;
   const gunnery = rules.gunneryBase[shooter.pilot.gunnery - 1] ?? rules.gunneryBase[0] ?? 0.5;
@@ -50,7 +52,7 @@ export function hitChance(
   if (weapon.type === 'missile') chance *= target.amsMissileFactor;
   if (world.tick <= target.designatedUntilTick) chance *= rules.tagFactor;
   chance *= weapon.accuracy;
-  chance *= currentHeatTier(world, shooter).accuracyFactor;
+  chance *= heatAccuracy ?? currentHeatTier(world, shooter).accuracyFactor;
   if (shooter.calledShot !== null) chance *= rules.calledShot.accuracyFactor;
 
   return clamp(chance, rules.hitChanceFloor, rules.hitChanceCeiling);
@@ -89,6 +91,7 @@ function fireWeapon(
   weapon: Weapon,
   range: number,
   bin: AmmoBin | null,
+  heatAccuracy: number,
 ): void {
   addHeat(shooter, weapon.heat);
   mount.cooldown = weapon.cooldown;
@@ -114,7 +117,7 @@ function fireWeapon(
     weapon.velocity === null ? 0 : Math.ceil(range / weapon.velocity / world.dt);
 
   for (let shot = 0; shot < weapon.projectiles; shot += 1) {
-    const hit = world.rng.chance(hitChance(world, shooter, target, weapon, range));
+    const hit = world.rng.chance(hitChance(world, shooter, target, weapon, range, heatAccuracy));
     shooter.stats.shotsFired += 1;
     if (hit) shooter.stats.shotsHit += 1;
     recordShot(world, weapon, hit);
@@ -148,6 +151,17 @@ export function updateWeapons(world: World, shooter: MechEntity): void {
 
   if (!lineOfSight(world.terrain, shooter.pos, target.pos).clear) return;
 
+  // The whole volley leaves at once, so every weapon rolls against the heat the
+  // mech was carrying when the trigger came in. Applying each weapon's own heat
+  // before its own roll made a gun less accurate purely for being listed later.
+  //
+  // Mount order still decides which weapon is dropped when the volley would
+  // breach heat capacity. That is left alone deliberately: designs list their
+  // primary weapons first, and every reordering tried here cost the tactical AI
+  // far more than the baseline, because its governor keeps it in the heat band
+  // where the capacity gate actually bites.
+  const heatAccuracy = currentHeatTier(world, shooter).accuracyFactor;
+
   for (const mount of shooter.weapons) {
     if (mount.destroyed || mount.cooldown > 0) continue;
     if (shooter.groupEnabled[mount.group - 1] !== true) continue;
@@ -163,7 +177,7 @@ export function updateWeapons(world: World, shooter: MechEntity): void {
       if (bin === null) continue;
     }
 
-    fireWeapon(world, shooter, target, mount, weapon, range, bin);
+    fireWeapon(world, shooter, target, mount, weapon, range, bin, heatAccuracy);
   }
 }
 

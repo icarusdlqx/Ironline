@@ -195,6 +195,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     facing: params.facingDegrees * DEGREES_TO_RADIANS,
     torsoOffset: 0,
     motion: 'stationary',
+    intendedMotion: 'stationary',
     walkSpeed,
     runSpeed: walkSpeed * rules.movement.runMultiplier,
     turnRate:

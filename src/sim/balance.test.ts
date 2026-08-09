@@ -53,14 +53,18 @@ describe('weapon balance', () => {
  * favourable corner of the map cannot flatter either one.
  */
 describe('mirror match against the baseline controller', () => {
-  const ITERATIONS = 30;
+  // A win rate near the 40% gate needs enough seeds to be measured rather than
+  // guessed: at 30 runs the standard error is 9 points, so the gate would pass
+  // or fail on noise. Determinism needs far fewer.
+  const ITERATIONS = 100;
+  const DETERMINISM_ITERATIONS = 12;
 
-  function fight(): { aiWins: number; baselineWins: number; draws: number } {
+  function fight(iterations: number): { aiWins: number; baselineWins: number; draws: number } {
     let aiWins = 0;
     let baselineWins = 0;
     let draws = 0;
 
-    for (let index = 0; index < ITERATIONS; index += 1) {
+    for (let index = 0; index < iterations; index += 1) {
       const aiTeam = index % 2;
       const result = runBattle(catalog, {
         seed: `mirror:${index}`,
@@ -79,17 +83,17 @@ describe('mirror match against the baseline controller', () => {
   }
 
   it('wins at least 40% of engagements', () => {
-    const { aiWins, baselineWins, draws } = fight();
+    const { aiWins, baselineWins, draws } = fight(ITERATIONS);
     const share = aiWins / ITERATIONS;
     expect(
       share,
       `tactical ${aiWins}, baseline ${baselineWins}, draws ${draws} of ${ITERATIONS}`,
     ).toBeGreaterThanOrEqual(0.4);
-  }, 120_000);
+  }, 600_000);
 
   it('is deterministic across runs', () => {
-    const once = fight();
-    const twice = fight();
+    const once = fight(DETERMINISM_ITERATIONS);
+    const twice = fight(DETERMINISM_ITERATIONS);
     expect(twice).toEqual(once);
-  }, 240_000);
+  }, 300_000);
 });

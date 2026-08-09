@@ -7,6 +7,7 @@ export function destroyMech(world: World, entity: MechEntity, method: KillMethod
   entity.destroyed = true;
   entity.killMethod = method;
   entity.motion = 'stationary';
+  entity.intendedMotion = entity.motion;
   entity.path = [];
   entity.pathIndex = 0;
   emit(world.events, { type: 'mech_destroyed', tick: world.tick, entityId: entity.id, method });

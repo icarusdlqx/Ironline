@@ -16,6 +16,7 @@ export function decideBaseline(world: World, mech: MechEntity): void {
     mech.path = [];
     mech.pathIndex = 0;
     mech.motion = 'stationary';
+    mech.intendedMotion = mech.motion;
     return;
   }
 
@@ -38,6 +39,7 @@ export function decideBaseline(world: World, mech: MechEntity): void {
     mech.path = [];
     mech.pathIndex = 0;
     mech.motion = 'stationary';
+    mech.intendedMotion = mech.motion;
     return;
   }
 
@@ -68,6 +70,7 @@ export function decideBaseline(world: World, mech: MechEntity): void {
     mech.path = [];
     mech.pathIndex = 0;
     mech.motion = 'stationary';
+    mech.intendedMotion = mech.motion;
     return;
   }
 

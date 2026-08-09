@@ -103,12 +103,14 @@ function moveTo(world: World, mech: MechEntity, destination: { x: number; y: num
   mech.pathIndex = 0;
   mech.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
   mech.motion = mech.path.length === 0 ? 'stationary' : run ? 'run' : 'walk';
+  mech.intendedMotion = mech.motion;
 }
 
 function halt(mech: MechEntity): void {
   mech.path = [];
   mech.pathIndex = 0;
   mech.motion = 'stationary';
+  mech.intendedMotion = mech.motion;
   mech.ai.destination = null;
 }
 
@@ -289,6 +291,7 @@ export function resolveDisengagement(world: World): void {
 
     mech.withdrawn = true;
     mech.motion = 'stationary';
+    mech.intendedMotion = mech.motion;
     mech.path = [];
     emit(world.events, { type: 'unit_withdrew', tick: world.tick, entityId: mech.id, team: mech.team });
   }

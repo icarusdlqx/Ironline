@@ -42,6 +42,7 @@ export function issueMove(world: World, entity: MechEntity, to: Vec2, run: boole
   entity.pathIndex = 0;
   entity.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
   entity.motion = run ? 'run' : 'walk';
+  entity.intendedMotion = entity.motion;
   return true;
 }
 
@@ -61,6 +62,7 @@ export function issueStop(entity: MechEntity): void {
   entity.path = [];
   entity.pathIndex = 0;
   entity.motion = 'stationary';
+  entity.intendedMotion = entity.motion;
 }
 
 /** An order from the pilot: sets intent, and takes effect immediately. */
@@ -103,6 +105,7 @@ function autoAcquire(world: World, entity: MechEntity): MechEntity | null {
 export function updatePlayerControl(world: World, entity: MechEntity): void {
   if (!isOperational(entity) || entity.shutdownRemaining > 0) {
     entity.motion = 'stationary';
+    entity.intendedMotion = entity.motion;
     return;
   }
 
@@ -115,6 +118,7 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
     entity.path = [];
     entity.pathIndex = 0;
     entity.motion = 'stationary';
+    entity.intendedMotion = entity.motion;
   } else if (distance(entity.pos, order.to) <= world.rules.movement.arrivalRadius) {
     issueStop(entity);
   } else {
@@ -142,6 +146,7 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
       }
     }
     entity.motion = entity.path.length === 0 ? 'stationary' : order.run ? 'run' : 'walk';
+    entity.intendedMotion = entity.motion;
   }
 
   const ordered = findEntity(world, entity.orders.attack?.targetId ?? null);
