@@ -58,6 +58,7 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     weapons: weaponsOf(world, entity),
     groupEnabled: [...entity.groupEnabled],
     holdingFire: isHoldingFire(entity),
+    heatSafety: entity.heatSafety,
     hasMoveOrder: entity.orders.move !== null,
   };
 }

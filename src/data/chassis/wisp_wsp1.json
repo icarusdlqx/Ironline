@@ -77,5 +77,13 @@
     "left_leg": 12,
     "right_leg": 12
   },
+  "silhouette": {
+    "form": "scout",
+    "torsoLength": 0.8,
+    "torsoWidth": 0.62,
+    "shoulder": 0.55,
+    "legLength": 1.25,
+    "stance": 0.7
+  },
   "traits": []
 }

@@ -33,6 +33,19 @@ export interface LocationState {
 
 export const WEAPON_GROUPS = 4;
 
+export type Stance = 'close' | 'hold' | 'back_off' | 'withdraw';
+
+export interface AiState {
+  withdrawing: boolean;
+  coolingDown: boolean;
+  focusTargetId: EntityId | null;
+  /** Where this mech has committed to walk, and until when. Re-deciding every
+   *  half second is what makes a lance pirouette instead of manoeuvre. */
+  destination: Vec2 | null;
+  commitUntilTick: number;
+  stance: Stance;
+}
+
 export interface WeaponMount {
   index: number;
   weaponId: string;
@@ -115,9 +128,15 @@ export interface MechEntity {
 
   autopilot: boolean;
   controller: 'orders' | 'tactical' | 'baseline';
-  ai: { withdrawing: boolean; coolingDown: boolean; focusTargetId: EntityId | null };
+  ai: AiState;
   orders: OrderState;
+  /** What is actually firing this tick: the pilot's intent, minus whatever the
+   *  reactor governor has shed to stay out of shutdown. */
   groupEnabled: boolean[];
+  /** What the pilot asked for. The governor may fire less than this, never more. */
+  groupIntent: boolean[];
+  /** Reactor governor: sheds hot weapon groups rather than risking a shutdown. */
+  heatSafety: boolean;
   sensorRange: number;
 
   targetId: EntityId | null;

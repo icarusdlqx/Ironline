@@ -19,6 +19,12 @@
   "cost": 125000,
   "recoil": 0.08,
   "accuracy": 0.85,
+  "visual": {
+    "style": "missile",
+    "colour": "#ff6a3a",
+    "width": 1.8,
+    "arc": 22
+  },
   "tags": [
     "spread"
   ]

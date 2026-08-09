@@ -160,9 +160,12 @@ describe('runBattle', () => {
   it('reaches a decision well inside the time limit', () => {
     for (const seed of ['a', 'b', 'c', 'd', 'e']) {
       const result = runBattle(catalog, { seed, missionId: 'skirmish_ridge' });
-      expect(result.decided).toBe(true);
-      expect(result.winner).not.toBeNull();
-      expect(result.ticks).toBeLessThan(catalog.rules.simulation.maxBattleTicks);
+      expect(result.decided, seed).toBe(true);
+      expect(result.ticks, seed).toBeLessThan(catalog.rules.simulation.maxBattleTicks);
+      // A draw is a real result: both lances can break and quit the field in the
+      // same moment. What must not happen is running out the clock.
+      const standing = new Set(result.units.filter((unit) => unit.alive).map((u) => u.team));
+      expect(standing.size, seed).toBeLessThanOrEqual(1);
     }
   });
 
@@ -178,8 +181,9 @@ describe('runBattle', () => {
   it('records a kill method for every destroyed mech', () => {
     const result = runBattle(catalog, { seed: 'methods', missionId: 'skirmish_ridge' });
     for (const unit of result.units) {
-      if (unit.alive) expect(unit.killMethod).toBeNull();
-      else expect(unit.killMethod).not.toBeNull();
+      // Off the field splits three ways: still standing, walked away, or killed.
+      if (unit.alive || unit.withdrew) expect(unit.killMethod, unit.name).toBeNull();
+      else expect(unit.killMethod, unit.name).not.toBeNull();
     }
   });
 

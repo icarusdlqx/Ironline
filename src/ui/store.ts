@@ -61,6 +61,7 @@ export interface UnitSnapshot {
   weapons: WeaponSnapshot[];
   groupEnabled: boolean[];
   holdingFire: boolean;
+  heatSafety: boolean;
   hasMoveOrder: boolean;
 }
 
@@ -79,6 +80,8 @@ export interface GameState {
   playerTeam: number;
   heatTiers: number[];
   selection: EntityId[];
+  /** Lance elements the player has bound to the number keys. */
+  controlGroups: Record<number, EntityId[]>;
   orderMode: OrderMode;
   calledShotLocation: MechLocation | null;
   units: UnitSnapshot[];
@@ -100,6 +103,7 @@ export interface GameState {
 
 export interface GameActions {
   setSelection: (ids: EntityId[]) => void;
+  assignControlGroup: (slot: number, ids: EntityId[]) => void;
   setOrderMode: (mode: OrderMode) => void;
   setSupportMode: (call: SupportCallId | null) => void;
   setCalledShotLocation: (location: MechLocation | null) => void;
@@ -122,6 +126,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   playerTeam: 0,
   heatTiers: [],
   selection: [],
+  controlGroups: {},
   orderMode: null,
   calledShotLocation: null,
   units: [],
@@ -141,6 +146,8 @@ export const useGame = create<GameState & GameActions>((set) => ({
   reservesLeft: 0,
 
   setSelection: (ids) => set({ selection: ids }),
+  assignControlGroup: (slot, ids) =>
+    set((state) => ({ controlGroups: { ...state.controlGroups, [slot]: ids } })),
   setOrderMode: (mode) => set({ orderMode: mode, supportMode: null }),
   setSupportMode: (call) => set({ supportMode: call, orderMode: null }),
   setCalledShotLocation: (location) => set({ calledShotLocation: location }),

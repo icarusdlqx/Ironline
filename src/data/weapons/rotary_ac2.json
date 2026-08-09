@@ -1,0 +1,28 @@
+{
+  "id": "rotary_ac2",
+  "name": "Rotary AC/2",
+  "type": "ballistic",
+  "tonnage": 8,
+  "slots": 4,
+  "damage": 3.6,
+  "projectiles": 1,
+  "heat": 2,
+  "cooldown": 0.6,
+  "velocity": 800,
+  "range": {
+    "min": 0,
+    "short": 150,
+    "medium": 300,
+    "long": 450
+  },
+  "ammoPerTon": 45,
+  "cost": 225000,
+  "recoil": 0.12,
+  "accuracy": 1.0,
+  "visual": {
+    "style": "tracer",
+    "colour": "#ffe3a8",
+    "width": 1.6,
+    "arc": 0
+  }
+}

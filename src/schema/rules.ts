@@ -156,6 +156,10 @@ export const AiRulesSchema = z.strictObject({
     rangeErrorWeight: z.number().nonnegative(),
     closingWeight: z.number().nonnegative(),
     losPenalty: z.number().nonnegative(),
+    commitSeconds: z.number().positive().max(30),
+    approachArcDegrees: z.number().positive().max(180),
+    approachProgressWeight: z.number().nonnegative(),
+    approachExposureWeight: z.number().nonnegative(),
   }),
   heat: z.strictObject({
     holdFireFraction: Probability,

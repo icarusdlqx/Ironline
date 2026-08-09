@@ -428,7 +428,7 @@ async function main() {
       );
 
     check('campaign map draws every node', (await page.locator('.camp-node').count()) === 4);
-    check('only the opening node is available', (await page.locator('.camp-node.open').count()) === 1);
+    check('only the opening node is available', (await page.locator('.camp-node.available').count()) === 1);
     check('the lance is on the books', (await page.locator('[data-testid="camp-bay"] li').count()) === 4);
     check('the barracks lists four pilots', (await page.locator('[data-testid="camp-roster"] li').count()) === 4);
     check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);

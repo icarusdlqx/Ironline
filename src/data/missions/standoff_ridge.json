@@ -3,7 +3,7 @@
   "name": "Standoff \u2014 Ridge Pass",
   "type": "skirmish",
   "mapId": "ridge_pass",
-  "maxDurationSeconds": 420,
+  "maxDurationSeconds": 300,
   "lances": [
     {
       "team": 0,
@@ -28,7 +28,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "wisp_scout",
+          "designId": "hornet_spotter",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 204,
@@ -52,15 +52,6 @@
       "name": "Steel Legion",
       "units": [
         {
-          "designId": "rampart_breaker",
-          "pilotId": "nadia_ostrow",
-          "spawn": {
-            "x": 852,
-            "y": 108
-          },
-          "facingDegrees": 135
-        },
-        {
           "designId": "bulwark_burner",
           "pilotId": "cato_ferrin",
           "spawn": {
@@ -77,44 +68,66 @@
             "y": 180
           },
           "facingDegrees": 135
-        },
-        {
-          "designId": "sentinel_brawler",
-          "pilotId": "juno_reyes",
-          "spawn": {
-            "x": 828,
-            "y": 84
-          },
-          "facingDegrees": 135
-        },
-        {
-          "designId": "wisp_harasser",
-          "pilotId": "marek_sud",
-          "spawn": {
-            "x": 900,
-            "y": 132
-          },
-          "facingDegrees": 135
         }
       ]
     }
   ],
-  "briefing": "The Steel Legion has a reinforced company on the ridge. Everything is committed.",
+  "briefing": "Outnumbered and nowhere to fall back to. They will come in two pushes \u2014 hold the pass for five minutes. Killing them all is optional.",
   "startingResourcePoints": 300,
   "objectives": [
+    {
+      "id": "hold_the_line",
+      "label": "Hold out against a superior force",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    },
     {
       "id": "wipe_them_out",
       "label": "Destroy the opposing lance",
       "type": "destroy_all",
       "team": 0,
-      "required": true
-    },
+      "required": false
+    }
+  ],
+  "triggers": [
     {
-      "id": "lance_survives",
-      "label": "Keep at least one mech operational",
-      "type": "survive",
-      "team": 0,
-      "required": true
+      "id": "second_wave",
+      "when": {
+        "type": "elapsed",
+        "seconds": 120
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Second wave crossing the ridge \u2014 two more contacts."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "rampart_breaker",
+              "pilotId": "nadia_ostrow",
+              "spawn": {
+                "x": 852,
+                "y": 108
+              },
+              "facingDegrees": 135
+            },
+            {
+              "designId": "sentinel_brawler",
+              "pilotId": "cato_ferrin",
+              "spawn": {
+                "x": 804,
+                "y": 132
+              },
+              "facingDegrees": 135
+            }
+          ]
+        }
+      ]
     }
   ]
 }

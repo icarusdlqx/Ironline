@@ -166,7 +166,7 @@ export function findPath(
     const cell = current.cell;
     if (cell === goalCell) {
       const exact = rawGoal.column === goalTile.column && rawGoal.row === goalTile.row;
-      return reconstruct(grid, from, startCell, goalCell, exact ? goal : null);
+      return reconstruct(grid, from, startCell, goalCell, start, exact ? goal : null);
     }
 
     expanded += 1;
@@ -207,11 +207,82 @@ export function findPath(
   return null;
 }
 
+/**
+ * What walking the straight line between two points costs, in the same terrain-
+ * weighted units A* used. Null when something impassable is in the way.
+ */
+export function lineCost(grid: TerrainGrid, from: Vec2, to: Vec2): number | null {
+  const span = Math.hypot(to.x - from.x, to.y - from.y);
+  const steps = Math.ceil(span / (grid.tileSize * 0.5));
+  if (steps === 0) return 0;
+
+  const stride = span / steps / grid.tileSize;
+  let total = 0;
+
+  for (let step = 1; step <= steps; step += 1) {
+    const t = step / steps;
+    const tile = grid.toTile({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+    if (!grid.passable(tile.column, tile.row)) return null;
+    total += stride / grid.typeAt(tile.column, tile.row).moveMultiplier;
+  }
+
+  return total;
+}
+
+export function walkableLine(grid: TerrainGrid, from: Vec2, to: Vec2): boolean {
+  return lineCost(grid, from, to) !== null;
+}
+
+/**
+ * String-pulling. An A* route over a grid comes out as a staircase, and a mech
+ * that re-aims at every jog spends the walk turning instead of walking.
+ *
+ * A shortcut is only taken when it is no more expensive than the stretch it
+ * replaces. On open ground the straight line beats the staircase and gets
+ * taken; where A* detoured onto a road to avoid rough going, the straight line
+ * costs more and the detour survives — which is the whole reason it was chosen.
+ */
+function smooth(grid: TerrainGrid, start: Vec2, waypoints: readonly Vec2[]): Vec2[] {
+  if (waypoints.length < 2) return [...waypoints];
+
+  const out: Vec2[] = [];
+  let anchor = start;
+  let index = 0;
+
+  while (index < waypoints.length) {
+    // Cost of walking the original route from the anchor to each waypoint ahead.
+    let running = 0;
+    let previous = anchor;
+    let furthest = index;
+
+    for (let ahead = index; ahead < waypoints.length; ahead += 1) {
+      const point = waypoints[ahead];
+      if (point === undefined) break;
+      const leg = lineCost(grid, previous, point);
+      if (leg === null) break;
+      running += leg;
+      previous = point;
+
+      const direct = lineCost(grid, anchor, point);
+      if (direct !== null && direct <= running + 1e-9) furthest = ahead;
+    }
+
+    const point = waypoints[furthest];
+    if (point === undefined) break;
+    out.push(point);
+    anchor = point;
+    index = furthest + 1;
+  }
+
+  return out;
+}
+
 function reconstruct(
   grid: TerrainGrid,
   from: Int32Array,
   startCell: number,
   goalCell: number,
+  start: Vec2,
   goal: Vec2 | null,
 ): Vec2[] {
   const cells: number[] = [];
@@ -231,5 +302,5 @@ function reconstruct(
   if (goal !== null && waypoints.length > 0) {
     waypoints[waypoints.length - 1] = { x: goal.x, y: goal.y };
   }
-  return waypoints;
+  return smooth(grid, start, waypoints);
 }

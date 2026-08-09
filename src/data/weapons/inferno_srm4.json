@@ -1,0 +1,32 @@
+{
+  "id": "inferno_srm4",
+  "name": "Inferno SRM 4",
+  "type": "missile",
+  "tonnage": 2,
+  "slots": 1,
+  "damage": 2.8,
+  "projectiles": 4,
+  "heat": 3,
+  "cooldown": 3.5,
+  "velocity": 175,
+  "range": {
+    "min": 0,
+    "short": 45,
+    "medium": 90,
+    "long": 135
+  },
+  "ammoPerTon": 25,
+  "cost": 70000,
+  "recoil": 0.05,
+  "accuracy": 1.0,
+  "targetHeat": 3,
+  "visual": {
+    "style": "missile",
+    "colour": "#ff5c2e",
+    "width": 2.6,
+    "arc": 10
+  },
+  "tags": [
+    "spread"
+  ]
+}

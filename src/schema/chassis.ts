@@ -25,6 +25,28 @@ export const ChassisSchema = z
     hardpoints: perLocation(HardpointsSchema),
     armourMax: perLocation(z.number().int().positive()),
     internals: perLocation(z.number().int().positive()),
+    /** How this chassis is drawn. Shape is content, not code — a new mech ships
+     *  with its own outline rather than reusing everyone else's. */
+    silhouette: z
+      .strictObject({
+        form: z.enum(['scout', 'bird', 'humanoid', 'squat', 'siege']),
+        /** Torso length and width as fractions of the chassis radius. */
+        torsoLength: z.number().positive().max(2).default(1),
+        torsoWidth: z.number().positive().max(2).default(1),
+        /** How far the shoulders sit out from the centreline. */
+        shoulder: z.number().nonnegative().max(2).default(1),
+        /** Leg length, and stance width at the hips. */
+        legLength: z.number().positive().max(2).default(1),
+        stance: z.number().positive().max(2).default(1),
+      })
+      .default({
+        form: 'humanoid',
+        torsoLength: 1,
+        torsoWidth: 1,
+        shoulder: 1,
+        legLength: 1,
+        stance: 1,
+      }),
     traits: z.array(IdSchema).default([]),
   })
   .superRefine((chassis, ctx) => {

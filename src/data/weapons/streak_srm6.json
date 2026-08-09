@@ -1,0 +1,31 @@
+{
+  "id": "streak_srm6",
+  "name": "Streak SRM 6",
+  "type": "missile",
+  "tonnage": 4.5,
+  "slots": 2,
+  "damage": 1.95,
+  "projectiles": 6,
+  "heat": 4,
+  "cooldown": 3.0,
+  "velocity": 180,
+  "range": {
+    "min": 0,
+    "short": 50,
+    "medium": 100,
+    "long": 150
+  },
+  "ammoPerTon": 15,
+  "cost": 140000,
+  "recoil": 0.05,
+  "accuracy": 1.5,
+  "visual": {
+    "style": "missile",
+    "colour": "#ffcf6b",
+    "width": 2.4,
+    "arc": 8
+  },
+  "tags": [
+    "spread"
+  ]
+}

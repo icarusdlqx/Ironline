@@ -39,6 +39,16 @@ export const WeaponSchema = z
     accuracy: z.number().positive().max(2).default(1),
     /** Heat dumped into the target on a hit — the flamer's whole purpose. */
     targetHeat: z.number().nonnegative().default(0),
+    /** How the shot looks. A gauss slug and a laser should never be confused. */
+    visual: z
+      .strictObject({
+        style: z.enum(['beam', 'pulse', 'bolt', 'tracer', 'slug', 'missile', 'flame', 'burst']),
+        colour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        width: z.number().positive().max(12).default(2),
+        /** How high a projectile lobs on its way over, in metres. */
+        arc: z.number().nonnegative().max(120).default(0),
+      })
+      .default({ style: 'tracer', colour: '#ffd489', width: 2, arc: 0 }),
     tags: z.array(IdSchema).default([]),
   })
   .superRefine((weapon, ctx) => {

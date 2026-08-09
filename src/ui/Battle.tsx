@@ -100,6 +100,10 @@ export function Battle() {
       engine.orderStop();
       return;
     }
+    if (command.id === 'heat_safety') {
+      engine.toggleHeatSafety();
+      return;
+    }
     state.setOrderMode(command.mode);
   };
 
@@ -249,6 +253,7 @@ export function Battle() {
           orderMode={state.orderMode}
           enabled={playerControlled}
           holdingFire={unit?.holdingFire ?? false}
+          heatSafety={unit?.heatSafety ?? false}
           onCommand={onCommand}
         />
         <SupportPalette

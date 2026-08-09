@@ -10,7 +10,7 @@ const simForbiddenPatterns = SIM_FORBIDDEN_LAYERS.flatMap((layer) => [
 ]);
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**'] },
+  { ignores: ['dist/**', 'dist-single/**', 'coverage/**', 'node_modules/**'] },
   js.configs.recommended,
   tseslint.configs.recommended,
   {

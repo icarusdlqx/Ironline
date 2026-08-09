@@ -8,18 +8,82 @@
   "internalHeatSinks": 10,
   "jumpCapable": false,
   "hardpoints": {
-    "head":         { "energy": 0, "ballistic": 0, "missile": 0, "slots": 1 },
-    "centre_torso": { "energy": 1, "ballistic": 0, "missile": 0, "slots": 2 },
-    "left_torso":   { "energy": 0, "ballistic": 0, "missile": 2, "slots": 6 },
-    "right_torso":  { "energy": 0, "ballistic": 1, "missile": 0, "slots": 6 },
-    "left_arm":     { "energy": 2, "ballistic": 0, "missile": 0, "slots": 4 },
-    "right_arm":    { "energy": 0, "ballistic": 1, "missile": 0, "slots": 4 },
-    "left_leg":     { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 },
-    "right_leg":    { "energy": 0, "ballistic": 0, "missile": 0, "slots": 2 }
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 2,
+      "slots": 6
+    },
+    "right_torso": {
+      "energy": 0,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 6
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4
+    },
+    "right_arm": {
+      "energy": 0,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 4
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    }
   },
-  "armourMax":  { "head": 18, "centre_torso": 70, "left_torso": 52, "right_torso": 52,
-                  "left_arm": 38, "right_arm": 38, "left_leg": 46, "right_leg": 46 },
-  "internals":  { "head": 6,  "centre_torso": 35, "left_torso": 22, "right_torso": 22,
-                  "left_arm": 15, "right_arm": 15, "left_leg": 22, "right_leg": 22 },
+  "armourMax": {
+    "head": 18,
+    "centre_torso": 70,
+    "left_torso": 52,
+    "right_torso": 52,
+    "left_arm": 38,
+    "right_arm": 38,
+    "left_leg": 46,
+    "right_leg": 46
+  },
+  "internals": {
+    "head": 6,
+    "centre_torso": 35,
+    "left_torso": 22,
+    "right_torso": 22,
+    "left_arm": 15,
+    "right_arm": 15,
+    "left_leg": 22,
+    "right_leg": 22
+  },
+  "silhouette": {
+    "form": "humanoid",
+    "torsoLength": 1.0,
+    "torsoWidth": 0.95,
+    "shoulder": 1.0,
+    "legLength": 1.0,
+    "stance": 1.0
+  },
   "traits": []
 }

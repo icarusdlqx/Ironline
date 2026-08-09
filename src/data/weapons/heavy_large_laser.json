@@ -1,0 +1,28 @@
+{
+  "id": "heavy_large_laser",
+  "name": "Heavy Large Laser",
+  "type": "energy",
+  "tonnage": 8,
+  "slots": 3,
+  "damage": 25,
+  "projectiles": 1,
+  "heat": 18,
+  "cooldown": 4.0,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 90,
+    "medium": 180,
+    "long": 270
+  },
+  "ammoPerTon": null,
+  "cost": 280000,
+  "recoil": 0.0,
+  "accuracy": 1.0,
+  "visual": {
+    "style": "beam",
+    "colour": "#20ff5c",
+    "width": 4.4,
+    "arc": 0
+  }
+}

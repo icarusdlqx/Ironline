@@ -1,0 +1,28 @@
+{
+  "id": "thunderbolt15",
+  "name": "Thunderbolt 15",
+  "type": "missile",
+  "tonnage": 11,
+  "slots": 4,
+  "damage": 46,
+  "projectiles": 1,
+  "heat": 5,
+  "cooldown": 4.5,
+  "velocity": 210,
+  "range": {
+    "min": 30,
+    "short": 170,
+    "medium": 340,
+    "long": 510
+  },
+  "ammoPerTon": 6,
+  "cost": 260000,
+  "recoil": 0.08,
+  "accuracy": 1.0,
+  "visual": {
+    "style": "missile",
+    "colour": "#ff8a4a",
+    "width": 4.2,
+    "arc": 34
+  }
+}

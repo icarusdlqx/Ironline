@@ -77,5 +77,13 @@
     "left_leg": 47,
     "right_leg": 47
   },
+  "silhouette": {
+    "form": "siege",
+    "torsoLength": 1.2,
+    "torsoWidth": 1.5,
+    "shoulder": 1.6,
+    "legLength": 0.72,
+    "stance": 1.5
+  },
   "traits": []
 }

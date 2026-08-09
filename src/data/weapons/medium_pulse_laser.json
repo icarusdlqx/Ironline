@@ -18,5 +18,11 @@
   "ammoPerTon": null,
   "cost": 60000,
   "recoil": 0.0,
-  "accuracy": 1.15
+  "accuracy": 1.15,
+  "visual": {
+    "style": "pulse",
+    "colour": "#ff6cf0",
+    "width": 2.6,
+    "arc": 0
+  }
 }

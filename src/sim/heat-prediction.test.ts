@@ -59,6 +59,11 @@ function runBench(designId: string, seconds: number, uncapHeat: boolean): Bench 
 
   makeInvulnerable(target);
   setHoldFire(target, true);
+
+  // The mechbay calculator answers "what happens if you fire everything", so the
+  // bench measures that. The reactor governor is a runtime aid, not a property
+  // of the build, and would throttle the very thing being measured.
+  shooter.heatSafety = false;
   world.entities.push(shooter, target);
 
   // A huge heat sink lets us measure raw generation without the sim's

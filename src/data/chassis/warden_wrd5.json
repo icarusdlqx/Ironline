@@ -77,5 +77,13 @@
     "left_leg": 28,
     "right_leg": 28
   },
+  "silhouette": {
+    "form": "bird",
+    "torsoLength": 1.1,
+    "torsoWidth": 1.05,
+    "shoulder": 1.2,
+    "legLength": 1.1,
+    "stance": 1.05
+  },
   "traits": []
 }

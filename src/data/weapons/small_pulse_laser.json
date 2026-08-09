@@ -1,0 +1,28 @@
+{
+  "id": "small_pulse_laser",
+  "name": "Small Pulse Laser",
+  "type": "energy",
+  "tonnage": 1,
+  "slots": 1,
+  "damage": 2.3,
+  "projectiles": 1,
+  "heat": 3,
+  "cooldown": 1.6,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 30,
+    "medium": 60,
+    "long": 90
+  },
+  "ammoPerTon": null,
+  "cost": 20000,
+  "recoil": 0.0,
+  "accuracy": 1.15,
+  "visual": {
+    "style": "pulse",
+    "colour": "#ff8cf5",
+    "width": 1.8,
+    "arc": 0
+  }
+}

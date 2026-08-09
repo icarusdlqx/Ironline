@@ -19,6 +19,12 @@
   "cost": 600000,
   "recoil": 0.2,
   "accuracy": 1.0,
+  "visual": {
+    "style": "slug",
+    "colour": "#e6f7ff",
+    "width": 2.6,
+    "arc": 0
+  },
   "tags": [
     "volatile"
   ]

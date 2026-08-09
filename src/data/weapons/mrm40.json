@@ -1,0 +1,31 @@
+{
+  "id": "mrm40",
+  "name": "MRM 40",
+  "type": "missile",
+  "tonnage": 12,
+  "slots": 7,
+  "damage": 1.7,
+  "projectiles": 40,
+  "heat": 12,
+  "cooldown": 3.5,
+  "velocity": 190,
+  "range": {
+    "min": 0,
+    "short": 80,
+    "medium": 160,
+    "long": 240
+  },
+  "ammoPerTon": 3,
+  "cost": 230000,
+  "recoil": 0.12,
+  "accuracy": 0.85,
+  "visual": {
+    "style": "missile",
+    "colour": "#ff6a3a",
+    "width": 1.7,
+    "arc": 22
+  },
+  "tags": [
+    "spread"
+  ]
+}

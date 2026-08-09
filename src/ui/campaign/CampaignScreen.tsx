@@ -18,6 +18,7 @@ import {
 } from '../../campaign/save';
 import type { CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
+import { CampaignMap, type NodeState } from './CampaignMap';
 import { BarracksPanel, MechBayPanel, StoresPanel } from './Panels';
 import { useGame } from '../store';
 
@@ -119,33 +120,17 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         </button>
       </header>
 
-      <section className="camp-map" data-testid="camp-map">
-        {campaign.nodes.map((entry) => {
-          const done = state.completedNodes.includes(entry.id);
-          const failed = state.failedNodes.includes(entry.id);
-          const isOpen = open.some((candidate) => candidate.id === entry.id);
-          const classes = ['camp-node'];
-          if (done) classes.push('done');
-          if (failed) classes.push('failed');
-          if (isOpen) classes.push('open');
-          if (node?.id === entry.id) classes.push('selected');
-
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              className={classes.join(' ')}
-              style={{ left: `${entry.position.x * 100}%`, top: `${entry.position.y * 100}%` }}
-              disabled={!isOpen}
-              onClick={() => setSelectedNode(entry.id)}
-              data-testid={`camp-node-${entry.id}`}
-            >
-              <span className="node-name">{entry.name}</span>
-              <span className="node-state">{done ? 'complete' : failed ? 'failed' : isOpen ? 'available' : 'locked'}</span>
-            </button>
-          );
-        })}
-      </section>
+      <CampaignMap
+        campaign={campaign}
+        catalog={catalog}
+        selectedId={node?.id ?? null}
+        onSelect={setSelectedNode}
+        stateOf={(entry): NodeState => {
+          if (state.completedNodes.includes(entry.id)) return 'complete';
+          if (state.failedNodes.includes(entry.id)) return 'failed';
+          return open.some((candidate) => candidate.id === entry.id) ? 'available' : 'locked';
+        }}
+      />
 
       <section className="camp-contract" data-testid="camp-contract">
         {state.contract !== null ? (

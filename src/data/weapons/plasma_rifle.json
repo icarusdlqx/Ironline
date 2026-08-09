@@ -1,0 +1,29 @@
+{
+  "id": "plasma_rifle",
+  "name": "Plasma Rifle",
+  "type": "energy",
+  "tonnage": 6,
+  "slots": 2,
+  "damage": 20,
+  "projectiles": 1,
+  "heat": 14,
+  "cooldown": 4.0,
+  "velocity": null,
+  "range": {
+    "min": 0,
+    "short": 100,
+    "medium": 200,
+    "long": 300
+  },
+  "ammoPerTon": null,
+  "cost": 260000,
+  "recoil": 0.0,
+  "accuracy": 1.0,
+  "targetHeat": 6,
+  "visual": {
+    "style": "bolt",
+    "colour": "#ff7be0",
+    "width": 4.2,
+    "arc": 0
+  }
+}

@@ -1,11 +1,19 @@
 import type { DifficultyTier } from '../../schema/rules';
 import { emit } from '../events';
+import type { ZoneState } from '../zones';
+import { applyHeatGovernor } from '../governor';
+import { assignZones } from './mission';
 import { distance } from '../math';
-import { setGroupEnabled } from '../orders';
 import { findPath } from '../pathfind';
 import { isVisibleTo } from '../sensors';
-import { isOperational, type EntityId, type MechEntity, type World } from '../types';
-import { choosePosition, shouldWithdraw, stanceFor, withdrawalPoint } from './positioning';
+import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../types';
+import {
+  approachPoint,
+  choosePosition,
+  shouldWithdraw,
+  stanceFor,
+  withdrawalPoint,
+} from './positioning';
 import {
   canStillFight,
   coreFraction,
@@ -57,81 +65,6 @@ export function lanceFocus(world: World, team: number, tier: DifficultyTier): En
   return best?.id ?? null;
 }
 
-interface GroupLoad {
-  group: number;
-  heatPerSecond: number;
-  damagePerHeat: number;
-}
-
-/** What each weapon group costs to run flat out, and what it buys per point of heat. */
-function groupLoads(world: World, mech: MechEntity): GroupLoad[] {
-  const totals = new Map<number, { heat: number; damage: number }>();
-
-  for (const mount of mech.weapons) {
-    if (mount.destroyed) continue;
-    const weapon = world.catalog.weapons.get(mount.weaponId);
-    if (weapon === undefined) continue;
-    const entry = totals.get(mount.group) ?? { heat: 0, damage: 0 };
-    entry.heat += weapon.heat / weapon.cooldown;
-    entry.damage += (weapon.damage * weapon.projectiles) / weapon.cooldown;
-    totals.set(mount.group, entry);
-  }
-
-  return [...totals]
-    .map(([group, total]) => ({
-      group,
-      heatPerSecond: total.heat,
-      damagePerHeat: total.heat === 0 ? Number.POSITIVE_INFINITY : total.damage / total.heat,
-    }))
-    .sort((a, b) => (b.damagePerHeat === a.damagePerHeat
-      ? a.group - b.group
-      : b.damagePerHeat - a.damagePerHeat));
-}
-
-/**
- * Heat discipline is a dial, not a switch. Running hot, a pilot sheds the guns
- * that cost the most heat per point of damage and keeps firing the rest — going
- * fully dark to save four heat is how a duel outlives the mission clock.
- */
-function applyHeatDiscipline(world: World, mech: MechEntity, targetNearlyDead: boolean): void {
-  const rules = world.rules.ai.heat;
-  const fraction = mech.heat / mech.heatCapacity;
-
-  if (targetNearlyDead && fraction < 1) {
-    setAllGroups(mech, true);
-    mech.ai.coolingDown = false;
-    return;
-  }
-
-  if (fraction <= rules.resumeFraction) {
-    mech.ai.coolingDown = false;
-    setAllGroups(mech, true);
-    return;
-  }
-
-  // Between the two thresholds, leave the current selection alone: flipping guns
-  // on and off every half second is worse than either choice.
-  if (!mech.ai.coolingDown && fraction < rules.holdFireFraction) return;
-
-  mech.ai.coolingDown = true;
-
-  const budget = mech.dissipationPerSecond * rules.sustainFactor;
-  let spent = 0;
-
-  setAllGroups(mech, false);
-  for (const load of groupLoads(world, mech)) {
-    if (spent + load.heatPerSecond > budget) continue;
-    spent += load.heatPerSecond;
-    setGroupEnabled(mech, load.group, true);
-  }
-}
-
-function setAllGroups(mech: MechEntity, enabled: boolean): void {
-  for (let group = 1; group <= mech.groupEnabled.length; group += 1) {
-    setGroupEnabled(mech, group, enabled);
-  }
-}
-
 function chooseCalledShot(world: World, mech: MechEntity, target: MechEntity, tier: DifficultyTier): void {
   if (!tier.calledShots) {
     mech.calledShot = null;
@@ -172,6 +105,29 @@ function halt(mech: MechEntity): void {
   mech.path = [];
   mech.pathIndex = 0;
   mech.motion = 'stationary';
+  mech.ai.destination = null;
+}
+
+/**
+ * Walks to a chosen spot and stays committed to it. The AI re-decides ten times
+ * a second; without commitment it re-picks a neighbouring tile every time and
+ * the mech pirouettes on the spot instead of going anywhere.
+ */
+function commitTo(world: World, mech: MechEntity, destination: Vec2, run: boolean): void {
+  mech.ai.destination = { x: destination.x, y: destination.y };
+  mech.ai.commitUntilTick =
+    world.tick + Math.round(world.rules.ai.positioning.commitSeconds / world.dt);
+  moveTo(world, mech, destination, run);
+}
+
+/** True while the mech is still walking to somewhere it already decided on. */
+function holdingCommitment(world: World, mech: MechEntity): boolean {
+  const destination = mech.ai.destination;
+  if (destination === null) return false;
+  if (world.tick >= mech.ai.commitUntilTick) return false;
+  if (distance(mech.pos, destination) <= world.rules.movement.arrivalRadius * 2) return false;
+  // The path can be cleared by an obstruction; if it is, re-plan rather than stall.
+  return mech.path.length > 0;
 }
 
 export function decideTactical(
@@ -179,6 +135,8 @@ export function decideTactical(
   mech: MechEntity,
   focusTargetId: EntityId | null,
   tier: DifficultyTier,
+  /** Ground this mech has been told to take and hold, if the mission scores any. */
+  zone: ZoneState | null = null,
 ): void {
   if (!isOperational(mech) || mech.shutdownRemaining > 0) {
     halt(mech);
@@ -199,11 +157,23 @@ export function decideTactical(
   });
   const chosen = ranked[0] ?? null;
 
+  const zoneCentre = zone === null ? null : { x: zone.x, y: zone.y };
+  const onStation = zone !== null && distance(mech.pos, zoneCentre!) <= zone.radius * 0.75;
+
   if (chosen === null) {
     mech.targetId = null;
     mech.calledShot = null;
     if (mech.ai.withdrawing) {
       moveTo(world, mech, withdrawalPoint(world, mech), true);
+      return;
+    }
+    // Nothing to shoot: take the ground the mission is scored on, if any.
+    if (zoneCentre !== null && !onStation) {
+      if (!holdingCommitment(world, mech)) commitTo(world, mech, zoneCentre, true);
+      return;
+    }
+    if (onStation) {
+      halt(mech);
       return;
     }
     const fallback = world.entities.find(
@@ -218,28 +188,40 @@ export function decideTactical(
 
   const nearlyDead =
     structureFraction(chosen.target) <= world.rules.ai.heat.finisherOverrideFraction;
-  applyHeatDiscipline(world, mech, nearlyDead);
+  applyHeatGovernor(world, mech, nearlyDead);
   chooseCalledShot(world, mech, chosen.target, tier);
 
   const stance = stanceFor(world, mech, chosen.target, mech.ai.withdrawing);
+  const stanceChanged = stance !== mech.ai.stance;
+  mech.ai.stance = stance;
 
   if (stance === 'withdraw') {
-    moveTo(world, mech, withdrawalPoint(world, mech), true);
+    if (stanceChanged || !holdingCommitment(world, mech)) {
+      commitTo(world, mech, withdrawalPoint(world, mech), true);
+    }
     return;
   }
 
   // Far outside the engagement envelope, fine positioning is noise — march.
-  const approachThreshold =
-    stanceFor(world, mech, chosen.target, false) === 'close'
-      ? world.rules.ai.positioning.repositionStep * 2
-      : 0;
+  const approachThreshold = world.rules.ai.positioning.repositionStep * 2;
 
-  if (stance === 'close' && chosen.range > approachThreshold) {
-    moveTo(world, mech, chosen.target.pos, true);
+  if (zoneCentre !== null && !onStation) {
+    if (!holdingCommitment(world, mech)) commitTo(world, mech, zoneCentre, true);
     return;
   }
 
-  const destination = choosePosition(world, mech, chosen.target, stance, tier);
+  if (stance === 'close' && chosen.range > approachThreshold && zone === null) {
+    if (stanceChanged || !holdingCommitment(world, mech)) {
+      commitTo(world, mech, approachPoint(world, mech, chosen.target, tier), true);
+    }
+    return;
+  }
+
+  // Inside the envelope, keep walking to the spot already chosen rather than
+  // re-solving the ring and turning toward a new neighbour every tick.
+  if (!stanceChanged && holdingCommitment(world, mech)) return;
+
+  const destination = choosePosition(world, mech, chosen.target, stance, tier, zone);
   if (destination === null) {
     halt(mech);
     return;
@@ -248,7 +230,7 @@ export function decideTactical(
   // Backing off only reaches the range you want if you outpace the thing chasing
   // you — and stanceFor has already established that you do.
   const run = stance === 'back_off' || (stance === 'close' && tier.aggression >= 1);
-  moveTo(world, mech, destination, run);
+  commitTo(world, mech, destination, run);
 }
 
 /** How far this mech's longest working gun still reaches. */
@@ -304,8 +286,9 @@ export function resolveDisengagement(world: World): void {
 /** The lance decides together, then each mech acts on that decision. */
 export function runTeamAi(world: World, team: number, tier: DifficultyTier): void {
   const focus = lanceFocus(world, team, tier);
+  const stations = assignZones(world, team);
   for (const mech of world.entities) {
     if (mech.team !== team || mech.controller !== 'tactical') continue;
-    decideTactical(world, mech, focus, tier);
+    decideTactical(world, mech, focus, tier, stations.get(mech.id) ?? null);
   }
 }

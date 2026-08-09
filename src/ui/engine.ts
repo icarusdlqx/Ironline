@@ -101,6 +101,7 @@ export class Engine {
       hovered: null,
       cursor: this.cursorWorld,
       orderMode: state.orderMode,
+      selectionBox: this.selectionBox,
     });
 
     this.hudTimer += deltaSeconds;
@@ -111,6 +112,8 @@ export class Engine {
   }
 
   cursorWorld: Vec2 | null = null;
+  /** The marquee currently being dragged, in world space. */
+  selectionBox: { a: Vec2; b: Vec2 } | null = null;
 
   forceStep(): void {
     if (this.world.finished) return;
@@ -242,6 +245,16 @@ export class Engine {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
       setHoldFire(entity, entity.groupEnabled.some((enabled) => enabled));
+    }
+  }
+
+  /** Hand heat management back to the player, or take it back. */
+  toggleHeatSafety(): void {
+    for (const id of this.selectedEntities()) {
+      const entity = findEntity(this.world, id);
+      if (entity === null || entity.autopilot) continue;
+      entity.heatSafety = !entity.heatSafety;
+      if (!entity.heatSafety) setHoldFire(entity, false);
     }
   }
 

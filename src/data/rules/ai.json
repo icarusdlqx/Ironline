@@ -23,7 +23,11 @@
     "dpsWeight": 0.05,
     "rangeErrorWeight": 0.03,
     "closingWeight": 0.006,
-    "losPenalty": 3
+    "losPenalty": 3,
+    "commitSeconds": 2.5,
+    "approachArcDegrees": 75,
+    "approachProgressWeight": 0.02,
+    "approachExposureWeight": 1.1
   },
   "heat": {
     "holdFireFraction": 0.78,

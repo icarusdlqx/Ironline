@@ -21,6 +21,38 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const held = new Set<string>();
   let panning = false;
   let lastPan: Vec2 | null = null;
+  /** Where a left-drag started, in world space, while a marquee is open. */
+  let marqueeFrom: Vec2 | null = null;
+  let marqueeScreenFrom: Vec2 | null = null;
+
+  const DRAG_THRESHOLD = 6;
+
+  /** Every mech of the player's that falls inside the dragged box. */
+  const selectWithin = (a: Vec2, b: Vec2, add: boolean): void => {
+    const state = useGame.getState();
+    const minX = Math.min(a.x, b.x);
+    const maxX = Math.max(a.x, b.x);
+    const minY = Math.min(a.y, b.y);
+    const maxY = Math.max(a.y, b.y);
+
+    const inside = engine.world.entities
+      .filter(
+        (entity) =>
+          entity.team === state.playerTeam &&
+          isOperational(entity) &&
+          entity.pos.x >= minX &&
+          entity.pos.x <= maxX &&
+          entity.pos.y >= minY &&
+          entity.pos.y <= maxY,
+      )
+      .map((entity) => entity.id);
+
+    if (inside.length === 0 && !add) {
+      state.setSelection([]);
+      return;
+    }
+    state.setSelection(add ? [...new Set([...state.selection, ...inside])] : inside);
+  };
 
   const toWorld = (event: PointerEvent | WheelEvent): Vec2 =>
     engine.renderer.camera.screenToWorld(pointerToScreen(canvas, event), viewport());
@@ -72,7 +104,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     const picked = engine.renderer.entityAt(engine.world, world, PICK_RADIUS);
     if (picked === null) {
-      state.setSelection([]);
+      // Empty ground: open a marquee. A plain click closes it as a deselect.
+      marqueeFrom = world;
+      marqueeScreenFrom = pointerToScreen(canvas, event);
+      engine.selectionBox = { a: world, b: world };
       return;
     }
 
@@ -89,6 +124,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const onPointerMove = (event: PointerEvent): void => {
     engine.cursorWorld = toWorld(event);
 
+    if (marqueeFrom !== null) {
+      engine.selectionBox = { a: marqueeFrom, b: toWorld(event) };
+      return;
+    }
+
     if (!panning || lastPan === null) return;
     const screen = pointerToScreen(canvas, event);
     const zoom = engine.renderer.camera.zoom;
@@ -100,6 +140,21 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     panning = false;
     lastPan = null;
+
+    if (marqueeFrom !== null) {
+      const screen = pointerToScreen(canvas, event);
+      const dragged =
+        marqueeScreenFrom !== null &&
+        Math.hypot(screen.x - marqueeScreenFrom.x, screen.y - marqueeScreenFrom.y) >
+          DRAG_THRESHOLD;
+
+      if (dragged) selectWithin(marqueeFrom, toWorld(event), event.shiftKey);
+      else if (!event.shiftKey) useGame.getState().setSelection([]);
+
+      marqueeFrom = null;
+      marqueeScreenFrom = null;
+      engine.selectionBox = null;
+    }
   };
 
   const onWheel = (event: WheelEvent): void => {
@@ -137,17 +192,46 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       case 'KeyG':
         engine.orderStop();
         return;
+      case 'KeyT':
+        engine.toggleHeatSafety();
+        return;
       case 'Escape':
         state.setOrderMode(null);
         state.setSupportMode(null);
         state.setSelection([]);
         return;
+      case 'KeyE':
+        state.setSelection(
+          state.units.filter((unit) => unit.alive).map((unit) => unit.id),
+        );
+        return;
       case 'Digit1':
       case 'Digit2':
       case 'Digit3':
       case 'Digit4':
-        engine.toggleGroup(Number(event.code.slice(5)));
+      case 'Digit5':
+      case 'Digit6':
+      case 'Digit7':
+      case 'Digit8':
+      case 'Digit9': {
+        const slot = Number(event.code.slice(5));
+        if (event.shiftKey) {
+          // Weapon groups are per-mech and rarer than picking a lance element,
+          // so the bare number keys go to control groups.
+          if (slot <= 4) engine.toggleGroup(slot);
+          return;
+        }
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          state.assignControlGroup(slot, state.selection);
+          return;
+        }
+        const bound = (state.controlGroups[slot] ?? []).filter((id) =>
+          state.units.some((unit) => unit.id === id && unit.alive),
+        );
+        if (bound.length > 0) state.setSelection(bound);
         return;
+      }
       case 'Tab': {
         event.preventDefault();
         const ids = state.units.filter((unit) => unit.alive).map((unit) => unit.id);

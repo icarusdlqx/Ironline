@@ -18,5 +18,11 @@
   "ammoPerTon": 200,
   "cost": 5000,
   "recoil": 0.05,
-  "accuracy": 1.0
+  "accuracy": 1.0,
+  "visual": {
+    "style": "tracer",
+    "colour": "#ffe9a8",
+    "width": 1.2,
+    "arc": 0
+  }
 }

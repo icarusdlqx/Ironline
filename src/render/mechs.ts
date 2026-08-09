@@ -2,13 +2,16 @@ import { Container, Graphics } from 'pixi.js';
 import type { MechLocation } from '../schema/common';
 import { isImmobile, isOperational, type EntityId, type MechEntity } from '../sim/types';
 import { shade, teamColour, UI } from './palette';
+import {
+  DEFAULT_SILHOUETTE,
+  drawLegs,
+  drawTorso,
+  radiusFor,
+  type Silhouette,
+} from './silhouettes';
 
-const CLASS_RADIUS: Record<string, number> = {
-  light: 11,
-  medium: 13,
-  heavy: 15,
-  assault: 17,
-};
+/** Resolves a chassis id to the outline that chassis is drawn with. */
+export type SilhouetteLookup = (chassisId: string) => Silhouette | undefined;
 
 export interface Interpolated {
   x: number;
@@ -16,13 +19,6 @@ export interface Interpolated {
   facing: number;
   /** Torso twist relative to the hull, in radians. */
   torso: number;
-}
-
-function radiusFor(tonnage: number): number {
-  if (tonnage <= 35) return CLASS_RADIUS.light ?? 11;
-  if (tonnage <= 55) return CLASS_RADIUS.medium ?? 13;
-  if (tonnage <= 75) return CLASS_RADIUS.heavy ?? 15;
-  return CLASS_RADIUS.assault ?? 17;
 }
 
 function healthFraction(entity: MechEntity): number {
@@ -55,72 +51,33 @@ function tintOf(entity: MechEntity, colour: number, alpha: number): { color: num
 export function drawHull(
   hull: Graphics,
   entity: MechEntity,
+  shape: Silhouette,
   colour: number,
   alpha: number,
 ): void {
   hull.clear();
-
   const radius = radiusFor(entity.tonnage);
-  const fill = tintOf(entity, colour, alpha);
+  drawLegs(hull, entity, shape, radius, tintOf(entity, colour, alpha));
 
-  if (!entity.locations.left_leg.destroyed) {
-    hull.rect(-0.95 * radius, -0.5 * radius, 0.5 * radius, 0.38 * radius).fill(fill);
-  }
-  if (!entity.locations.right_leg.destroyed) {
-    hull.rect(-0.95 * radius, 0.12 * radius, 0.5 * radius, 0.38 * radius).fill(fill);
-  }
-
-  // The hull centreline: with the torso twisted away, this is what shows you
-  // which way the mech will actually walk.
+  // Hull centreline: with the torso twisted away, this is the only thing that
+  // says which way the mech will actually walk.
   hull
     .moveTo(0, 0)
-    .lineTo(1.35 * radius, 0)
-    .stroke({ width: 1, color: shade(colour, 1.5), alpha: alpha * 0.45 });
+    .lineTo(1.3 * radius, 0)
+    .stroke({ width: 1, color: shade(colour, 1.5), alpha: alpha * 0.4 });
 }
 
 /** Everything above the waist, which turns with the guns. */
 export function drawSilhouette(
   body: Graphics,
   entity: MechEntity,
+  shape: Silhouette,
   colour: number,
   alpha: number,
 ): void {
   body.clear();
-
   const radius = radiusFor(entity.tonnage);
-  const fill = tintOf(entity, colour, alpha);
-
-  if (!entity.locations.left_arm.destroyed) {
-    body.rect(-0.2 * radius, -0.85 * radius, 0.7 * radius, 0.35 * radius).fill(fill);
-  }
-  if (!entity.locations.right_arm.destroyed) {
-    body.rect(-0.2 * radius, 0.5 * radius, 0.7 * radius, 0.35 * radius).fill(fill);
-  }
-
-  body
-    .poly([
-      -0.5 * radius,
-      -0.45 * radius,
-      0.6 * radius,
-      -0.35 * radius,
-      1.0 * radius,
-      0,
-      0.6 * radius,
-      0.35 * radius,
-      -0.5 * radius,
-      0.45 * radius,
-    ])
-    .fill(fill)
-    .stroke({ width: 1, color: 0x000000, alpha: 0.5 });
-
-  const headDestroyed = entity.locations.head.destroyed;
-  body
-    .circle(0.5 * radius, 0, 0.2 * radius)
-    .fill({ color: headDestroyed ? 0x772222 : shade(colour, 1.35), alpha });
-
-  body
-    .poly([1.0 * radius, -0.13 * radius, 1.5 * radius, 0, 1.0 * radius, 0.13 * radius])
-    .fill({ color: shade(colour, 1.5), alpha });
+  drawTorso(body, entity, shape, radius, tintOf(entity, colour, alpha), colour, alpha);
 
   if (isImmobile(entity) && !entity.destroyed) {
     body.circle(0, 0, radius * 1.1).stroke({ width: 2, color: 0xff6b6b, alpha: 0.8 });
@@ -144,6 +101,7 @@ export class MechLayer {
     positions: ReadonlyMap<EntityId, Interpolated>,
     visible: (entity: MechEntity) => boolean,
     selection: ReadonlySet<EntityId>,
+    silhouetteOf: SilhouetteLookup,
   ): void {
     this.overlay.clear();
 
@@ -168,8 +126,9 @@ export class MechLayer {
 
       const signature = damageSignature(entity);
       if (signature !== view.signature) {
-        drawHull(view.hull, entity, teamColour(entity.team), 1);
-        drawSilhouette(view.body, entity, teamColour(entity.team), 1);
+        const shape = silhouetteOf(entity.chassisId) ?? DEFAULT_SILHOUETTE;
+        drawHull(view.hull, entity, shape, teamColour(entity.team), 1);
+        drawSilhouette(view.body, entity, shape, teamColour(entity.team), 1);
         view.signature = signature;
       }
 

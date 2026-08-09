@@ -14,6 +14,7 @@ export interface ViewState {
   selection: ReadonlySet<EntityId>;
   hovered: EntityId | null;
   cursor: Vec2 | null;
+  selectionBox: { a: Vec2; b: Vec2 } | null;
   orderMode: 'move' | 'run' | 'attack' | 'called_shot' | null;
 }
 
@@ -82,7 +83,17 @@ export class Renderer {
     this.effects.spawnFromEvents(
       events,
       (id) => this.positionOf(id),
-      (weaponId) => world.catalog.weapons.get(weaponId)?.type ?? null,
+      (weaponId) => {
+        const weapon = world.catalog.weapons.get(weaponId);
+        if (weapon === undefined) return null;
+        return {
+          style: weapon.visual.style,
+          colour: parseInt(weapon.visual.colour.slice(1), 16),
+          width: weapon.visual.width,
+          arc: weapon.visual.arc,
+          projectiles: weapon.projectiles,
+        };
+      },
       (weaponId, from, to) => {
         const velocity = world.catalog.weapons.get(weaponId)?.velocity;
         if (velocity === undefined || velocity === null) return 0.1;
@@ -225,6 +236,16 @@ export class Renderer {
       }
     }
 
+    const box = view.selectionBox;
+    if (box !== null) {
+      const x = Math.min(box.a.x, box.b.x);
+      const y = Math.min(box.a.y, box.b.y);
+      this.markers
+        .rect(x, y, Math.abs(box.b.x - box.a.x), Math.abs(box.b.y - box.a.y))
+        .fill({ color: UI.selection, alpha: 0.08 })
+        .stroke({ width: 1.5, color: UI.selection, alpha: 0.75 });
+    }
+
     if (view.cursor !== null && view.orderMode !== null && view.selection.size > 0) {
       const colour = view.orderMode === 'move' || view.orderMode === 'run'
         ? UI.moveMarker
@@ -247,7 +268,13 @@ export class Renderer {
     this.effects.update(deltaSeconds);
 
     this.drawMarkers(world, view);
-    this.mechs.draw(world.entities, this.interpolated, visible, view.selection);
+    this.mechs.draw(
+      world.entities,
+      this.interpolated,
+      visible,
+      view.selection,
+      (chassisId) => world.catalog.chassis.get(chassisId)?.silhouette,
+    );
 
     if (world.vision !== null) {
       for (const [id, ghost] of world.vision.ghosts) {

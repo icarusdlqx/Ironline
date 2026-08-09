@@ -17,6 +17,13 @@ export const COMMANDS: readonly Command[] = [
   { id: 'hold_fire', label: 'Hold Fire', key: 'H', mode: null },
   { id: 'guard', label: 'Guard', key: 'G', mode: null },
   {
+    id: 'heat_safety',
+    label: 'Heat Safety',
+    key: 'T',
+    mode: null,
+    title: 'Reactor governor: sheds the hottest weapons rather than risk a shutdown (T)',
+  },
+  {
     id: 'jump',
     label: 'Jump',
     key: 'J',
@@ -24,30 +31,24 @@ export const COMMANDS: readonly Command[] = [
     disabled: true,
     title: 'Jump jets are modelled in data but not yet simulated',
   },
-  {
-    id: 'support',
-    label: 'Support Call',
-    key: 'V',
-    mode: null,
-    disabled: true,
-    title: 'Resource Points and support calls arrive in Phase 5',
-  },
 ];
 
 interface Props {
   orderMode: OrderMode;
   enabled: boolean;
   holdingFire: boolean;
+  heatSafety: boolean;
   onCommand: (command: Command) => void;
 }
 
-export function CommandPalette({ orderMode, enabled, holdingFire, onCommand }: Props) {
+export function CommandPalette({ orderMode, enabled, holdingFire, heatSafety, onCommand }: Props) {
   return (
     <div className="palette" data-testid="command-palette">
       {COMMANDS.map((command) => {
         const active =
           (command.mode !== null && command.mode === orderMode) ||
-          (command.id === 'hold_fire' && holdingFire);
+          (command.id === 'hold_fire' && holdingFire) ||
+          (command.id === 'heat_safety' && heatSafety);
 
         return (
           <button

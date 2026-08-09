@@ -1,4 +1,5 @@
 import type { MechLocation } from '../schema/common';
+import { applyHeatGovernor } from './governor';
 import { distance } from './math';
 import { findPath } from './pathfind';
 import { isVisibleTo } from './sensors';
@@ -62,19 +63,23 @@ export function issueStop(entity: MechEntity): void {
   entity.motion = 'stationary';
 }
 
+/** An order from the pilot: sets intent, and takes effect immediately. */
 export function setGroupEnabled(entity: MechEntity, group: number, enabled: boolean): void {
-  if (group < 1 || group > entity.groupEnabled.length) return;
+  if (group < 1 || group > entity.groupIntent.length) return;
+  entity.groupIntent[group - 1] = enabled;
   entity.groupEnabled[group - 1] = enabled;
 }
 
 export function setHoldFire(entity: MechEntity, holdFire: boolean): void {
-  for (let group = 0; group < entity.groupEnabled.length; group += 1) {
+  for (let group = 0; group < entity.groupIntent.length; group += 1) {
+    entity.groupIntent[group] = !holdFire;
     entity.groupEnabled[group] = !holdFire;
   }
 }
 
+/** Reported from intent: a governor throttle is not the pilot holding fire. */
 export function isHoldingFire(entity: MechEntity): boolean {
-  return entity.groupEnabled.every((enabled) => !enabled);
+  return entity.groupIntent.every((enabled) => !enabled);
 }
 
 function autoAcquire(world: World, entity: MechEntity): MechEntity | null {
@@ -100,6 +105,10 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
     entity.motion = 'stationary';
     return;
   }
+
+  // A mech left to its own devices should not cook itself into a shutdown while
+  // the player is looking somewhere else. Overridable, but on by default.
+  if (entity.heatSafety) applyHeatGovernor(world, entity, false);
 
   const order = entity.orders.move;
   if (order === null) {
