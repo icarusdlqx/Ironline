@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { computeLoadout } from '../sim/loadout';
 import {
+  DeploymentError,
   acceptContract,
   advanceDays,
   availableNodes,
   deployableLance,
+  fillEmptySeats,
   negotiationOptions,
+  prepareDeployment,
   runMission,
   startCampaign,
 } from './campaign';
@@ -85,6 +88,89 @@ describe('refit', () => {
     if (mech === undefined) return;
     mech.status = 'repairing';
     expect(fitFromStore(catalog, state, mech, 'medium_laser').reason).toMatch(/repair bay/);
+  });
+
+  it('carries battle damage through a refit instead of repairing it for free', () => {
+    const mech = state.mechs.find((entry) => entry.design.mounts.length > 1);
+    if (mech === undefined) return;
+
+    const centre = mech.condition.centre_torso;
+    const arm = mech.condition.left_arm;
+    if (centre === undefined || arm === undefined) return;
+    centre.armour = 1;
+    arm.destroyed = true;
+    arm.armour = 0;
+    arm.internal = 0;
+
+    const wounded = estimateRepair(catalog, mech);
+    expect(wounded.cost, 'the test mech is not actually damaged').toBeGreaterThan(0);
+
+    const stripped = stripToStore(catalog, state, mech, 0);
+    expect(stripped.ok, stripped.reason ?? '').toBe(true);
+    const weaponId = state.store[0]?.itemId ?? '';
+    const fitted = fitFromStore(catalog, state, mech, weaponId);
+    expect(fitted.ok, fitted.reason ?? '').toBe(true);
+
+    expect(mech.condition.left_arm?.destroyed, 'the refit rebuilt a destroyed arm').toBe(true);
+    expect(mech.condition.centre_torso?.armour).toBeLessThanOrEqual(1);
+    expect(
+      estimateRepair(catalog, mech).cost,
+      'the refit wiped out the repair bill',
+    ).toBeGreaterThanOrEqual(wounded.cost);
+  });
+
+  it('refuses to strip the last weapon off a mech', () => {
+    const mech = state.mechs[0];
+    if (mech === undefined) return;
+
+    while (mech.design.mounts.length > 1) {
+      const result = stripToStore(catalog, state, mech, 0);
+      expect(result.ok, result.reason ?? '').toBe(true);
+    }
+
+    const last = stripToStore(catalog, state, mech, 0);
+    expect(last.ok).toBe(false);
+    expect(last.reason).toMatch(/at least one weapon/);
+    // A weaponless design fails schema validation, so the save would not reload.
+    expect(mech.design.mounts).toHaveLength(1);
+  });
+});
+
+describe('deployment', () => {
+  it('seats a spare pilot in a mech nobody is assigned to', () => {
+    const orphan = state.pilots[0];
+    const wreck = state.mechs[0];
+    if (orphan === undefined || wreck === undefined) return;
+
+    // Their mech went down, so the seat is empty; a salvaged chassis has been
+    // rebuilt but nobody was ever assigned to it. The company must not be left
+    // holding a fit pilot and a ready mech with nothing able to deploy.
+    orphan.mechId = null;
+    wreck.status = 'hulk';
+    const spare = JSON.parse(JSON.stringify({ ...wreck, id: 'mech-spare', status: 'ready' }));
+    state.mechs.push(spare);
+
+    const lance = deployableLance(state);
+    expect(lance.some((pair) => pair.pilot.id === orphan.id && pair.mech.id === spare.id)).toBe(
+      true,
+    );
+    expect(new Set(lance.map((pair) => pair.mech.id)).size, 'a mech was double-booked').toBe(
+      lance.length,
+    );
+
+    // Reading the lance must not silently rewrite the roster.
+    expect(orphan.mechId).toBeNull();
+    fillEmptySeats(state);
+    expect(orphan.mechId).toBe(spare.id);
+  });
+
+  it('explains itself rather than throwing a bare error when nothing can deploy', () => {
+    const accepted = acceptContract(catalog, state, 'militia_raid', 0);
+    expect(accepted.ok, accepted.reason ?? '').toBe(true);
+    for (const mech of state.mechs) mech.status = 'hulk';
+
+    expect(() => prepareDeployment(catalog, state)).toThrow(DeploymentError);
+    expect(() => prepareDeployment(catalog, state)).toThrow(/No mech is ready to deploy/);
   });
 });
 

@@ -42,13 +42,24 @@ export function Battle() {
     if (useGame.getState().campaignPending) {
       const saved = loadCampaign().state;
       if (saved !== null) {
-        const deployment = prepareDeployment(getCatalog(), saved);
-        options = {
-          missionId: deployment.missionId,
-          seed: deployment.seed,
-          playerTeam: deployment.playerTeam,
-          playerLance: deployment.entries,
-        };
+        try {
+          const deployment = prepareDeployment(getCatalog(), saved);
+          options = {
+            missionId: deployment.missionId,
+            seed: deployment.seed,
+            playerTeam: deployment.playerTeam,
+            playerLance: deployment.entries,
+          };
+        } catch (error: unknown) {
+          // Nothing fit to field. Say so and go back rather than tearing down
+          // the React tree with an uncaught throw from an effect.
+          useGame.getState().patch({
+            campaignPending: false,
+            screen: 'campaign',
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return;
+        }
       }
     }
 
@@ -114,6 +125,11 @@ export function Battle() {
 
   const playerControlled = unit !== null && unit.team === state.playerTeam && unit.alive;
 
+  // Leaving the battle screen unmounts it, which destroys the engine — the
+  // contract would silently restart from the top with the lance already paid
+  // for. There is nowhere useful to go mid-contract anyway.
+  const deployed = state.campaignPending && !state.finished;
+
   const supportOptions: SupportOption[] = SUPPORT_CALLS.map((id) => ({
     id,
     label: id
@@ -144,6 +160,8 @@ export function Battle() {
         <button
           type="button"
           className="pause"
+          disabled={deployed}
+          title={deployed ? 'The lance is in the field — resolve the contract first.' : ''}
           onClick={() => state.patch({ screen: 'mechbay' })}
           data-testid="open-mechbay"
         >
@@ -152,6 +170,8 @@ export function Battle() {
         <button
           type="button"
           className="pause"
+          disabled={deployed}
+          title={deployed ? 'The lance is in the field — resolve the contract first.' : ''}
           onClick={() => state.patch({ screen: 'campaign' })}
           data-testid="open-campaign"
         >

@@ -15,6 +15,29 @@ function copy(design: Design): Design {
   return JSON.parse(JSON.stringify(design)) as Design;
 }
 
+/**
+ * Refitting rewrites the armour maxima, which leaves the recorded condition
+ * pointing at the old numbers. Rescale it rather than replacing it: a refit is
+ * bolting a gun on, not a free rebuild, and the damage has to survive it.
+ */
+function rescaleCondition(catalog: Catalog, mech: MechRecord, design: Design): void {
+  const fresh = pristineCondition(catalog, design);
+  const next = { ...fresh };
+
+  for (const location of LOCATIONS) {
+    const was = mech.condition[location];
+    const now = fresh[location];
+    if (was === undefined || now === undefined) continue;
+    next[location] = {
+      armour: Math.min(was.armour, now.armour),
+      internal: Math.min(was.internal, now.internal),
+      destroyed: was.destroyed,
+    };
+  }
+
+  mech.condition = next;
+}
+
 function withWeapon(design: Design, weaponId: string, location: MechLocation): Design {
   const next = copy(design);
   next.mounts.push({ weaponId, location });
@@ -84,7 +107,7 @@ export function fitFromStore(
   }
 
   mech.design = plan.design;
-  mech.condition = pristineCondition(catalog, plan.design);
+  rescaleCondition(catalog, mech, plan.design);
   return { ok: true, reason: null, location: plan.location };
 }
 
@@ -101,11 +124,18 @@ export function stripToStore(
     return { ok: false, reason: 'this mech is not in the bay', location: null };
   }
 
+  // A design with no weapons fails DesignSchema, and the campaign is serialised
+  // without validation — stripping the last mount wrote a save that would not
+  // load, silently discarding the run on the next start.
+  if (mech.design.mounts.length <= 1) {
+    return { ok: false, reason: 'a mech needs at least one weapon', location: null };
+  }
+
   const next = copy(mech.design);
   next.mounts.splice(mountIndex, 1);
 
   mech.design = maximiseArmour(catalog, next);
-  mech.condition = pristineCondition(catalog, mech.design);
+  rescaleCondition(catalog, mech, mech.design);
   addToStore(state, 'weapon', mount.weaponId);
 
   return { ok: true, reason: null, location: mount.location };

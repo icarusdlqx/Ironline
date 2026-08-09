@@ -3,7 +3,7 @@ import type { Catalog } from '../schema/load';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
 import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
-import { asPilot, awardXp, resolveCasualty } from './roster';
+import { asPilot, assign, awardXp, resolveCasualty } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
 import {
   findMech,
@@ -178,22 +178,64 @@ export function abandonContract(state: CampaignState): void {
   state.contract = null;
 }
 
+/** Thrown when the company cannot field anything, so the UI can say so rather than crash. */
+export class DeploymentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DeploymentError';
+  }
+}
+
 export interface DeployablePair {
   mech: MechRecord;
   pilot: PilotRecord;
 }
 
+function isFieldable(state: CampaignState, mech: MechRecord): boolean {
+  return mech.status !== 'hulk' && isMechAvailable(state, mech);
+}
+
+/**
+ * Everyone who can walk out of the bay, paired with what they will walk out in.
+ * Pilots keep their own mech; anybody left over is seated in a spare hull.
+ *
+ * That second pass matters: salvaged chassis arrive with nobody assigned, and a
+ * killed pilot's mech is unbound, so a company could hold fit pilots and
+ * battle-ready mechs and still field nothing — an unrecoverable state the game
+ * never explained. This function only reads; `fillEmptySeats` writes the pairing
+ * back so the barracks agrees with what deploys.
+ */
 export function deployableLance(state: CampaignState): DeployablePair[] {
   const pairs: DeployablePair[] = [];
+  const spoken = new Set<string>();
 
   for (const pilot of state.pilots) {
-    if (pilot.mechId === null || !isPilotAvailable(state, pilot)) continue;
+    if (pilot.mechId === null) continue;
+    spoken.add(pilot.mechId);
+    if (!isPilotAvailable(state, pilot)) continue;
     const mech = findMech(state, pilot.mechId);
-    if (mech === null || mech.status === 'hulk' || !isMechAvailable(state, mech)) continue;
+    if (mech === null || !isFieldable(state, mech)) continue;
     pairs.push({ mech, pilot });
   }
 
+  for (const pilot of state.pilots) {
+    if (pilot.mechId !== null || !isPilotAvailable(state, pilot)) continue;
+    const free = state.mechs.find(
+      (mech) => !spoken.has(mech.id) && isFieldable(state, mech),
+    );
+    if (free === undefined) break;
+    spoken.add(free.id);
+    pairs.push({ mech: free, pilot });
+  }
+
   return pairs;
+}
+
+/** Records the pairing `deployableLance` worked out, so the roster matches the field. */
+export function fillEmptySeats(state: CampaignState): void {
+  for (const pair of deployableLance(state)) {
+    if (pair.pilot.mechId !== pair.mech.id) assign(state, pair.pilot.id, pair.mech.id);
+  }
 }
 
 export function missionSlots(catalog: Catalog, missionId: string): number {
@@ -220,8 +262,13 @@ export function prepareDeployment(catalog: Catalog, state: CampaignState): Deplo
   const contract = state.contract;
   if (contract === null) throw new Error('no active contract');
 
+  fillEmptySeats(state);
   const lance = deployableLance(state).slice(0, missionSlots(catalog, contract.missionId));
-  if (lance.length === 0) throw new Error('no mech is ready to deploy');
+  if (lance.length === 0) {
+    throw new DeploymentError(
+      'No mech is ready to deploy. Repair a mech, rebuild a hulk, or wait for a pilot to recover.',
+    );
+  }
 
   return {
     seed: `${state.seed}:${contract.nodeId}:${state.day}`,
@@ -381,6 +428,10 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
       state.contract = null;
     }
   }
+
+  // Casualties and finished repairs both leave hulls without a pilot; seat them
+  // now so the barracks and the deploy button agree before the player looks.
+  fillEmptySeats(state);
 
   if (state.finished) return;
 
