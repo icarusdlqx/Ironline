@@ -125,10 +125,21 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
         order.to,
         world.rules.simulation.pathfindMaxNodes,
       );
-      entity.path = path ?? [];
       entity.pathIndex = 0;
       entity.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
-      if (path === null || path.length === 0) entity.orders.move = null;
+
+      if (path === null) {
+        // Genuinely unreachable: drop the order rather than shuffle forever.
+        entity.path = [];
+        entity.orders.move = null;
+      } else if (path.length === 0) {
+        // Already inside the destination tile but not yet on the spot. A tile is
+        // four times the arrival radius across, so this is most short orders —
+        // walk the last few metres instead of cancelling.
+        entity.path = [{ x: order.to.x, y: order.to.y }];
+      } else {
+        entity.path = path;
+      }
     }
     entity.motion = entity.path.length === 0 ? 'stationary' : order.run ? 'run' : 'walk';
   }

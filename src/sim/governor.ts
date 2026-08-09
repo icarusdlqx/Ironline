@@ -75,7 +75,7 @@ export function applyHeatGovernor(world: World, mech: MechEntity, targetNearlyDe
 }
 
 /** Hands the guns back to the pilot's last order. */
-function restoreIntent(mech: MechEntity): void {
+export function restoreIntent(mech: MechEntity): void {
   for (let index = 0; index < mech.groupEnabled.length; index += 1) {
     mech.groupEnabled[index] = mech.groupIntent[index] === true;
   }

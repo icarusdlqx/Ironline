@@ -28,6 +28,11 @@ function turnToward(world: World, entity: MechEntity, focus: Vec2): number {
   return angleDifference(entity.facing, desired);
 }
 
+function passableAt(world: World, point: Vec2): boolean {
+  const tile = world.terrain.toTile(point);
+  return world.terrain.passable(tile.column, tile.row);
+}
+
 function clearPath(entity: MechEntity): void {
   entity.path = [];
   entity.pathIndex = 0;
@@ -86,13 +91,11 @@ export function updateMovement(world: World, entity: MechEntity): void {
   const step = speedFor(world, entity) * world.dt;
   if (step <= 0) return;
 
-  const next: Vec2 = {
-    x: entity.pos.x + Math.cos(entity.facing) * step,
-    y: entity.pos.y + Math.sin(entity.facing) * step,
-  };
+  const dx = Math.cos(entity.facing) * step;
+  const dy = Math.sin(entity.facing) * step;
+  const next: Vec2 = { x: entity.pos.x + dx, y: entity.pos.y + dy };
 
-  const tile = world.terrain.toTile(next);
-  if (!world.terrain.passable(tile.column, tile.row)) {
+  if (!passableAt(world, next)) {
     clearPath(entity);
     return;
   }

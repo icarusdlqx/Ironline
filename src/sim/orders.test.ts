@@ -9,6 +9,8 @@ import {
   setHoldFire,
   updatePlayerControl,
 } from './orders';
+import { applyHeatGovernor, restoreIntent } from './governor';
+import { distance } from './math';
 import { eventsOfType } from './events';
 import { updateVision } from './sensors';
 import { isOperational, type MechEntity, type World } from './types';
@@ -206,5 +208,86 @@ describe('player units under stepWorld', () => {
 
     expect(mech.orders.move?.to).toEqual(destination);
     expect(isOperational(mech)).toBe(true);
+  });
+});
+
+describe('short move orders', () => {
+  it('walks the last few metres to a point inside the mech\'s own tile', () => {
+    const world = playerWorld('short-move');
+    const mech = unitOf(world, 'sentinel_brawler');
+    mech.controller = 'orders';
+    mech.autopilot = false;
+
+    // A tile is four times the arrival radius across, so a destination can sit
+    // well outside "arrived" while still being in the tile the mech stands on.
+    const size = world.terrain.tileSize;
+    const goal = { x: mech.pos.x + size * 0.45, y: mech.pos.y };
+    expect(distance(mech.pos, goal)).toBeGreaterThan(world.rules.movement.arrivalRadius);
+    expect(world.terrain.toTile(goal)).toEqual(world.terrain.toTile(mech.pos));
+
+    expect(issueMove(world, mech, goal, false)).toBe(true);
+    for (let tick = 0; tick < 200 && mech.orders.move !== null; tick += 1) {
+      stepWorld(world, 100_000);
+    }
+
+    expect(
+      distance(mech.pos, goal),
+      'the order was cancelled instead of walked',
+    ).toBeLessThanOrEqual(world.rules.movement.arrivalRadius);
+  });
+
+  it('drops an order to somewhere genuinely unreachable', () => {
+    const world = playerWorld('unreachable');
+    const mech = unitOf(world, 'sentinel_brawler');
+    mech.controller = 'orders';
+    mech.autopilot = false;
+
+    // Off the map entirely: findPath has nothing to return.
+    const goal = { x: -500, y: -500 };
+    issueMove(world, mech, goal, false);
+    for (let tick = 0; tick < 120; tick += 1) stepWorld(world, 100_000);
+
+    expect(mech.orders.move).toBeNull();
+  });
+});
+
+describe('pilot intent versus the reactor governor', () => {
+  it('does not report a throttled mech as holding fire', () => {
+    const world = playerWorld('intent');
+    const mech = unitOf(world, 'sentinel_brawler');
+
+    mech.heat = mech.heatCapacity * 0.95;
+    applyHeatGovernor(world, mech, false);
+
+    expect(mech.groupEnabled.some((enabled) => !enabled)).toBe(true);
+    // The governor shedding guns is not the pilot ordering weapons cold, and a
+    // control that confuses the two inverts itself exactly when it is needed.
+    expect(isHoldingFire(mech)).toBe(false);
+  });
+
+  it('holds fire on command however hot the mech is', () => {
+    const world = playerWorld('intent-hot');
+    const mech = unitOf(world, 'sentinel_brawler');
+
+    mech.heat = mech.heatCapacity * 0.95;
+    applyHeatGovernor(world, mech, false);
+    setHoldFire(mech, !isHoldingFire(mech));
+
+    expect(isHoldingFire(mech)).toBe(true);
+    expect(mech.groupIntent.every((enabled) => !enabled)).toBe(true);
+    expect(mech.groupEnabled.every((enabled) => !enabled)).toBe(true);
+  });
+
+  it('gives the pilot back exactly what they asked for when safety is switched off', () => {
+    const world = playerWorld('intent-restore');
+    const mech = unitOf(world, 'sentinel_brawler');
+
+    setGroupEnabled(mech, 2, false);
+    mech.heat = mech.heatCapacity * 0.95;
+    applyHeatGovernor(world, mech, false);
+    restoreIntent(mech);
+
+    expect(mech.groupEnabled[1]).toBe(false);
+    expect(mech.groupEnabled[0]).toBe(true);
   });
 });

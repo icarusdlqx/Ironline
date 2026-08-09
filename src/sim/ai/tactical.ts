@@ -97,7 +97,9 @@ function moveTo(world: World, mech: MechEntity, destination: { x: number; y: num
     world.rules.simulation.pathfindMaxNodes,
   );
 
-  mech.path = path ?? [];
+  // An empty path means "already in that tile", not "cannot get there": the
+  // last few metres inside a tile still have to be walked.
+  mech.path = path === null ? [] : path.length === 0 ? [{ x: destination.x, y: destination.y }] : path;
   mech.pathIndex = 0;
   mech.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
   mech.motion = mech.path.length === 0 ? 'stationary' : run ? 'run' : 'walk';

@@ -1,3 +1,4 @@
+import { traceTiles } from './los';
 import type { TerrainGrid } from './terrain';
 import type { Vec2 } from './types';
 
@@ -210,23 +211,44 @@ export function findPath(
 /**
  * What walking the straight line between two points costs, in the same terrain-
  * weighted units A* used. Null when something impassable is in the way.
+ *
+ * This traverses every tile the segment enters rather than sampling along it.
+ * Sampling misses a wall the line only clips — the chord through a corner tile
+ * can be shorter than the sample spacing — and the smoother would then happily
+ * shortcut a mech straight into a building it can never walk through.
  */
 export function lineCost(grid: TerrainGrid, from: Vec2, to: Vec2): number | null {
   const span = Math.hypot(to.x - from.x, to.y - from.y);
-  const steps = Math.ceil(span / (grid.tileSize * 0.5));
-  if (steps === 0) return 0;
+  if (span === 0) return 0;
 
-  const stride = span / steps / grid.tileSize;
-  let total = 0;
+  const start = grid.toTile(from);
+  if (!grid.passable(start.column, start.row)) return null;
 
-  for (let step = 1; step <= steps; step += 1) {
-    const t = step / steps;
-    const tile = grid.toTile({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
-    if (!grid.passable(tile.column, tile.row)) return null;
-    total += stride / grid.typeAt(tile.column, tile.row).moveMultiplier;
-  }
+  const end = grid.toTile(to);
+  if (!grid.passable(end.column, end.row)) return null;
 
-  return total;
+  let blocked = false;
+  let tiles = 1;
+  let cost = 1 / grid.typeAt(start.column, start.row).moveMultiplier;
+
+  traceTiles(grid, from, to, (column, row) => {
+    if (!grid.passable(column, row)) {
+      blocked = true;
+      return false;
+    }
+    tiles += 1;
+    cost += 1 / grid.typeAt(column, row).moveMultiplier;
+    return true;
+  });
+
+  if (blocked) return null;
+
+  // traceTiles stops short of the end tile, which is already counted above.
+  cost += 1 / grid.typeAt(end.column, end.row).moveMultiplier;
+  tiles += 1;
+
+  // Mean per-tile cost over the run, scaled to the run's true length.
+  return (cost / tiles) * (span / grid.tileSize);
 }
 
 export function walkableLine(grid: TerrainGrid, from: Vec2, to: Vec2): boolean {

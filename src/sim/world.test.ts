@@ -202,7 +202,10 @@ describe('runBattle', () => {
     const kills = result.units.reduce((total, unit) => total + unit.kills, 0);
     const destroyed = result.units.filter((unit) => !unit.alive).length;
 
-    expect(taken).toBeGreaterThanOrEqual(dealt);
+    // Taken also covers ammo blasts and capacitor discharges, which no shooter is
+    // credited for, so it can only run ahead of dealt. Both are long float sums
+    // accumulated in different orders, so allow for the last bit.
+    expect(taken).toBeGreaterThanOrEqual(dealt - Math.abs(dealt) * 1e-9);
     expect(kills).toBeLessThanOrEqual(destroyed);
 
     for (const unit of result.units) {

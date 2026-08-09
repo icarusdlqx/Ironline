@@ -2,7 +2,15 @@ import { Application } from 'pixi.js';
 import type { MechLocation } from '../schema/common';
 import { loadCatalog } from '../schema/load';
 import { Renderer } from '../render/scene';
-import { issueAttack, issueMove, issueStop, setGroupEnabled, setHoldFire } from '../sim/orders';
+import { restoreIntent } from '../sim/governor';
+import {
+  isHoldingFire,
+  issueAttack,
+  issueMove,
+  issueStop,
+  setGroupEnabled,
+  setHoldFire,
+} from '../sim/orders';
 import { callSupport, type SupportCallId } from '../sim/support';
 import { findEntity, isOperational, type EntityId, type Vec2, type World } from '../sim/types';
 import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
@@ -240,11 +248,17 @@ export class Engine {
     }
   }
 
+  /**
+   * Every weapon control reads and writes the pilot's INTENT, never the governor's
+   * output. Reading groupEnabled means a mech the governor has throttled reports
+   * "not firing", so Hold Fire decides it is already held and arms everything —
+   * the control does the opposite of its label at exactly the moment it matters.
+   */
   toggleHoldFire(): void {
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
-      setHoldFire(entity, entity.groupEnabled.some((enabled) => enabled));
+      setHoldFire(entity, !isHoldingFire(entity));
     }
   }
 
@@ -254,7 +268,9 @@ export class Engine {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
       entity.heatSafety = !entity.heatSafety;
-      if (!entity.heatSafety) setHoldFire(entity, false);
+      // Switching the governor off stops it restoring anything, so hand the guns
+      // back to whatever the pilot last asked for — not to everything.
+      if (!entity.heatSafety) restoreIntent(entity);
     }
   }
 
@@ -262,7 +278,7 @@ export class Engine {
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
-      setGroupEnabled(entity, group, entity.groupEnabled[group - 1] !== true);
+      setGroupEnabled(entity, group, entity.groupIntent[group - 1] !== true);
     }
   }
 
