@@ -6,6 +6,13 @@ export const HardpointsSchema = z.strictObject({
   ballistic: z.number().int().min(0).max(12),
   missile: z.number().int().min(0).max(12),
   slots: z.number().int().min(0).max(24),
+  /**
+   * The largest weapon size this location's mounts are built for. Tonnage and
+   * slots alone would let a scout bolt a gauss rifle to an arm designed for a
+   * machine gun, which is the one thing every quartermaster in the setting
+   * would tell you is not how any of this works.
+   */
+  size: z.number().int().min(1).max(4).default(2),
 });
 
 export type Hardpoints = z.infer<typeof HardpointsSchema>;

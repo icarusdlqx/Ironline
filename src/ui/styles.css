@@ -829,6 +829,25 @@ button {
   border-color: var(--danger);
   color: var(--danger);
 }
+/* The mount-size cap. Deliberately quiet: it is a property of the hull, not a
+   count of anything the player has spent. */
+.pip.size {
+  border-style: dashed;
+  letter-spacing: 0.04em;
+}
+
+/* A gun bolted to a mount too small for it. The build is already illegal and
+   says so in the issues list; this is what points at the offending item. */
+.bay-items li.too-big > span {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+/* Stock this chassis has no hardpoint large enough to take anywhere. Dimmed
+   rather than hidden — knowing the gun exists is half of planning a refit. */
+.bay-stock.unmountable {
+  opacity: 0.42;
+}
 
 .bay-items {
   list-style: none;

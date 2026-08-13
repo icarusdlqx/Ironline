@@ -467,6 +467,15 @@ export const ConstructionRulesSchema = z.strictObject({
   structureWeightFraction: z.number().positive().max(1),
   armourPointsPerTon: z.number().positive(),
   ammoSlotsPerTon: z.number().positive(),
+  /**
+   * Upper tonnage of a size-1, size-2 and size-3 weapon; anything heavier is
+   * size 4. A mount is built around the gun it was meant to carry — the cradle,
+   * the feed, the recoil path — so what stops a light chassis taking a gauss
+   * rifle is not only tonnage but whether the hardpoint can hold one at all.
+   */
+  weaponSizeTonnage: z.tuple([z.number().positive(), z.number().positive(), z.number().positive()]),
+  /** What each size is called where the player reads it. */
+  weaponSizeLabels: z.tuple([z.string(), z.string(), z.string(), z.string()]),
 });
 
 export const SensorRulesSchema = z.strictObject({

@@ -46,6 +46,13 @@ export const WeaponSchema = z
     criticalChance: z.number().min(0).max(1).default(0.08),
     /** Heat dumped into the target on a hit — the flamer's whole purpose. */
     targetHeat: z.number().nonnegative().default(0),
+    /**
+     * How large a hardpoint this needs, 1 to 4. Left null it is read off the
+     * weapon's tonnage against the construction rules, which is right for
+     * nearly everything; set it where a gun is bulkier or more compact than
+     * its weight suggests.
+     */
+    size: z.number().int().min(1).max(4).nullable().default(null),
     /** How the shot looks. A gauss slug and a laser should never be confused. */
     visual: z
       .strictObject({

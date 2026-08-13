@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { LOCATIONS, type MechLocation } from '../../schema/common';
 import type { Design } from '../../schema/design';
 import { getCatalog } from '../../schema/load';
-import { computeHeatProfile, computeLoadout } from '../../sim/loadout';
+import { computeHeatProfile, computeLoadout, weaponSize, weaponSizeLabel } from '../../sim/loadout';
 import {
   addAmmo,
   addEquipment,
@@ -33,17 +33,20 @@ function Draggable({
   label,
   detail,
   note,
+  unmountable = false,
 }: {
   payload: DropPayload;
   label: string;
   detail: string;
   note?: string;
+  /** No hardpoint on this chassis is built to take it. */
+  unmountable?: boolean;
 }) {
   return (
     <li
       draggable
-      className="bay-stock"
-      title={note}
+      className={`bay-stock${unmountable ? ' unmountable' : ''}`}
+      title={unmountable ? `${note ?? ''}\nNo hardpoint on this chassis takes one.`.trim() : note}
       data-testid={`stock-${payload.kind}-${payload.id}`}
       onDragStart={(event) => {
         event.dataTransfer.setData('application/ironline', JSON.stringify(payload));
@@ -317,15 +320,27 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
 
         <h4>Weapons</h4>
         <ul className="bay-stocks">
-          {[...catalog.weapons.values()].map((weapon) => (
-            <Draggable
-              key={weapon.id}
-              payload={{ kind: 'weapon', id: weapon.id }}
-              label={weapon.name}
-              detail={`${weapon.tonnage}t · ${weapon.slots} slots · ${weapon.heat} heat · ${weapon.range.long}m`}
-              note={weapon.summary}
-            />
-          ))}
+          {[...catalog.weapons.values()].map((weapon) => {
+            // Which hardpoints on this hull could take it at all. A gun the
+            // machine cannot mount anywhere is worth saying so before the
+            // player spends an afternoon budgeting tonnage for it.
+            const size = weaponSize(catalog, weapon);
+            const fits = LOCATIONS.some(
+              (location) =>
+                chassis.hardpoints[location][weapon.type] > 0 &&
+                chassis.hardpoints[location].size >= size,
+            );
+            return (
+              <Draggable
+                key={weapon.id}
+                payload={{ kind: 'weapon', id: weapon.id }}
+                label={weapon.name}
+                detail={`${weaponSizeLabel(catalog, size)} · ${weapon.tonnage}t · ${weapon.slots} slots · ${weapon.heat} heat · ${weapon.range.long}m`}
+                note={weapon.summary}
+                unmountable={!fits}
+              />
+            );
+          })}
         </ul>
 
         <h4>Ammo</h4>

@@ -2,13 +2,15 @@ import type { Chassis } from '../schema/chassis';
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
-import type { WeaponType } from '../schema/weapon';
+import type { Weapon, WeaponType } from '../schema/weapon';
 
 export interface LocationUsage {
   slotsUsed: number;
   slotsAvailable: number;
   hardpointsUsed: Record<WeaponType, number>;
   hardpointsAvailable: Record<WeaponType, number>;
+  /** The largest weapon size this location's mounts are built for. */
+  size: number;
 }
 
 export interface LoadoutIssue {
@@ -19,6 +21,7 @@ export interface LoadoutIssue {
     | 'unknown_heat_sink'
     | 'overweight'
     | 'hardpoint'
+    | 'hardpoint_size'
     | 'slots'
     | 'armour'
     | 'heat_sinks'
@@ -74,7 +77,26 @@ function emptyUsage(chassis: Chassis, location: MechLocation): LocationUsage {
       ballistic: hardpoints.ballistic,
       missile: hardpoints.missile,
     },
+    size: hardpoints.size,
   };
+}
+
+/**
+ * How large a hardpoint a weapon needs. Authored on the weapon when it is
+ * bulkier or more compact than its weight suggests; read off its tonnage
+ * otherwise, so a new gun gets a sensible size without anyone remembering to
+ * set one.
+ */
+export function weaponSize(catalog: Catalog, weapon: Weapon): number {
+  if (weapon.size !== null) return weapon.size;
+  const [light, medium, heavy] = catalog.rules.construction.weaponSizeTonnage;
+  if (weapon.tonnage <= light) return 1;
+  if (weapon.tonnage <= medium) return 2;
+  return weapon.tonnage <= heavy ? 3 : 4;
+}
+
+export function weaponSizeLabel(catalog: Catalog, size: number): string {
+  return catalog.rules.construction.weaponSizeLabels[size - 1] ?? String(size);
 }
 
 function roundHalf(value: number): number {
@@ -112,6 +134,7 @@ export function computeLoadout(catalog: Catalog, design: Design): Loadout {
             slotsAvailable: 0,
             hardpointsUsed: { energy: 0, ballistic: 0, missile: 0 },
             hardpointsAvailable: { energy: 0, ballistic: 0, missile: 0 },
+            size: 0,
           },
         ]),
       ) as Record<MechLocation, LocationUsage>,
@@ -191,6 +214,15 @@ export function computeLoadout(catalog: Catalog, design: Design): Loadout {
     const usage = perLocation[mount.location];
     usage.slotsUsed += weapon.slots;
     usage.hardpointsUsed[weapon.type] += 1;
+
+    const size = weaponSize(catalog, weapon);
+    if (size > usage.size) {
+      issues.push({
+        code: 'hardpoint_size',
+        location: mount.location,
+        message: `${weapon.name} needs a size-${size} (${weaponSizeLabel(catalog, size)}) mount; this location is size ${usage.size} (${weaponSizeLabel(catalog, usage.size)})`,
+      });
+    }
   }
 
   for (const load of design.ammo) {

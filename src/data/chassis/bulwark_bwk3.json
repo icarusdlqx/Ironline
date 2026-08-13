@@ -12,49 +12,57 @@
       "energy": 0,
       "ballistic": 0,
       "missile": 0,
-      "slots": 1
+      "slots": 1,
+      "size": 1
     },
     "centre_torso": {
       "energy": 1,
       "ballistic": 0,
       "missile": 0,
-      "slots": 3
+      "slots": 3,
+      "size": 2
     },
     "left_torso": {
       "energy": 0,
       "ballistic": 0,
       "missile": 2,
-      "slots": 8
+      "slots": 8,
+      "size": 3
     },
     "right_torso": {
       "energy": 0,
       "ballistic": 1,
       "missile": 0,
-      "slots": 8
+      "slots": 8,
+      "size": 3
     },
     "left_arm": {
       "energy": 2,
       "ballistic": 0,
       "missile": 0,
-      "slots": 6
+      "slots": 6,
+      "size": 3
     },
     "right_arm": {
       "energy": 0,
       "ballistic": 1,
       "missile": 0,
-      "slots": 6
+      "slots": 6,
+      "size": 3
     },
     "left_leg": {
       "energy": 0,
       "ballistic": 0,
       "missile": 0,
-      "slots": 2
+      "slots": 2,
+      "size": 1
     },
     "right_leg": {
       "energy": 0,
       "ballistic": 0,
       "missile": 0,
-      "slots": 2
+      "slots": 2,
+      "size": 1
     }
   },
   "armourMax": {

@@ -2,7 +2,7 @@ import type { Chassis } from '../../schema/chassis';
 import type { MechLocation } from '../../schema/common';
 import type { Design } from '../../schema/design';
 import type { Catalog } from '../../schema/load';
-import type { LocationUsage } from '../../sim/loadout';
+import { weaponSize, weaponSizeLabel, type LocationUsage } from '../../sim/loadout';
 
 const SHORT_NAMES: Record<MechLocation, string> = {
   head: 'Head',
@@ -52,9 +52,17 @@ export function LocationCard({
     (type) => usage.hardpointsUsed[type] > usage.hardpointsAvailable[type],
   );
 
+  const oversized = (weaponId: string): boolean => {
+    const weapon = catalog.weapons.get(weaponId);
+    return weapon !== undefined && weaponSize(catalog, weapon) > usage.size;
+  };
+  const sizeOver = design.mounts.some(
+    (mount) => mount.location === location && oversized(mount.weaponId),
+  );
+
   // The location's place on the body plan, so the bay reads as a mech.
   const classes = ['bay-location', `loc-${location}`];
-  if (slotsOver || hardpointOver) classes.push('invalid');
+  if (slotsOver || hardpointOver || sizeOver) classes.push('invalid');
 
   return (
     <div
@@ -89,12 +97,22 @@ export function LocationCard({
             </span>
           ),
         )}
+        {/* What this location's mounts were built around. Without it the only
+            way to learn a scout arm will not take a gauss rifle is to fit one
+            and read the complaint. */}
+        <span
+          className={`pip size ${sizeOver ? 'over' : ''}`}
+          title={`Takes ${weaponSizeLabel(catalog, usage.size)} weapons and smaller`}
+          data-testid={`size-${location}`}
+        >
+          ≤ {weaponSizeLabel(catalog, usage.size)}
+        </span>
       </div>
 
       <ul className="bay-items">
         {design.mounts.map((mount, index) =>
           mount.location !== location ? null : (
-            <li key={`m${index}`}>
+            <li key={`m${index}`} className={oversized(mount.weaponId) ? 'too-big' : undefined}>
               <span>{catalog.weapons.get(mount.weaponId)?.name ?? mount.weaponId}</span>
               <button type="button" onClick={() => onRemoveMount(index)} title="Remove">
                 ×

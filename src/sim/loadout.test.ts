@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { LOCATIONS } from '../schema/common';
 import type { Design } from '../schema/design';
-import { computeHeatProfile, computeLoadout, engineWeightFor } from './loadout';
+import { computeHeatProfile, computeLoadout, engineWeightFor, weaponSize } from './loadout';
 
 function designOf(id: string): Design {
   const design = catalog.designs.get(id);
@@ -37,6 +37,56 @@ describe('shipped content', () => {
     for (const chassis of catalog.chassis.values()) {
       expect(engineWeightFor(catalog, chassis.engineRating)).not.toBeNull();
     }
+  });
+
+  it('leaves every chassis somewhere to put each kind of weapon it is wired for', () => {
+    // A hardpoint no weapon in the catalogue can legally fill is a typo, not a
+    // design: the chassis advertises a mount the player can never use.
+    for (const chassis of catalog.chassis.values()) {
+      for (const location of LOCATIONS) {
+        const hardpoints = chassis.hardpoints[location];
+        for (const type of ['energy', 'ballistic', 'missile'] as const) {
+          if (hardpoints[type] === 0) continue;
+          const fillable = [...catalog.weapons.values()].some(
+            (weapon) => weapon.type === type && weaponSize(catalog, weapon) <= hardpoints.size,
+          );
+          expect(
+            fillable,
+            `${chassis.name} ${location} advertises a ${type} mount at size ${hardpoints.size} that nothing fits`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+});
+
+describe('hardpoint sizes', () => {
+  it('refuses a weapon larger than the mount is built for', () => {
+    const design = clone('wisp_scout');
+    design.mounts.push({ weaponId: 'gauss_rifle', location: 'right_arm' });
+
+    const issue = computeLoadout(catalog, design).issues.find(
+      (entry) => entry.code === 'hardpoint_size',
+    );
+    expect(issue?.location).toBe('right_arm');
+    expect(issue?.message).toMatch(/Gauss Rifle/);
+  });
+
+  it('accepts the same weapon on a chassis wired for it', () => {
+    expect(
+      computeLoadout(catalog, designOf('rampart_breaker')).issues.some(
+        (entry) => entry.code === 'hardpoint_size',
+      ),
+    ).toBe(false);
+  });
+
+  it('reads a weapon size off its tonnage unless the weapon overrides it', () => {
+    const machineGun = catalog.weapons.get('machine_gun');
+    const gauss = catalog.weapons.get('gauss_rifle');
+    if (machineGun === undefined || gauss === undefined) throw new Error('missing weapon');
+    expect(weaponSize(catalog, machineGun)).toBe(1);
+    expect(weaponSize(catalog, gauss)).toBe(4);
+    expect(weaponSize(catalog, { ...gauss, size: 2 })).toBe(2);
   });
 });
 

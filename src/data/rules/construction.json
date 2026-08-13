@@ -65,5 +65,16 @@
   },
   "structureWeightFraction": 0.1,
   "armourPointsPerTon": 40,
-  "ammoSlotsPerTon": 1
+  "ammoSlotsPerTon": 1,
+  "weaponSizeTonnage": [
+    2,
+    6,
+    12
+  ],
+  "weaponSizeLabels": [
+    "light",
+    "medium",
+    "heavy",
+    "assault"
+  ]
 }
