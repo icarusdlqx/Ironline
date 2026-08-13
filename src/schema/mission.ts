@@ -122,6 +122,16 @@ export const MissionSchema = z
     briefing: z.string().min(1).max(600).default('Engage and destroy.'),
     maxDurationSeconds: z.number().positive().max(3600),
     startingResourcePoints: z.number().int().nonnegative().max(5000).default(0),
+    /**
+     * What the dropship will carry to this contract, in tonnes. A lance is
+     * limited by weight as well as by berths, so fielding the hundred-tonne
+     * hull means leaving something else in the bay — which is the decision a
+     * mission profile is meant to force.
+     *
+     * Null means nobody stated a limit, and the allowance is read off the
+     * lance the mission fields itself.
+     */
+    dropTonnage: z.number().int().positive().max(600).nullable().default(null),
     lances: z.array(LanceSchema).min(2),
     reserves: z.array(DeploymentSchema).max(6).default([]),
     zones: z.array(ZoneSchema).max(12).default([]),

@@ -1,6 +1,6 @@
 import { LOCATIONS } from '../../schema/common';
 import type { Catalog } from '../../schema/load';
-import { deployableLance, missionSlots } from '../../campaign/campaign';
+import { dropTeam, dropTonnageFor, missionSlots } from '../../campaign/campaign';
 import { assign } from '../../campaign/roster';
 import { isPilotAvailable, type CampaignState, type PilotRecord } from '../../campaign/types';
 import { sensorRangeFor } from '../../sim/sensors';
@@ -60,8 +60,13 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel }: Pr
   if (contract === null) return null;
 
   const slots = missionSlots(catalog, contract.missionId);
-  const dropping = deployableLance(state);
+  const allowance = dropTonnageFor(catalog, contract.missionId);
+  const dropping = dropTeam(catalog, state, contract.missionId);
   const mission = catalog.missions.get(contract.missionId);
+  const tonnage = dropping.reduce(
+    (total, pair) => total + (catalog.chassis.get(pair.mech.design.chassisId)?.tonnage ?? 0),
+    0,
+  );
 
   // Everyone fit to fly, whether or not they are dropping — the bench is part
   // of the manifest, not a separate screen.
@@ -90,9 +95,29 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel }: Pr
         <header>
           <h3>Dropship manifest</h3>
           <p>
-            {mission?.name ?? contract.missionId} — {contract.employer}. The bay carries{' '}
-            <strong>{slots}</strong>; {dropping.length} ready to drop.
+            {mission?.name ?? contract.missionId} — {contract.employer}.
           </p>
+          {/* The profile the loadout has to answer to: how many berths, how
+              much weight, and what the contract is actually asking for. */}
+          <dl className="manifest-profile" data-testid="manifest-profile">
+            <div>
+              <dt>Berths</dt>
+              <dd>
+                {dropping.length}/{slots}
+              </dd>
+            </div>
+            <div className={tonnage > allowance ? 'over' : undefined}>
+              <dt>Tonnage</dt>
+              <dd data-testid="manifest-tonnage">
+                {tonnage}/{allowance}t
+              </dd>
+            </div>
+            <div>
+              <dt>Profile</dt>
+              <dd>{mission?.type.replace('_', ' ') ?? 'contract'}</dd>
+            </div>
+          </dl>
+          {mission === undefined ? null : <p className="manifest-brief">{mission.briefing}</p>}
         </header>
 
         <ul className="manifest-list">
@@ -103,6 +128,9 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel }: Pr
             const seated = state.mechs.find((mech) => mech.id === pilot.mechId) ?? null;
             const health = seated === null ? 0 : integrity(state, seated.id);
 
+            const weight =
+              seated === null ? 0 : (catalog.chassis.get(seated.design.chassisId)?.tonnage ?? 0);
+
             const status = !available
               ? `Infirmary until day ${pilot.injuredUntilDay}`
               : benched(pilot)
@@ -112,8 +140,10 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel }: Pr
                   : seated.status !== 'ready'
                     ? `Mech ${seated.status}`
                     : drops
-                      ? 'Dropping'
-                      : 'Reserve — no room';
+                      ? `Dropping · ${weight}t`
+                      : dropping.length >= slots
+                        ? 'Reserve — no berth'
+                        : 'Reserve — over the weight allowance';
 
             return (
               <li

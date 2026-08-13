@@ -107,5 +107,6 @@
       "team": 0,
       "required": true
     }
-  ]
+  ],
+  "dropTonnage": 200
 }

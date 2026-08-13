@@ -1,9 +1,9 @@
 {
   "id": "training_ground",
-  "name": "Training — First Walk",
+  "name": "Training \u2014 First Walk",
   "type": "skirmish",
   "mapId": "ridge_pass",
-  "briefing": "A shakedown walk on safe ground. Two machines, a wreck of a militia scout somewhere on the far slope, and a range officer on the radio. Nothing here should be able to kill you — pay attention anyway.",
+  "briefing": "A shakedown walk on safe ground. Two machines, a wreck of a militia scout somewhere on the far slope, and a range officer on the radio. Nothing here should be able to kill you \u2014 pay attention anyway.",
   "maxDurationSeconds": 600,
   "startingResourcePoints": 200,
   "lances": [
@@ -14,13 +14,19 @@
         {
           "designId": "sentinel_brawler",
           "pilotId": "kessa_vale",
-          "spawn": { "x": 132, "y": 828 },
+          "spawn": {
+            "x": 132,
+            "y": 828
+          },
           "facingDegrees": -45
         },
         {
           "designId": "wisp_scout",
           "pilotId": "marek_sud",
-          "spawn": { "x": 180, "y": 864 },
+          "spawn": {
+            "x": 180,
+            "y": 864
+          },
           "facingDegrees": -45
         }
       ]
@@ -32,7 +38,10 @@
         {
           "designId": "wisp_scout",
           "pilotId": "roz_havel",
-          "spawn": { "x": 852, "y": 132 },
+          "spawn": {
+            "x": 852,
+            "y": 132
+          },
           "facingDegrees": 135
         }
       ]
@@ -57,7 +66,10 @@
   "triggers": [
     {
       "id": "welcome",
-      "when": { "type": "elapsed", "seconds": 2 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 2
+      },
       "effects": [
         {
           "type": "message",
@@ -67,21 +79,27 @@
     },
     {
       "id": "teach_select",
-      "when": { "type": "elapsed", "seconds": 10 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 10
+      },
       "effects": [
         {
           "type": "message",
-          "text": "Select a mech — tap or click it — then tap open ground to walk there. Space pauses; orders still work while paused."
+          "text": "Select a mech \u2014 tap or click it \u2014 then tap open ground to walk there. Space pauses; orders still work while paused."
         }
       ]
     },
     {
       "id": "teach_target",
-      "when": { "type": "elapsed", "seconds": 24 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 24
+      },
       "effects": [
         {
           "type": "message",
-          "text": "A contact shows in the bar up top. Tap the contact, tap the machine, or press Q — all of them are an attack order."
+          "text": "A contact shows in the bar up top. Tap the contact, tap the machine, or press Q \u2014 all of them are an attack order."
         },
         {
           "type": "reveal",
@@ -94,21 +112,28 @@
     },
     {
       "id": "teach_heat",
-      "when": { "type": "elapsed", "seconds": 44 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 44
+      },
       "effects": [
         {
           "type": "message",
-          "text": "Watch the heat bar when you fire. The reactor alarm means ease off — a shutdown on the line gets people killed."
+          "text": "Watch the heat bar when you fire. The reactor alarm means ease off \u2014 a shutdown on the line gets people killed."
         }
       ]
     },
     {
       "id": "first_kill",
-      "when": { "type": "team_losses", "team": 1, "count": 1 },
+      "when": {
+        "type": "team_losses",
+        "team": 1,
+        "count": 1
+      },
       "effects": [
         {
           "type": "message",
-          "text": "Kill confirmed. Two more walking in from the north — attack-move (A) advances and fights whatever shows itself."
+          "text": "Kill confirmed. Two more walking in from the north \u2014 attack-move (A) advances and fights whatever shows itself."
         },
         {
           "type": "spawn",
@@ -117,13 +142,19 @@
             {
               "designId": "wisp_harasser",
               "pilotId": "bo_ferrant",
-              "spawn": { "x": 804, "y": 204 },
+              "spawn": {
+                "x": 804,
+                "y": 204
+              },
               "facingDegrees": 135
             },
             {
               "designId": "hornet_spotter",
               "pilotId": "yusra_demir",
-              "spawn": { "x": 876, "y": 252 },
+              "spawn": {
+                "x": 876,
+                "y": 252
+              },
               "facingDegrees": 135
             }
           ]
@@ -132,7 +163,11 @@
     },
     {
       "id": "second_wave_down",
-      "when": { "type": "team_losses", "team": 1, "count": 3 },
+      "when": {
+        "type": "team_losses",
+        "team": 1,
+        "count": 3
+      },
       "effects": [
         {
           "type": "message",
@@ -140,5 +175,6 @@
         }
       ]
     }
-  ]
+  ],
+  "dropTonnage": 90
 }

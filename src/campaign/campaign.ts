@@ -250,6 +250,53 @@ export function missionSlots(catalog: Catalog, missionId: string): number {
   return mission?.lances.find((lance) => lance.team === PLAYER_TEAM)?.units.length ?? 0;
 }
 
+/** Tonnage of a design's chassis, or zero if the design has gone missing. */
+function tonnageOf(catalog: Catalog, design: { chassisId: string }): number {
+  return catalog.chassis.get(design.chassisId)?.tonnage ?? 0;
+}
+
+/**
+ * What the dropship will carry to this contract. Authored per mission; when a
+ * mission does not say, the allowance is the lance it fields itself, so old
+ * content keeps working and nobody is quietly locked out of their own mission.
+ */
+export function dropTonnageFor(catalog: Catalog, missionId: string): number {
+  const mission = catalog.missions.get(missionId);
+  if (mission === undefined) return 0;
+  if (mission.dropTonnage !== null) return mission.dropTonnage;
+
+  const lance = mission.lances.find((entry) => entry.team === PLAYER_TEAM);
+  return (lance?.units ?? []).reduce((total, unit) => {
+    const design = catalog.designs.get(unit.designId);
+    return total + (design === undefined ? 0 : tonnageOf(catalog, design));
+  }, 0);
+}
+
+/**
+ * The lance as it will actually drop: berths first, then weight. Cutting by
+ * weight has to happen here rather than only in the UI, because a contract
+ * resolved from the campaign screen never opens the manifest at all.
+ */
+export function dropTeam(
+  catalog: Catalog,
+  state: CampaignState,
+  missionId: string,
+): DeployablePair[] {
+  const berths = missionSlots(catalog, missionId);
+  const allowance = dropTonnageFor(catalog, missionId);
+
+  const taken: DeployablePair[] = [];
+  let tons = 0;
+  for (const pair of deployableLance(state)) {
+    if (taken.length >= berths) break;
+    const weight = tonnageOf(catalog, pair.mech.design);
+    if (tons + weight > allowance) continue;
+    taken.push(pair);
+    tons += weight;
+  }
+  return taken;
+}
+
 export interface MissionRun {
   outcome: MissionOutcome;
   battle: BattleResult;
@@ -270,10 +317,13 @@ export function prepareDeployment(catalog: Catalog, state: CampaignState): Deplo
   if (contract === null) throw new Error('no active contract');
 
   fillEmptySeats(state);
-  const lance = deployableLance(state).slice(0, missionSlots(catalog, contract.missionId));
+  const lance = dropTeam(catalog, state, contract.missionId);
   if (lance.length === 0) {
+    const anyReady = deployableLance(state).length > 0;
     throw new DeploymentError(
-      'No mech is ready to deploy. Repair a mech, rebuild a hulk, or wait for a pilot to recover.',
+      anyReady
+        ? `Nothing the company can field fits the ${dropTonnageFor(catalog, contract.missionId)}t drop allowance for this contract.`
+        : 'No mech is ready to deploy. Repair a mech, rebuild a hulk, or wait for a pilot to recover.',
     );
   }
 

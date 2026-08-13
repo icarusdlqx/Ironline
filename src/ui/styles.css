@@ -2224,3 +2224,38 @@ button {
   margin-left: auto;
   color: var(--accent);
 }
+
+/* The mission profile the loadout has to answer to. */
+.manifest-profile {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+
+.manifest-profile > div {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.manifest-profile dt {
+  color: var(--muted);
+}
+
+.manifest-profile dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.manifest-profile > div.over dd {
+  color: var(--danger);
+}
+
+.manifest-brief {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}

@@ -1,6 +1,6 @@
 {
   "id": "causeway_crossing",
-  "name": "Assault — The Causeway",
+  "name": "Assault \u2014 The Causeway",
   "type": "assault",
   "mapId": "causeway",
   "briefing": "One raised road across a drowned valley, and Halloran wants the far bank. The causeway is fast and murderous; the fords are slow and cold. Take the hardstand at mid-span, then break what is left of the garrison.",
@@ -11,20 +11,84 @@
       "team": 0,
       "name": "Crossing Force",
       "units": [
-        { "designId": "sentinel_brawler", "pilotId": "kessa_vale", "spawn": { "x": 36, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "bulwark_assault", "pilotId": "dorn_hess", "spawn": { "x": 108, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "wisp_harasser", "pilotId": "marek_sud", "spawn": { "x": 180, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "sentinel_sniper", "pilotId": "ilse_brant", "spawn": { "x": 36, "y": 708 }, "facingDegrees": -45 }
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 36,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": {
+            "x": 108,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_harasser",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 180,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 36,
+            "y": 708
+          },
+          "facingDegrees": -45
+        }
       ]
     },
     {
       "team": 1,
       "name": "Far Bank Garrison",
       "units": [
-        { "designId": "bulwark_burner", "pilotId": "nadia_ostrow", "spawn": { "x": 756, "y": 36 }, "facingDegrees": 135 },
-        { "designId": "hornet_striker", "pilotId": "willem_torrance", "spawn": { "x": 732, "y": 108 }, "facingDegrees": 135 },
-        { "designId": "sentinel_sniper", "pilotId": "cato_ferrin", "spawn": { "x": 924, "y": 108 }, "facingDegrees": 135 },
-        { "designId": "wisp_scout", "pilotId": "juno_reyes", "spawn": { "x": 684, "y": 156 }, "facingDegrees": 135 }
+        {
+          "designId": "bulwark_burner",
+          "pilotId": "nadia_ostrow",
+          "spawn": {
+            "x": 756,
+            "y": 36
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "hornet_striker",
+          "pilotId": "willem_torrance",
+          "spawn": {
+            "x": 732,
+            "y": 108
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "cato_ferrin",
+          "spawn": {
+            "x": 924,
+            "y": 108
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "juno_reyes",
+          "spawn": {
+            "x": 684,
+            "y": 156
+          },
+          "facingDegrees": 135
+        }
       ]
     }
   ],
@@ -47,7 +111,9 @@
       "type": "capture_zones",
       "team": 0,
       "required": true,
-      "zoneIds": ["hardstand"],
+      "zoneIds": [
+        "hardstand"
+      ],
       "resourcePoints": 250
     },
     {
@@ -68,21 +134,36 @@
   "triggers": [
     {
       "id": "fords_notice",
-      "when": { "type": "elapsed", "seconds": 6 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 6
+      },
       "effects": [
         {
           "type": "message",
-          "text": "Recon: fords north-east and south-west — slow going, but off the killing line of the causeway."
+          "text": "Recon: fords north-east and south-west \u2014 slow going, but off the killing line of the causeway."
         }
       ]
     },
     {
       "id": "hardstand_taken",
-      "when": { "type": "zone_captured", "zoneId": "hardstand", "team": 0 },
+      "when": {
+        "type": "zone_captured",
+        "zoneId": "hardstand",
+        "team": 0
+      },
       "effects": [
-        { "type": "message", "text": "Hardstand ours. The far bank is open — finish it." },
-        { "type": "award_resource_points", "team": 0, "amount": 200 }
+        {
+          "type": "message",
+          "text": "Hardstand ours. The far bank is open \u2014 finish it."
+        },
+        {
+          "type": "award_resource_points",
+          "team": 0,
+          "amount": 200
+        }
       ]
     }
-  ]
+  ],
+  "dropTonnage": 200
 }

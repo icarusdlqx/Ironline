@@ -1,9 +1,9 @@
 {
   "id": "base_capture_ridge",
-  "name": "Base Capture — Ridge Pass",
+  "name": "Base Capture \u2014 Ridge Pass",
   "type": "base_capture",
   "mapId": "ridge_pass",
-  "briefing": "Two comm posts anchor the enemy position at the pass. Take both and hold the ground. Expect the garrison to call a relief lance the moment the first post changes hands — the dropship is holding a reserve mech for you, and there are Resource Points on the books for support.",
+  "briefing": "Two comm posts anchor the enemy position at the pass. Take both and hold the ground. Expect the garrison to call a relief lance the moment the first post changes hands \u2014 the dropship is holding a reserve mech for you, and there are Resource Points on the books for support.",
   "maxDurationSeconds": 480,
   "startingResourcePoints": 900,
   "lances": [
@@ -11,24 +11,88 @@
       "team": 0,
       "name": "Ironline Lance",
       "units": [
-        { "designId": "sentinel_brawler", "pilotId": "kessa_vale", "spawn": { "x": 108, "y": 852 }, "facingDegrees": -45 },
-        { "designId": "bulwark_assault", "pilotId": "dorn_hess", "spawn": { "x": 156, "y": 876 }, "facingDegrees": -45 },
-        { "designId": "wisp_scout", "pilotId": "marek_sud", "spawn": { "x": 204, "y": 828 }, "facingDegrees": -45 },
-        { "designId": "sentinel_sniper", "pilotId": "ilse_brant", "spawn": { "x": 132, "y": 780 }, "facingDegrees": -45 }
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 108,
+            "y": 852
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": {
+            "x": 156,
+            "y": 876
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 204,
+            "y": 828
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 132,
+            "y": 780
+          },
+          "facingDegrees": -45
+        }
       ]
     },
     {
       "team": 1,
       "name": "Pass Garrison",
       "units": [
-        { "designId": "sentinel_brawler", "pilotId": "cato_ferrin", "spawn": { "x": 500, "y": 468 }, "facingDegrees": 135 },
-        { "designId": "wisp_harasser", "pilotId": "juno_reyes", "spawn": { "x": 660, "y": 300 }, "facingDegrees": 135 },
-        { "designId": "sentinel_sniper", "pilotId": "willem_torrance", "spawn": { "x": 852, "y": 108 }, "facingDegrees": 135 }
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "cato_ferrin",
+          "spawn": {
+            "x": 500,
+            "y": 468
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "wisp_harasser",
+          "pilotId": "juno_reyes",
+          "spawn": {
+            "x": 660,
+            "y": 300
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "willem_torrance",
+          "spawn": {
+            "x": 852,
+            "y": 108
+          },
+          "facingDegrees": 135
+        }
       ]
     }
   ],
   "reserves": [
-    { "designId": "bulwark_burner", "pilotId": "nadia_ostrow", "spawn": { "x": 156, "y": 876 }, "facingDegrees": -45 }
+    {
+      "designId": "bulwark_burner",
+      "pilotId": "nadia_ostrow",
+      "spawn": {
+        "x": 156,
+        "y": 876
+      },
+      "facingDegrees": -45
+    }
   ],
   "zones": [
     {
@@ -59,7 +123,10 @@
       "type": "capture_zones",
       "team": 0,
       "required": true,
-      "zoneIds": ["south_post", "north_post"],
+      "zoneIds": [
+        "south_post",
+        "north_post"
+      ],
       "resourcePoints": 200
     },
     {
@@ -68,7 +135,9 @@
       "type": "hold_zones",
       "team": 0,
       "required": false,
-      "zoneIds": ["south_post"],
+      "zoneIds": [
+        "south_post"
+      ],
       "holdSeconds": 20,
       "resourcePoints": 150
     },
@@ -83,26 +152,64 @@
   "triggers": [
     {
       "id": "relief_lance",
-      "when": { "type": "zone_captured", "zoneId": "south_post", "team": 0 },
+      "when": {
+        "type": "zone_captured",
+        "zoneId": "south_post",
+        "team": 0
+      },
       "once": true,
       "effects": [
-        { "type": "message", "text": "Comm traffic: the garrison has called a relief lance onto the ridge." },
+        {
+          "type": "message",
+          "text": "Comm traffic: the garrison has called a relief lance onto the ridge."
+        },
         {
           "type": "spawn",
           "team": 1,
           "units": [
-            { "designId": "bulwark_burner", "pilotId": "nadia_ostrow", "spawn": { "x": 876, "y": 180 }, "facingDegrees": 135 },
-            { "designId": "sentinel_brawler", "pilotId": "willem_torrance", "spawn": { "x": 828, "y": 84 }, "facingDegrees": 135 }
+            {
+              "designId": "bulwark_burner",
+              "pilotId": "nadia_ostrow",
+              "spawn": {
+                "x": 876,
+                "y": 180
+              },
+              "facingDegrees": 135
+            },
+            {
+              "designId": "sentinel_brawler",
+              "pilotId": "willem_torrance",
+              "spawn": {
+                "x": 828,
+                "y": 84
+              },
+              "facingDegrees": 135
+            }
           ]
         },
-        { "type": "reveal", "x": 852, "y": 132, "radius": 220, "seconds": 20 }
+        {
+          "type": "reveal",
+          "x": 852,
+          "y": 132,
+          "radius": 220,
+          "seconds": 20
+        }
       ]
     },
     {
       "id": "opening_orders",
-      "when": { "type": "elapsed", "seconds": 2 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 2
+      },
       "once": true,
-      "effects": [{ "type": "message", "text": "Both comm posts are garrisoned. Move up." }]
+      "effects": [
+        {
+          "type": "message",
+          "text": "Both comm posts are garrisoned. Move up."
+        }
+      ]
     }
-  ]
+  ],
+  "dropTonnage": 210
 }

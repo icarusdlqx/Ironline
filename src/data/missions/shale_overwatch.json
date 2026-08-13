@@ -1,9 +1,9 @@
 {
   "id": "shale_overwatch",
-  "name": "Hold — Shale Steps",
+  "name": "Hold \u2014 Shale Steps",
   "type": "defend",
   "mapId": "shale_steps",
-  "briefing": "Kestrel's survey post sits on the top terrace and the Combine wants it gone. They have to come up the steps or the switchback — both under your guns. Hold the post until the column gives up. Height is worth more than armour here; do not give it away.",
+  "briefing": "Kestrel's survey post sits on the top terrace and the Combine wants it gone. They have to come up the steps or the switchback \u2014 both under your guns. Hold the post until the column gives up. Height is worth more than armour here; do not give it away.",
   "maxDurationSeconds": 420,
   "startingResourcePoints": 400,
   "lances": [
@@ -11,21 +11,93 @@
       "team": 0,
       "name": "Overwatch Lance",
       "units": [
-        { "designId": "sentinel_sniper", "pilotId": "ilse_brant", "spawn": { "x": 636, "y": 36 }, "facingDegrees": 135 },
-        { "designId": "warden_picket", "pilotId": "marek_sud", "spawn": { "x": 708, "y": 36 }, "facingDegrees": 135 },
-        { "designId": "sentinel_brawler", "pilotId": "kessa_vale", "spawn": { "x": 780, "y": 36 }, "facingDegrees": 135 },
-        { "designId": "bulwark_assault", "pilotId": "dorn_hess", "spawn": { "x": 852, "y": 36 }, "facingDegrees": 135 }
+        {
+          "designId": "sentinel_sniper",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 636,
+            "y": 36
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "warden_picket",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 708,
+            "y": 36
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 780,
+            "y": 36
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": {
+            "x": 852,
+            "y": 36
+          },
+          "facingDegrees": 135
+        }
       ]
     },
     {
       "team": 1,
       "name": "Combine Column",
       "units": [
-        { "designId": "bulwark_burner", "pilotId": "nadia_ostrow", "spawn": { "x": 36, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "sentinel_brawler", "pilotId": "teodor_krysa", "spawn": { "x": 108, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "hornet_striker", "pilotId": "willem_torrance", "spawn": { "x": 180, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "warden_lancer", "pilotId": "cato_ferrin", "spawn": { "x": 252, "y": 636 }, "facingDegrees": -45 },
-        { "designId": "wisp_harasser", "pilotId": "roz_havel", "spawn": { "x": 348, "y": 636 }, "facingDegrees": -45 }
+        {
+          "designId": "bulwark_burner",
+          "pilotId": "nadia_ostrow",
+          "spawn": {
+            "x": 36,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "teodor_krysa",
+          "spawn": {
+            "x": 108,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "hornet_striker",
+          "pilotId": "willem_torrance",
+          "spawn": {
+            "x": 180,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "warden_lancer",
+          "pilotId": "cato_ferrin",
+          "spawn": {
+            "x": 252,
+            "y": 636
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_harasser",
+          "pilotId": "roz_havel",
+          "spawn": {
+            "x": 348,
+            "y": 636
+          },
+          "facingDegrees": -45
+        }
       ]
     }
   ],
@@ -48,7 +120,9 @@
       "type": "hold_zones",
       "team": 0,
       "required": true,
-      "zoneIds": ["survey_post"],
+      "zoneIds": [
+        "survey_post"
+      ],
       "holdSeconds": 90,
       "resourcePoints": 300
     },
@@ -63,18 +137,37 @@
   "triggers": [
     {
       "id": "column_sighted",
-      "when": { "type": "elapsed", "seconds": 5 },
+      "when": {
+        "type": "elapsed",
+        "seconds": 5
+      },
       "effects": [
-        { "type": "message", "text": "Post watch: column coming up from the valley floor, five machines. The scarps slow them — that is your window." },
-        { "type": "reveal", "x": 192, "y": 624, "radius": 200, "seconds": 25 }
+        {
+          "type": "message",
+          "text": "Post watch: column coming up from the valley floor, five machines. The scarps slow them \u2014 that is your window."
+        },
+        {
+          "type": "reveal",
+          "x": 192,
+          "y": 624,
+          "radius": 200,
+          "seconds": 25
+        }
       ]
     },
     {
       "id": "hold_won",
-      "when": { "type": "objective_complete", "objectiveId": "hold_post" },
+      "when": {
+        "type": "objective_complete",
+        "objectiveId": "hold_post"
+      },
       "effects": [
-        { "type": "message", "text": "Survey data away. Finish the column or let it limp home — the post stands either way." }
+        {
+          "type": "message",
+          "text": "Survey data away. Finish the column or let it limp home \u2014 the post stands either way."
+        }
       ]
     }
-  ]
+  ],
+  "dropTonnage": 240
 }
