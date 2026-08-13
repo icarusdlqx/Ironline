@@ -195,6 +195,8 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     if (state.orderMode !== null) {
       if (state.orderMode === 'move' || state.orderMode === 'run') {
         engine.orderMove(world, state.orderMode === 'run');
+      } else if (state.orderMode === 'attack_move') {
+        engine.orderMove(world, false, { engage: true });
       } else if (state.orderMode === 'jump') {
         engine.orderJump(world);
       } else if (picked !== null && picked.team !== state.playerTeam) {
@@ -279,7 +281,8 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       if (target !== null && target.team !== state.playerTeam && isOperational(target)) {
         engine.orderAttack(target.id, null);
       } else {
-        engine.orderMove(world, event.shiftKey);
+        // Shift strings the clicks into a route rather than replacing it.
+        engine.orderMove(world, false, { queued: event.shiftKey });
       }
       state.setOrderMode(null);
       return;
@@ -287,7 +290,9 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     if (state.orderMode !== null) {
       if (state.orderMode === 'move' || state.orderMode === 'run') {
-        engine.orderMove(world, state.orderMode === 'run');
+        engine.orderMove(world, state.orderMode === 'run', { queued: event.shiftKey });
+      } else if (state.orderMode === 'attack_move') {
+        engine.orderMove(world, false, { engage: true, queued: event.shiftKey });
       } else if (state.orderMode === 'jump') {
         engine.orderJump(world);
       } else {
@@ -479,6 +484,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       case 'KeyF':
         state.setOrderMode('attack');
         return;
+      case 'KeyA':
+        // WASD-pan keeps A only while the palette is closed; an order beats a pan.
+        state.setOrderMode('attack_move');
+        return;
       case 'KeyQ':
         // The one targeting control that needs no pointer at all.
         engine.targetNearest();
@@ -570,12 +579,15 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     const delta = lastCameraFrame === 0 ? 0 : Math.min(0.1, (now - lastCameraFrame) / 1000);
     lastCameraFrame = now;
 
+    // A is an order key now (attack-move), so panning lives on the arrows
+    // alone: half of WASD stealing the map while the other half gives orders
+    // would be worse than either scheme.
     let dx = 0;
     let dy = 0;
-    if (held.has('ArrowLeft') || held.has('KeyA')) dx -= 1;
-    if (held.has('ArrowRight') || held.has('KeyD')) dx += 1;
-    if (held.has('ArrowUp') || held.has('KeyW')) dy -= 1;
-    if (held.has('ArrowDown') || held.has('KeyS')) dy += 1;
+    if (held.has('ArrowLeft')) dx -= 1;
+    if (held.has('ArrowRight')) dx += 1;
+    if (held.has('ArrowUp')) dy -= 1;
+    if (held.has('ArrowDown')) dy += 1;
 
     if (dx !== 0 || dy !== 0) {
       const speed = PAN_SPEED * delta * (engine.renderer.camera.distance / 620);

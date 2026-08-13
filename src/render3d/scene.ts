@@ -40,7 +40,7 @@ export interface ViewState {
   cursor: Vec2 | null;
   selectionBox: { a: Vec2; b: Vec2 } | null;
   supportRun: { at: Vec2; heading: number; length: number; width: number } | null;
-  orderMode: 'move' | 'run' | 'attack' | 'called_shot' | 'jump' | null;
+  orderMode: 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
 }
 
 export interface Interpolated {
@@ -112,7 +112,11 @@ export class Renderer {
   onFootfall: ((at: Vec2, tonnage: number) => void) | null = null;
   private readonly host: HTMLElement;
 
+  /** The authored map, kept for overlays like the minimap that draw from it. */
+  readonly mapData: TerrainMapData;
+
   constructor(host: HTMLElement, world: World, mapData: TerrainMapData) {
+    this.mapData = mapData;
     this.host = host;
     this.renderer = new WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio ?? 1));
@@ -559,6 +563,15 @@ export class Renderer {
   }
 
   private drawMarkers(world: World, view: ViewState): void {
+    // These are rebuilt every frame, so their GPU buffers have to be freed by
+    // hand — clear() alone drops the references and keeps the buffers, which
+    // is a leak of several rings per frame for a whole battle.
+    for (const child of this.markers.children) {
+      if (child instanceof Mesh || child instanceof Line) {
+        child.geometry.dispose();
+        (child.material as { dispose(): void }).dispose();
+      }
+    }
     this.markers.clear();
 
     for (const zone of world.zones) {
@@ -582,6 +595,24 @@ export class Renderer {
 
       if (view.orderMode === 'jump' && entity.jumpRange > 0 && entity.jumpCooldown <= 0) {
         this.markers.add(this.groundRing(entity.pos, entity.jumpRange, UI.moveMarker, 0.5));
+      }
+
+      // Weapon reach, drawn while the player is lining up an attack so range
+      // stops being a number in a panel and becomes a circle on the ground.
+      if (
+        view.orderMode === 'attack' ||
+        view.orderMode === 'attack_move' ||
+        view.orderMode === 'called_shot'
+      ) {
+        const reaches = new Set<number>();
+        for (const mount of entity.weapons) {
+          if (mount.destroyed) continue;
+          const weapon = world.catalog.weapons.get(mount.weaponId);
+          if (weapon !== undefined) reaches.add(Math.round(weapon.range.long));
+        }
+        for (const reach of [...reaches].sort((a, b) => a - b).slice(0, 3)) {
+          this.markers.add(this.groundRing(entity.pos, reach, UI.attackMarker, 0.35));
+        }
       }
 
       if (entity.path.length > 0) {

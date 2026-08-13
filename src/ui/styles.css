@@ -2008,3 +2008,29 @@ button {
     font-size: 14px;
   }
 }
+
+/* The whole battlefield in a corner. Sits above the sidebar's bottom edge on
+   a desktop; on a phone it rides the top-right under the contacts bar. */
+.minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 160px;
+  height: 160px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: #05070a;
+  image-rendering: pixelated;
+  cursor: pointer;
+  touch-action: none;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+  .minimap {
+    top: calc(70px + var(--safe-top));
+    right: calc(8px + var(--safe-right));
+    bottom: auto;
+    width: 104px;
+    height: 104px;
+  }
+}

@@ -3,7 +3,7 @@ import type { MechLocation } from '../schema/common';
 import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
 
-export type OrderMode = 'move' | 'run' | 'attack' | 'called_shot' | 'jump' | null;
+export type OrderMode = 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
 
 export interface ObjectiveView {
   id: string;
@@ -82,6 +82,23 @@ export interface UnitSnapshot {
 
 export type Screen = 'battle' | 'mechbay' | 'campaign';
 
+/** The AI strength the player picked, kept across sessions. */
+export function readDifficulty(): string {
+  try {
+    return localStorage.getItem('ironline.difficulty') ?? 'regular';
+  } catch {
+    return 'regular';
+  }
+}
+
+export function storeDifficulty(tier: string): void {
+  try {
+    localStorage.setItem('ironline.difficulty', tier);
+  } catch {
+    // Private browsing: the choice lasts for the session only.
+  }
+}
+
 export interface GameState {
   screen: Screen;
   campaignPending: boolean;
@@ -104,6 +121,7 @@ export interface GameState {
   log: string[];
 
   skirmishMissionId: string;
+  difficulty: string;
   missionName: string;
   briefing: string;
   briefingSeen: boolean;
@@ -151,6 +169,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   log: [],
 
   skirmishMissionId: 'skirmish_ridge',
+  difficulty: readDifficulty(),
   missionName: '',
   briefing: '',
   briefingSeen: false,

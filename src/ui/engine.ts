@@ -37,6 +37,8 @@ export interface EngineOptions {
   seed?: string;
   playerTeam?: number;
   playerLance?: LanceEntry[];
+  /** Difficulty tier id from the rules; the sim default when absent. */
+  difficulty?: string;
 }
 
 export class Engine {
@@ -314,12 +316,18 @@ export class Engine {
       .selection.filter((id) => findEntity(this.world, id)?.team === team);
   }
 
-  orderMove(to: Vec2, run: boolean): void {
+  orderMove(
+    to: Vec2,
+    run: boolean,
+    options: { engage?: boolean; queued?: boolean } = {},
+  ): void {
     let moved = 0;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
-      issueMove(this.world, entity, to, run);
+      // A queued leg keeps the pace of the order it extends.
+      const pace = options.queued === true ? (entity.orders.move?.run ?? run) : run;
+      issueMove(this.world, entity, to, pace, options);
       moved += 1;
     }
     if (moved > 0) this.audio.order();
@@ -487,6 +495,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
     missionId,
     playerTeam,
     ...(options.playerLance === undefined ? {} : { playerLance: options.playerLance }),
+    ...(options.difficulty === undefined ? {} : { difficulty: options.difficulty }),
   });
 
   const mission = catalog.missions.get(missionId);

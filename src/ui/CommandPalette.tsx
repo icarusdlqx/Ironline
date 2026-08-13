@@ -12,6 +12,13 @@ export interface Command {
 export const COMMANDS: readonly Command[] = [
   { id: 'move', label: 'Move', key: 'M', mode: 'move' },
   { id: 'run', label: 'Run', key: 'R', mode: 'run' },
+  {
+    id: 'attack_move',
+    label: 'Attack Move',
+    key: 'A',
+    mode: 'attack_move',
+    title: 'Advance to a point, stopping to fight whatever shows itself (A)',
+  },
   { id: 'attack', label: 'Attack', key: 'F', mode: 'attack' },
   { id: 'called_shot', label: 'Called Shot', key: 'C', mode: 'called_shot' },
   { id: 'hold_fire', label: 'Hold Fire', key: 'H', mode: null },

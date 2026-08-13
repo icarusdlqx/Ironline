@@ -1,0 +1,144 @@
+{
+  "id": "training_ground",
+  "name": "Training — First Walk",
+  "type": "skirmish",
+  "mapId": "ridge_pass",
+  "briefing": "A shakedown walk on safe ground. Two machines, a wreck of a militia scout somewhere on the far slope, and a range officer on the radio. Nothing here should be able to kill you — pay attention anyway.",
+  "maxDurationSeconds": 600,
+  "startingResourcePoints": 200,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Training Lance",
+      "units": [
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 132, "y": 828 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 180, "y": 864 },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Range Targets",
+      "units": [
+        {
+          "designId": "wisp_scout",
+          "pilotId": "roz_havel",
+          "spawn": { "x": 852, "y": 132 },
+          "facingDegrees": 135
+        }
+      ]
+    }
+  ],
+  "objectives": [
+    {
+      "id": "clear_the_range",
+      "label": "Destroy the range targets",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "walk_home",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "welcome",
+      "when": { "type": "elapsed", "seconds": 2 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Range control: drag the ground to look around, pinch or scroll to zoom. The map in the corner jumps anywhere."
+        }
+      ]
+    },
+    {
+      "id": "teach_select",
+      "when": { "type": "elapsed", "seconds": 10 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Select a mech — tap or click it — then tap open ground to walk there. Space pauses; orders still work while paused."
+        }
+      ]
+    },
+    {
+      "id": "teach_target",
+      "when": { "type": "elapsed", "seconds": 24 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "A contact shows in the bar up top. Tap the contact, tap the machine, or press Q — all of them are an attack order."
+        },
+        {
+          "type": "reveal",
+          "x": 852,
+          "y": 132,
+          "radius": 160,
+          "seconds": 240
+        }
+      ]
+    },
+    {
+      "id": "teach_heat",
+      "when": { "type": "elapsed", "seconds": 44 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Watch the heat bar when you fire. The reactor alarm means ease off — a shutdown on the line gets people killed."
+        }
+      ]
+    },
+    {
+      "id": "first_kill",
+      "when": { "type": "team_losses", "team": 1, "count": 1 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Kill confirmed. Two more walking in from the north — attack-move (A) advances and fights whatever shows itself."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "wisp_harasser",
+              "pilotId": "bo_ferrant",
+              "spawn": { "x": 804, "y": 204 },
+              "facingDegrees": 135
+            },
+            {
+              "designId": "hornet_spotter",
+              "pilotId": "yusra_demir",
+              "spawn": { "x": 876, "y": 252 },
+              "facingDegrees": 135
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "second_wave_down",
+      "when": { "type": "team_losses", "team": 1, "count": 3 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Range clear. That is the whole of it: move, look, shoot, watch the heat. The campaign screen has real work."
+        }
+      ]
+    }
+  ]
+}

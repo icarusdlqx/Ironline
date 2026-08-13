@@ -18,6 +18,8 @@ import {
 export interface MoveOrder {
   to: Vec2;
   run: boolean;
+  /** Attack-move: stop and fight whatever shows itself, then carry on. */
+  engage?: boolean;
 }
 
 export interface AttackOrder {
@@ -28,10 +30,12 @@ export interface AttackOrder {
 export interface OrderState {
   move: MoveOrder | null;
   attack: AttackOrder | null;
+  /** Legs of a queued route, walked in order as each move completes. */
+  queue: MoveOrder[];
 }
 
 export function emptyOrders(): OrderState {
-  return { move: null, attack: null };
+  return { move: null, attack: null, queue: [] };
 }
 
 /** True while the stance has the mech rooted to the ground it is standing on. */
@@ -51,8 +55,24 @@ export function setPosture(entity: MechEntity, posture: Posture): void {
   entity.intendedMotion = 'stationary';
 }
 
-export function issueMove(world: World, entity: MechEntity, to: Vec2, run: boolean): boolean {
+export function issueMove(
+  world: World,
+  entity: MechEntity,
+  to: Vec2,
+  run: boolean,
+  options: { engage?: boolean; queued?: boolean } = {},
+): boolean {
   if (!isOperational(entity)) return false;
+
+  // Shift held: this leg joins the route instead of replacing it.
+  if (options.queued === true && entity.orders.move !== null) {
+    entity.orders.queue.push({
+      to: { x: to.x, y: to.y },
+      run,
+      ...(options.engage === true ? { engage: true } : {}),
+    });
+    return true;
+  }
 
   const path = findPath(world.terrain, entity.pos, to, world.rules.simulation.pathfindMaxNodes);
   if (path === null) return false;
@@ -61,7 +81,12 @@ export function issueMove(world: World, entity: MechEntity, to: Vec2, run: boole
   // order to stand still. Keep-facing survives — moving is the point of it.
   if (isRooted(entity)) entity.posture = 'free';
 
-  entity.orders.move = { to: { x: to.x, y: to.y }, run };
+  entity.orders.move = {
+    to: { x: to.x, y: to.y },
+    run,
+    ...(options.engage === true ? { engage: true } : {}),
+  };
+  entity.orders.queue = options.queued === true ? entity.orders.queue : [];
   entity.path = path;
   entity.pathIndex = 0;
   entity.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
@@ -172,8 +197,26 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
     entity.pathIndex = 0;
     entity.motion = 'stationary';
     entity.intendedMotion = entity.motion;
+  } else if (
+    order.engage === true &&
+    !isHoldingFire(entity) &&
+    engageWorthTarget(world, entity) !== null
+  ) {
+    // Attack-move, and something has shown itself: stand and fight. The move
+    // order is kept — the advance resumes on its own once the field is clear.
+    entity.path = [];
+    entity.pathIndex = 0;
+    entity.motion = 'stationary';
+    entity.intendedMotion = entity.motion;
   } else if (distance(entity.pos, order.to) <= world.rules.movement.arrivalRadius) {
-    issueStop(entity);
+    const next = entity.orders.queue.shift();
+    if (next === undefined) {
+      issueStop(entity);
+    } else {
+      issueMove(world, entity, next.to, next.run, {
+        ...(next.engage === true ? { engage: true } : {}),
+      });
+    }
   } else {
     if (entity.path.length === 0 || world.tick >= entity.nextPathTick) {
       const path = findPath(
@@ -228,4 +271,22 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
   }
 
   entity.targetId = autoAcquire(world, entity)?.id ?? null;
+}
+
+/**
+ * The contact an attack-moving mech should stop for: something visible and
+ * inside the reach of a gun it is actually carrying. Passing sensor ghosts do
+ * not halt an advance; a target worth shooting does.
+ */
+function engageWorthTarget(world: World, entity: MechEntity): MechEntity | null {
+  const reach = entity.weapons.reduce((longest, mount) => {
+    if (mount.destroyed) return longest;
+    const weapon = world.catalog.weapons.get(mount.weaponId);
+    return weapon === undefined ? longest : Math.max(longest, weapon.range.long);
+  }, 0);
+  if (reach === 0) return null;
+
+  const target = autoAcquire(world, entity);
+  if (target === null) return null;
+  return distance(entity.pos, target.pos) <= reach ? target : null;
 }

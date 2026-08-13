@@ -17,8 +17,9 @@ import {
   WeaponGroups,
   type SupportOption,
 } from './Panels';
+import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
-import { selectedUnit, useGame } from './store';
+import { selectedUnit, storeDifficulty, useGame } from './store';
 
 const SUPPORT_HINTS: Record<string, string> = {
   sensor_probe: 'Reveals a map region',
@@ -44,12 +45,13 @@ export function Battle() {
   const [resolved, setResolved] = useState(false);
   const [muted, setMuted] = useState(false);
   const missionId = useGame((game) => game.skirmishMissionId);
+  const difficulty = useGame((game) => game.difficulty);
 
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) return;
 
-    let options: Record<string, unknown> = { missionId };
+    let options: Record<string, unknown> = { missionId, difficulty };
     if (useGame.getState().campaignPending) {
       const saved = loadCampaign().state;
       if (saved !== null) {
@@ -60,6 +62,7 @@ export function Battle() {
             seed: deployment.seed,
             playerTeam: deployment.playerTeam,
             playerLance: deployment.entries,
+            difficulty,
           };
         } catch (error: unknown) {
           // Nothing fit to field. Say so and go back rather than tearing down
@@ -92,7 +95,7 @@ export function Battle() {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [missionId]);
+  }, [missionId, difficulty]);
 
   const onReturnToCampaign = (): void => {
     const engine = engineRef.current;
@@ -216,6 +219,22 @@ export function Battle() {
         </button>
         <select
           className="pause"
+          value={difficulty}
+          onChange={(event) => {
+            storeDifficulty(event.target.value);
+            state.patch({ difficulty: event.target.value });
+          }}
+          title="How hard the enemy fights. Takes effect when the next battle starts."
+          data-testid="difficulty-picker"
+        >
+          {Object.keys(getCatalog().rules.difficulty.tiers).map((tier) => (
+            <option key={tier} value={tier}>
+              {tier[0]?.toUpperCase()}{tier.slice(1)}
+            </option>
+          ))}
+        </select>
+        <select
+          className="pause"
           value={missionId}
           disabled={state.campaignPending}
           onChange={(event) => state.patch({ skirmishMissionId: event.target.value })}
@@ -228,8 +247,8 @@ export function Battle() {
           ))}
         </select>
         <span className="hint">
-          Space pauses · click an enemy to attack · right-click orders a move · drag to select ·
-          WASD pans · wheel zooms
+          Space pauses · click an enemy to attack · right-click moves (shift queues) · A
+          attack-moves · drag selects · arrows pan · wheel zooms
         </span>
       </header>
 
@@ -320,6 +339,8 @@ export function Battle() {
         )}
         onTarget={(id) => engineRef.current?.orderAttack(id, null)}
       />
+
+      <Minimap engine={engineRef.current} />
 
       <footer className="bottombar">
         <LanceBar
