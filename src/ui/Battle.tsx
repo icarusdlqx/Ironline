@@ -42,6 +42,7 @@ export function Battle() {
   const unit = selectedUnit(state);
 
   const [resolved, setResolved] = useState(false);
+  const [muted, setMuted] = useState(false);
   const missionId = useGame((game) => game.skirmishMissionId);
 
   useEffect(() => {
@@ -133,6 +134,10 @@ export function Battle() {
     state.setOrderMode('called_shot');
   };
 
+  useEffect(() => {
+    setMuted(engineRef.current?.audio.muted ?? false);
+  }, [state.ready]);
+
   const playerControlled = unit !== null && unit.team === state.playerTeam && unit.alive;
 
   // Leaving the battle screen unmounts it, which destroys the engine — the
@@ -179,6 +184,15 @@ export function Battle() {
           data-testid="pause-button"
         >
           {state.paused ? '▶ Resume' : '❚❚ Pause'}
+        </button>
+        <button
+          type="button"
+          className="pause"
+          onClick={() => setMuted(engineRef.current?.audio.toggleMuted() ?? false)}
+          title={muted ? 'Sound is off' : 'Sound is on'}
+          data-testid="mute-button"
+        >
+          {muted ? '\u{1F507}' : '\u{1F50A}'}
         </button>
         <button
           type="button"

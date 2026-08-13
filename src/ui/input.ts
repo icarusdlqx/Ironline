@@ -218,10 +218,13 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
+    engine.audio.select();
     state.setSelection([picked.id]);
   };
 
   const onPointerDown = (event: PointerEvent): void => {
+    // The first gesture is what the browser lets audio start from.
+    engine.audio.unlock();
     // Capture keeps a drag alive when the pointer leaves the canvas. It is a
     // convenience, and browsers differ on when the id is capturable, so a
     // refusal here must not be allowed to take the click down with it.
@@ -324,6 +327,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
+    engine.audio.select();
     if (event.shiftKey) {
       const next = state.selection.includes(picked.id)
         ? state.selection.filter((id) => id !== picked.id)
@@ -447,6 +451,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
+    engine.audio.unlock();
     const state = useGame.getState();
 
     // A browser shortcut is not a battle order. Ctrl+R has to reload the page

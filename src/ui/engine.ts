@@ -24,6 +24,7 @@ import {
 } from '../sim/types';
 import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
 import { attachInput } from './input';
+import { AudioDirector } from './audio';
 import { snapshotUnits } from './snapshot';
 import { useGame, type OrderMode } from './store';
 
@@ -42,6 +43,8 @@ export class Engine {
   readonly world: World;
   readonly renderer: Renderer;
   readonly maxTicks: number;
+  /** Every sound in the battle. Silent until the first user gesture unlocks it. */
+  readonly audio = new AudioDirector();
 
   private running = true;
   private accumulator = 0;
@@ -194,6 +197,8 @@ export class Engine {
     this.renderer.snapshot(this.world);
     const events = this.world.events.splice(0, this.world.events.length);
     this.renderer.consumeEvents(this.world, events);
+    this.audio.listenAt = this.renderer.camera.target;
+    this.audio.consume(this.world, events);
     this.logEvents(events);
   }
 
@@ -310,11 +315,14 @@ export class Engine {
   }
 
   orderMove(to: Vec2, run: boolean): void {
+    let moved = 0;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
       issueMove(this.world, entity, to, run);
+      moved += 1;
     }
+    if (moved > 0) this.audio.order();
   }
 
   /** Fires the jets of whatever is selected and can jump, toward one point. */
@@ -346,6 +354,7 @@ export class Engine {
     const push = useGame.getState().pushLog;
     if (ordered === 0) push('No mech selected to give that order to.');
     else if (target !== null) {
+      this.audio.order();
       push(`${ordered} mech${ordered === 1 ? '' : 's'} targeting ${target.name}.`);
     }
   }
@@ -486,6 +495,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
 
   const renderer = new Renderer(host, world, mapData);
   const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
+  renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
   engine.attach(renderer.canvas);
 
   const onResize = (): void => renderer.resize();

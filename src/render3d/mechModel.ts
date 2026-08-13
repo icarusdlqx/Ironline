@@ -23,12 +23,24 @@ export interface MountArt {
   projectiles: number;
 }
 
+/** One articulated leg: the hip swings the whole leg, the knee bends the shin. */
+export interface LegRig {
+  hip: Group;
+  knee: Group;
+}
+
 export interface MechModel {
   root: Group;
   /** Turns with the torso; the legs stay with the hull. */
   torso: Group;
   /** Metres from the ground to the top of the hull, for HUD markers. */
   height: number;
+  /** Left and right legs, hung from real pivots so the mech can walk. */
+  legs: LegRig[];
+  /** Where the torso rests, so a walk bob has a base to come back to. */
+  torsoRestY: number;
+  /** One full stride, in world metres, for pacing the walk cycle. */
+  strideLength: number;
 }
 
 const WEAPON_COLOURS: Record<WeaponType, number> = {
@@ -99,6 +111,24 @@ export function buildMechModel(
   const root = new Group();
   const torso = new Group();
 
+  // Each leg hangs from a hip pivot, with the shin and foot on a knee pivot
+  // inside it, so the walk cycle can swing and bend them like a machine
+  // walking rather than sliding the whole statue across the ground.
+  const rigs = new Map<'left_leg' | 'right_leg', LegRig>();
+  const rigFor = (side: 'left_leg' | 'right_leg', z: number): LegRig => {
+    const existing = rigs.get(side);
+    if (existing !== undefined) return existing;
+    const hip = new Group();
+    hip.position.set(0, plan.legs.hipHeight * scale, z);
+    const knee = new Group();
+    knee.position.set(plan.legs.kneeForward * scale, (plan.legs.kneeHeight - plan.legs.hipHeight) * scale, 0);
+    hip.add(knee);
+    root.add(hip);
+    const rig = { hip, knee };
+    rigs.set(side, rig);
+    return rig;
+  };
+
   for (const part of plan.parts) {
     // An arm or a head that has been blown off is gone: nothing tells a player
     // a mech has stopped being dangerous like watching the arm leave. A torso
@@ -112,8 +142,14 @@ export function buildMechModel(
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
     mesh.castShadow = true;
 
-    // Legs and hips stay with the hull; everything above the waist turns.
-    if (part.location === 'left_leg' || part.location === 'right_leg' || part.location === null) {
+    if (part.location === 'left_leg' || part.location === 'right_leg') {
+      const rig = rigFor(part.location, part.at[2] * scale);
+      // Everything at or below the knee bends with it; the thigh only swings.
+      const joint = part.at[1] <= plan.legs.kneeHeight + 0.01 ? rig.knee : rig.hip;
+      mesh.position.sub(jointWorld(joint, rig));
+      mesh.position.z = 0;
+      joint.add(mesh);
+    } else if (part.location === null) {
       root.add(mesh);
     } else {
       torso.add(mesh);
@@ -151,7 +187,23 @@ export function buildMechModel(
   torso.position.y = plan.torsoY * scale;
   root.add(torso);
 
-  return { root, torso, height: plan.height * scale };
+  return {
+    root,
+    torso,
+    height: plan.height * scale,
+    legs: [...rigs.values()],
+    torsoRestY: plan.torsoY * scale,
+    // A stride is roughly what the legs can reach: comfortable, not maximal.
+    strideLength: plan.legs.hipHeight * scale * 1.15,
+  };
+}
+
+/** Where a joint sits in the model's own frame, for re-parenting leg plates. */
+function jointWorld(joint: Group, rig: LegRig): import('three').Vector3 {
+  if (joint === rig.knee) {
+    return rig.hip.position.clone().add(rig.knee.position);
+  }
+  return rig.hip.position.clone();
 }
 
 /** A gun that looks like its kind: a barrel, a heavy tube, or a rack of cells. */

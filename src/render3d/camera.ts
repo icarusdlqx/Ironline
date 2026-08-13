@@ -6,6 +6,7 @@ import {
   Vector2,
   Vector3,
 } from 'three';
+
 import type { Vec2 } from '../sim/types';
 
 export interface Viewport {
@@ -47,6 +48,13 @@ export class TacticalCamera {
 
   minDistance = 160;
   maxDistance = 1_100;
+
+  /**
+   * Impact shake, set by the renderer each frame and applied to the eye alone.
+   * The target stays put, so orders given mid-explosion still land where the
+   * player aimed them.
+   */
+  readonly shake = new Vector3();
 
 
   private boundsWidth = 0;
@@ -99,7 +107,7 @@ export class TacticalCamera {
 
   update(viewport: Viewport): void {
     this.camera.aspect = viewport.height === 0 ? 1 : viewport.width / viewport.height;
-    this.camera.position.copy(this.eye());
+    this.camera.position.copy(this.eye()).add(this.shake);
     this.camera.lookAt(this.target.x, 0, this.target.y);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();

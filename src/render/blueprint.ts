@@ -96,6 +96,16 @@ export interface Blueprint {
   /** Height of the torso pivot, and the whole machine, in radius units. */
   torsoY: number;
   height: number;
+  /**
+   * Where the legs articulate, so the renderer can hang them from real pivots
+   * and swing them as the mech walks rather than sliding a statue.
+   */
+  legs: {
+    hipHeight: number;
+    kneeHeight: number;
+    /** How far forward of the hip the knee sits — the joint the shin hangs from. */
+    kneeForward: number;
+  };
 }
 
 function part(
@@ -332,5 +342,10 @@ export function chassisBlueprint(shape: Silhouette, traits: readonly string[]): 
     hardpoints,
     torsoY: frame.leg + frame.tall * 0.5,
     height: frame.leg + frame.tall * 1.4,
+    legs: {
+      hipHeight: frame.leg,
+      kneeHeight: frame.leg * 0.46,
+      kneeForward: frame.knee * 0.1,
+    },
   };
 }
