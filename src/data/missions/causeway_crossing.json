@@ -1,0 +1,88 @@
+{
+  "id": "causeway_crossing",
+  "name": "Assault — The Causeway",
+  "type": "assault",
+  "mapId": "causeway",
+  "briefing": "One raised road across a drowned valley, and Halloran wants the far bank. The causeway is fast and murderous; the fords are slow and cold. Take the hardstand at mid-span, then break what is left of the garrison.",
+  "maxDurationSeconds": 420,
+  "startingResourcePoints": 300,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Crossing Force",
+      "units": [
+        { "designId": "sentinel_brawler", "pilotId": "kessa_vale", "spawn": { "x": 36, "y": 636 }, "facingDegrees": -45 },
+        { "designId": "bulwark_assault", "pilotId": "dorn_hess", "spawn": { "x": 108, "y": 636 }, "facingDegrees": -45 },
+        { "designId": "wisp_harasser", "pilotId": "marek_sud", "spawn": { "x": 180, "y": 636 }, "facingDegrees": -45 },
+        { "designId": "sentinel_sniper", "pilotId": "ilse_brant", "spawn": { "x": 36, "y": 708 }, "facingDegrees": -45 }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Far Bank Garrison",
+      "units": [
+        { "designId": "bulwark_burner", "pilotId": "nadia_ostrow", "spawn": { "x": 756, "y": 36 }, "facingDegrees": 135 },
+        { "designId": "hornet_striker", "pilotId": "willem_torrance", "spawn": { "x": 732, "y": 108 }, "facingDegrees": 135 },
+        { "designId": "sentinel_sniper", "pilotId": "cato_ferrin", "spawn": { "x": 924, "y": 108 }, "facingDegrees": 135 },
+        { "designId": "wisp_scout", "pilotId": "juno_reyes", "spawn": { "x": 684, "y": 156 }, "facingDegrees": 135 }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "hardstand",
+      "name": "Mid-span Hardstand",
+      "x": 480,
+      "y": 480,
+      "radius": 65,
+      "owner": 1,
+      "captureSeconds": 10,
+      "resourcePoints": 300
+    }
+  ],
+  "objectives": [
+    {
+      "id": "take_hardstand",
+      "label": "Capture the mid-span hardstand",
+      "type": "capture_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": ["hardstand"],
+      "resourcePoints": 250
+    },
+    {
+      "id": "clear_garrison",
+      "label": "Destroy the far bank garrison",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "fords_notice",
+      "when": { "type": "elapsed", "seconds": 6 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Recon: fords north-east and south-west — slow going, but off the killing line of the causeway."
+        }
+      ]
+    },
+    {
+      "id": "hardstand_taken",
+      "when": { "type": "zone_captured", "zoneId": "hardstand", "team": 0 },
+      "effects": [
+        { "type": "message", "text": "Hardstand ours. The far bank is open — finish it." },
+        { "type": "award_resource_points", "team": 0, "amount": 200 }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,8 @@ import { roleOf } from './roles';
 import { distance } from '../math';
 import { findPath } from '../pathfind';
 import { isVisibleTo } from '../sensors';
+import { canJump } from '../orders';
+import { beginJump } from '../movement';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../types';
 import {
   approachPoint,
@@ -202,6 +204,9 @@ export function decideTactical(
   mech.ai.stance = stance;
 
   if (stance === 'withdraw') {
+    // Jets are the honest way out of a knife fight: one burn opens more
+    // ground than ten seconds of walking backwards under fire.
+    if (chosen.range < 140 && jumpTowards(world, mech, withdrawalPoint(world, mech), 50)) return;
     if (stanceChanged || !holdingCommitment(world, mech)) {
       commitTo(world, mech, withdrawalPoint(world, mech), true);
     }
@@ -223,6 +228,17 @@ export function decideTactical(
     chosen.range > preferredRange(world, mech, chosen.target) * 1.3;
 
   if (stance === 'close' && chosen.range > approachThreshold && zone === null && marchesIn) {
+    // A closer with jets uses them: the walk in is where brawlers die. Only
+    // when the target is well past its guns, and never toward point blank —
+    // the landing aims for the mech's own preferred band, not the target.
+    if (chosen.range > preferredRange(world, mech, chosen.target) * 1.6) {
+      const landing = pointAtRange(
+        mech.pos,
+        chosen.target.pos,
+        preferredRange(world, mech, chosen.target),
+      );
+      if (jumpTowards(world, mech, landing, 60)) return;
+    }
     if (stanceChanged || !holdingCommitment(world, mech)) {
       commitTo(world, mech, approachPoint(world, mech, chosen.target, tier), true);
     }
@@ -244,6 +260,30 @@ export function decideTactical(
   const drive = tier.aggression * roleOf(world, mech).aggression;
   const run = stance === 'back_off' || (stance === 'close' && drive >= 1);
   commitTo(world, mech, destination, run);
+}
+
+/**
+ * Fires the jets toward a point if the mech has them, they are charged, the
+ * reactor can afford the burn, and the hop is long enough to mean something.
+ *
+ * The minimum is a plain distance, not a multiple of walking speed: what the
+ * jets buy is instant displacement in a straight line over anything — for an
+ * escape that beats turning and running even on a machine that runs fast.
+ */
+function jumpTowards(world: World, mech: MechEntity, to: Vec2, minimumReach: number): boolean {
+  if (!canJump(mech)) return false;
+  if (mech.heat + mech.jumpHeat >= mech.heatCapacity * 0.7) return false;
+  const reach = Math.min(mech.jumpRange, distance(mech.pos, to));
+  if (reach < minimumReach) return false;
+  return beginJump(world, mech, to);
+}
+
+/** The point on the line toward `target` that sits `range` away from it. */
+function pointAtRange(from: Vec2, target: Vec2, range: number): Vec2 {
+  const gap = distance(from, target);
+  if (gap <= range) return { x: from.x, y: from.y };
+  const t = (gap - range) / gap;
+  return { x: from.x + (target.x - from.x) * t, y: from.y + (target.y - from.y) * t };
 }
 
 /** How far this mech's longest working gun still reaches. */

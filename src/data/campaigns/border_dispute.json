@@ -88,6 +88,57 @@
         "x": 0.82,
         "y": 0.3
       }
+    },
+    {
+      "id": "causeway_push",
+      "name": "The Causeway",
+      "missionId": "causeway_crossing",
+      "employer": "Halloran Freight",
+      "brief": "Halloran wants the drowned valley crossing open before the rains close the fords. One raised road, one garrison, and a hardstand at mid-span that decides which of you owns the other bank.",
+      "requires": [
+        "supply_line"
+      ],
+      "basePayout": 1050000,
+      "maxSalvageShare": 0.6,
+      "deadlineDays": 24,
+      "position": {
+        "x": 0.62,
+        "y": 0.82
+      }
+    },
+    {
+      "id": "foundry_sweep_node",
+      "name": "Foundry District",
+      "missionId": "foundry_sweep",
+      "employer": "Sarn Foundry",
+      "brief": "A Combine detachment slipped into the outer works and went quiet. Sarn will not shell its own district, so somebody walks in and sweeps it block by block. Knife work; bring brawlers.",
+      "requires": [
+        "pass_skirmish"
+      ],
+      "basePayout": 1150000,
+      "maxSalvageShare": 0.65,
+      "deadlineDays": 24,
+      "position": {
+        "x": 0.3,
+        "y": 0.24
+      }
+    },
+    {
+      "id": "shale_overwatch_node",
+      "name": "Shale Steps",
+      "missionId": "shale_overwatch",
+      "employer": "Kestrel Combine",
+      "brief": "Kestrel's survey post on the top terrace has a Combine column coming up the steps after it. Hold the height until the data is away. Five machines against the climb \u2014 the climb is on your side.",
+      "requires": [
+        "foundry_sweep_node"
+      ],
+      "basePayout": 1300000,
+      "maxSalvageShare": 0.55,
+      "deadlineDays": 26,
+      "position": {
+        "x": 0.75,
+        "y": 0.34
+      }
     }
   ]
 }

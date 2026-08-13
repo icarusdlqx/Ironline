@@ -1,0 +1,66 @@
+{
+  "id": "foundry_sweep",
+  "name": "Sweep — Foundry District",
+  "type": "assault",
+  "mapId": "foundry_district",
+  "briefing": "A Combine detachment has pushed into Sarn's outer works and gone quiet among the blocks. Sweep the district. Sightlines are streets; every corner belongs to whoever turned it first. Long guns count for less in here than nerve.",
+  "maxDurationSeconds": 420,
+  "startingResourcePoints": 300,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Sweep Lance",
+      "units": [
+        { "designId": "sentinel_brawler", "pilotId": "kessa_vale", "spawn": { "x": 36, "y": 36 }, "facingDegrees": 45 },
+        { "designId": "hornet_striker", "pilotId": "willem_torrance", "spawn": { "x": 108, "y": 36 }, "facingDegrees": 45 },
+        { "designId": "wisp_harasser", "pilotId": "marek_sud", "spawn": { "x": 180, "y": 36 }, "facingDegrees": 45 },
+        { "designId": "bulwark_assault", "pilotId": "dorn_hess", "spawn": { "x": 252, "y": 36 }, "facingDegrees": 45 }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Combine Infiltrators",
+      "units": [
+        { "designId": "sentinel_brawler", "pilotId": "nadia_ostrow", "spawn": { "x": 636, "y": 636 }, "facingDegrees": -135 },
+        { "designId": "wisp_harasser", "pilotId": "roz_havel", "spawn": { "x": 708, "y": 636 }, "facingDegrees": -135 },
+        { "designId": "hornet_striker", "pilotId": "bo_ferrant", "spawn": { "x": 852, "y": 636 }, "facingDegrees": -135 },
+        { "designId": "bulwark_burner", "pilotId": "teodor_krysa", "spawn": { "x": 780, "y": 660 }, "facingDegrees": -135 }
+      ]
+    }
+  ],
+  "objectives": [
+    {
+      "id": "clear_district",
+      "label": "Destroy the Combine detachment",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "corners",
+      "when": { "type": "elapsed", "seconds": 6 },
+      "effects": [
+        {
+          "type": "message",
+          "text": "Command: keep the lance tight in the blocks. A machine alone in a street is a machine ambushed."
+        }
+      ]
+    },
+    {
+      "id": "half_swept",
+      "when": { "type": "team_losses", "team": 1, "count": 2 },
+      "effects": [
+        { "type": "message", "text": "Half their strength down. The rest will be waiting behind corners — attack-move, and take the streets in pairs." }
+      ]
+    }
+  ]
+}
