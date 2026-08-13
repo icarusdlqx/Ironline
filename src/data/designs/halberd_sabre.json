@@ -1,0 +1,57 @@
+{
+  "id": "halberd_sabre",
+  "name": "Halberd HLB-4 'Sabre'",
+  "chassisId": "halberd_hlb4",
+  "armour": {
+    "head": 24,
+    "centre_torso": 106,
+    "left_torso": 74,
+    "right_torso": 74,
+    "left_arm": 32,
+    "right_arm": 32,
+    "left_leg": 56,
+    "right_leg": 56
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 13,
+  "mounts": [
+    {
+      "weaponId": "srm6",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "srm6",
+      "location": "right_torso"
+    },
+    {
+      "weaponId": "large_pulse_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "ultra_ac5",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "centre_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "srm6",
+      "location": "left_torso",
+      "tons": 1
+    },
+    {
+      "weaponId": "ultra_ac5",
+      "location": "right_torso",
+      "tons": 2
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "right_torso"
+    }
+  ]
+}

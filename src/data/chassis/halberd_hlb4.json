@@ -1,0 +1,94 @@
+{
+  "id": "halberd_hlb4",
+  "name": "Halberd HLB-4",
+  "class": "heavy",
+  "tonnage": 75,
+  "baseCost": 13400000,
+  "engineRating": 340,
+  "internalHeatSinks": 13,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 10
+    },
+    "right_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 10
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8
+    },
+    "right_arm": {
+      "energy": 2,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 8
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2
+    }
+  },
+  "armourMax": {
+    "head": 24,
+    "centre_torso": 132,
+    "left_torso": 92,
+    "right_torso": 92,
+    "left_arm": 40,
+    "right_arm": 40,
+    "left_leg": 70,
+    "right_leg": 70
+  },
+  "internals": {
+    "head": 10,
+    "centre_torso": 52,
+    "left_torso": 36,
+    "right_torso": 36,
+    "left_arm": 22,
+    "right_arm": 22,
+    "left_leg": 36,
+    "right_leg": 36
+  },
+  "silhouette": {
+    "form": "battle",
+    "torsoLength": 1.0,
+    "torsoWidth": 1.0,
+    "shoulder": 1.0,
+    "legLength": 1.0,
+    "stance": 1.0
+  },
+  "summary": "Compact-pattern pod carrier. Fast for seventy-five tonnes, and armoured like it is not.",
+  "lore": "The HLB hulls are the only Compact design Sarn admits it cannot build, only maintain: a forward-slung spine on reversed legs, with the entire payload in two shoulder pods that come off with eight bolts and a crane. The foundry has learned to swap a pod in an afternoon, which is why a Halberd is whatever its last quartermaster decided it was. It walks at the speed of a medium, stands up to fire that folds a Bulwark, and every company that owns one has a story about what it cost them.",
+  "traits": [
+    "long_stride",
+    "oversized_sinks"
+  ]
+}

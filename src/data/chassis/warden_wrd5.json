@@ -78,12 +78,12 @@
     "right_leg": 28
   },
   "silhouette": {
-    "form": "bird",
-    "torsoLength": 1.1,
-    "torsoWidth": 1.05,
-    "shoulder": 1.2,
-    "legLength": 1.1,
-    "stance": 1.05
+    "form": "brawler",
+    "torsoLength": 1.06,
+    "torsoWidth": 1.0,
+    "shoulder": 1.04,
+    "legLength": 1.08,
+    "stance": 1.0
   },
   "summary": "A heavy that keeps up with mediums, at the price of not being armoured like a heavy.",
   "lore": "Kestrel commissioned the WRD refit to escort rolling stock, which meant it had to march at freight pace all day and still be worth fielding when something went wrong. The bird-legged hull carries a three-hundred rated engine on sixty tonnes and a slightly embarrassed amount of plate. Crews call it the outrider. Kestrel's own paperwork calls it a mobile asset.",

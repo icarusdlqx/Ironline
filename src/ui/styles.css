@@ -1704,7 +1704,11 @@ button {
 .chassis-silhouette {
   display: block;
   width: 100%;
-  height: 250px;
+  /* Mechs are taller than they are wide and the outline is framed to the
+     hull's own extents, so in a letterbox panel the whole machine shrinks to
+     fit the short side — which is how a hundred-tonne siege hull ends up drawn
+     smaller than the badge sitting on its shoulder. */
+  height: min(44vh, 400px);
   margin: 4px 0 12px;
 }
 

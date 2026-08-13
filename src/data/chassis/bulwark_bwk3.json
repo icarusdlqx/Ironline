@@ -79,11 +79,11 @@
   },
   "silhouette": {
     "form": "squat",
-    "torsoLength": 0.95,
-    "torsoWidth": 1.25,
-    "shoulder": 1.3,
-    "legLength": 0.8,
-    "stance": 1.25
+    "torsoLength": 1.0,
+    "torsoWidth": 1.08,
+    "shoulder": 1.02,
+    "legLength": 0.96,
+    "stance": 1.06
   },
   "summary": "Wide, low and patient. The mech you put where the line must not move.",
   "lore": "The BWK is a Compact siege hull with the hips widened and the legs cut down, a modification Sarn made once by accident and then kept because the resulting stance is almost impossible to knock over. It walks at twelve metres a second and does not care. Ridgeward militias buy them second-hand and park them across roads, which is, in fairness, exactly what they are for.",

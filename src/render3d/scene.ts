@@ -384,6 +384,7 @@ export class Renderer {
       entity.destroyed,
       mounts,
       new Set(LOCATIONS.filter((location) => entity.locations[location].destroyed)),
+      chassis?.hardpoints,
     );
 
     const radius = radiusFor(entity.tonnage);

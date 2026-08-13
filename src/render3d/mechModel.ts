@@ -10,7 +10,7 @@ import {
 import { chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
 import type { WeaponType } from '../schema/weapon';
-import { chassisBlueprint, type BlueprintPart, type Tone } from '../render/blueprint';
+import { chassisBlueprint, type BlueprintPart, type HardpointMap, type Tone } from '../render/blueprint';
 import type { Silhouette } from '../render/shape';
 import { radiusFor } from '../render/shape';
 import { mix, shade } from '../render/palette';
@@ -102,9 +102,11 @@ export function buildMechModel(
   mounts: readonly MountArt[],
   /** Locations shot off. Limbs go missing; the rest is left burnt in place. */
   lost: ReadonlySet<MechLocation> = new Set(),
+  /** What each location is wired for, which shapes the structure built there. */
+  fit: HardpointMap = {},
 ): MechModel {
   const scale = radiusFor(tonnage);
-  const plan = chassisBlueprint(shape, traits);
+  const plan = chassisBlueprint(shape, traits, fit);
   const tones = palette(team, destroyed);
   const burnt = palette(team, true);
 

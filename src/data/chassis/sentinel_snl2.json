@@ -80,7 +80,7 @@
   "silhouette": {
     "form": "humanoid",
     "torsoLength": 1.0,
-    "torsoWidth": 0.95,
+    "torsoWidth": 1.0,
     "shoulder": 1.0,
     "legLength": 1.0,
     "stance": 1.0

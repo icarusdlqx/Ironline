@@ -79,11 +79,11 @@
   },
   "silhouette": {
     "form": "bird",
-    "torsoLength": 0.95,
-    "torsoWidth": 0.75,
-    "shoulder": 0.85,
-    "legLength": 1.3,
-    "stance": 0.85
+    "torsoLength": 0.96,
+    "torsoWidth": 0.94,
+    "shoulder": 0.96,
+    "legLength": 1.04,
+    "stance": 0.98
   },
   "summary": "The light that can actually take a hit, and the one everyone actually buys.",
   "lore": "Halloran's answer to losing three Wisps in a fortnight. The HNT-2 keeps the reverse-jointed leg geometry and gives up nine kilometres an hour for enough Sarn plate to survive being noticed. It is the most common machine on the line by a wide margin, and the one most likely to be carrying somebody's cousin.",

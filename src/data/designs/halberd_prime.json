@@ -1,0 +1,61 @@
+{
+  "id": "halberd_prime",
+  "name": "Halberd HLB-4 'Prime'",
+  "chassisId": "halberd_hlb4",
+  "armour": {
+    "head": 22,
+    "centre_torso": 92,
+    "left_torso": 64,
+    "right_torso": 64,
+    "left_arm": 28,
+    "right_arm": 28,
+    "left_leg": 48,
+    "right_leg": 48
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 13,
+  "mounts": [
+    {
+      "weaponId": "lrm15",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "lrm15",
+      "location": "right_torso"
+    },
+    {
+      "weaponId": "er_large_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "er_large_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "centre_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "lrm15",
+      "location": "left_torso",
+      "tons": 1
+    },
+    {
+      "weaponId": "lrm15",
+      "location": "right_torso",
+      "tons": 1
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    },
+    {
+      "equipmentId": "case",
+      "location": "right_torso"
+    }
+  ]
+}

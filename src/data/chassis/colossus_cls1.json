@@ -79,11 +79,11 @@
   },
   "silhouette": {
     "form": "siege",
-    "torsoLength": 1.2,
-    "torsoWidth": 1.5,
-    "shoulder": 1.6,
-    "legLength": 0.72,
-    "stance": 1.5
+    "torsoLength": 1.04,
+    "torsoWidth": 1.06,
+    "shoulder": 1.04,
+    "legLength": 1.0,
+    "stance": 1.02
   },
   "summary": "A hundred tonnes of foundry pride. There are eleven of them and everyone knows where.",
   "lore": "Sarn built the CLS hulls themselves, from Compact plans they only partly understand, and the fact that they run at all is the foundry's standing argument for its own importance. Nine metres a second, fifty tonnes of payload, and a turning circle that has ended more Colossus careers than enemy fire. Every one of the eleven has a name, a service history and at least one town that considers it theirs.",

@@ -29,7 +29,16 @@ export const ChassisSchema = z
      *  with its own outline rather than reusing everyone else's. */
     silhouette: z
       .strictObject({
-        form: z.enum(['scout', 'bird', 'humanoid', 'squat', 'siege']),
+        form: z.enum([
+          'scout',
+          'bird',
+          'humanoid',
+          'brawler',
+          'battle',
+          'squat',
+          'bastion',
+          'siege',
+        ]),
         /** Torso length and width as fractions of the chassis radius. */
         torsoLength: z.number().positive().max(2).default(1),
         torsoWidth: z.number().positive().max(2).default(1),
