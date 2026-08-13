@@ -64,6 +64,21 @@ const MissionOutcomeSchema = z.strictObject({
   salvagedItems: z.array(StoreItemSchema),
   pilotCasualties: z.array(z.string()),
   mechsLost: z.array(z.string()),
+  // Saves written before debriefs were recorded load with none.
+  pilotReports: z
+    .array(
+      z.strictObject({
+        pilotId: z.string().min(1),
+        name: z.string().min(1),
+        mech: z.string(),
+        kills: z.number().nonnegative(),
+        damage: z.number().nonnegative(),
+        xp: z.number(),
+        promotions: z.array(z.string()),
+        fate: z.enum(['returned', 'injured', 'killed']),
+      }),
+    )
+    .default([]),
 });
 
 const RngStateSchema = z.strictObject({
@@ -81,6 +96,9 @@ export const CampaignStateSchema = z.strictObject({
   cbills: z.number().int(),
   mechs: z.array(MechRecordSchema),
   pilots: z.array(PilotRecordSchema),
+  // Saves written before the commander could hold anyone back load with
+  // nobody benched, which is what they meant.
+  benched: z.array(z.string()).default([]),
   store: z.array(StoreItemSchema),
   completedNodes: z.array(IdSchema),
   failedNodes: z.array(IdSchema),

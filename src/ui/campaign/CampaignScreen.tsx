@@ -19,6 +19,8 @@ import {
 import type { CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { CampaignMap, type NodeState } from './CampaignMap';
+import { Debrief, debriefedCount, markDebriefed } from './Debrief';
+import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, MechBayPanel, StoresPanel } from './Panels';
 import { useGame } from '../store';
 
@@ -35,6 +37,10 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     return saved.state ?? startCampaign(catalog, CAMPAIGN_ID, 'border');
   });
   const [manualOpen, setManualOpen] = useState(false);
+  const [manifestOpen, setManifestOpen] = useState(false);
+  // Missions fought but not yet debriefed. Counted rather than flagged so the
+  // screen can be reopened without the debrief coming back each time.
+  const [debriefed, setDebriefed] = useState(() => debriefedCount());
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [step, setStep] = useState(4);
   const [status, setStatus] = useState<string | null>(null);
@@ -45,6 +51,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const node = open.find((entry) => entry.id === selectedNode) ?? open[0] ?? null;
   const options = node === null ? [] : negotiationOptions(catalog, node);
   const lance = deployableLance(state);
+  const pendingDebrief = state.history[state.history.length - 1];
 
   const mutate = (change: (draft: CampaignState) => void, message?: string): void => {
     const draft = JSON.parse(JSON.stringify(state)) as CampaignState;
@@ -53,15 +60,23 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     setStatus(message ?? null);
   };
 
+  // Deploying opens the manifest rather than launching. Who flies what is the
+  // last decision before the drop, and the only place the roster is a choice
+  // rather than a list.
   const onDeploy = (): void => {
     if (state.contract === null) {
       setStatus('Accept a contract first.');
       return;
     }
+    setManifestOpen(true);
+  };
+
+  const onLaunch = (): void => {
     if (lance.length === 0) {
       setStatus('No mech is ready to deploy.');
       return;
     }
+    setManifestOpen(false);
     saveCampaign(state);
     patch({ campaignPending: true, screen: 'battle' });
   };
@@ -239,6 +254,27 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           ))}
         </ul>
       </footer>
+
+      {state.history.length <= debriefed || pendingDebrief === undefined ? null : (
+        <Debrief
+          catalog={catalog}
+          outcome={pendingDebrief}
+          onClose={() => {
+            markDebriefed(state.history.length);
+            setDebriefed(state.history.length);
+          }}
+        />
+      )}
+
+      {!manifestOpen ? null : (
+        <LanceManifest
+          catalog={catalog}
+          state={state}
+          mutate={mutate}
+          onLaunch={onLaunch}
+          onCancel={() => setManifestOpen(false)}
+        />
+      )}
     </div>
   );
 

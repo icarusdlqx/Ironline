@@ -61,6 +61,19 @@ export interface CampaignLogEntry {
   text: string;
 }
 
+/** What one pilot did on one drop, and what it did for them. */
+export interface PilotReport {
+  pilotId: string;
+  name: string;
+  mech: string;
+  kills: number;
+  damage: number;
+  xp: number;
+  /** Skills raised on the strength of this drop, as "gunnery 3". */
+  promotions: string[];
+  fate: 'returned' | 'injured' | 'killed';
+}
+
 export interface MissionOutcome {
   nodeId: string;
   missionId: string;
@@ -71,6 +84,12 @@ export interface MissionOutcome {
   salvagedItems: StoreItem[];
   pilotCasualties: string[];
   mechsLost: string[];
+  /**
+   * The debrief. Progression that only ever appeared as a line in a scrolling
+   * log may as well not be in the game: this is what the player is told they
+   * earned by taking a contract.
+   */
+  pilotReports: PilotReport[];
 }
 
 export interface CampaignState {
@@ -81,6 +100,12 @@ export interface CampaignState {
   cbills: number;
   mechs: MechRecord[];
   pilots: PilotRecord[];
+  /**
+   * Pilots the commander has held back from the next drop. A mission fields
+   * fewer machines than a company owns, and which of them go is a decision,
+   * not whatever order the roster happens to be in.
+   */
+  benched: string[];
   store: StoreItem[];
   completedNodes: string[];
   failedNodes: string[];

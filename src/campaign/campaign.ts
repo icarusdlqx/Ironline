@@ -14,6 +14,7 @@ import {
   type MechRecord,
   type MissionOutcome,
   type PilotRecord,
+  type PilotReport,
 } from './types';
 
 export const PLAYER_TEAM = 0;
@@ -42,6 +43,7 @@ export function startCampaign(catalog: Catalog, campaignId: string, seed: string
     cbills: campaign.startingCbills,
     mechs: [],
     pilots: [],
+    benched: [],
     store: [],
     completedNodes: [],
     failedNodes: [],
@@ -210,17 +212,21 @@ export function deployableLance(state: CampaignState): DeployablePair[] {
   const pairs: DeployablePair[] = [];
   const spoken = new Set<string>();
 
+  // A benched pilot keeps their seat on the roster: they are held back from
+  // this drop, not thrown off the mech.
+  const held = (id: string): boolean => state.benched.includes(id);
+
   for (const pilot of state.pilots) {
     if (pilot.mechId === null) continue;
     spoken.add(pilot.mechId);
-    if (!isPilotAvailable(state, pilot)) continue;
+    if (!isPilotAvailable(state, pilot) || held(pilot.id)) continue;
     const mech = findMech(state, pilot.mechId);
     if (mech === null || !isFieldable(state, mech)) continue;
     pairs.push({ mech, pilot });
   }
 
   for (const pilot of state.pilots) {
-    if (pilot.mechId !== null || !isPilotAvailable(state, pilot)) continue;
+    if (pilot.mechId !== null || !isPilotAvailable(state, pilot) || held(pilot.id)) continue;
     const free = state.mechs.find(
       (mech) => !spoken.has(mech.id) && isFieldable(state, mech),
     );
@@ -309,6 +315,7 @@ export function resolveMission(
   const won = battle.missionStatus === 'success';
   const casualties: string[] = [];
   const mechsLost: string[] = [];
+  const pilotReports: PilotReport[] = [];
 
   battle.units
     .filter((unit) => unit.team === PLAYER_TEAM)
@@ -330,7 +337,7 @@ export function resolveMission(
         mechsLost.push(pair.mech.design.name);
       }
 
-      awardXp(catalog, { pilot: pair.pilot, unit }, won);
+      const xp = awardXp(catalog, { pilot: pair.pilot, unit }, won);
 
       const casualty = withRng(state, (rng) =>
         resolveCasualty(catalog, rng, pair.pilot, unit, state.day),
@@ -338,8 +345,10 @@ export function resolveMission(
 
       // A pilot who came home spends what they learned on the way. After the
       // casualty roll on purpose: the dead do not get better at anything.
+      const promotions: string[] = [];
       if (!casualty.died) {
         for (const step of promote(catalog, pair.pilot)) {
+          promotions.push(`${step.skill} ${step.level}`);
           log(state, `${pair.pilot.name} reached ${step.skill} ${step.level}.`);
         }
       }
@@ -348,6 +357,17 @@ export function resolveMission(
       else if (casualty.injuredDays > 0) {
         casualties.push(`${pair.pilot.name} (out ${casualty.injuredDays} days)`);
       }
+
+      pilotReports.push({
+        pilotId: pair.pilot.id,
+        name: pair.pilot.name,
+        mech: pair.mech.design.name,
+        kills: unit.kills,
+        damage: Math.round(unit.damageDealt),
+        xp,
+        promotions,
+        fate: casualty.died ? 'killed' : casualty.injuredDays > 0 ? 'injured' : 'returned',
+      });
     });
 
   const salvage = won
@@ -392,6 +412,7 @@ export function resolveMission(
     salvagedItems: salvage.items,
     pilotCasualties: casualties,
     mechsLost,
+    pilotReports,
   };
 
   state.history.push(outcome);
