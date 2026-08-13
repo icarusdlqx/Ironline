@@ -65,8 +65,12 @@ const sim = (page) =>
 async function main() {
   mkdirSync(SHOTS, { recursive: true });
 
+  // detached puts npx and vite in their own process group, so shutdown can
+  // kill the group: signalling npx alone orphans vite, which keeps the stdio
+  // pipes open and the finished script waiting forever to exit.
   const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
     stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true,
   });
   server.stdout.on('data', () => {});
   server.stderr.on('data', (chunk) => process.stderr.write(chunk));
@@ -196,7 +200,7 @@ async function main() {
     process.stdout.write('\ncamera\n');
     const before = await page.evaluate(() => {
       const { camera } = globalThis.__ironline.engine.renderer;
-      return { x: camera.x, y: camera.y, zoom: camera.zoom };
+      return { x: camera.target.x, distance: camera.distance };
     });
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, -600);
@@ -205,9 +209,14 @@ async function main() {
     await page.keyboard.up('ArrowRight');
     const after = await page.evaluate(() => {
       const { camera } = globalThis.__ironline.engine.renderer;
-      return { x: camera.x, y: camera.y, zoom: camera.zoom };
+      return { x: camera.target.x, distance: camera.distance };
     });
-    check('wheel zooms the camera', after.zoom > before.zoom, `${before.zoom} → ${after.zoom}`);
+    // Zooming in pulls the eye closer: wheel-up shrinks the camera distance.
+    check(
+      'wheel zooms the camera',
+      after.distance < before.distance,
+      `${before.distance} → ${after.distance}`,
+    );
     check('arrow keys pan the camera', after.x !== before.x, `${before.x} → ${after.x}`);
 
     process.stdout.write('\nfog of war\n');
@@ -427,10 +436,15 @@ async function main() {
         (await page.locator('[data-testid="camp-cbills"]').innerText()).replace(/[^0-9-]/g, ''),
       );
 
-    check('campaign map draws every node', (await page.locator('.camp-node').count()) === 4);
+    check('campaign map draws every node', (await page.locator('.camp-node').count()) === 7);
     check('only the opening node is available', (await page.locator('.camp-node.available').count()) === 1);
     check('the lance is on the books', (await page.locator('[data-testid="camp-bay"] li').count()) === 4);
-    check('the barracks lists four pilots', (await page.locator('[data-testid="camp-roster"] li').count()) === 4);
+    // Count the company's own pilots, not every row in the section — the
+    // hiring hall lives under the same panel and lists whoever is signable.
+    check(
+      'the barracks lists four pilots',
+      (await page.locator('li[data-testid^="camp-pilot-"]').count()) === 4,
+    );
     check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
 
     const offerAt = async (value) => {
@@ -505,7 +519,10 @@ async function main() {
     if (resolvedState.history[0].won) {
       check('winning paid out', (await cash()) > cashBefore, `${cashBefore} → ${await cash()}`);
       check('salvage reached stores', resolvedState.store.length > 0);
-      check('the next contracts unlocked', (await page.locator('.camp-node.open').count()) >= 1);
+      check(
+        'the next contracts unlocked',
+        (await page.locator('.camp-node.available').count()) >= 1,
+      );
     } else {
       check('a loss is recorded as a failed node', resolvedState.failedNodes.length === 1);
     }
@@ -525,7 +542,11 @@ async function main() {
     check('no page errors across the whole run', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
   } finally {
     await browser.close();
-    server.kill('SIGTERM');
+    try {
+      process.kill(-server.pid, 'SIGTERM');
+    } catch {
+      server.kill('SIGTERM');
+    }
   }
 
   process.stdout.write(`\n${checks - failures.length}/${checks} checks passed\n`);
