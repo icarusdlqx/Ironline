@@ -1,0 +1,16 @@
+{
+  "name": "IRONLINE",
+  "short_name": "IRONLINE",
+  "description": "Real-time tactical mech combat. Field a lance, manage heat, bring them home.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0d1013",
+  "theme_color": "#0d1013",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

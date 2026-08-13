@@ -11,7 +11,13 @@
     />
     <meta name="theme-color" content="#0d1013" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="IRONLINE" />
+    <!-- No service worker on purpose: the single-file build is the offline
+         story, and a stale-cache bug is worse than a network round trip. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230d1013'/%3E%3Cpath d='M3 4h2v8H3zm4 0h2v8H7zm4 0h2v8h-2z' fill='%238ce0ff'/%3E%3C/svg%3E"

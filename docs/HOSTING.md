@@ -56,8 +56,12 @@ The site works in Safari on iOS and macOS. On a phone:
 - **Tap** open ground to send the selection there.
 - Everything else is on the buttons along the bottom.
 
-Add it to the home screen (Share → Add to Home Screen) and it opens full
-screen with no browser chrome.
+Add it to the home screen (Share → Add to Home Screen) and it installs as
+IRONLINE with its own app icon, opening full screen in landscape with no
+browser chrome. The web app manifest (`public/manifest.webmanifest`) and the
+icons beside it are what make that work; there is deliberately no service
+worker — the single-file build is the offline story, and a stale-cache bug is
+worse than a network round trip.
 
 ## Somewhere else
 
