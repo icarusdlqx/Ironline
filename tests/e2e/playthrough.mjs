@@ -280,7 +280,14 @@ async function main() {
     const rpBefore = await rpText();
 
     const canvasBox = await page.locator('.viewport canvas').boundingBox();
-    await page.locator('[data-testid="support-artillery_strike"]').click();
+    // Report rather than hang: a disabled button times the click out after
+    // thirty seconds and kills the run, which says nothing about why.
+    check(
+      'the mission resource points reached the HUD',
+      rpBefore >= 400,
+      `${rpBefore} RP in the palette, ${mission.rp} in the world`,
+    );
+    await page.locator('[data-testid="support-artillery_strike"]').click({ timeout: 5_000 });
     check('picking a support call arms it', (await state(page)).supportMode === 'artillery_strike');
     await page.mouse.click(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
 
@@ -474,7 +481,35 @@ async function main() {
     check('the campaign saves to storage', savedCampaign !== null && savedCampaign.length > 100);
 
     const cashBefore = await cash();
+    // Deploying opens the manifest; launching from it is what starts the drop.
     await page.locator('[data-testid="camp-deploy"]').click();
+    await page.waitForSelector('[data-testid="lance-manifest"]');
+    check(
+      'the manifest lists the crew with their skills',
+      (await page.locator('.manifest-row').count()) >= 4 &&
+        (await page.locator('.manifest-skills').first().innerText()).includes('hit chance'),
+    );
+    check(
+      'the manifest marks who is actually dropping',
+      (await page.locator('.manifest-row.drops').count()) > 0,
+    );
+
+    // Holding a pilot back takes them out of the drop, and calling them up
+    // puts them back: the bench is the only reason this screen exists.
+    const dropsBefore = await page.locator('.manifest-row.drops').count();
+    const bench = page.locator('[data-testid^="manifest-bench-"]').first();
+    await bench.click();
+    check(
+      'holding a pilot back removes them from the drop',
+      (await page.locator('.manifest-row.drops').count()) === dropsBefore - 1,
+    );
+    await bench.click();
+    check(
+      'calling them up puts them back',
+      (await page.locator('.manifest-row.drops').count()) === dropsBefore,
+    );
+
+    await page.locator('[data-testid="manifest-launch"]').click();
     await page.waitForSelector('[data-testid="lance-bar"]');
     await page.waitForSelector('[data-testid="briefing"]');
     check('the contracted mission opens on its briefing', true);
@@ -505,6 +540,20 @@ async function main() {
     await page.locator('[data-testid="return-to-campaign"]').click();
     await page.locator('[data-testid="return-to-campaign"]').click();
     await page.waitForSelector('[data-testid="campaign"]');
+
+    // Coming home opens the debrief: what the drop earned each pilot.
+    await page.waitForSelector('[data-testid="debrief"]');
+    check(
+      'the debrief accounts for every pilot who dropped',
+      (await page.locator('[data-testid^="debrief-fate-"]').count()) > 0,
+    );
+    check(
+      'the debrief reports experience earned',
+      (await page.locator('[data-testid="debrief"] .manifest-skills').first().innerText()).includes(
+        'XP',
+      ),
+    );
+    await page.locator('[data-testid="debrief-close"]').click();
 
     const resolvedState = await page.evaluate(() =>
       JSON.parse(localStorage.getItem('ironline.campaign')).state,

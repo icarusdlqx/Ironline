@@ -59,6 +59,12 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     team: entity.team,
     name: entity.name,
     pilotName: entity.pilot.name,
+    pilotSkills: {
+      gunnery: entity.pilot.gunnery,
+      piloting: entity.pilot.piloting,
+      sensors: entity.pilot.sensors,
+    },
+    pilotTraits: [...entity.pilot.traits],
     tonnage: entity.tonnage,
     alive: isOperational(entity),
     destroyed: entity.destroyed,

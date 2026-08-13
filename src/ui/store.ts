@@ -50,6 +50,9 @@ export interface UnitSnapshot {
   team: number;
   name: string;
   pilotName: string;
+  /** What the pilot brings, so their skills are visible where the mech is. */
+  pilotSkills: { gunnery: number; piloting: number; sensors: number };
+  pilotTraits: string[];
   tonnage: number;
   alive: boolean;
   destroyed: boolean;

@@ -2208,3 +2208,19 @@ button {
   color: var(--muted);
   font-style: italic;
 }
+
+/* Pilot skills under the sidebar header: three numbers that explain a lot of
+   what the mech is about to do. */
+.pilot-line {
+  display: flex;
+  gap: 8px;
+  margin: -6px 0 10px;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pilot-line-range {
+  margin-left: auto;
+  color: var(--accent);
+}
