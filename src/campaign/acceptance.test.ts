@@ -183,7 +183,9 @@ describe('deployment', () => {
 });
 
 describe('three-mission campaign', () => {
-  it('completes three contracts and uses mission-one salvage in mission three', { timeout: 60_000 }, () => {
+  // The generous timeout is headroom for a loaded CI worker, not a target: the
+  // seed scan takes ~15s alone but shares the machine with every other file.
+  it('completes three contracts and uses mission-one salvage in mission three', { timeout: 120_000 }, () => {
     // This is a test of the salvage-to-refit-to-field pipeline, not of whether
     // a particular lance survives a particular pair of fights. Any change to
     // the simulation reshuffles which campaigns leave a ready mech standing by

@@ -31,6 +31,7 @@ import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
 import { TacticalCamera, type Viewport } from './camera';
 import { FogLayer } from './fog';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
+import { PropLayer } from './props';
 import { buildTerrain, type TerrainMesh } from './terrain';
 import { TracerLayer } from './tracers';
 
@@ -95,6 +96,7 @@ export class Renderer {
 
   private readonly renderer: WebGLRenderer;
   private readonly terrain: TerrainMesh;
+  private readonly props: PropLayer;
   private readonly fog: FogLayer;
   private readonly tracers = new TracerLayer();
   private readonly markers = new Group();
@@ -131,6 +133,9 @@ export class Renderer {
 
     this.terrain = buildTerrain(world.terrain, mapData);
     this.scene.add(this.terrain.mesh);
+
+    this.props = new PropLayer(world.terrain, mapData, this.terrain.heightAt);
+    this.scene.add(this.props.group);
 
     // Ground beyond the battlefield. Without it the map ends at a hard edge
     // with the void behind it, which reads as a bug rather than as a horizon.
@@ -475,6 +480,7 @@ export class Renderer {
     this.drawMarkers(world, view);
     this.tracers.update(deltaSeconds);
     this.fog.update(world.terrain, world.vision);
+    this.props.update(world.vision);
 
     const viewport = this.viewport;
     this.camera.update(viewport);

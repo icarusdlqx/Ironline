@@ -28,6 +28,35 @@ function colourFor(terrainId: string): number {
   return TERRAIN_COLOURS[terrainId] ?? TERRAIN_COLOURS.open ?? 0x2f3a2c;
 }
 
+/**
+ * Smooth value noise a few tiles wide, so open ground mottles into dry and
+ * lush patches instead of reading as one continuous billiard table. Smooth
+ * because a per-tile change of this size would draw a visible grid.
+ */
+function patchNoise(column: number, row: number): number {
+  const cx = column / 6;
+  const cy = row / 6;
+  const x0 = Math.floor(cx);
+  const y0 = Math.floor(cy);
+  const blend = (a: number, b: number, t: number): number =>
+    a + (b - a) * t * t * (3 - 2 * t);
+  const fx = cx - x0;
+  const top = blend(hash(x0, y0, 21), hash(x0 + 1, y0, 21), fx);
+  const bottom = blend(hash(x0, y0 + 1, 21), hash(x0 + 1, y0 + 1, 21), fx);
+  return blend(top, bottom, cy - y0) - 0.5;
+}
+
+/** How strongly a terrain type mottles: paving stays paved, meadows vary. */
+const MOTTLE: Record<string, number> = {
+  open: 0.22,
+  forest: 0.16,
+  rough: 0.16,
+  water: 0.1,
+  road: 0.05,
+  building: 0.05,
+  impassable: 0.08,
+};
+
 function terrainIdAt(data: TerrainMapData, column: number, row: number): string {
   return data.legend[data.tiles[row]?.[column] ?? ''] ?? 'open';
 }
@@ -93,7 +122,11 @@ export function buildTerrain(grid: TerrainGrid, data: TerrainMapData): TerrainMe
       // Corners take the colour of the tile up and left of them, which is the
       // one whose quad this corner opens.
       const tile = terrainIdAt(data, Math.min(column, grid.width - 1), Math.min(row, grid.height - 1));
-      const lift = 1 + (height / HEIGHT_PER_STEP) * 0.05 + (hash(column, row, 9) - 0.5) * 0.12;
+      const lift =
+        1 +
+        (height / HEIGHT_PER_STEP) * 0.05 +
+        (hash(column, row, 9) - 0.5) * 0.12 +
+        patchNoise(column, row) * (MOTTLE[tile] ?? 0.1);
       scratch.setHex(shade(colourFor(tile), lift));
       colours[index * 3] = scratch.r;
       colours[index * 3 + 1] = scratch.g;
