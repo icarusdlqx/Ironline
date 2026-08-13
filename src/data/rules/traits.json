@@ -10,7 +10,8 @@
     "narrow_profile": {
       "label": "Narrow Profile",
       "note": "Slab-sided hull presents very little to shoot at from the front.",
-      "incomingAccuracyFactor": 0.9
+      "incomingAccuracyFactor": 0.9,
+      "signatureFactor": 0.8
     },
     "wide_stance": {
       "label": "Wide Stance",

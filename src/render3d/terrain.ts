@@ -7,7 +7,12 @@ import {
 } from 'three';
 import type { TerrainMapData } from '../schema/map';
 import type { TerrainGrid } from '../sim/terrain';
-import { shade, TERRAIN_COLOURS } from '../render/palette';
+import { mix, shade, TERRAIN_COLOURS } from '../render/palette';
+
+/** Bare rock, for ground too steep to hold anything else. */
+const ROCK = 0x6d675d;
+/** What deep water grades toward away from its own shore. */
+const DEEP_WATER = 0x102636;
 
 /**
  * Metres of height per elevation step in the map data. Purely a matter of how
@@ -118,16 +123,66 @@ export function buildTerrain(grid: TerrainGrid, data: TerrainMapData): TerrainMe
       positions[index * 3] = column * size;
       positions[index * 3 + 1] = height;
       positions[index * 3 + 2] = row * size;
+    }
+  }
 
+  /** Corner height with the edges clamped, for reading slope off neighbours. */
+  const heightAtCorner = (column: number, row: number): number => {
+    const c = Math.max(0, Math.min(across - 1, column));
+    const r = Math.max(0, Math.min(down - 1, row));
+    return heights[r * across + c] ?? 0;
+  };
+
+  /** How much of a tile's neighbourhood is also water, 0 at a shore to 1 mid-channel. */
+  const wetness = (column: number, row: number): number => {
+    let wet = 0;
+    let counted = 0;
+    for (let dr = -1; dr <= 1; dr += 1) {
+      for (let dc = -1; dc <= 1; dc += 1) {
+        const c = column + dc;
+        const r = row + dr;
+        if (!grid.inBounds(c, r)) continue;
+        counted += 1;
+        if (terrainIdAt(data, c, r) === 'water') wet += 1;
+      }
+    }
+    return counted === 0 ? 0 : wet / counted;
+  };
+
+  for (let row = 0; row < down; row += 1) {
+    for (let column = 0; column < across; column += 1) {
+      const index = row * across + column;
       // Corners take the colour of the tile up and left of them, which is the
       // one whose quad this corner opens.
-      const tile = terrainIdAt(data, Math.min(column, grid.width - 1), Math.min(row, grid.height - 1));
+      const tileColumn = Math.min(column, grid.width - 1);
+      const tileRow = Math.min(row, grid.height - 1);
+      const tile = terrainIdAt(data, tileColumn, tileRow);
+
       const lift =
         1 +
-        (height / HEIGHT_PER_STEP) * 0.05 +
+        (heights[index] ?? 0) / HEIGHT_PER_STEP * 0.05 +
         (hash(column, row, 9) - 0.5) * 0.12 +
         patchNoise(column, row) * (MOTTLE[tile] ?? 0.1);
-      scratch.setHex(shade(colourFor(tile), lift));
+
+      let colour = shade(colourFor(tile), lift);
+
+      // Ground too steep to hold soil shows the rock underneath. Terraces and
+      // scarps are elevation data, not a terrain type, so without this a cliff
+      // face is grass standing on its end.
+      const rise = Math.hypot(
+        (heightAtCorner(column + 1, row) - heightAtCorner(column - 1, row)) / (2 * size),
+        (heightAtCorner(column, row + 1) - heightAtCorner(column, row - 1)) / (2 * size),
+      );
+      if (tile !== 'water') {
+        const bare = Math.max(0, Math.min(1, (rise - 0.35) / 0.55));
+        if (bare > 0) colour = mix(colour, shade(ROCK, lift), bare * 0.85);
+      } else {
+        // Water reads as depth: pale over the shallows it is fordable at,
+        // grading to something you would not walk a mech into.
+        colour = mix(colour, DEEP_WATER, wetness(tileColumn, tileRow) * 0.85);
+      }
+
+      scratch.setHex(colour);
       colours[index * 3] = scratch.r;
       colours[index * 3 + 1] = scratch.g;
       colours[index * 3 + 2] = scratch.b;

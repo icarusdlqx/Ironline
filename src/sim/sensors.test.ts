@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { catalog, playerWorld, testWorld, unitOf } from '../../tests/support';
-import { isVisibleTo, sensorRangeFor, tileExplored, tileVisible, updateVision } from './sensors';
+import {
+  isIdentifiedBy,
+  isVisibleTo,
+  sensorRangeFor,
+  signatureFor,
+  tileExplored,
+  tileVisible,
+  updateVision,
+} from './sensors';
 import type { MechEntity, World } from './types';
 
 let world: World;
@@ -143,5 +151,83 @@ describe('remembered ground and ghosts', () => {
     updateVision(world, world.vision!);
 
     expect(world.vision!.ghosts.has(enemy.id)).toBe(false);
+  });
+});
+
+describe('signature', () => {
+  it('makes a heavier hull easier to pick up', () => {
+    const rules = catalog.rules.sensors;
+    expect(signatureFor(rules, 100)).toBeGreaterThan(signatureFor(rules, 25));
+  });
+
+  it('stamps a smaller signature on a mech built to hide', () => {
+    // The Wisp carries narrow_profile; the Bulwark is a wall with legs.
+    const wisp = world.entities.find((entity) => entity.chassisId === 'wisp_wsp1');
+    const bulwark = world.entities.find((entity) => entity.chassisId === 'bulwark_bwk3');
+    if (wisp === undefined || bulwark === undefined) return;
+    expect(wisp.signature).toBeLessThan(bulwark.signature * 0.8);
+  });
+
+  it('lets a scout walk closer than an assault hull before either is seen', () => {
+    const vision = world.vision!;
+    // One observer, two identical approaches, two different hulls.
+    for (const entity of world.entities) {
+      if (entity !== scout) entity.destroyed = entity.team === 0;
+    }
+    scout.pos = { x: 100, y: 100 };
+
+    const reachOf = (target: MechEntity): number => {
+      let seen = 0;
+      for (let gap = 40; gap < 1_400; gap += 20) {
+        target.pos = { x: 100 + gap, y: 100 };
+        updateVision(world, vision);
+        if (vision.visible.has(target.id)) seen = gap;
+        else break;
+      }
+      return seen;
+    };
+
+    const small = world.entities.find((e) => e.chassisId === 'wisp_wsp1' && e.team !== 0);
+    const large = world.entities.find((e) => e.chassisId === 'bulwark_bwk3' && e.team !== 0);
+    if (small === undefined || large === undefined) return;
+    small.destroyed = false;
+    large.destroyed = false;
+    // Park the one not under test far away so it cannot be the contact seen.
+    large.pos = { x: 5_000, y: 5_000 };
+    const scoutReach = reachOf(small);
+    small.pos = { x: 5_000, y: 5_000 };
+    const assaultReach = reachOf(large);
+
+    expect(scoutReach).toBeGreaterThan(0);
+    expect(scoutReach).toBeLessThan(assaultReach);
+  });
+
+  it('holds a distant contact without naming it', () => {
+    const vision = world.vision!;
+    scout.pos = { x: 100, y: 100 };
+    const reach = scout.sensorRange * enemy.signature;
+    const identify = catalog.rules.sensors.identifyFraction;
+
+    // Walk in from the edge of detection to the first spot the scout actually
+    // holds — ridge_pass has terrain in the way, and which spot that is
+    // matters less than what the lance knows once it gets there.
+    let held: number | null = null;
+    for (let f = 0.95; f > identify + 0.05; f -= 0.05) {
+      enemy.pos = { x: 100 + reach * f, y: 100 };
+      updateVision(world, vision);
+      if (isVisibleTo(vision, enemy)) {
+        held = f;
+        break;
+      }
+    }
+
+    expect(held, 'the scout never picked the contact up at all').not.toBeNull();
+    expect(isIdentifiedBy(vision, enemy), 'named a contact out past identification range').toBe(
+      false,
+    );
+
+    enemy.pos = { x: 100 + reach * 0.3, y: 100 };
+    updateVision(world, vision);
+    expect(isIdentifiedBy(vision, enemy)).toBe(true);
   });
 });

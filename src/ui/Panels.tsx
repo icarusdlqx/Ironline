@@ -349,17 +349,22 @@ export function HostileBar({
           <button
             key={enemy.id}
             type="button"
-            className={`hostile ${targetIds.has(enemy.id) ? 'targeted' : ''}`}
+            className={`hostile ${targetIds.has(enemy.id) ? 'targeted' : ''}${enemy.identified ? '' : ' unidentified'}`}
             disabled={!hasSelection}
             title={
-              hasSelection
-                ? `Target ${enemy.name}`
-                : 'Select one of your mechs first, then click a contact to attack it'
+              !enemy.identified
+                ? 'Sensor contact — too far out to identify. Close on it, or send a scout.'
+                : hasSelection
+                  ? `Target ${enemy.name}`
+                  : 'Select one of your mechs first, then click a contact to attack it'
             }
             onClick={() => onTarget(enemy.id)}
             data-testid={`hostile-${enemy.id}`}
           >
-            <span className="hostile-name">{enemy.name}</span>
+            {/* A contact the lance cannot name is a contact, not a chassis.
+                Naming it anyway is free intelligence, and the reason nobody
+                would ever bother fielding a scout. */}
+            <span className="hostile-name">{enemy.identified ? enemy.name : 'Unknown contact'}</span>
             <span className="hostile-range">
               {enemy.rangeToLance === null ? '—' : `${Math.round(enemy.rangeToLance)}m`}
             </span>

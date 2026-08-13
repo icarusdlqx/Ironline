@@ -1,5 +1,6 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import { canJump, isHoldingFire } from '../sim/orders';
+import { isIdentifiedBy } from '../sim/sensors';
 import { findEntity, isOperational, type MechEntity, type World } from '../sim/types';
 import type { LocationSnapshot, UnitSnapshot, WeaponSnapshot } from './store';
 
@@ -83,6 +84,8 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     jumpCooldown: entity.jumpCooldown,
     canJump: canJump(entity),
     posture: entity.posture,
+    identified: isIdentifiedBy(world.vision, entity),
+    sensorRange: entity.sensorRange,
   };
 }
 

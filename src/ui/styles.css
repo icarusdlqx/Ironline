@@ -2197,3 +2197,14 @@ button {
   color: var(--danger);
   font-size: 11px;
 }
+
+/* A contact on sensors that nobody has identified yet. Dashed and dimmed:
+   the lance knows something is out there and not what. */
+.hostile.unidentified {
+  border-style: dashed;
+}
+
+.hostile.unidentified .hostile-name {
+  color: var(--muted);
+  font-style: italic;
+}

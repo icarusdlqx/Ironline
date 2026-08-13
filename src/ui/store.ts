@@ -78,6 +78,13 @@ export interface UnitSnapshot {
   canJump: boolean;
   /** The standing order this mech is following between orders. */
   posture: string;
+  /**
+   * False for a hostile the lance holds on sensors but cannot name yet. A
+   * return on a scope is not the same as knowing what is walking at you.
+   */
+  identified: boolean;
+  /** How far this machine's own sensors reach, for the range overlay. */
+  sensorRange: number;
 }
 
 export type Screen = 'battle' | 'mechbay' | 'campaign';

@@ -604,6 +604,11 @@ export class Renderer {
         this.markers.add(this.groundRing(entity.pos, entity.jumpRange, UI.moveMarker, 0.5));
       }
 
+      // How far this machine can see, against a hull of average signature.
+      // Drawn faintly and always: where the lance's sensor envelope reaches is
+      // a standing fact about the position, not something to go and look up.
+      this.markers.add(this.groundRing(entity.pos, entity.sensorRange, UI.selection, 0.14));
+
       // Weapon reach, drawn while the player is lining up an attack so range
       // stops being a number in a panel and becomes a circle on the ground.
       if (

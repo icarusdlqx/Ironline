@@ -306,6 +306,8 @@ export const TraitSchema = z.strictObject({
   movingAccuracyFactor: z.number().positive().max(2).default(1),
   dissipationFactor: z.number().positive().max(2).default(1),
   sensorRangeFactor: z.number().positive().max(2).default(1),
+  /** How loud the machine is to somebody else's sensors. */
+  signatureFactor: z.number().positive().max(2).default(1),
   damageTakenFactor: z.number().positive().max(2).default(1),
   legLossFactor: z.number().positive().max(2).default(1),
   lanceAccuracyFactor: z.number().positive().max(2).default(1),
@@ -483,6 +485,20 @@ export const SensorRulesSchema = z.strictObject({
   baseRange: z.number().positive(),
   rangePerSkill: z.number().nonnegative(),
   ghostMemorySeconds: z.number().nonnegative(),
+  /**
+   * Being seen is a property of the target as much as the observer. A hundred
+   * tonnes of reactor and hot plate is a beacon; a scout on a narrow frame has
+   * to be walked up on. Signature multiplies the observer's range, so a mech
+   * with signature 0.6 must be within 60% of it before anyone notices.
+   */
+  signatureBase: z.number().positive(),
+  signaturePerTon: z.number().nonnegative(),
+  /**
+   * Inside this fraction of the detection range the contact is not just a
+   * return but a machine somebody can name. Beyond it the lance knows
+   * something is there and nothing else about it.
+   */
+  identifyFraction: z.number().positive().max(1),
 });
 
 export const TerrainRulesSchema = z.strictObject({

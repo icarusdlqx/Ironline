@@ -2,5 +2,8 @@
   "id": "sensors",
   "baseRange": 380,
   "rangePerSkill": 55,
-  "ghostMemorySeconds": 20
+  "ghostMemorySeconds": 20,
+  "signatureBase": 0.55,
+  "signaturePerTon": 0.005,
+  "identifyFraction": 0.62
 }

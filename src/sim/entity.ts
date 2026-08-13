@@ -4,7 +4,7 @@ import type { Catalog } from '../schema/load';
 import type { Pilot } from '../schema/pilot';
 import type { Rules } from '../schema/rules';
 import { emptyOrders } from './orders';
-import { sensorRangeFor } from './sensors';
+import { sensorRangeFor, signatureFor } from './sensors';
 import {
   WEAPON_GROUPS,
   type AmmoBin,
@@ -124,6 +124,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
   let legLossFactor = 1;
   let lanceAccuracyFactor = 1;
   let traitSensorFactor = 1;
+  let signatureFactor = 1;
 
   for (const traitId of chassis.traits) {
     const trait = rules.traits.entries[traitId];
@@ -135,6 +136,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     damageTakenFactor *= trait.damageTakenFactor;
     legLossFactor *= trait.legLossFactor;
     traitSensorFactor *= trait.sensorRangeFactor;
+    signatureFactor *= trait.signatureFactor;
     lanceAccuracyFactor *= trait.lanceAccuracyFactor;
   }
   // What the pilot brings on top of the hull. A speciality is the difference
@@ -272,6 +274,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     groupIntent: Array.from({ length: WEAPON_GROUPS }, () => true),
     heatSafety: true,
     sensorRange: sensorRangeFor(rules.sensors, pilot.sensors) * sensorRangeFactor * traitSensorFactor,
+    signature: signatureFor(rules.sensors, chassis.tonnage) * signatureFactor,
     amsMissileFactor,
     movingAccuracyFactor,
     damageTakenFactor,

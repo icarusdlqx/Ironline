@@ -195,6 +195,8 @@ export interface MechEntity {
   /** Reactor governor: sheds hot weapon groups rather than risking a shutdown. */
   heatSafety: boolean;
   sensorRange: number;
+  /** How far into somebody else's sensor range this mech has to walk to be seen. */
+  signature: number;
 
   targetId: EntityId | null;
   calledShot: MechLocation | null;
