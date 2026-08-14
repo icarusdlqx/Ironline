@@ -3,13 +3,18 @@ import { catalog } from '../../../tests/support';
 import type { Design } from '../../schema/design';
 import { DesignSchema } from '../../schema/design';
 import {
+  addAmmo,
+  addMount,
   designIssues,
+  fitCooling,
   idFromName,
   InvalidBuildError,
   listStoredDesigns,
   loadFromStorage,
+  removeMount,
   saveToStorage,
   setName,
+  spreadArmour,
 } from './editor';
 
 function stock(id: string): Design {
@@ -94,5 +99,59 @@ describe('saving to storage', () => {
     expect(designIssues(catalog, blank).length).toBeGreaterThan(0);
     expect(() => saveToStorage(catalog, blank)).toThrow(InvalidBuildError);
     expect(listStoredDesigns()).toHaveLength(0);
+  });
+});
+
+describe('mounting and ammunition', () => {
+  it('takes the ammunition off with the last gun that fed from it', () => {
+    let design = stock('sentinel_brawler');
+    const mounts = design.mounts.length;
+    design = addMount(design, 'ac2', 'left_torso');
+    design = addAmmo(design, 'ac2', 'left_torso');
+
+    design = removeMount(design, design.mounts.length - 1);
+    expect(design.mounts).toHaveLength(mounts);
+    expect(
+      design.ammo.some((bin) => bin.weaponId === 'ac2'),
+      'the bin outlived its gun',
+    ).toBe(false);
+  });
+
+  it('keeps a shared bin while a second gun still feeds from it', () => {
+    let design = stock('sentinel_brawler');
+    design = addMount(design, 'ac2', 'left_torso');
+    design = addMount(design, 'ac2', 'left_torso');
+    design = addAmmo(design, 'ac2', 'left_torso');
+
+    design = removeMount(design, design.mounts.length - 1);
+    expect(design.ammo.some((bin) => bin.weaponId === 'ac2')).toBe(true);
+  });
+});
+
+describe('one-click fitting', () => {
+  it('spreads armour to a fraction of every location maximum', () => {
+    const design = spreadArmour(catalog, stock('sentinel_brawler'), 0.5);
+    const chassis = catalog.chassis.get(design.chassisId);
+    if (chassis === undefined) throw new Error('no chassis');
+    for (const [location, value] of Object.entries(design.armour)) {
+      expect(value).toBe(Math.floor(chassis.armourMax[location as keyof typeof chassis.armourMax] * 0.5));
+    }
+  });
+
+  it('sets the sinks sustained fire needs, never below the chassis floor', () => {
+    const design = fitCooling(catalog, stock('sentinel_brawler'));
+    const chassis = catalog.chassis.get(design.chassisId);
+    if (chassis === undefined) throw new Error('no chassis');
+    expect(design.heatSinks).toBeGreaterThanOrEqual(chassis.internalHeatSinks);
+
+    // With those sinks the build is sustainable — that is the whole promise.
+    let heatPerSecond = 0;
+    for (const mount of design.mounts) {
+      const weapon = catalog.weapons.get(mount.weaponId);
+      if (weapon !== undefined) heatPerSecond += weapon.heat / weapon.cooldown;
+    }
+    const sink = catalog.equipment.get(design.heatSinkId);
+    const perSink = (sink?.stats.dissipation ?? 1) * catalog.rules.heat.dissipationPerSinkPerSecond;
+    expect(design.heatSinks * perSink).toBeGreaterThanOrEqual(heatPerSecond);
   });
 });

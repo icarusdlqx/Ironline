@@ -38,7 +38,21 @@ export function addMount(design: Design, weaponId: string, location: MechLocatio
 
 export function removeMount(design: Design, index: number): Design {
   const next = copy(design);
-  next.mounts.splice(index, 1);
+  const removed = next.mounts.splice(index, 1)[0];
+
+  // The gun's ammunition leaves with it. A bin for a weapon that is no longer
+  // there is dead weight the player then has to notice and clean up by hand —
+  // unless another mount of the same weapon still feeds from it.
+  if (removed !== undefined) {
+    const stillFed = next.mounts.some(
+      (mount) => mount.weaponId === removed.weaponId && mount.location === removed.location,
+    );
+    if (!stillFed) {
+      next.ammo = next.ammo.filter(
+        (bin) => !(bin.weaponId === removed.weaponId && bin.location === removed.location),
+      );
+    }
+  }
   return next;
 }
 
@@ -119,6 +133,52 @@ export function setName(design: Design, name: string): Design {
 
 export function maximiseArmour(catalog: Catalog, design: Design): Design {
   return fitArmour(catalog, design);
+}
+
+/**
+ * Sets every location's armour to one fraction of its maximum. This is the
+ * whole-mech armour slider: eight sliders were the single largest source of
+ * noise in the bay, and nearly every build wants armour spread evenly anyway.
+ * The per-location detail stays available for the rare asymmetric build.
+ */
+export function spreadArmour(catalog: Catalog, design: Design, fraction: number): Design {
+  const chassis = catalog.chassis.get(design.chassisId);
+  if (chassis === undefined) return design;
+  const clamped = Math.max(0, Math.min(1, fraction));
+
+  const next = copy(design);
+  for (const location of LOCATIONS) {
+    next.armour[location] = Math.floor(chassis.armourMax[location] * clamped);
+  }
+  return next;
+}
+
+/**
+ * Sets the heat sinks to what sustained fire actually needs — the arithmetic
+ * the dossier explains, done for you. Deliberately under-sinking an
+ * alpha-strike build is still possible; this is the sensible default made
+ * one click instead of mental long division.
+ */
+export function fitCooling(catalog: Catalog, design: Design): Design {
+  const chassis = catalog.chassis.get(design.chassisId);
+  if (chassis === undefined) return design;
+
+  let heatPerSecond = 0;
+  for (const mount of design.mounts) {
+    const weapon = catalog.weapons.get(mount.weaponId);
+    if (weapon !== undefined) heatPerSecond += weapon.heat / weapon.cooldown;
+  }
+
+  const sink = catalog.equipment.get(design.heatSinkId);
+  const perSink =
+    (sink?.stats.dissipation ?? 1) * catalog.rules.heat.dissipationPerSinkPerSecond;
+
+  const next = copy(design);
+  next.heatSinks = Math.min(
+    40,
+    Math.max(chassis.internalHeatSinks, Math.ceil(heatPerSecond / Math.max(0.01, perSink))),
+  );
+  return next;
 }
 
 export function serialiseDesign(design: Design): string {

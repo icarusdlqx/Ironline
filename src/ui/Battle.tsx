@@ -1,11 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
-import { prepareDeployment, resolveMission } from '../campaign/campaign';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { dropTonnageFor, prepareDeployment, resolveMission } from '../campaign/campaign';
 import { loadCampaign, saveCampaign } from '../campaign/save';
+import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
 import { SUPPORT_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
+import {
+  berthDesign,
+  lanceEntries,
+  lanceTonnage,
+  loadLance,
+  storeLance,
+  type SkirmishBerth,
+} from './lance';
+import { listStoredDesigns, loadFromStorage } from './mechbay/editor';
+import { Mechbay, type BayCommission } from './mechbay/Mechbay';
 import {
   Briefing,
   EventLog,
@@ -15,6 +26,7 @@ import {
   ObjectiveList,
   SupportPalette,
   WeaponGroups,
+  type BriefingLance,
   type SupportOption,
 } from './Panels';
 import { Minimap } from './Minimap';
@@ -47,11 +59,32 @@ export function Battle() {
   const missionId = useGame((game) => game.skirmishMissionId);
   const difficulty = useGame((game) => game.difficulty);
 
+  // The skirmish lance, edited at the briefing. Kept per mission so switching
+  // missions never carries the wrong machines across, persisted so a loadout
+  // survives a reload. Campaign drops ignore this: their lance is the
+  // dropship manifest's decision.
+  const [lanceEdits, setLanceEdits] = useState<Record<string, SkirmishBerth[]>>({});
+  const catalog = getCatalog();
+  const lance = useMemo(
+    () => lanceEdits[missionId] ?? loadLance(catalog, missionId),
+    [lanceEdits, catalog, missionId],
+  );
+  const setLance = (next: SkirmishBerth[]): void => {
+    setLanceEdits((edits) => ({ ...edits, [missionId]: next }));
+    storeLance(missionId, next);
+  };
+  // The engine rebuilds when the lance actually changes, not on every render.
+  const lanceKey = useMemo(() => JSON.stringify(lance), [lance]);
+  // Which berth is open in the bay, if any.
+  const [outfitting, setOutfitting] = useState<number | null>(null);
+
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) return;
 
     let options: Record<string, unknown> = { missionId, difficulty };
+    const entries = lanceEntries(getCatalog(), JSON.parse(lanceKey) as SkirmishBerth[]);
+    if (entries !== null && entries.length > 0) options = { ...options, playerLance: entries };
     if (useGame.getState().campaignPending) {
       const saved = loadCampaign().state;
       if (saved !== null) {
@@ -95,7 +128,7 @@ export function Battle() {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [missionId, difficulty]);
+  }, [missionId, difficulty, lanceKey]);
 
   const onReturnToCampaign = (): void => {
     const engine = engineRef.current;
@@ -147,6 +180,75 @@ export function Battle() {
   // contract would silently restart from the top with the lance already paid
   // for. There is nowhere useful to go mid-contract anyway.
   const deployed = state.campaignPending && !state.finished;
+
+  // The briefing's lance panel: skirmish only. A campaign drop already made
+  // these decisions on the dropship manifest.
+  const briefingLance: BriefingLance | null = state.campaignPending
+    ? null
+    : {
+        berths: lance.map((berth, index) => ({
+          index,
+          designValue: berth.designId ?? 'custom',
+          customLabel: berth.designId === null ? (berth.design?.name ?? 'Custom build') : null,
+          pilotId: berth.pilotId,
+          tonnage: catalog.chassis.get(berthDesign(catalog, berth)?.chassisId ?? '')?.tonnage ?? 0,
+        })),
+        designs: [...catalog.designs.values()].map((design) => ({
+          value: design.id,
+          label: design.name,
+          tonnage: catalog.chassis.get(design.chassisId)?.tonnage ?? 0,
+        })),
+        saved: listStoredDesigns().map((id) => ({ value: `saved:${id}`, label: id })),
+        pilots: [...catalog.pilots.values()].map((pilot) => ({ id: pilot.id, name: pilot.name })),
+        total: lanceTonnage(catalog, lance),
+        allowance: dropTonnageFor(catalog, missionId),
+        onDesign: (index, value) => {
+          const next = lance.map((berth) => ({ ...berth }));
+          const target = next[index];
+          if (target === undefined) return;
+          if (value.startsWith('saved:')) {
+            // A saved build is the player's own: frozen into the berth, so
+            // later edits to the saved copy do not silently rewrite the lance.
+            const result = loadFromStorage(value.slice('saved:'.length));
+            if (result.design === null) return;
+            target.designId = null;
+            target.design = result.design;
+          } else if (value !== 'custom') {
+            target.designId = value;
+            delete target.design;
+          }
+          setLance(next);
+        },
+        onPilot: (index, pilotId) => {
+          const next = lance.map((berth) => ({ ...berth }));
+          const target = next[index];
+          if (target === undefined) return;
+          target.pilotId = pilotId;
+          setLance(next);
+        },
+        onCustomise: setOutfitting,
+      };
+
+  // The berth open in the bay, as a commission whose commit rewrites it.
+  const outfitBerth = outfitting === null ? null : (lance[outfitting] ?? null);
+  const outfitBay: BayCommission | null =
+    outfitting === null || outfitBerth === null
+      ? null
+      : {
+          title: `Berth ${outfitting + 1}`,
+          design: berthDesign(catalog, outfitBerth) ?? (catalog.designs.get('sentinel_brawler') as Design),
+          onCancel: () => setOutfitting(null),
+          onCommit: (design) => {
+            const next = lance.map((berth) => ({ ...berth }));
+            const target = next[outfitting];
+            if (target === undefined) return { ok: false, reason: 'no such berth' };
+            target.designId = null;
+            target.design = design;
+            setLance(next);
+            setOutfitting(null);
+            return { ok: true, reason: null };
+          },
+        };
 
   const supportOptions: SupportOption[] = SUPPORT_CALLS.map((id) => ({
     id,
@@ -258,9 +360,20 @@ export function Battle() {
           text={state.briefing}
           objectives={state.objectives}
           resourcePoints={state.resourcePoints}
+          {...(briefingLance === null ? {} : { lance: briefingLance })}
           onDeploy={() => state.patch({ briefingSeen: true, paused: false })}
         />
       ) : null}
+
+      {/* The bay, opened on one berth of the skirmish lance. Commits replace
+          that berth's design; the engine rebuilds with the new machine. */}
+      {outfitBay === null ? null : (
+        <div className="manifest-backdrop" data-testid="outfit-bay">
+          <div className="refit-bay">
+            <Mechbay onExit={() => setOutfitting(null)} commission={outfitBay} />
+          </div>
+        </div>
+      )}
 
       <ObjectiveList objectives={state.objectives} zones={state.zones} />
 

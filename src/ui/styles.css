@@ -2505,3 +2505,104 @@ button {
   overflow: hidden;
   background: var(--bg);
 }
+
+/* The lance panel on the skirmish briefing: who drops, in what. */
+.briefing-lance {
+  margin: 10px 0 4px;
+}
+
+.briefing-lance h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.briefing-tonnage {
+  font-size: 11px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.briefing-tonnage.over {
+  color: var(--danger);
+}
+
+.briefing-berth {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.briefing-berth select,
+.briefing-berth button {
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--edge);
+  color: var(--text);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
+/* The whole-machine armour slider and its per-location disclosure. */
+.bay-armour-total {
+  display: grid;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.bay-armour-total input {
+  width: 100%;
+}
+
+.bay-armour-detail summary {
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.bay-armour-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 6px;
+  align-items: center;
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.bay-armour-row input {
+  width: 100%;
+}
+
+/* Armour readout on a location card, now that the slider lives elsewhere. */
+.bay-armour-read {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bay-show-all {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.bay-sinks > button {
+  background: rgba(140, 224, 255, 0.12);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 7px;
+}

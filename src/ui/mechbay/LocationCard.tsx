@@ -43,7 +43,6 @@ interface Props {
   onRemoveMount: (index: number) => void;
   onRemoveAmmo: (index: number) => void;
   onRemoveEquipment: (index: number) => void;
-  onArmourChange: (location: MechLocation, value: number) => void;
   /** Called when the player picks something here, so the dossier can follow. */
   onInspect?: (payload: DropPayload) => void;
 }
@@ -58,7 +57,6 @@ export function LocationCard({
   onRemoveMount,
   onRemoveAmmo,
   onRemoveEquipment,
-  onArmourChange,
   onInspect,
 }: Props) {
   const hardpoints = chassis.hardpoints[location];
@@ -217,19 +215,11 @@ export function LocationCard({
         ))}
       </ul>
 
-      <label className="bay-armour">
-        <span>
-          Armour {design.armour[location]}/{chassis.armourMax[location]}
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={chassis.armourMax[location]}
-          value={design.armour[location]}
-          onChange={(event) => onArmourChange(location, Number(event.target.value))}
-          data-testid={`armour-${location}`}
-        />
-      </label>
+      {/* Armour reads here and is set from the machine column: one slider for
+          the whole mech, with per-location detail behind a disclosure. */}
+      <span className="bay-armour-read" title="Armour on this location">
+        {design.armour[location]}/{chassis.armourMax[location]} armour
+      </span>
     </div>
   );
 }

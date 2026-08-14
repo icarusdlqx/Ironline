@@ -272,19 +272,49 @@ export function SupportPalette({
   );
 }
 
+/** One berth of the pre-battle lance, prepared by the caller. */
+export interface BriefingBerth {
+  index: number;
+  /** The design select's current value: a design id, or 'custom'. */
+  designValue: string;
+  /** Shown for the custom option, so an edited build keeps its name. */
+  customLabel: string | null;
+  pilotId: string;
+  tonnage: number;
+}
+
+export interface BriefingLance {
+  berths: BriefingBerth[];
+  designs: { value: string; label: string; tonnage: number }[];
+  saved: { value: string; label: string }[];
+  pilots: { id: string; name: string }[];
+  total: number;
+  allowance: number;
+  onDesign: (index: number, value: string) => void;
+  onPilot: (index: number, pilotId: string) => void;
+  onCustomise: (index: number) => void;
+}
+
 export function Briefing({
   name,
   text,
   objectives,
   resourcePoints,
+  lance,
   onDeploy,
 }: {
   name: string;
   text: string;
   objectives: readonly ObjectiveView[];
   resourcePoints: number;
+  /** Absent for campaign drops, whose lance the dropship manifest decided. */
+  lance?: BriefingLance;
   onDeploy: () => void;
 }) {
+  const over = lance !== undefined && lance.total > lance.allowance;
+  const taken = (pilotId: string): number =>
+    lance === undefined ? 0 : lance.berths.filter((berth) => berth.pilotId === pilotId).length;
+
   return (
     <div className="briefing" data-testid="briefing">
       <h2>{name}</h2>
@@ -298,9 +328,80 @@ export function Briefing({
           </li>
         ))}
       </ul>
+
+      {lance === undefined ? null : (
+        <div className="briefing-lance" data-testid="briefing-lance">
+          <h4>
+            Lance
+            <span className={`briefing-tonnage${over ? ' over' : ''}`} data-testid="briefing-tonnage">
+              {lance.total}/{lance.allowance}t
+            </span>
+          </h4>
+          {lance.berths.map((berth) => (
+            <div className="briefing-berth" key={berth.index}>
+              <select
+                value={berth.designValue}
+                onChange={(event) => lance.onDesign(berth.index, event.target.value)}
+                data-testid={`berth-design-${berth.index}`}
+                aria-label={`Mech for berth ${berth.index + 1}`}
+              >
+                {berth.customLabel === null ? null : (
+                  <option value="custom">{berth.customLabel} (custom)</option>
+                )}
+                {lance.designs.map((design) => (
+                  <option key={design.value} value={design.value}>
+                    {design.label} — {design.tonnage}t
+                  </option>
+                ))}
+                {lance.saved.length === 0 ? null : (
+                  <optgroup label="Saved builds">
+                    {lance.saved.map((entry) => (
+                      <option key={entry.value} value={entry.value}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+              <select
+                value={berth.pilotId}
+                onChange={(event) => lance.onPilot(berth.index, event.target.value)}
+                data-testid={`berth-pilot-${berth.index}`}
+                aria-label={`Pilot for berth ${berth.index + 1}`}
+              >
+                {lance.pilots.map((pilot) => (
+                  <option
+                    key={pilot.id}
+                    value={pilot.id}
+                    // The same person cannot fly two machines at once.
+                    disabled={pilot.id !== berth.pilotId && taken(pilot.id) > 0}
+                  >
+                    {pilot.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => lance.onCustomise(berth.index)}
+                title="Open the bay on this machine"
+                data-testid={`berth-customise-${berth.index}`}
+              >
+                Customise
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <p className="briefing-rp">{resourcePoints} Resource Points on the books.</p>
-      <button type="button" onClick={onDeploy} data-testid="briefing-deploy">
-        Deploy
+      <button
+        type="button"
+        onClick={onDeploy}
+        disabled={over}
+        title={over ? 'The lance is over the drop tonnage — lighten it first.' : undefined}
+        data-testid="briefing-deploy"
+      >
+        {over ? 'Over tonnage' : 'Deploy'}
       </button>
     </div>
   );

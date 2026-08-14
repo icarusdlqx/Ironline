@@ -385,6 +385,13 @@ async function main() {
       Number((await page.locator('[data-testid="free-tonnage"]').innerText()).replace('t', ''));
     const startingFree = await freeTonnage();
 
+    // The gauss rifle does not fit a Sentinel anywhere, so the shelf hides it
+    // until the player asks to window-shop.
+    check(
+      'the shelf hides weapons the hull cannot mount',
+      (await page.locator('[data-testid="stock-weapon-gauss_rifle"]').count()) === 0,
+    );
+    await page.locator('[data-testid="shelf-show-all"]').check();
     await page
       .locator('[data-testid="stock-weapon-gauss_rifle"]')
       .dragTo(page.locator('[data-testid="bay-location-right_arm"]'));
@@ -404,15 +411,19 @@ async function main() {
     });
     check('clicking a disabled save writes nothing to storage', blocked.added === 0);
 
-    // Locations are slot grids now: the last filled block in the arm is the
-    // gun that was just dragged in, and clicking it takes it back off.
+    // Locations are slot grids now, and an ammo-fed gun arrives with a ton of
+    // ammunition — so the newest *weapon* block is the gauss, and clicking it
+    // takes the gun and its ammo off together.
     await page
-      .locator('[data-testid="bay-location-right_arm"] .slot-block:not(.empty) button')
+      .locator('[data-testid="bay-location-right_arm"] .slot-block.tone-ballistic button')
       .last()
       .click();
     check('removing the weapon restores a legal build', !(await page.locator('[data-testid="bay-save"]').isDisabled()));
     check('free tonnage returns to its starting value', (await freeTonnage()) === startingFree);
 
+    // Per-location armour lives behind a disclosure now; the everyday control
+    // is one slider for the whole machine.
+    await page.locator('[data-testid="armour-detail"] summary').click();
     await page.locator('[data-testid="armour-head"]').fill('0');
     check('the armour slider frees tonnage', (await freeTonnage()) > startingFree);
     await page.locator('[data-testid="max-armour"]').click();

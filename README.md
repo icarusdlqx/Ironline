@@ -120,8 +120,13 @@ flanking work — but it means a line lance should not be built around one.
 
 ## Mission prep
 
-A contract is fought with what you decide to take. Signing one and pressing
-**Deploy** opens the dropship manifest rather than launching:
+Skirmishes are outfitted at the briefing: each berth has a design picker
+(stock builds plus anything saved from the bay), a pilot picker, and a
+**Customise** button that opens the bay on that machine. The lance must fit
+the mission's drop tonnage, and the loadout is remembered per mission.
+
+A campaign contract is fought with what you decide to take. Signing one and
+pressing **Deploy** opens the dropship manifest rather than launching:
 
 - **The profile** — how many berths the dropship has, how many tonnes it will
   carry, and what the contract is. The lance is limited by weight as well as by

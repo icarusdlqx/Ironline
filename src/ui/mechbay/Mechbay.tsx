@@ -16,8 +16,10 @@ import {
   parseDesign,
   removeAmmo,
   removeEquipment,
+  fitCooling,
   removeMount,
   saveToStorage,
+  spreadArmour,
   setArmour,
   setHeatSinkId,
   setHeatSinks,
@@ -44,8 +46,12 @@ export interface BayCommission {
   /** Shown instead of the design picker: which mech is on the gantry. */
   title: string;
   design: Design;
-  /** How many of each item the company has spare, by item id. */
-  inventory: ReadonlyMap<string, number>;
+  /**
+   * How many of each item the company has spare, by item id. Absent means the
+   * whole catalogue is on the shelves — a skirmish outfit, where nothing is
+   * being paid for, as opposed to a campaign refit booked through stores.
+   */
+  inventory?: ReadonlyMap<string, number>;
   onCommit: (design: Design) => { ok: boolean; reason: string | null };
   onCancel: () => void;
 }
@@ -144,6 +150,10 @@ export function Mechbay({
   const [stored, setStored] = useState<string[]>(() => listStoredDesigns());
   const [shelf, setShelf] = useState<Shelf>('weapons');
   const [inspected, setInspected] = useState<Inspected | null>(null);
+  // Guns the hull cannot mount anywhere are hidden by default: on a light
+  // chassis they were most of the list. The toggle brings them back for
+  // window-shopping.
+  const [showAll, setShowAll] = useState(false);
 
   const chassis = catalog.chassis.get(design.chassisId);
   const loadout = useMemo(() => computeLoadout(catalog, design), [design]);
@@ -153,6 +163,11 @@ export function Mechbay({
   // checks, so the button state matches what the button will actually do.
   const issues = useMemo(() => designIssues(catalog, design), [design]);
   const saveable = issues.length === 0;
+  const armourMax = useMemo(() => {
+    const chassisFor = catalog.chassis.get(design.chassisId);
+    if (chassisFor === undefined) return 0;
+    return LOCATIONS.reduce((total, location) => total + chassisFor.armourMax[location], 0);
+  }, [design.chassisId]);
 
   if (chassis === undefined) return <div className="bay">unknown chassis {design.chassisId}</div>;
 
@@ -162,8 +177,16 @@ export function Mechbay({
   };
 
   const onDrop = (payload: DropPayload, location: MechLocation): void => {
-    if (payload.kind === 'weapon') apply(addMount(design, payload.id, location));
-    else if (payload.kind === 'ammo') apply(addAmmo(design, payload.id, location));
+    if (payload.kind === 'weapon') {
+      // An ammo-fed gun arrives with a ton of ammunition, because a gun with
+      // an empty bin is the trap every new player walks into once. More tons
+      // come from the Ammo shelf; taking the gun off takes its ammo with it.
+      let next = addMount(design, payload.id, location);
+      if (catalog.weapons.get(payload.id)?.ammoPerTon != null) {
+        next = addAmmo(next, payload.id, location);
+      }
+      apply(next);
+    } else if (payload.kind === 'ammo') apply(addAmmo(design, payload.id, location));
     else apply(addEquipment(design, payload.id, location));
   };
 
@@ -220,9 +243,9 @@ export function Mechbay({
   };
 
   /** What is on the shelves: the whole catalogue, or what the company owns. */
-  const spare = (id: string): number | undefined => commission?.inventory.get(id) ?? undefined;
-  const onShelf = (id: string): boolean =>
-    commission === undefined || (commission.inventory.get(id) ?? 0) > 0;
+  const inventory = commission?.inventory;
+  const spare = (id: string): number | undefined => inventory?.get(id) ?? undefined;
+  const onShelf = (id: string): boolean => inventory === undefined || (inventory.get(id) ?? 0) > 0;
 
   const weapons = [...catalog.weapons.values()].filter((weapon) => onShelf(weapon.id));
   const gear = [...catalog.equipment.values()].filter(
@@ -363,6 +386,33 @@ export function Mechbay({
                   </option>
                 ))}
             </select>
+            <button
+              type="button"
+              onClick={() => apply(fitCooling(catalog, design))}
+              title="Set the sinks sustained fire needs"
+              data-testid="fit-cooling"
+            >
+              Fit
+            </button>
+          </label>
+
+          {/* One armour control for the whole machine. Eight per-location
+              sliders were most of what made the bay read as paperwork, and
+              nearly every build spreads armour evenly anyway. */}
+          <label className="bay-armour-total">
+            <span>
+              Armour {loadout.armourPoints}/{armourMax}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((armourMax === 0 ? 0 : loadout.armourPoints / armourMax) * 100)}
+              onChange={(event) =>
+                apply(spreadArmour(catalog, design, Number(event.target.value) / 100))
+              }
+              data-testid="armour-total"
+            />
           </label>
           <button
             type="button"
@@ -371,6 +421,26 @@ export function Mechbay({
           >
             Spend rest on armour
           </button>
+
+          <details className="bay-armour-detail" data-testid="armour-detail">
+            <summary>Armour by location</summary>
+            {LOCATIONS.map((location) => (
+              <label key={location} className="bay-armour-row">
+                <span>
+                  {location.replace('_', ' ')} {design.armour[location]}/
+                  {chassis.armourMax[location]}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={chassis.armourMax[location]}
+                  value={design.armour[location]}
+                  onChange={(event) => apply(setArmour(design, location, Number(event.target.value)))}
+                  data-testid={`armour-${location}`}
+                />
+              </label>
+            ))}
+          </details>
         </div>
 
         {chassis.traits.length === 0 ? null : (
@@ -417,7 +487,6 @@ export function Mechbay({
             onRemoveMount={(index) => apply(removeMount(design, index))}
             onRemoveAmmo={(index) => apply(removeAmmo(design, index))}
             onRemoveEquipment={(index) => apply(removeEquipment(design, index))}
-            onArmourChange={(where, value) => apply(setArmour(design, where, value))}
             onInspect={setInspected}
           />
         ))}
@@ -425,34 +494,49 @@ export function Mechbay({
 
       {/* ------------------------------------------------------- the stores */}
       <section className="bay-side">
-        <div className="bay-shelf-tabs" role="tablist">
-          {(['weapons', 'ammo', 'equipment'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              role="tab"
-              aria-selected={shelf === tab}
-              className={shelf === tab ? 'active' : ''}
-              onClick={() => setShelf(tab)}
-              data-testid={`shelf-${tab}`}
-            >
-              {tab}
-            </button>
-          ))}
+        {/* One grid row: the shelf header. The column's rows are positional
+            (header, scrolling stocks, dossier), so everything above the list
+            has to live in one container. */}
+        <div className="bay-shelf-head">
+          <div className="bay-shelf-tabs" role="tablist">
+            {(['weapons', 'ammo', 'equipment'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={shelf === tab}
+                className={shelf === tab ? 'active' : ''}
+                onClick={() => setShelf(tab)}
+                data-testid={`shelf-${tab}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {shelf !== 'weapons' ? null : (
+            <label className="bay-show-all">
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={(event) => setShowAll(event.target.checked)}
+                data-testid="shelf-show-all"
+              />
+              Show weapons this hull cannot mount
+            </label>
+          )}
         </div>
 
         <ul className="bay-stocks">
           {shelf === 'weapons'
             ? weapons.map((weapon) => {
-                // Which hardpoints on this hull could take it at all. A gun the
-                // machine cannot mount anywhere is worth saying so before the
-                // player spends an afternoon budgeting tonnage for it.
+                // Which hardpoints on this hull could take it at all.
                 const size = weaponSize(catalog, weapon);
                 const fits = LOCATIONS.some(
                   (location) =>
                     chassis.hardpoints[location][weapon.type] > 0 &&
                     chassis.hardpoints[location].size >= size,
                 );
+                if (!fits && !showAll) return null;
                 return (
                   <Draggable
                     key={weapon.id}
