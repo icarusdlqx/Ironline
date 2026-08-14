@@ -1,19 +1,20 @@
 {
   "id": "moonlit_night",
   "name": "Moonlit Night",
-  "sky": "#05070b",
-  "exposure": 1.24,
-  "fog": { "kind": "linear", "colour": "#0a1018", "near": 480, "far": 1700 },
+  "sky": "#070b12",
+  "exposure": 1.42,
+  "fog": { "kind": "linear", "colour": "#101927", "near": 520, "far": 1900 },
   "sun": {
-    "colour": "#9fb8e0",
-    "intensity": 0.42,
-    "direction": { "azimuthDegrees": 150, "elevationDegrees": 64, "distance": 1300 },
+    "colour": "#a8c0e8",
+    "intensity": 0.75,
+    "direction": { "azimuthDegrees": 150, "elevationDegrees": 58, "distance": 1300 },
     "shadows": false
   },
   "fill": {
-    "colour": "#3a5878",
-    "intensity": 0.22,
-    "direction": { "azimuthDegrees": 330, "elevationDegrees": 20, "distance": 1000 }
+    "colour": "#4a6a92",
+    "intensity": 0.36,
+    "direction": { "azimuthDegrees": 330, "elevationDegrees": 22, "distance": 1000 }
   },
-  "hemisphere": { "sky": "#2c3f5e", "ground": "#0d1210", "intensity": 0.42 }
+  "hemisphere": { "sky": "#5878a8", "ground": "#1a2430", "intensity": 0.9 },
+  "terrainTint": { "colour": "#20344e", "strength": 0.22 }
 }
