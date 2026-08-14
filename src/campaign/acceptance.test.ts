@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
-import { computeLoadout } from '../sim/loadout';
+import { computeLoadout, maximiseArmour } from '../sim/loadout';
 import {
   DeploymentError,
   acceptContract,
@@ -13,9 +13,9 @@ import {
   runMission,
   startCampaign,
 } from './campaign';
-import { fitFromStore, planFit, stripToStore } from './refit';
+import { applyRefit, fitFromStore, planFit, refitInventory, stripToStore } from './refit';
 import { estimateRepair, startRepair } from './repair';
-import { isPilotAvailable, storeCount, type CampaignState } from './types';
+import { addToStore, isPilotAvailable, storeCount, type CampaignState } from './types';
 
 const CAMPAIGN_ID = 'border_dispute';
 
@@ -125,6 +125,56 @@ describe('refit', () => {
       estimateRepair(catalog, mech).cost,
       'the refit wiped out the repair bill',
     ).toBeGreaterThanOrEqual(wounded.cost);
+  });
+
+  it('books a whole rebuilt design through stores in one go', () => {
+    const mech = state.mechs.find((entry) => entry.design.mounts.length > 1);
+    if (mech === undefined) return;
+
+    const dropped = mech.design.mounts[0];
+    if (dropped === undefined) return;
+    const held = storeCount(state, 'weapon', dropped.weaponId);
+
+    const next = JSON.parse(JSON.stringify(mech.design)) as typeof mech.design;
+    next.mounts.splice(0, 1);
+
+    const result = applyRefit(catalog, state, mech, maximiseArmour(catalog, next));
+    expect(result.ok, result.reason ?? '').toBe(true);
+    expect(
+      storeCount(state, 'weapon', dropped.weaponId),
+      'the weapon taken off never reached the shelf',
+    ).toBe(held + 1);
+    expect(mech.design.mounts).toHaveLength(next.mounts.length);
+  });
+
+  it('refuses a refit the company cannot pay for, and touches nothing', () => {
+    const mech = state.mechs[0];
+    if (mech === undefined) return;
+
+    const next = JSON.parse(JSON.stringify(mech.design)) as typeof mech.design;
+    next.mounts.push({ weaponId: 'gauss_rifle', location: 'right_arm' });
+
+    const storeBefore = JSON.stringify(state.store);
+    const designBefore = JSON.stringify(mech.design);
+
+    const result = applyRefit(catalog, state, mech, next);
+    expect(result.ok).toBe(false);
+    expect(JSON.stringify(state.store), 'a refused refit still moved stock').toBe(storeBefore);
+    expect(JSON.stringify(mech.design), 'a refused refit still changed the mech').toBe(
+      designBefore,
+    );
+  });
+
+  it('offers the bay what is in stores plus what is already bolted on', () => {
+    const mech = state.mechs[0];
+    if (mech === undefined) return;
+    addToStore(state, 'weapon', 'medium_laser', 2);
+
+    const inventory = refitInventory(state, mech);
+    const mounted = mech.design.mounts.filter((mount) => mount.weaponId === 'medium_laser').length;
+    // Taking a gun off puts it in the player's hand, not on a shelf, so the
+    // bay works from one list rather than two.
+    expect(inventory.get('medium_laser')).toBe(2 + mounted);
   });
 
   it('refuses to strip the last weapon off a mech', () => {

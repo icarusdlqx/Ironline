@@ -11,6 +11,8 @@ interface Props {
   mutate: (change: (draft: CampaignState) => void, message?: string) => void;
   onLaunch: () => void;
   onCancel: () => void;
+  /** Opens the bay on one of the company's machines, for a pre-drop refit. */
+  onRefit: (mechId: string) => void;
 }
 
 /** What a skill actually buys, in the units the player sees on the field. */
@@ -55,7 +57,7 @@ function integrity(state: CampaignState, mechId: string): number {
  * many the company owns, so which four, and who is in them, is the decision
  * the campaign is actually about.
  */
-export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel }: Props) {
+export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRefit }: Props) {
   const contract = state.contract;
   if (contract === null) return null;
 
@@ -192,14 +194,27 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel }: Pr
                       <span style={{ width: `${Math.round(health * 100)}%` }} />
                     </div>
                   )}
-                  <button
-                    type="button"
-                    disabled={!available}
-                    onClick={() => toggleBench(pilot)}
-                    data-testid={`manifest-bench-${pilot.id}`}
-                  >
-                    {benched(pilot) ? 'Call up' : 'Hold back'}
-                  </button>
+                  <div className="manifest-buttons">
+                    <button
+                      type="button"
+                      disabled={!available}
+                      onClick={() => toggleBench(pilot)}
+                      data-testid={`manifest-bench-${pilot.id}`}
+                    >
+                      {benched(pilot) ? 'Call up' : 'Hold back'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={seated === null || seated.status !== 'ready'}
+                      onClick={() => {
+                        if (seated !== null) onRefit(seated.id);
+                      }}
+                      title="Change what this machine is carrying before the drop"
+                      data-testid={`manifest-refit-${pilot.id}`}
+                    >
+                      Refit
+                    </button>
+                  </div>
                 </div>
               </li>
             );

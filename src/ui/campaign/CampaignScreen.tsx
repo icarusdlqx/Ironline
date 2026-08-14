@@ -18,6 +18,8 @@ import {
 } from '../../campaign/save';
 import type { CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
+import { applyRefit, refitInventory } from '../../campaign/refit';
+import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
 import { Debrief, debriefedCount, markDebriefed } from './Debrief';
 import { LanceManifest } from './LanceManifest';
@@ -38,6 +40,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   });
   const [manualOpen, setManualOpen] = useState(false);
   const [manifestOpen, setManifestOpen] = useState(false);
+  const [refitting, setRefitting] = useState<string | null>(null);
   // Missions fought but not yet debriefed. Counted rather than flagged so the
   // screen can be reopened without the debrief coming back each time.
   const [debriefed, setDebriefed] = useState(() => debriefedCount());
@@ -52,6 +55,34 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const options = node === null ? [] : negotiationOptions(catalog, node);
   const lance = deployableLance(state);
   const pendingDebrief = state.history[state.history.length - 1];
+
+  // The machine on the gantry, if the player has opened one for a refit.
+  const refitMech = refitting === null ? null : (state.mechs.find((m) => m.id === refitting) ?? null);
+  const refitBay: BayCommission | null =
+    refitMech === null
+      ? null
+      : {
+          title: refitMech.design.name,
+          design: refitMech.design,
+          inventory: refitInventory(state, refitMech),
+          onCancel: () => setRefitting(null),
+          onCommit: (next) => {
+            let outcome: { ok: boolean; reason: string | null } = {
+              ok: false,
+              reason: 'that mech is no longer in the bay',
+            };
+            mutate((draft) => {
+              const target = draft.mechs.find((entry) => entry.id === refitMech.id);
+              if (target === undefined) return;
+              outcome = applyRefit(catalog, draft, target, next);
+            });
+            if (outcome.ok) {
+              setRefitting(null);
+              setStatus(`${next.name} refitted.`);
+            }
+            return outcome;
+          },
+        };
 
   const mutate = (change: (draft: CampaignState) => void, message?: string): void => {
     const draft = JSON.parse(JSON.stringify(state)) as CampaignState;
@@ -266,14 +297,26 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         />
       )}
 
-      {!manifestOpen ? null : (
+      {!manifestOpen || refitting !== null ? null : (
         <LanceManifest
           catalog={catalog}
           state={state}
           mutate={mutate}
           onLaunch={onLaunch}
           onCancel={() => setManifestOpen(false)}
+          onRefit={setRefitting}
         />
+      )}
+
+      {/* The bay, opened on one machine out of the company's own, with the
+          shelves limited to what it actually owns. Mission prep is: who
+          drops, in what, carrying what. */}
+      {refitBay === null ? null : (
+        <div className="manifest-backdrop" data-testid="refit-bay">
+          <div className="refit-bay">
+            <Mechbay onExit={() => setRefitting(null)} commission={refitBay} />
+          </div>
+        </div>
       )}
     </div>
   );

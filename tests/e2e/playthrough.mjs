@@ -509,6 +509,33 @@ async function main() {
       (await page.locator('.manifest-row.drops').count()) === dropsBefore,
     );
 
+    // The bay opens on one of the company's own machines, stocked from its own
+    // stores — mission prep is who drops, in what, carrying what.
+    await page.locator('[data-testid^="manifest-refit-"]').first().click();
+    await page.waitForSelector('[data-testid="refit-bay"]');
+    check(
+      'the refit bay opens on the company mech',
+      (await page.locator('[data-testid="bay-commission"]').innerText()).startsWith('Refit'),
+    );
+    const shelved = await page.locator('.bay-side .bay-stock').count();
+    check(
+      'the shelves hold only what the company owns',
+      shelved > 0 && shelved < 12,
+      `${shelved} entries on the shelf`,
+    );
+    check(
+      'every location draws its slots',
+      (await page.locator('.slot-block').count()) > 8,
+      `${await page.locator('.slot-block').count()} slot blocks`,
+    );
+    await page.locator('[data-testid="stock-weapon-medium_laser"]').first().click();
+    check(
+      'the dossier explains the weapon',
+      (await page.locator('[data-testid="bay-dossier-card"]').innerText()).includes('FIREPOWER'),
+    );
+    await page.locator('[data-testid="bay-exit"]').click();
+    await page.waitForSelector('[data-testid="lance-manifest"]');
+
     await page.locator('[data-testid="manifest-launch"]').click();
     await page.waitForSelector('[data-testid="lance-bar"]');
     await page.waitForSelector('[data-testid="briefing"]');

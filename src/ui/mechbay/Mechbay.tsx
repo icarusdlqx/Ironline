@@ -24,9 +24,31 @@ import {
   setName,
 } from './editor';
 import { ChassisSilhouette } from './ChassisSilhouette';
+import { Dossier, type Inspected } from './Dossier';
 import { LocationCard, type DropPayload } from './LocationCard';
 
 const catalog = getCatalog();
+
+type Shelf = 'weapons' | 'ammo' | 'equipment';
+
+/**
+ * How the bay may be opened.
+ *
+ * A standalone visit is a sandbox: every weapon in the catalogue, saved to
+ * browser storage. Opened from a dropship manifest it is a refit of one
+ * machine the company owns, so the shelves hold only what is actually in
+ * stores and the finished build goes back to the campaign rather than to
+ * localStorage.
+ */
+export interface BayCommission {
+  /** Shown instead of the design picker: which mech is on the gantry. */
+  title: string;
+  design: Design;
+  /** How many of each item the company has spare, by item id. */
+  inventory: ReadonlyMap<string, number>;
+  onCommit: (design: Design) => { ok: boolean; reason: string | null };
+  onCancel: () => void;
+}
 
 function Draggable({
   payload,
@@ -34,6 +56,8 @@ function Draggable({
   detail,
   note,
   unmountable = false,
+  stock,
+  onInspect,
 }: {
   payload: DropPayload;
   label: string;
@@ -41,32 +65,85 @@ function Draggable({
   note?: string;
   /** No hardpoint on this chassis is built to take it. */
   unmountable?: boolean;
+  /** How many the company has spare, when the bay is working from stores. */
+  stock?: number;
+  onInspect: (payload: DropPayload) => void;
 }) {
+  const exhausted = stock !== undefined && stock <= 0;
   return (
     <li
-      draggable
-      className={`bay-stock${unmountable ? ' unmountable' : ''}`}
-      title={unmountable ? `${note ?? ''}\nNo hardpoint on this chassis takes one.`.trim() : note}
+      draggable={!exhausted}
+      className={`bay-stock${unmountable ? ' unmountable' : ''}${exhausted ? ' exhausted' : ''}`}
+      title={
+        unmountable
+          ? `${note ?? ''}\nNo hardpoint on this chassis takes one.`.trim()
+          : exhausted
+            ? `${note ?? ''}\nNone left in stores.`.trim()
+            : note
+      }
       data-testid={`stock-${payload.kind}-${payload.id}`}
+      onClick={() => onInspect(payload)}
       onDragStart={(event) => {
+        onInspect(payload);
         event.dataTransfer.setData('application/ironline', JSON.stringify(payload));
         event.dataTransfer.effectAllowed = 'copy';
       }}
     >
-      <span className="stock-name">{label}</span>
+      <span className="stock-name">
+        {label}
+        {stock === undefined ? null : <em className="stock-count">×{stock}</em>}
+      </span>
       <span className="stock-detail">{detail}</span>
-      {note === undefined ? null : <span className="stock-note">{note}</span>}
     </li>
   );
 }
 
-export function Mechbay({ onExit }: { onExit: () => void }) {
-  const startingId = 'sentinel_brawler';
-  const [design, setDesign] = useState<Design>(
-    () => JSON.parse(JSON.stringify(catalog.designs.get(startingId))) as Design,
+/** A labelled bar: what is spent, out of what there is. */
+function Gauge({
+  label,
+  used,
+  total,
+  value,
+  tone = 'ok',
+  testId,
+}: {
+  label: string;
+  used: number;
+  total: number;
+  value: string;
+  tone?: 'ok' | 'warn' | 'over';
+  testId?: string;
+}) {
+  const fraction = total <= 0 ? 0 : Math.max(0, Math.min(1, used / total));
+  return (
+    <div className={`bay-gauge ${tone}`}>
+      <span className="gauge-label">{label}</span>
+      <span className="gauge-value" data-testid={testId}>
+        {value}
+      </span>
+      <span className="gauge-track">
+        <span style={{ width: `${fraction * 100}%` }} />
+      </span>
+    </div>
+  );
+}
+
+export function Mechbay({
+  onExit,
+  commission,
+}: {
+  onExit: () => void;
+  commission?: BayCommission;
+}) {
+  const [design, setDesign] = useState<Design>(() =>
+    JSON.parse(
+      JSON.stringify(commission?.design ?? catalog.designs.get('sentinel_brawler')),
+    ) as Design,
   );
   const [status, setStatus] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [stored, setStored] = useState<string[]>(() => listStoredDesigns());
+  const [shelf, setShelf] = useState<Shelf>('weapons');
+  const [inspected, setInspected] = useState<Inspected | null>(null);
 
   const chassis = catalog.chassis.get(design.chassisId);
   const loadout = useMemo(() => computeLoadout(catalog, design), [design]);
@@ -91,6 +168,11 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
   };
 
   const onSave = (): void => {
+    if (commission !== undefined) {
+      const result = commission.onCommit(design);
+      if (!result.ok) setStatus({ tone: 'error', text: result.reason ?? 'refit refused' });
+      return;
+    }
     try {
       const { replaced } = saveToStorage(catalog, design);
       setStored(listStoredDesigns());
@@ -111,14 +193,13 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
 
   const onExport = (): void => {
     try {
-      const blob = exportDesign(catalog, design);
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(exportDesign(catalog, design));
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = `${design.id}.json`;
       anchor.click();
       URL.revokeObjectURL(url);
-      setStatus({ tone: 'ok', text: `Exported ${design.id}.json` });
+      setStatus({ tone: 'ok', text: `Exported "${design.name}".` });
     } catch (error) {
       if (error instanceof InvalidBuildError) {
         setStatus({ tone: 'error', text: `Cannot export — ${error.issues.join('; ')}` });
@@ -131,135 +212,167 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
   const onImport = async (file: File): Promise<void> => {
     const result = parseDesign(await file.text());
     if (result.design === null) {
-      setStatus({ tone: 'error', text: `Cannot load — ${result.error ?? 'unreadable'}` });
+      setStatus({ tone: 'error', text: `Import failed — ${result.error ?? 'unknown error'}` });
       return;
     }
     setDesign(result.design);
-    setStatus({ tone: 'ok', text: `Loaded "${result.design.name}".` });
+    setStatus({ tone: 'ok', text: `Imported "${result.design.name}".` });
   };
 
-  const weightRows: [string, number][] = [
-    ['Engine', loadout.engineWeight],
-    ['Structure', loadout.structureWeight],
-    ['Armour', loadout.armourWeight],
-    ['Heat sinks', loadout.heatSinkWeight],
-    ['Payload', loadout.payloadWeight],
-  ];
+  /** What is on the shelves: the whole catalogue, or what the company owns. */
+  const spare = (id: string): number | undefined => commission?.inventory.get(id) ?? undefined;
+  const onShelf = (id: string): boolean =>
+    commission === undefined || (commission.inventory.get(id) ?? 0) > 0;
+
+  const weapons = [...catalog.weapons.values()].filter((weapon) => onShelf(weapon.id));
+  const gear = [...catalog.equipment.values()].filter(
+    (entry) => entry.category !== 'heat_sink' && onShelf(entry.id),
+  );
+
+  const overweight = loadout.freeTonnage < 0;
 
   return (
     <div className="bay" data-testid="mechbay">
       <header className="bay-top">
-        <input
-          className="bay-name"
-          value={design.name}
-          onChange={(event) => apply(setName(design, event.target.value))}
-          data-testid="design-name"
-        />
-        <select
-          // Renaming forks the design off the stock list, so the picker needs
-          // somewhere to sit that is not one of the factory builds.
-          value={catalog.designs.has(design.id) ? design.id : ''}
-          onChange={(event) => {
-            const picked = catalog.designs.get(event.target.value);
-            if (picked !== undefined) apply(JSON.parse(JSON.stringify(picked)) as Design);
-          }}
-          data-testid="design-picker"
-        >
-          {catalog.designs.has(design.id) ? null : <option value="">{design.name} (custom)</option>}
-          {[...catalog.designs.values()].map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.name}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={onExit} data-testid="bay-exit">
-          Back to skirmish
-        </button>
-      </header>
-
-      <section className="bay-budget" data-testid="bay-budget">
-        <h3>
-          {chassis.name} — {chassis.tonnage}t
-        </h3>
-        <table>
-          <tbody>
-            {weightRows.map(([label, tons]) => (
-              <tr key={label}>
-                <th>{label}</th>
-                <td>{tons.toFixed(1)}t</td>
-              </tr>
-            ))}
-            <tr className={loadout.freeTonnage < 0 ? 'over' : 'free'}>
-              <th>Free</th>
-              <td data-testid="free-tonnage">{loadout.freeTonnage.toFixed(1)}t</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="bay-slot-total">
-          Slots {loadout.totalSlotsUsed}/{loadout.totalSlotsAvailable}
-        </div>
-
-        <label className="bay-sinks">
-          Heat sinks
-          <input
-            type="number"
-            min={chassis.internalHeatSinks}
-            max={40}
-            value={design.heatSinks}
-            onChange={(event) => apply(setHeatSinks(design, Number(event.target.value)))}
-            data-testid="heat-sink-count"
-          />
-          <select
-            value={design.heatSinkId}
-            onChange={(event) => apply(setHeatSinkId(design, event.target.value))}
-            data-testid="heat-sink-type"
-          >
-            {[...catalog.equipment.values()]
-              .filter((entry) => entry.category === 'heat_sink')
-              .map((entry) => (
+        {commission === undefined ? (
+          <>
+            <input
+              className="bay-name"
+              value={design.name}
+              onChange={(event) => apply(setName(design, event.target.value))}
+              data-testid="design-name"
+            />
+            <select
+              // Renaming forks the design off the stock list, so the picker
+              // needs somewhere to sit that is not one of the factory builds.
+              value={catalog.designs.has(design.id) ? design.id : ''}
+              onChange={(event) => {
+                const picked = catalog.designs.get(event.target.value);
+                if (picked !== undefined) apply(JSON.parse(JSON.stringify(picked)) as Design);
+              }}
+              data-testid="design-picker"
+            >
+              {catalog.designs.has(design.id) ? null : (
+                <option value="">{design.name} (custom)</option>
+              )}
+              {[...catalog.designs.values()].map((entry) => (
                 <option key={entry.id} value={entry.id}>
                   {entry.name}
                 </option>
               ))}
-          </select>
-        </label>
-
+            </select>
+          </>
+        ) : (
+          <span className="bay-commission" data-testid="bay-commission">
+            Refit — {commission.title}
+          </span>
+        )}
         <button
           type="button"
-          onClick={() => apply(maximiseArmour(catalog, design))}
-          data-testid="max-armour"
+          onClick={commission === undefined ? onExit : commission.onCancel}
+          data-testid="bay-exit"
         >
-          Spend rest on armour
+          {commission === undefined ? 'Back to skirmish' : 'Back to manifest'}
         </button>
+      </header>
 
-        <ul className="bay-issues" data-testid="bay-issues">
-          {loadout.issues.map((issue, index) => (
-            <li key={`${issue.code}-${index}`}>
-              {issue.location === null ? '' : `${issue.location}: `}
-              {issue.message}
-            </li>
-          ))}
-          {issues.slice(loadout.issues.length).map((issue) => (
-            <li key={issue}>{issue}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="bay-dossier" data-testid="bay-dossier">
-        <h4>
+      {/* ------------------------------------------------------ the machine */}
+      <section className="bay-machine" data-testid="bay-budget">
+        <h3>
           {chassis.name}
           <span className="dossier-class">
-            {chassis.class} · {chassis.tonnage}t · {(
+            {chassis.class} · {chassis.tonnage}t ·{' '}
+            {(
               (chassis.engineRating / chassis.tonnage) *
               catalog.rules.movement.walkSpeedFactor
             ).toFixed(0)}
             m/s
           </span>
-        </h4>
+        </h3>
+
         <ChassisSilhouette chassis={chassis} design={design} />
-        <p className="dossier-summary">{chassis.summary}</p>
-        <p className="dossier-lore">{chassis.lore}</p>
+
+        <div className="bay-gauges">
+          <Gauge
+            label="Tonnage free"
+            used={loadout.usedWeight}
+            total={chassis.tonnage}
+            value={`${loadout.freeTonnage.toFixed(1)}t`}
+            tone={overweight ? 'over' : loadout.freeTonnage < 1 ? 'warn' : 'ok'}
+            testId="free-tonnage"
+          />
+          <Gauge
+            label="Slots"
+            used={loadout.totalSlotsUsed}
+            total={loadout.totalSlotsAvailable}
+            value={`${loadout.totalSlotsUsed}/${loadout.totalSlotsAvailable}`}
+            tone={loadout.totalSlotsUsed > loadout.totalSlotsAvailable ? 'over' : 'ok'}
+          />
+          <Gauge
+            label="Heat"
+            used={heat.heatPerSecond}
+            total={Math.max(heat.heatPerSecond, heat.dissipationPerSecond)}
+            value={
+              heat.sustainable
+                ? 'Sustainable'
+                : `${(heat.secondsToShutdownRisk ?? 0).toFixed(0)}s to risk`
+            }
+            tone={heat.sustainable ? 'ok' : 'warn'}
+            testId="heat-verdict"
+          />
+        </div>
+
+        <dl className="bay-heat" data-testid="bay-heat">
+          <div>
+            <dt>Alpha strike</dt>
+            <dd data-testid="heat-alpha">
+              {heat.alphaStrikeHeat.toFixed(0)} of {heat.heatCapacity.toFixed(0)}
+            </dd>
+          </div>
+          <div>
+            <dt>Sustained</dt>
+            <dd data-testid="heat-sustained">{heat.heatPerSecond.toFixed(2)}/s</dd>
+          </div>
+          <div>
+            <dt>Dissipation</dt>
+            <dd>{heat.dissipationPerSecond.toFixed(2)}/s</dd>
+          </div>
+        </dl>
+
+        <div className="bay-controls">
+          <label className="bay-sinks">
+            Heat sinks
+            <input
+              type="number"
+              min={chassis.internalHeatSinks}
+              max={40}
+              value={design.heatSinks}
+              onChange={(event) => apply(setHeatSinks(design, Number(event.target.value)))}
+              data-testid="heat-sink-count"
+            />
+            <select
+              value={design.heatSinkId}
+              onChange={(event) => apply(setHeatSinkId(design, event.target.value))}
+              data-testid="heat-sink-type"
+            >
+              {[...catalog.equipment.values()]
+                .filter((entry) => entry.category === 'heat_sink')
+                .map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => apply(maximiseArmour(catalog, design))}
+            data-testid="max-armour"
+          >
+            Spend rest on armour
+          </button>
+        </div>
+
         {chassis.traits.length === 0 ? null : (
           <ul className="dossier-traits">
             {chassis.traits.map((traitId) => {
@@ -273,8 +386,24 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
             })}
           </ul>
         )}
+        <p className="dossier-summary" title={chassis.lore}>
+          {chassis.summary}
+        </p>
+
+        <ul className="bay-issues" data-testid="bay-issues">
+          {loadout.issues.map((issue, index) => (
+            <li key={`${issue.code}-${index}`}>
+              {issue.location === null ? '' : `${issue.location.replace('_', ' ')}: `}
+              {issue.message}
+            </li>
+          ))}
+          {issues.slice(loadout.issues.length).map((issue) => (
+            <li key={issue}>{issue}</li>
+          ))}
+        </ul>
       </section>
 
+      {/* ------------------------------------------------------ the loadout */}
       <section className="bay-grid" data-testid="bay-grid">
         {LOCATIONS.map((location) => (
           <LocationCard
@@ -289,87 +418,86 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
             onRemoveAmmo={(index) => apply(removeAmmo(design, index))}
             onRemoveEquipment={(index) => apply(removeEquipment(design, index))}
             onArmourChange={(where, value) => apply(setArmour(design, where, value))}
+            onInspect={setInspected}
           />
         ))}
       </section>
 
+      {/* ------------------------------------------------------- the stores */}
       <section className="bay-side">
-        <div className="bay-heat" data-testid="bay-heat">
-          <h4>Heat efficiency</h4>
-          <dl>
-            <dt>Alpha strike</dt>
-            <dd data-testid="heat-alpha">
-              {heat.alphaStrikeHeat.toFixed(0)} of {heat.heatCapacity.toFixed(0)}
-            </dd>
-            <dt>Sustained</dt>
-            <dd data-testid="heat-sustained">{heat.heatPerSecond.toFixed(2)}/s</dd>
-            <dt>Dissipation</dt>
-            <dd>{heat.dissipationPerSecond.toFixed(2)}/s</dd>
-            <dt>Verdict</dt>
-            <dd className={heat.sustainable ? 'ok' : 'warn'} data-testid="heat-verdict">
-              {heat.sustainable
-                ? 'Sustainable'
-                : `Shutdown risk after ${(heat.secondsToShutdownRisk ?? 0).toFixed(1)}s`}
-            </dd>
-          </dl>
-          <div className="heat-meter">
-            <span style={{ width: `${Math.min(100, heat.sustainableFraction * 100)}%` }} />
-          </div>
-          <small>{Math.round(heat.sustainableFraction * 100)}% of full rate is sustainable</small>
+        <div className="bay-shelf-tabs" role="tablist">
+          {(['weapons', 'ammo', 'equipment'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={shelf === tab}
+              className={shelf === tab ? 'active' : ''}
+              onClick={() => setShelf(tab)}
+              data-testid={`shelf-${tab}`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
-        <h4>Weapons</h4>
         <ul className="bay-stocks">
-          {[...catalog.weapons.values()].map((weapon) => {
-            // Which hardpoints on this hull could take it at all. A gun the
-            // machine cannot mount anywhere is worth saying so before the
-            // player spends an afternoon budgeting tonnage for it.
-            const size = weaponSize(catalog, weapon);
-            const fits = LOCATIONS.some(
-              (location) =>
-                chassis.hardpoints[location][weapon.type] > 0 &&
-                chassis.hardpoints[location].size >= size,
-            );
-            return (
-              <Draggable
-                key={weapon.id}
-                payload={{ kind: 'weapon', id: weapon.id }}
-                label={weapon.name}
-                detail={`${weaponSizeLabel(catalog, size)} · ${weapon.tonnage}t · ${weapon.slots} slots · ${weapon.heat} heat · ${weapon.range.long}m`}
-                note={weapon.summary}
-                unmountable={!fits}
-              />
-            );
-          })}
+          {shelf === 'weapons'
+            ? weapons.map((weapon) => {
+                // Which hardpoints on this hull could take it at all. A gun the
+                // machine cannot mount anywhere is worth saying so before the
+                // player spends an afternoon budgeting tonnage for it.
+                const size = weaponSize(catalog, weapon);
+                const fits = LOCATIONS.some(
+                  (location) =>
+                    chassis.hardpoints[location][weapon.type] > 0 &&
+                    chassis.hardpoints[location].size >= size,
+                );
+                return (
+                  <Draggable
+                    key={weapon.id}
+                    payload={{ kind: 'weapon', id: weapon.id }}
+                    label={weapon.name}
+                    detail={`${weaponSizeLabel(catalog, size)} · ${weapon.tonnage}t · ${weapon.slots} slots · ${Math.round(weapon.damage * weapon.projectiles)} dmg · ${weapon.range.long}m`}
+                    note={weapon.summary}
+                    unmountable={!fits}
+                    {...(spare(weapon.id) === undefined ? {} : { stock: spare(weapon.id) })}
+                    onInspect={setInspected}
+                  />
+                );
+              })
+            : null}
+
+          {shelf === 'ammo'
+            ? [...catalog.weapons.values()]
+                .filter((weapon) => weapon.ammoPerTon !== null)
+                .map((weapon) => (
+                  <Draggable
+                    key={weapon.id}
+                    payload={{ kind: 'ammo', id: weapon.id }}
+                    label={`${weapon.name} ammo`}
+                    detail={`1t · ${weapon.ammoPerTon} rounds`}
+                    note={weapon.summary}
+                    onInspect={setInspected}
+                  />
+                ))
+            : null}
+
+          {shelf === 'equipment'
+            ? gear.map((entry) => (
+                <Draggable
+                  key={entry.id}
+                  payload={{ kind: 'equipment', id: entry.id }}
+                  label={entry.name}
+                  detail={`${entry.tonnage}t · ${entry.slots} slots`}
+                  {...(spare(entry.id) === undefined ? {} : { stock: spare(entry.id) })}
+                  onInspect={setInspected}
+                />
+              ))
+            : null}
         </ul>
 
-        <h4>Ammo</h4>
-        <ul className="bay-stocks">
-          {[...catalog.weapons.values()]
-            .filter((weapon) => weapon.ammoPerTon !== null)
-            .map((weapon) => (
-              <Draggable
-                key={weapon.id}
-                payload={{ kind: 'ammo', id: weapon.id }}
-                label={`${weapon.name} ammo`}
-                detail={`1t · ${weapon.ammoPerTon} rounds`}
-              />
-            ))}
-        </ul>
-
-        <h4>Equipment</h4>
-        <ul className="bay-stocks">
-          {[...catalog.equipment.values()]
-            .filter((entry) => entry.category !== 'heat_sink')
-            .map((entry) => (
-              <Draggable
-                key={entry.id}
-                payload={{ kind: 'equipment', id: entry.id }}
-                label={entry.name}
-                detail={`${entry.tonnage}t · ${entry.slots} slots`}
-              />
-            ))}
-        </ul>
+        <Dossier catalog={catalog} inspected={inspected} heatSinkId={design.heatSinkId} />
       </section>
 
       <footer className="bay-actions">
@@ -377,58 +505,54 @@ export function Mechbay({ onExit }: { onExit: () => void }) {
           type="button"
           onClick={onSave}
           disabled={!saveable}
-          title={saveable ? 'Save to browser storage' : 'Fix the build before saving'}
+          title={saveable ? 'Save this build' : 'Fix the build before saving'}
           data-testid="bay-save"
         >
-          Save build
+          {commission === undefined ? 'Save build' : 'Commit refit'}
         </button>
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={!saveable}
-          data-testid="bay-export"
-        >
-          Export JSON
-        </button>
-        <label className="bay-import">
-          Import JSON
-          <input
-            type="file"
-            accept="application/json"
-            data-testid="bay-import"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file !== undefined) void onImport(file);
-            }}
-          />
-        </label>
-        <select
-          value=""
-          onChange={(event) => {
-            if (event.target.value === '') return;
-            const result = loadFromStorage(event.target.value);
-            if (result.design === null) {
-              setStatus({ tone: 'error', text: result.error ?? 'load failed' });
-              return;
-            }
-            setDesign(result.design);
-            setStatus({ tone: 'ok', text: `Loaded "${result.design.name}".` });
-          }}
-          data-testid="bay-stored"
-        >
-          <option value="">Saved builds…</option>
-          {stored.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </select>
 
-        <span
-          className={`bay-status ${status?.tone ?? ''}`}
-          data-testid="bay-status"
-          role="status"
-        >
+        {commission === undefined ? (
+          <>
+            <button type="button" onClick={onExport} disabled={!saveable} data-testid="bay-export">
+              Export JSON
+            </button>
+            <label className="bay-import">
+              Import JSON
+              <input
+                type="file"
+                accept="application/json"
+                data-testid="bay-import"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file !== undefined) void onImport(file);
+                }}
+              />
+            </label>
+            <select
+              value=""
+              onChange={(event) => {
+                if (event.target.value === '') return;
+                const result = loadFromStorage(event.target.value);
+                if (result.design === null) {
+                  setStatus({ tone: 'error', text: result.error ?? 'load failed' });
+                  return;
+                }
+                setDesign(result.design);
+                setStatus({ tone: 'ok', text: `Loaded "${result.design.name}".` });
+              }}
+              data-testid="bay-stored"
+            >
+              <option value="">Saved builds…</option>
+              {stored.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
+
+        <span className={`bay-status ${status?.tone ?? ''}`} data-testid="bay-status" role="status">
           {status?.text ?? (saveable ? 'Build is legal.' : 'Build is not legal.')}
         </span>
       </footer>

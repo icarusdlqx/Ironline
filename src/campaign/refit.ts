@@ -3,7 +3,7 @@ import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import { computeLoadout, maximiseArmour } from '../sim/loadout';
 import { pristineCondition } from './repair';
-import { addToStore, takeFromStore, type CampaignState, type MechRecord } from './types';
+import { addToStore, storeCount, takeFromStore, type CampaignState, type MechRecord } from './types';
 
 export interface RefitResult {
   ok: boolean;
@@ -158,5 +158,98 @@ export function rebuildHulk(
   mech.rebuildCost = 0;
   mech.status = 'repairing';
   mech.readyOnDay = state.day + catalog.rules.salvage.hulkRebuildDays;
+  return { ok: true, reason: null, location: null };
+}
+
+/** How many of each item a design has bolted to it, by item id. */
+function billOfMaterials(design: Design): Map<string, number> {
+  const bill = new Map<string, number>();
+  const add = (id: string, count = 1): void => {
+    bill.set(id, (bill.get(id) ?? 0) + count);
+  };
+  for (const mount of design.mounts) add(mount.weaponId);
+  for (const fit of design.equipment) add(fit.equipmentId);
+  return bill;
+}
+
+/** What the company can put on a mech: its stores, plus what is already on it. */
+export function refitInventory(
+  state: CampaignState,
+  mech: MechRecord,
+): Map<string, number> {
+  const available = new Map<string, number>();
+  for (const item of state.store) {
+    available.set(item.itemId, (available.get(item.itemId) ?? 0) + item.count);
+  }
+  // Anything already bolted on is available to move: taking it off puts it in
+  // the player's hand, not on the shelf, and the bay works from one list.
+  for (const [id, count] of billOfMaterials(mech.design)) {
+    available.set(id, (available.get(id) ?? 0) + count);
+  }
+  return available;
+}
+
+/**
+ * Books a finished refit through the company's stores.
+ *
+ * The bay hands back a whole design rather than a sequence of edits, so this
+ * works out the difference: what came off goes back on the shelf, what went on
+ * comes off it, and a refit the company cannot pay for is refused before
+ * anything is written. Ammunition is not stock — it is bought by the ton with
+ * the contract, the way a quartermaster would.
+ */
+export function applyRefit(
+  catalog: Catalog,
+  state: CampaignState,
+  mech: MechRecord,
+  next: Design,
+): RefitResult {
+  if (mech.status === 'hulk') {
+    return { ok: false, reason: 'rebuild the chassis before refitting it', location: null };
+  }
+  if (mech.status === 'repairing') {
+    return { ok: false, reason: 'this mech is in the repair bay', location: null };
+  }
+  if (next.chassisId !== mech.design.chassisId) {
+    return { ok: false, reason: 'that build is for a different chassis', location: null };
+  }
+
+  const loadout = computeLoadout(catalog, next);
+  if (!loadout.valid) {
+    return { ok: false, reason: loadout.issues[0]?.message ?? 'the build is not legal', location: null };
+  }
+
+  const before = billOfMaterials(mech.design);
+  const after = billOfMaterials(next);
+  const ids = new Set([...before.keys(), ...after.keys()]);
+
+  // Check the whole bill before moving any of it, so a refused refit leaves
+  // the stores exactly as it found them.
+  const wanted: { id: string; count: number }[] = [];
+  for (const id of ids) {
+    const short = (after.get(id) ?? 0) - (before.get(id) ?? 0);
+    if (short <= 0) continue;
+    const kind = catalog.weapons.has(id) ? 'weapon' : 'equipment';
+    if (storeCount(state, kind, id) < short) {
+      const name = catalog.weapons.get(id)?.name ?? catalog.equipment.get(id)?.name ?? id;
+      return {
+        ok: false,
+        reason: `stores hold ${storeCount(state, kind, id)} × ${name}; the build needs ${short} more`,
+        location: null,
+      };
+    }
+    wanted.push({ id, count: short });
+  }
+
+  for (const { id, count } of wanted) {
+    takeFromStore(state, catalog.weapons.has(id) ? 'weapon' : 'equipment', id, count);
+  }
+  for (const id of ids) {
+    const spare = (before.get(id) ?? 0) - (after.get(id) ?? 0);
+    if (spare > 0) addToStore(state, catalog.weapons.has(id) ? 'weapon' : 'equipment', id, spare);
+  }
+
+  mech.design = JSON.parse(JSON.stringify(next)) as Design;
+  rescaleCondition(catalog, mech, mech.design);
   return { ok: true, reason: null, location: null };
 }

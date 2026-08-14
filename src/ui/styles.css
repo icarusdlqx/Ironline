@@ -575,13 +575,15 @@ button {
 
 .bay {
   display: grid;
-  grid-template-columns: 240px 1fr 280px;
-  grid-template-rows: auto auto 1fr auto;
+  /* Three columns and one job each: what the machine is, what is bolted to it,
+     what there is to bolt on. The old layout had five panels competing for the
+     same attention, which is what made the bay feel like paperwork. */
+  grid-template-columns: 290px 1fr 300px;
+  grid-template-rows: auto 1fr auto;
   grid-template-areas:
-    'top    top      top'
-    'budget dossier  side'
-    'budget grid     side'
-    'act    act      act';
+    'top     top   top'
+    'machine grid  side'
+    'act     act   act';
   gap: 12px;
   height: 100%;
   padding: 12px;
@@ -631,8 +633,8 @@ button {
   cursor: not-allowed;
 }
 
-.bay-budget {
-  grid-area: budget;
+.bay-machine {
+  grid-area: machine;
   background: var(--panel);
   border: 1px solid var(--edge);
   border-radius: 6px;
@@ -641,40 +643,89 @@ button {
   overflow-y: auto;
 }
 
-.bay-budget h3 {
-  margin: 0 0 8px;
+.bay-machine h3 {
+  margin: 0 0 2px;
   font-size: 13px;
+  display: flex;
+  flex-direction: column;
 }
 
-.bay-budget table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 8px;
+/* Three gauges instead of a five-row weight table: what is left, not what
+   every subsystem weighs. The numbers are still there when they matter. */
+.bay-gauges {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
-.bay-budget th {
-  text-align: left;
-  font-weight: 400;
+.bay-gauge {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  font-size: 10px;
+}
+
+.gauge-label {
   color: var(--muted);
-  padding: 1px 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.bay-budget td {
-  text-align: right;
+.gauge-value {
   font-variant-numeric: tabular-nums;
-}
-
-.bay-budget tr.free td {
   color: var(--accent);
 }
 
-.bay-budget tr.over td,
-.bay-budget tr.over th {
-  color: var(--danger);
-  font-weight: 600;
+.gauge-track {
+  grid-column: 1 / -1;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-.bay-slot-total,
+.gauge-track > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.bay-gauge.warn .gauge-value {
+  color: var(--warn);
+}
+.bay-gauge.warn .gauge-track > span {
+  background: var(--warn);
+}
+
+.bay-gauge.over .gauge-value {
+  color: var(--danger);
+}
+.bay-gauge.over .gauge-track > span {
+  background: var(--danger);
+}
+
+.bay-controls {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.bay-controls > button {
+  background: rgba(140, 224, 255, 0.12);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--accent);
+  padding: 5px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.bay-commission {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
 .bay-sinks {
   display: flex;
   gap: 6px;
@@ -701,17 +752,6 @@ button {
   border: 1px solid var(--edge);
   color: var(--text);
   border-radius: 3px;
-  font: inherit;
-  font-size: 11px;
-}
-
-.bay-budget > button {
-  width: 100%;
-  background: rgba(140, 224, 255, 0.12);
-  border: 1px solid var(--edge);
-  border-radius: 4px;
-  color: var(--accent);
-  padding: 6px;
   font: inherit;
   font-size: 11px;
 }
@@ -899,12 +939,22 @@ button {
 
 .bay-side {
   grid-area: side;
+  /* Shelves scroll; the dossier stays at the foot of the column. A card you
+     have to scroll past forty weapons to reach is not a card anyone reads. */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   background: var(--panel);
   border: 1px solid var(--edge);
   border-radius: 6px;
   padding: 10px;
-  overflow-y: auto;
+  overflow: hidden;
   font-size: 11px;
+}
+
+.bay-side > .bay-stocks {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .bay-side h4 {
@@ -1590,7 +1640,6 @@ button {
 }
 
 .bay-dossier {
-  grid-area: dossier;
   padding: 10px 12px;
   border: 1px solid var(--edge);
   border-radius: 6px;
@@ -2258,4 +2307,201 @@ button {
   color: var(--muted);
   font-size: 10px;
   line-height: 1.5;
+}
+
+/* ------------------------------------------------------------- slot grid */
+/* Each location is its own row of slots, one column per slot, so a mounted
+   weapon spans exactly the room it takes. A gauss rifle is visibly most of an
+   arm; two free cells visibly will not take one. This is the whole reason to
+   draw slots rather than list them. */
+.bay-slotgrid {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 4px 0 6px;
+  padding: 0;
+  min-height: 16px;
+}
+
+.slot-block {
+  min-width: 0;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.slot-block.empty {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: transparent;
+}
+
+.slot-block > button {
+  width: 100%;
+  height: 100%;
+  padding: 0 3px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+}
+
+/* Coloured by what it is, matching the hardpoint pips above it. */
+.slot-block.tone-energy {
+  border-color: rgba(140, 224, 255, 0.55);
+  background: rgba(140, 224, 255, 0.12);
+}
+.slot-block.tone-ballistic {
+  border-color: rgba(255, 212, 137, 0.55);
+  background: rgba(255, 212, 137, 0.12);
+}
+.slot-block.tone-missile {
+  border-color: rgba(255, 157, 92, 0.55);
+  background: rgba(255, 157, 92, 0.12);
+}
+.slot-block.tone-ammo {
+  border-color: rgba(255, 157, 92, 0.35);
+  background: rgba(255, 157, 92, 0.06);
+  font-style: italic;
+}
+.slot-block.tone-gear {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.slot-block.too-big {
+  border-color: var(--danger);
+  background: rgba(255, 138, 107, 0.18);
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------------------- shelves */
+.bay-shelf-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.bay-shelf-tabs button {
+  flex: 1;
+  padding: 4px 0;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bay-shelf-tabs button.active {
+  background: rgba(140, 224, 255, 0.12);
+  color: var(--accent);
+}
+
+.stock-count {
+  float: right;
+  font-style: normal;
+  color: var(--muted);
+}
+
+/* Nothing left on the shelf. Still listed: knowing the company once had one
+   is part of planning the next refit. */
+.bay-stock.exhausted {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------- dossier */
+.bay-dossier-card {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: rgba(140, 224, 255, 0.04);
+  font-size: 11px;
+}
+
+.bay-dossier-card.empty {
+  color: var(--muted);
+}
+
+.bay-dossier-card p {
+  margin: 0;
+}
+
+.bay-dossier-card h4 {
+  margin: 0 0 1px;
+  font-size: 12px;
+}
+
+.dossier-line {
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 6px !important;
+}
+
+.dossier-stats {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 6px;
+}
+
+.dossier-stats dt {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dossier-stats dd {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.dossier-stats dd.hot {
+  color: var(--warn);
+}
+
+.dossier-note {
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1.5;
+  margin-bottom: 4px !important;
+}
+
+.dossier-bargain {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.manifest-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.manifest-buttons > button {
+  flex: 1;
+}
+
+/* The bay opened over the manifest for a pre-drop refit. Same screen, framed
+   as a modal so the manifest is visibly still underneath it. */
+.refit-bay {
+  width: min(1500px, 100%);
+  height: min(940px, 100%);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
 }
