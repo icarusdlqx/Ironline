@@ -19,6 +19,7 @@ import {
 import type { CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
+import { isSideContract } from '../../campaign/sidework';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
 import { Debrief, debriefedCount, markDebriefed } from './Debrief';
@@ -51,6 +52,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   const campaign = campaignOf(catalog, state);
   const open = useMemo(() => availableNodes(catalog, state), [state]);
+  const posted = useMemo(() => open.filter((entry) => isSideContract(entry.id)), [open]);
   const node = open.find((entry) => entry.id === selectedNode) ?? open[0] ?? null;
   const options = node === null ? [] : negotiationOptions(catalog, node);
   const lance = deployableLance(state);
@@ -268,6 +270,33 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           </>
         )}
       </section>
+
+      {/* The map draws the war. Side work is posted on a board, so it gets a
+          list — and it is marked as side work, because taking it is a decision
+          about the calendar rather than about the campaign. */}
+      {posted.length === 0 || state.contract !== null ? null : (
+        <section className="camp-hall" data-testid="camp-hall">
+          <h3>Hiring hall</h3>
+          <ul>
+            {posted.map((offer) => (
+              <li key={offer.id} className={offer.id === node?.id ? 'chosen' : ''}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedNode(offer.id)}
+                  data-testid={`camp-side-${offer.id}`}
+                >
+                  <span className="hall-name">{offer.name}</span>
+                  <span className="hall-employer">{offer.employer}</span>
+                  <span className="hall-terms">
+                    {cbills(offer.basePayout)} · {offer.deadlineDays}d
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="hall-note">Posted work. It pays less than the war and it always renews.</p>
+        </section>
+      )}
 
       <MechBayPanel state={state} mutate={mutate} setStatus={setStatus} />
       <BarracksPanel state={state} mutate={mutate} setStatus={setStatus} />

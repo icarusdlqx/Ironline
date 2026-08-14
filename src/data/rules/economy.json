@@ -34,5 +34,24 @@
   },
   "market": {
     "sellFraction": 0.45
+  },
+  "sideContracts": {
+    "refreshDays": 7,
+    "offersPerPeriod": 3,
+    "payoutPerOpposingTon": 5200,
+    "overmatchBonusFactor": 0.8,
+    "payoutVariance": [
+      0.85,
+      1.2
+    ],
+    "payoutRounding": 5000,
+    "salvageShare": [
+      0.15,
+      0.4
+    ],
+    "deadlineDays": [
+      9,
+      20
+    ]
   }
 }

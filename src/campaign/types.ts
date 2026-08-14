@@ -111,6 +111,12 @@ export interface CampaignState {
   store: StoreItem[];
   completedNodes: string[];
   failedNodes: string[];
+  /**
+   * Side offers already signed this week. The board itself is derived from the
+   * seed and the week number, so this is the only part of it worth persisting —
+   * and it is pruned at every rollover rather than growing.
+   */
+  sideTaken: string[];
   contract: Contract | null;
   history: MissionOutcome[];
   log: CampaignLogEntry[];

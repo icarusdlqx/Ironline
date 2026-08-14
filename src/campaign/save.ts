@@ -105,6 +105,8 @@ export const CampaignStateSchema = z.strictObject({
   store: z.array(StoreItemSchema),
   completedNodes: z.array(IdSchema),
   failedNodes: z.array(IdSchema),
+  // Saves written before the hiring hall existed have nothing signed at it.
+  sideTaken: z.array(IdSchema).default([]),
   contract: ContractSchema.nullable(),
   history: z.array(MissionOutcomeSchema),
   log: z.array(z.strictObject({ day: z.number().int(), text: z.string() })),

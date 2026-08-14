@@ -476,6 +476,24 @@ export const EconomyRulesSchema = z.strictObject({
     skillCostGrowth: z.number().min(1).max(5),
   }),
   market: z.strictObject({ sellFraction: z.number().positive().max(1) }),
+  /**
+   * Work the hiring hall is posting this week. Side contracts exist so a
+   * company that is not ready for the next authored job has something to do
+   * besides watch the calendar: they pay less per tonne of opposition than the
+   * campaign does, and they are the only work that renews.
+   */
+  sideContracts: z.strictObject({
+    /** How often the board turns over. Offers are derived from the period. */
+    refreshDays: z.number().int().positive().max(60),
+    offersPerPeriod: z.number().int().positive().max(6),
+    payoutPerOpposingTon: z.number().positive(),
+    /** Extra for a job that outweighs what the dropship can carry to it. */
+    overmatchBonusFactor: z.number().nonnegative().max(4),
+    payoutVariance: z.tuple([z.number().positive(), z.number().positive()]),
+    payoutRounding: z.number().int().positive(),
+    salvageShare: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]),
+    deadlineDays: z.tuple([z.number().int().positive(), z.number().int().positive()]),
+  }),
 });
 
 export const ConstructionRulesSchema = z.strictObject({

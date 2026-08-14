@@ -27,6 +27,17 @@ export const CampaignSchema = z
     startingPilotIds: z.array(IdSchema).min(1).max(12),
     hiringPoolPilotIds: z.array(IdSchema).max(12).default([]),
     victoryNodeId: IdSchema,
+    /**
+     * The pool the hiring hall draws side work from: missions that can be
+     * offered as filler, and the outfits that post them. Empty means this
+     * campaign offers no side work at all.
+     */
+    sideWork: z
+      .strictObject({
+        missionIds: z.array(IdSchema).max(20),
+        employers: z.array(NameSchema).max(20),
+      })
+      .prefault({ missionIds: [], employers: [] }),
     nodes: z.array(CampaignNodeSchema).min(1).max(40),
   })
   .superRefine((campaign, ctx) => {

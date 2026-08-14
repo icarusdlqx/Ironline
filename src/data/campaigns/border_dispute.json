@@ -22,6 +22,24 @@
     "willem_torrance"
   ],
   "victoryNodeId": "ridge_hold",
+  "sideWork": {
+    "missionIds": [
+      "skirmish_ridge",
+      "raid_ridge",
+      "standoff_ridge",
+      "causeway_night",
+      "shale_overwatch",
+      "foundry_sweep"
+    ],
+    "employers": [
+      "Halloran Combine",
+      "Vasi Reclamation",
+      "the Ferrous Guild",
+      "Kestrel Freight",
+      "the Warden Compact",
+      "Ostrow Holdings"
+    ]
+  },
   "nodes": [
     {
       "id": "militia_raid",
@@ -128,7 +146,7 @@
       "name": "Shale Steps",
       "missionId": "shale_overwatch",
       "employer": "Kestrel Combine",
-      "brief": "Kestrel's survey post on the top terrace has a Combine column coming up the steps after it. Hold the height until the data is away. Five machines against the climb \u2014 the climb is on your side.",
+      "brief": "Kestrel's survey post on the top terrace has a Combine column coming up the steps after it. Hold the height until the data is away. Five machines against the climb — the climb is on your side.",
       "requires": [
         "foundry_sweep_node"
       ],

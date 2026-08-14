@@ -1084,10 +1084,11 @@ button {
 .camp {
   display: grid;
   grid-template-columns: 1fr 300px;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto 1fr auto auto auto;
   grid-template-areas:
     'top      top'
     'map      contract'
+    'map      hall'
     'bay      roster'
     'store    log';
   gap: 12px;
@@ -2659,4 +2660,76 @@ button {
 
 .bay-location.armed-target:hover {
   background: rgba(140, 224, 255, 0.08);
+}
+
+/* The hiring hall: posted work, listed rather than drawn on the map, because
+   side contracts have no place on the front and taking one is a decision about
+   the calendar rather than about the war. */
+.camp-hall {
+  grid-area: hall;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.camp-hall h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.camp-hall ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.camp-hall button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  text-align: left;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.camp-hall button:hover,
+.camp-hall .chosen button {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.hall-name {
+  font-weight: 600;
+}
+
+.hall-employer {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.hall-terms {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.hall-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
 }

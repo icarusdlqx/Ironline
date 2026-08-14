@@ -1,5 +1,6 @@
 import type { CampaignNode } from '../schema/campaign';
 import type { Catalog } from '../schema/load';
+import { isSideContract, pruneSideOffers, sideContracts } from './sidework';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
 import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
@@ -47,6 +48,7 @@ export function startCampaign(catalog: Catalog, campaignId: string, seed: string
     store: [],
     completedNodes: [],
     failedNodes: [],
+    sideTaken: [],
     contract: null,
     history: [],
     log: [],
@@ -102,7 +104,8 @@ export function campaignOf(catalog: Catalog, state: CampaignState) {
   return campaign;
 }
 
-export function availableNodes(catalog: Catalog, state: CampaignState): CampaignNode[] {
+/** The authored campaign only — the jobs that advance the war. */
+export function campaignNodes(catalog: Catalog, state: CampaignState): CampaignNode[] {
   const campaign = campaignOf(catalog, state);
   const done = new Set(state.completedNodes);
 
@@ -112,6 +115,15 @@ export function availableNodes(catalog: Catalog, state: CampaignState): Campaign
       !state.failedNodes.includes(node.id) &&
       node.requires.every((required) => done.has(required)),
   );
+}
+
+/**
+ * Everything signable today: the war, then whatever the hiring hall is posting.
+ * Side work is what a company does when it is not ready for the next authored
+ * job — before this, the calendar was the only alternative.
+ */
+export function availableNodes(catalog: Catalog, state: CampaignState): CampaignNode[] {
+  return [...campaignNodes(catalog, state), ...sideContracts(catalog, state)];
 }
 
 export interface NegotiationOption {
@@ -155,6 +167,11 @@ export function acceptContract(
 
   const option = negotiationOptions(catalog, node)[step];
   if (option === undefined) return { ok: false, reason: 'invalid negotiation step' };
+
+  // A side posting is off the board the moment it is signed. The authored
+  // campaign tracks completion instead, because those jobs have to stay
+  // failable and their prerequisites depend on it.
+  if (isSideContract(node.id)) state.sideTaken.push(node.id);
 
   state.contract = {
     nodeId: node.id,
@@ -514,9 +531,13 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
   // now so the barracks and the deploy button agree before the player looks.
   fillEmptySeats(state);
 
+  pruneSideOffers(catalog, state);
+
   if (state.finished) return;
 
-  if (availableNodes(catalog, state).length === 0 && state.contract === null) {
+  // Only the war running out ends the campaign. Side work always renews, so
+  // asking whether anything at all is on offer would never be false again.
+  if (campaignNodes(catalog, state).length === 0 && state.contract === null) {
     state.finished = true;
     state.won = state.completedNodes.includes(campaignOf(catalog, state).victoryNodeId);
     log(state, state.won ? 'Campaign won.' : 'No contracts remain. Campaign over.');

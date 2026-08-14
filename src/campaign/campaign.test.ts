@@ -5,6 +5,7 @@ import {
   acceptContract,
   advanceDays,
   availableNodes,
+  campaignNodes,
   deployableLance,
   dropTeam,
   dropTonnageFor,
@@ -54,7 +55,8 @@ describe('campaign start', () => {
 
   it('opens with cash and one available contract', () => {
     expect(state.cbills).toBeGreaterThan(0);
-    expect(availableNodes(catalog, state).map((node) => node.id)).toEqual(['militia_raid']);
+    // The war, not the hiring hall: side postings are asserted separately.
+    expect(campaignNodes(catalog, state).map((node) => node.id)).toEqual(['militia_raid']);
   });
 
   it('rejects an unknown campaign', () => {
@@ -124,7 +126,7 @@ describe('mission resolution', () => {
     expect(outcome?.won).toBe(true);
     expect(state.cbills).toBeGreaterThan(before);
     expect(state.completedNodes).toContain('militia_raid');
-    expect(availableNodes(catalog, state).map((node) => node.id).sort()).toEqual([
+    expect(campaignNodes(catalog, state).map((node) => node.id).sort()).toEqual([
       'pass_skirmish',
       'supply_line',
     ]);
