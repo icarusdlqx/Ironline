@@ -64,6 +64,8 @@ function Draggable({
   unmountable = false,
   stock,
   onInspect,
+  onArm,
+  armed = false,
 }: {
   payload: DropPayload;
   label: string;
@@ -74,12 +76,15 @@ function Draggable({
   /** How many the company has spare, when the bay is working from stores. */
   stock?: number;
   onInspect: (payload: DropPayload) => void;
+  onArm: (payload: DropPayload) => void;
+  /** True while this entry is the one waiting to be placed. */
+  armed?: boolean;
 }) {
   const exhausted = stock !== undefined && stock <= 0;
   return (
     <li
       draggable={!exhausted}
-      className={`bay-stock${unmountable ? ' unmountable' : ''}${exhausted ? ' exhausted' : ''}`}
+      className={`bay-stock${unmountable ? ' unmountable' : ''}${exhausted ? ' exhausted' : ''}${armed ? ' armed' : ''}`}
       title={
         unmountable
           ? `${note ?? ''}\nNo hardpoint on this chassis takes one.`.trim()
@@ -88,7 +93,10 @@ function Draggable({
             : note
       }
       data-testid={`stock-${payload.kind}-${payload.id}`}
-      onClick={() => onInspect(payload)}
+      onClick={() => {
+        onInspect(payload);
+        if (!exhausted) onArm(payload);
+      }}
       onDragStart={(event) => {
         onInspect(payload);
         event.dataTransfer.setData('application/ironline', JSON.stringify(payload));
@@ -150,6 +158,10 @@ export function Mechbay({
   const [stored, setStored] = useState<string[]>(() => listStoredDesigns());
   const [shelf, setShelf] = useState<Shelf>('weapons');
   const [inspected, setInspected] = useState<Inspected | null>(null);
+  // What the player has picked up and not yet placed. Drag-and-drop is a mouse
+  // gesture that HTML5 never gave touch screens, so the bay is also
+  // pick-then-place: tap a shelf entry to take it, tap a location to fit it.
+  const [armed, setArmed] = useState<DropPayload | null>(null);
   // Guns the hull cannot mount anywhere are hidden by default: on a light
   // chassis they were most of the list. The toggle brings them back for
   // window-shopping.
@@ -177,6 +189,7 @@ export function Mechbay({
   };
 
   const onDrop = (payload: DropPayload, location: MechLocation): void => {
+    setArmed(null);
     if (payload.kind === 'weapon') {
       // An ammo-fed gun arrives with a ton of ammunition, because a gun with
       // an empty bin is the trap every new player walks into once. More tons
@@ -475,6 +488,22 @@ export function Mechbay({
 
       {/* ------------------------------------------------------ the loadout */}
       <section className="bay-grid" data-testid="bay-grid">
+        {armed === null ? null : (
+          <div className="bay-armed-banner" data-testid="bay-armed">
+            <span>
+              Holding{' '}
+              <strong>
+                {armed.kind === 'equipment'
+                  ? (catalog.equipment.get(armed.id)?.name ?? armed.id)
+                  : `${catalog.weapons.get(armed.id)?.name ?? armed.id}${armed.kind === 'ammo' ? ' ammo' : ''}`}
+              </strong>{' '}
+              — tap a location to fit it.
+            </span>
+            <button type="button" onClick={() => setArmed(null)} data-testid="bay-armed-cancel">
+              Put it back
+            </button>
+          </div>
+        )}
         {LOCATIONS.map((location) => (
           <LocationCard
             key={location}
@@ -488,6 +517,7 @@ export function Mechbay({
             onRemoveAmmo={(index) => apply(removeAmmo(design, index))}
             onRemoveEquipment={(index) => apply(removeEquipment(design, index))}
             onInspect={setInspected}
+            armed={armed}
           />
         ))}
       </section>
@@ -547,6 +577,8 @@ export function Mechbay({
                     unmountable={!fits}
                     {...(spare(weapon.id) === undefined ? {} : { stock: spare(weapon.id) })}
                     onInspect={setInspected}
+                    onArm={setArmed}
+                    armed={armed?.kind === 'weapon' && armed.id === weapon.id}
                   />
                 );
               })
@@ -563,6 +595,8 @@ export function Mechbay({
                     detail={`1t · ${weapon.ammoPerTon} rounds`}
                     note={weapon.summary}
                     onInspect={setInspected}
+                    onArm={setArmed}
+                    armed={armed?.kind === 'ammo' && armed.id === weapon.id}
                   />
                 ))
             : null}
@@ -576,6 +610,8 @@ export function Mechbay({
                   detail={`${entry.tonnage}t · ${entry.slots} slots`}
                   {...(spare(entry.id) === undefined ? {} : { stock: spare(entry.id) })}
                   onInspect={setInspected}
+                  onArm={setArmed}
+                  armed={armed?.kind === 'equipment' && armed.id === entry.id}
                 />
               ))
             : null}

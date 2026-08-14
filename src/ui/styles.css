@@ -2606,3 +2606,46 @@ button {
   font-size: 10px;
   padding: 2px 7px;
 }
+
+/* ------------------------------------------------- pick-then-place in the bay */
+/* Drag-and-drop is a mouse gesture HTML5 never gave touch screens. The bay also
+   works as pick-then-place, and that state has to be loud: something is in your
+   hand and the next tap spends it. */
+.bay-armed-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(140, 224, 255, 0.1);
+  font-size: 11px;
+}
+
+.bay-armed-banner button {
+  background: transparent;
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+.bay-stock.armed {
+  border-color: var(--accent);
+  background: rgba(140, 224, 255, 0.14);
+}
+
+/* Every location is a target while something is held. */
+.bay-location.armed-target {
+  border-style: dashed;
+  border-color: var(--accent);
+  cursor: copy;
+}
+
+.bay-location.armed-target:hover {
+  background: rgba(140, 224, 255, 0.08);
+}

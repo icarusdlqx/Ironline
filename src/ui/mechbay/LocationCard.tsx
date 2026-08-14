@@ -45,6 +45,12 @@ interface Props {
   onRemoveEquipment: (index: number) => void;
   /** Called when the player picks something here, so the dossier can follow. */
   onInspect?: (payload: DropPayload) => void;
+  /**
+   * What the player has picked up off the shelf and not yet placed. Dragging
+   * does not exist on a touch screen, so the bay also works as pick-then-place:
+   * while something is armed, a location is a target rather than a display.
+   */
+  armed?: DropPayload | null;
 }
 
 export function LocationCard({
@@ -58,6 +64,7 @@ export function LocationCard({
   onRemoveAmmo,
   onRemoveEquipment,
   onInspect,
+  armed = null,
 }: Props) {
   const hardpoints = chassis.hardpoints[location];
   const slotsOver = usage.slotsUsed > usage.slotsAvailable;
@@ -131,6 +138,7 @@ export function LocationCard({
 
   const classes = ['bay-location', `loc-${location}`];
   if (slotsOver || hardpointOver || sizeOver) classes.push('invalid');
+  if (armed !== null) classes.push('armed-target');
 
   return (
     <div
@@ -145,6 +153,12 @@ export function LocationCard({
         const raw = event.dataTransfer.getData('application/ironline');
         if (raw === '') return;
         onDrop(JSON.parse(raw) as DropPayload, location);
+      }}
+      // The other half of pick-then-place. A click anywhere on the card counts,
+      // because on a phone the slot grid is a few millimetres tall and asking
+      // for a precise tap is asking for a mis-tap.
+      onClick={() => {
+        if (armed !== null) onDrop(armed, location);
       }}
     >
       <header>
@@ -193,7 +207,12 @@ export function LocationCard({
           >
             <button
               type="button"
-              onClick={() => remove(item)}
+              // While something is armed the whole card is a drop target, so a
+              // tap on a fitted block places rather than removes — otherwise
+              // aiming at a gap between blocks becomes load-bearing.
+              onClick={() => {
+                if (armed === null) remove(item);
+              }}
               onFocus={() =>
                 onInspect?.({
                   kind: item.kind,
