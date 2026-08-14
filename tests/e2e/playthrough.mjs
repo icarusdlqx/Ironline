@@ -484,9 +484,28 @@ async function main() {
       `${payoutHeavy} vs ${salvageHeavy}`,
     );
 
+    const posted = await page.locator('[data-testid="camp-hall"] li').count();
+    check('the hiring hall is posting work', posted > 0, `${posted} postings`);
+
+    // Selecting a posting has to drive the same contract panel the map does,
+    // or side work would be visible and unsignable.
+    const hallName = await page.locator('[data-testid="camp-hall"] .hall-name').first().innerText();
+    await page.locator('[data-testid="camp-hall"] button').first().click();
+    const shown = await page.locator('[data-testid="camp-contract"] h3').innerText();
+    // Case-insensitive: the panel heading is uppercased in CSS, not in the DOM.
+    check(
+      'a posting drives the contract panel',
+      shown.toLowerCase() === hallName.toLowerCase(),
+      `${shown} vs ${hallName}`,
+    );
+
     const dayBefore = await day();
     await page.locator('[data-testid="camp-advance"]').click();
     check('advancing a day moves the clock', (await day()) === dayBefore + 1);
+
+    // Back to the war for the rest of the run: the authored node is the one
+    // whose payout, salvage and unlocks the later checks are written against.
+    await page.locator('[data-testid="camp-node-militia_raid"]').click();
 
     await page.locator('[data-testid="camp-terms"]').fill('7');
     await page.locator('[data-testid="camp-accept"]').click();

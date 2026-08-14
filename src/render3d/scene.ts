@@ -200,6 +200,8 @@ export class Renderer {
       { x: 0, y: 0 },
     );
     this.camera.centreOn(lance.length === 0 ? { x: mapWidth / 2, y: mapHeight / 2 } : centroid);
+    // A mission with no briefing to dismiss opens straight into the drop.
+    this.camera.beginDropIn();
 
     this.resize();
     this.snapshot(world);
@@ -502,6 +504,7 @@ export class Renderer {
     this.props.update(world.vision);
 
     const viewport = this.viewport;
+    this.camera.advance(deltaSeconds);
     this.camera.update(viewport);
     this.renderer.render(this.scene, this.camera.camera);
   }

@@ -56,6 +56,10 @@ export class TacticalCamera {
    */
   readonly shake = new Vector3();
 
+  /** How much of the drop-in is left: 1 at the top of it, 0 once settled. */
+  private intro = 0;
+  private introSeconds = 1;
+
 
   private boundsWidth = 0;
   private boundsHeight = 0;
@@ -72,8 +76,30 @@ export class TacticalCamera {
     this.clamp();
   }
 
+  /**
+   * Opens the mission from where the dropship left the lance and settles onto
+   * them. It is two seconds of establishing shot, so anything the player does
+   * to the camera cuts it dead rather than fighting it — nobody should have to
+   * wait out a flourish to give an order.
+   */
+  beginDropIn(seconds = 2.2): void {
+    this.intro = 1;
+    this.introSeconds = Math.max(0.1, seconds);
+  }
+
+  skipDropIn(): void {
+    this.intro = 0;
+  }
+
+  /** Runs the drop-in down. Called once a frame by the renderer. */
+  advance(deltaSeconds: number): void {
+    if (this.intro <= 0) return;
+    this.intro = Math.max(0, this.intro - deltaSeconds / this.introSeconds);
+  }
+
   /** Screen-space drag, converted to a pan across the ground the player sees. */
   panBy(dx: number, dy: number): void {
+    this.skipDropIn();
     const forward = this.groundForward();
     const right = { x: -forward.y, y: forward.x };
 
@@ -85,6 +111,7 @@ export class TacticalCamera {
   }
 
   zoomBy(factor: number): void {
+    this.skipDropIn();
     this.distance = Math.min(this.maxDistance, Math.max(this.minDistance, this.distance / factor));
     // Zooming out shows more ground, so the bounds have to be re-applied.
     this.clamp();
@@ -92,10 +119,18 @@ export class TacticalCamera {
 
   /** Where the camera sits, given its target, bearing and tilt. */
   private eye(): Vector3 {
-    const horizontal = Math.cos(this.elevation) * this.distance;
+    // Squared, so the descent is fast at the top and slow at the bottom: the
+    // lance comes up to meet the camera rather than the camera falling on them.
+    const settle = this.intro * this.intro;
+    const distance = this.distance * (1 + 1.9 * settle);
+    // Steeper on the way in, easing back to the working tilt — the view out of
+    // a dropship rather than a camera sliding sideways.
+    const elevation = this.elevation + (Math.PI / 2 - this.elevation) * 0.5 * settle;
+
+    const horizontal = Math.cos(elevation) * distance;
     return new Vector3(
       this.target.x + Math.cos(this.azimuth) * horizontal,
-      Math.sin(this.elevation) * this.distance,
+      Math.sin(elevation) * distance,
       this.target.y + Math.sin(this.azimuth) * horizontal,
     );
   }

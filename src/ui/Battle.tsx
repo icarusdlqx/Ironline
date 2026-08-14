@@ -361,7 +361,12 @@ export function Battle() {
           objectives={state.objectives}
           resourcePoints={state.resourcePoints}
           {...(briefingLance === null ? {} : { lance: briefingLance })}
-          onDeploy={() => state.patch({ briefingSeen: true, paused: false })}
+          onDeploy={() => {
+            // The establishing shot belongs to the moment the lance actually
+            // drops, not to when the renderer was built behind the briefing.
+            engineRef.current?.renderer.camera.beginDropIn();
+            state.patch({ briefingSeen: true, paused: false });
+          }}
         />
       ) : null}
 
