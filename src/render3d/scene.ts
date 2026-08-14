@@ -26,6 +26,7 @@ import { isOperational, type EntityId, type MechEntity, type Vec2, type World } 
 import { teamColour, UI } from '../render/palette';
 import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
 import { buildAtmosphereRig, surroundColour } from './atmosphere';
+import { JetLayer, ScarLayer, SmokeLayer } from './effects';
 import { TacticalCamera, type Viewport } from './camera';
 import { FogLayer } from './fog';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
@@ -81,6 +82,9 @@ interface MuzzleFlash {
   ttl: number;
 }
 
+/** Scratch for reading a knee joint's world position, so the frame allocates none. */
+const NOZZLE = new Vector3();
+
 function damageSignature(entity: MechEntity): string {
   const lost = Object.values(entity.locations)
     .map((state) => (state.destroyed ? '1' : '0'))
@@ -97,6 +101,11 @@ export class Renderer {
   private readonly props: PropLayer;
   private readonly fog: FogLayer;
   private readonly tracers = new TracerLayer();
+  private readonly jets = new JetLayer();
+  private readonly smoke: SmokeLayer;
+  private readonly scars = new ScarLayer();
+  /** Seconds since the battle opened, so the jet flicker has a clock to run on. */
+  private elapsed = 0;
   private readonly markers = new Group();
   private readonly views = new Map<EntityId, EntityView>();
   private readonly samples = new Map<EntityId, MotionSample>();
@@ -167,6 +176,11 @@ export class Renderer {
     this.scene.add(this.fog.mesh);
     this.scene.add(this.markers);
     this.scene.add(this.tracers.group);
+
+    // Smoke fades into the distance rather than into transparency, so it needs
+    // to know what the distance looks like.
+    this.smoke = new SmokeLayer(surroundColour(rig));
+    this.scene.add(this.smoke.mesh, this.scars.mesh, this.jets.group);
 
     // A key light across the map so hills and hulls have a lit face and a
     // shadowed one, a cool fill from the opposite side so the shadowed face is
@@ -241,6 +255,12 @@ export class Renderer {
       if (event.type === 'mech_destroyed' || event.type === 'ammo_explosion') {
         const at = this.positionOf(event.entityId);
         if (at !== null) this.addShake(6 * this.nearness(at));
+        // A wreck burns for the rest of the battle, which is how a player reads
+        // the shape of a fight they were not watching a minute ago.
+        if (at !== null && event.type === 'mech_destroyed') {
+          this.smoke.start(at, this.terrain.heightAt(at.x, at.y));
+          this.scars.mark(at, this.terrain.heightAt(at.x, at.y), 22, 0.55);
+        }
       } else if (event.type === 'projectile_hit' && event.damage >= 14) {
         const at = this.positionOf(event.targetId);
         if (at !== null) this.addShake(1.6 * this.nearness(at));
@@ -256,7 +276,18 @@ export class Renderer {
 
       if (event.type === 'projectile_hit') {
         const at = this.positionOf(event.targetId);
-        if (at !== null) this.tracers.impact(at, this.terrain.heightAt(at.x, at.y), colour);
+        if (at !== null) {
+          this.tracers.impact(at, this.terrain.heightAt(at.x, at.y), colour);
+          // What missed the mech hit the ground behind it. Energy weapons leave
+          // a scorch, ballistics turn the earth over.
+          const damage = weapon?.damage ?? 5;
+          this.scars.mark(
+            { x: at.x + (event.tick % 7) - 3, y: at.y + (event.tick % 5) - 2 },
+            this.terrain.heightAt(at.x, at.y),
+            3 + Math.min(9, damage * 0.35),
+            weapon?.type === 'energy' ? 1 : 0.25,
+          );
+        }
         continue;
       }
 
@@ -399,6 +430,8 @@ export class Renderer {
 
   draw(world: World, alpha: number, deltaSeconds: number, view: ViewState): void {
     this.interpolate(world, alpha);
+    this.elapsed += deltaSeconds;
+    this.jets.begin();
 
     for (const entity of world.entities) {
       // A wreck is scenery. Sensors stop tracking a machine the moment it
@@ -435,6 +468,8 @@ export class Renderer {
       shown.model.torso.rotation.y = -at.torso;
 
       this.animate(entity, shown, at, deltaSeconds);
+      // After animate(), or the nozzles ride a frame behind the legs.
+      if (entity.jump !== null) this.burn(entity, shown);
 
       shown.ring.position.set(at.x, ground + 1.2, at.y);
       shown.hoverRing.position.set(at.x, ground + 1.1, at.y);
@@ -459,8 +494,10 @@ export class Renderer {
       else flash.light.intensity *= 0.72;
     }
 
+    this.jets.commit();
     this.drawMarkers(world, view);
     this.tracers.update(deltaSeconds);
+    this.smoke.update(deltaSeconds);
     this.fog.update(world.terrain, world.vision);
     this.props.update(world.vision);
 
@@ -716,6 +753,30 @@ export class Renderer {
     }
 
     return best;
+  }
+
+  /**
+   * Lights the jets under a mech that is in the air. Throttle is read off how
+   * far through the arc it is: hard on the pads to get off the ground, cut over
+   * the top, relit to cushion the landing — the burn a pilot would actually fly.
+   */
+  private burn(entity: MechEntity, shown: EntityView): void {
+    const jump = entity.jump;
+    if (jump === null) return;
+
+    const progress = jump.duration <= 0 ? 1 : jump.elapsed / jump.duration;
+    const throttle = Math.min(
+      1,
+      Math.max(0, 1 - progress * 2.4) + Math.max(0, (progress - 0.7) / 0.3) * 0.8,
+    );
+    if (throttle <= 0.02) return;
+
+    shown.model.legs.forEach((rig, leg) => {
+      // getWorldPosition updates the chain itself, so this is correct even
+      // though the renderer has not run its own matrix pass yet this frame.
+      rig.knee.getWorldPosition(NOZZLE);
+      this.jets.plume(entity.id * 2 + leg, NOZZLE, throttle, this.elapsed);
+    });
   }
 
   spawnSmoke(at: Vec2): void {
