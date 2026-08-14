@@ -1,0 +1,18 @@
+{
+  "id": "hard_noon",
+  "name": "Hard Noon",
+  "sky": "#141a1d",
+  "exposure": 1.12,
+  "fog": { "kind": "linear", "colour": "#20282c", "near": 1400, "far": 3600 },
+  "sun": {
+    "colour": "#fff6e4",
+    "intensity": 2.9,
+    "direction": { "azimuthDegrees": 250, "elevationDegrees": 72, "distance": 1400 }
+  },
+  "fill": {
+    "colour": "#9dc0e0",
+    "intensity": 0.55,
+    "direction": { "azimuthDegrees": 60, "elevationDegrees": 30, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#c9e2f6", "ground": "#3a4232", "intensity": 1.05 }
+}

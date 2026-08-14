@@ -2,7 +2,7 @@ import { distance } from '../math';
 import { setGroupEnabled } from '../orders';
 import { findPath } from '../pathfind';
 import { isVisibleTo } from '../sensors';
-import { isOperational, type MechEntity, type World } from '../types';
+import { isDown, isOperational, type MechEntity, type World } from '../types';
 import { preferredRange } from './utility';
 
 /**
@@ -15,7 +15,7 @@ export function decideBaseline(world: World, mech: MechEntity): void {
   // Airborne: the arc is committed, so there is nothing left to decide.
   if (mech.jump !== null) return;
 
-  if (!isOperational(mech) || mech.shutdownRemaining > 0) {
+  if (!isOperational(mech) || mech.shutdownRemaining > 0 || isDown(mech)) {
     mech.path = [];
     mech.pathIndex = 0;
     mech.motion = 'stationary';

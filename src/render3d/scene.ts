@@ -1,10 +1,6 @@
 import {
   ACESFilmicToneMapping,
   BufferGeometry,
-  Color,
-  DirectionalLight,
-  Fog,
-  HemisphereLight,
   Group,
   Line,
   LineBasicMaterial,
@@ -20,6 +16,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { LOCATIONS } from '../schema/common';
+import type { Atmosphere } from '../schema/atmosphere';
 import type { TerrainMapData } from '../schema/map';
 import type { SimEvent } from '../sim/events';
 import { angleDifference, normaliseAngle } from '../sim/math';
@@ -28,6 +25,7 @@ import { tileExplored } from '../sim/sensors';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../sim/types';
 import { teamColour, UI } from '../render/palette';
 import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
+import { buildAtmosphereRig, surroundColour } from './atmosphere';
 import { TacticalCamera, type Viewport } from './camera';
 import { FogLayer } from './fog';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
@@ -117,7 +115,7 @@ export class Renderer {
   /** The authored map, kept for overlays like the minimap that draw from it. */
   readonly mapData: TerrainMapData;
 
-  constructor(host: HTMLElement, world: World, mapData: TerrainMapData) {
+  constructor(host: HTMLElement, world: World, mapData: TerrainMapData, atmosphere: Atmosphere) {
     this.mapData = mapData;
     this.host = host;
     this.renderer = new WebGLRenderer({ antialias: true });
@@ -125,33 +123,44 @@ export class Renderer {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+
+    const mapWidth = world.terrain.width * world.terrain.tileSize;
+    const mapHeight = world.terrain.height * world.terrain.tileSize;
+
+    // The lights and air are aimed at the middle of the map, so the target has
+    // to exist before the rig that points at it.
+    const midpoint = new Object3D();
+    midpoint.position.set(mapWidth / 2, 0, mapHeight / 2);
+    this.scene.add(midpoint);
+
+    const rig = buildAtmosphereRig(
+      atmosphere,
+      midpoint,
+      new Vector3(mapWidth / 2, 0, mapHeight / 2),
+      Math.max(mapWidth, mapHeight) * 0.78,
+    );
+
+    this.renderer.toneMappingExposure = rig.exposure;
     host.appendChild(this.renderer.domElement);
 
-    this.scene.background = new Color(0x0d1013);
-    this.scene.fog = new Fog(0x161c1f, 1_100, 3_000);
+    this.scene.background = rig.sky;
+    this.scene.fog = rig.fog;
 
-    this.terrain = buildTerrain(world.terrain, mapData);
+    this.terrain = buildTerrain(world.terrain, mapData, rig.tint);
     this.scene.add(this.terrain.mesh);
 
-    this.props = new PropLayer(world.terrain, mapData, this.terrain.heightAt);
+    this.props = new PropLayer(world.terrain, mapData, this.terrain.heightAt, rig.tint);
     this.scene.add(this.props.group);
 
     // Ground beyond the battlefield. Without it the map ends at a hard edge
     // with the void behind it, which reads as a bug rather than as a horizon.
+    // Painted the fog's colour so the join is invisible.
     const surround = new Mesh(
-      new PlaneGeometry(
-        world.terrain.width * world.terrain.tileSize * 9,
-        world.terrain.height * world.terrain.tileSize * 9,
-      ),
-      new MeshBasicMaterial({ color: 0x161c1f }),
+      new PlaneGeometry(mapWidth * 9, mapHeight * 9),
+      new MeshBasicMaterial({ color: surroundColour(rig) }),
     );
     surround.rotation.x = -Math.PI / 2;
-    surround.position.set(
-      (world.terrain.width * world.terrain.tileSize) / 2,
-      -3,
-      (world.terrain.height * world.terrain.tileSize) / 2,
-    );
+    surround.position.set(mapWidth / 2, -3, mapHeight / 2);
     this.scene.add(surround);
 
     this.fog = new FogLayer(world.terrain, this.terrain.heightAt);
@@ -159,42 +168,14 @@ export class Renderer {
     this.scene.add(this.markers);
     this.scene.add(this.tracers.group);
 
-    const width = world.terrain.width * world.terrain.tileSize;
-    const height = world.terrain.height * world.terrain.tileSize;
-
     // A key light across the map so hills and hulls have a lit face and a
     // shadowed one, a cool fill from the opposite side so the shadowed face is
     // readable rather than black, and sky/ground ambience to grade the curves
-    // that the chamfered plates now have.
-    // A directional light shadows the box its own camera covers, and that
-    // camera follows the light's target — which defaults to the world origin,
-    // not the middle of the map. Left alone it lights one corner and draws a
-    // visible edge across the ground where its coverage stops.
-    const midpoint = new Object3D();
-    midpoint.position.set(width / 2, 0, height / 2);
-    this.scene.add(midpoint);
+    // that the chamfered plates have. What each of those is now comes off the
+    // map's atmosphere rather than out of this file.
+    this.scene.add(rig.sun, rig.fill, rig.hemisphere);
 
-    const sun = new DirectionalLight(0xfff2e0, 2.2);
-    sun.position.set(width / 2 - 620, 900, height / 2 - 420);
-    sun.target = midpoint;
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.near = 80;
-    sun.shadow.camera.far = 2_600;
-    sun.shadow.bias = -0.0016;
-    const span = Math.max(width, height) * 0.78;
-    sun.shadow.camera.left = -span;
-    sun.shadow.camera.right = span;
-    sun.shadow.camera.top = span;
-    sun.shadow.camera.bottom = -span;
-
-    const fill = new DirectionalLight(0x8fb4d8, 0.75);
-    fill.position.set(width / 2 + 700, 380, height / 2 + 560);
-    fill.target = midpoint;
-
-    this.scene.add(sun, fill, new HemisphereLight(0xbcd8f0, 0x2c3a2a, 1.0));
-
-    this.camera.setBounds(width, height);
+    this.camera.setBounds(mapWidth, mapHeight);
 
     const lance = world.entities.filter((entity) => entity.team === (world.playerTeam ?? 0));
     const centroid = lance.reduce(
@@ -204,7 +185,7 @@ export class Renderer {
       }),
       { x: 0, y: 0 },
     );
-    this.camera.centreOn(lance.length === 0 ? { x: width / 2, y: height / 2 } : centroid);
+    this.camera.centreOn(lance.length === 0 ? { x: mapWidth / 2, y: mapHeight / 2 } : centroid);
 
     this.resize();
     this.snapshot(world);
@@ -518,7 +499,30 @@ export class Renderer {
       // A wreck's legs freeze wherever the stride left them.
       return;
     }
-    model.root.rotation.z = 0;
+
+    // ------------------------------------------------------- knocked to ground
+    // The same pose as the death fall, except it comes back up: `fall` runs
+    // down again as the mech gets its feet under it, so standing is the fall in
+    // reverse rather than a snap to upright.
+    const down = entity.downRemaining > 0;
+    anim.fall = Math.max(0, Math.min(1, anim.fall + dt * (down ? 2.2 : -1.8)));
+    if (anim.fall > 0) {
+      const eased = 1 - (1 - anim.fall) ** 2;
+      const direction = entity.id % 2 === 0 ? 1 : -1;
+      model.root.rotation.z = -eased * 1.1 * direction;
+      model.root.position.y -= eased * 1.05;
+      if (down && anim.fall >= 1 && !anim.landedFall) {
+        anim.landedFall = true;
+        this.tracers.impact({ x: at.x, y: at.y }, this.terrain.heightAt(at.x, at.y) + 2, 0x8a8a82);
+        this.addShake(1.8 * this.nearness(at));
+      }
+      if (!down) anim.landedFall = false;
+      // Flat on its back, the stride is not running. On the way up it is, so
+      // the legs gather under the mech instead of dragging.
+      if (down) return;
+    } else {
+      model.root.rotation.z = 0;
+    }
 
     // ------------------------------------------------------------ walk cycle
     const moved = anim.lastAt === null ? 0 : Math.hypot(at.x - anim.lastAt.x, at.y - anim.lastAt.y);

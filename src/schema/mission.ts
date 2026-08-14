@@ -119,6 +119,12 @@ export const MissionSchema = z
       'headhunt',
     ]),
     mapId: IdSchema,
+    /**
+     * Overrides the map's own air and light. This is how a night raid reuses a
+     * daylight map's ground rather than duplicating four kilobytes of tiles to
+     * change the colour of the sky.
+     */
+    atmosphereId: IdSchema.optional(),
     briefing: z.string().min(1).max(600).default('Engage and destroy.'),
     maxDurationSeconds: z.number().positive().max(3600),
     startingResourcePoints: z.number().int().nonnegative().max(5000).default(0),

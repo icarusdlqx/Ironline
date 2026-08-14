@@ -18,6 +18,7 @@ import { createZones, updateZones } from './zones';
 import { updateMovement, updateTorso } from './movement';
 import { updatePlayerControl } from './orders';
 import { createRng, type RngSeed } from './rng';
+import { updateStability } from './stability';
 import { createVision, updateVision } from './sensors';
 import { createTerrainGrid } from './terrain';
 import { isOperational, type MechEntity, type World } from './types';
@@ -46,6 +47,7 @@ export interface WorldOptions {
 
 export interface UnitCondition {
   armour: number;
+  rearArmour: number;
   internal: number;
   destroyed: boolean;
 }
@@ -59,6 +61,8 @@ export interface UnitResult {
   alive: boolean;
   killMethod: string | null;
   pilotDead: boolean;
+  /** Knocks the pilot took in the field. They ride home as infirmary days. */
+  pilotWounds: number;
   pilotEjected: boolean;
   withdrew: boolean;
   legged: boolean;
@@ -283,6 +287,8 @@ export function stepWorld(world: World, maxTicks: number): void {
   world.tick += 1;
 
   for (const entity of world.entities) updateHeat(world, entity);
+  // Before the AI decides, so a mech that stands up this tick can act on it.
+  for (const entity of world.entities) updateStability(world, entity);
 
   if (world.vision !== null) updateVision(world, world.vision);
 
@@ -343,6 +349,7 @@ export function toResult(world: World, seed: RngSeed, maxTicks: number): BattleR
       alive: isOperational(entity),
       killMethod: entity.killMethod,
       pilotDead: entity.pilot.dead,
+      pilotWounds: entity.pilot.wounds,
       pilotEjected: entity.pilot.ejected,
       withdrew: entity.withdrawn,
       legged: entity.locations.left_leg.destroyed && entity.locations.right_leg.destroyed,
@@ -358,6 +365,7 @@ export function toResult(world: World, seed: RngSeed, maxTicks: number): BattleR
           location,
           {
             armour: entity.locations[location].armour,
+            rearArmour: entity.locations[location].rearArmour,
             internal: entity.locations[location].internal,
             destroyed: entity.locations[location].destroyed,
           },

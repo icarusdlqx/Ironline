@@ -5,6 +5,7 @@ import { ChassisSchema, type Chassis } from './chassis';
 import { DesignSchema, type Design } from './design';
 import { EquipmentSchema, type Equipment } from './equipment';
 import { checkIntegrity } from './integrity';
+import { AtmosphereSchema, type Atmosphere } from './atmosphere';
 import { TerrainMapSchema, type TerrainMapData } from './map';
 import { MissionSchema, type Mission } from './mission';
 import { PilotSchema, type Pilot } from './pilot';
@@ -17,6 +18,7 @@ import {
   ConstructionRulesSchema,
   DifficultyRulesSchema,
   DamageRulesSchema,
+  StabilityRulesSchema,
   EconomyRulesSchema,
   HeatRulesSchema,
   MovementRulesSchema,
@@ -55,6 +57,7 @@ export interface Catalog {
   readonly pilots: ReadonlyMap<string, Pilot>;
   readonly designs: ReadonlyMap<string, Design>;
   readonly maps: ReadonlyMap<string, TerrainMapData>;
+  readonly atmospheres: ReadonlyMap<string, Atmosphere>;
   readonly missions: ReadonlyMap<string, Mission>;
   readonly campaigns: ReadonlyMap<string, Campaign>;
   readonly lore: ReadonlyMap<string, LoreEntry>;
@@ -82,6 +85,11 @@ const designFiles = import.meta.glob('../data/designs/*.json', {
   eager: true,
   import: 'default',
 }) as RawFiles;
+const atmosphereFiles = import.meta.glob('../data/atmospheres/*.json', {
+  eager: true,
+  import: 'default',
+}) as RawFiles;
+
 const mapFiles = import.meta.glob('../data/maps/*.json', {
   eager: true,
   import: 'default',
@@ -203,6 +211,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const combat = parseRule('combat', CombatRulesSchema, byStem, issues);
   const heat = parseRule('heat', HeatRulesSchema, byStem, issues);
   const damage = parseRule('damage', DamageRulesSchema, byStem, issues);
+  const stability = parseRule('stability', StabilityRulesSchema, byStem, issues);
   const terrain = parseRule('terrain', TerrainRulesSchema, byStem, issues);
   const sensors = parseRule('sensors', SensorRulesSchema, byStem, issues);
   const construction = parseRule('construction', ConstructionRulesSchema, byStem, issues);
@@ -221,6 +230,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     combat === null ||
     heat === null ||
     damage === null ||
+    stability === null ||
     terrain === null ||
     sensors === null ||
     construction === null ||
@@ -242,6 +252,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     combat,
     heat,
     damage,
+    stability,
     terrain,
     sensors,
     construction,
@@ -267,6 +278,7 @@ export function loadCatalog(): Catalog {
     pilots: parseCollection('pilot', pilotFiles, PilotSchema, issues),
     designs: parseCollection('design', designFiles, DesignSchema, issues),
     maps: parseCollection('map', mapFiles, TerrainMapSchema, issues),
+    atmospheres: parseCollection('atmosphere', atmosphereFiles, AtmosphereSchema, issues),
     missions: parseCollection('mission', missionFiles, MissionSchema, issues),
     campaigns: parseCollection('campaign', campaignFiles, CampaignSchema, issues),
     lore: parseCollection('lore', loreFiles, LoreEntrySchema, issues),

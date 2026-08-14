@@ -1,0 +1,19 @@
+{
+  "id": "ash_dusk",
+  "name": "Ash Dusk",
+  "sky": "#150f0d",
+  "exposure": 1.0,
+  "fog": { "kind": "linear", "colour": "#2a1c16", "near": 700, "far": 2400 },
+  "sun": {
+    "colour": "#ff9a52",
+    "intensity": 1.9,
+    "direction": { "azimuthDegrees": 200, "elevationDegrees": 9, "distance": 1300 }
+  },
+  "fill": {
+    "colour": "#5a6e8c",
+    "intensity": 0.5,
+    "direction": { "azimuthDegrees": 20, "elevationDegrees": 26, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#7d6a63", "ground": "#2a221c", "intensity": 0.8 },
+  "terrainTint": { "colour": "#5a3a24", "strength": 0.18 }
+}

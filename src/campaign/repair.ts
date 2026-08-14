@@ -1,6 +1,7 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
 import type { Design } from '../schema/design';
+import { splitArmour } from '../sim/loadout';
 import type { CampaignState, LocationCondition, MechRecord } from './types';
 
 export interface RepairEstimate {
@@ -16,14 +17,20 @@ export function pristineCondition(
   design: Design,
 ): Record<MechLocation, LocationCondition> {
   const chassis = catalog.chassis.get(design.chassisId);
-  const entries = LOCATIONS.map((location) => [
-    location,
-    {
-      armour: design.armour[location],
-      internal: chassis?.internals[location] ?? 0,
-      destroyed: false,
-    } satisfies LocationCondition,
-  ]);
+  const entries = LOCATIONS.map((location) => {
+    // Through the same helper the sim spawns with, so a mech straight out of
+    // the workshop matches one that never left it.
+    const plate = splitArmour(catalog.rules.construction, location, design.armour[location]);
+    return [
+      location,
+      {
+        armour: plate.front,
+        rearArmour: plate.rear,
+        internal: chassis?.internals[location] ?? 0,
+        destroyed: false,
+      } satisfies LocationCondition,
+    ];
+  });
   return Object.fromEntries(entries) as Record<MechLocation, LocationCondition>;
 }
 
@@ -33,7 +40,7 @@ export function wreckedCondition(
 ): Record<MechLocation, LocationCondition> {
   const condition = pristineCondition(catalog, design);
   for (const location of LOCATIONS) {
-    condition[location] = { armour: 0, internal: 1, destroyed: false };
+    condition[location] = { armour: 0, rearArmour: 0, internal: 1, destroyed: false };
   }
   return condition;
 }
@@ -57,7 +64,9 @@ export function estimateRepair(
       internalPoints += chassis?.internals[location] ?? 0;
       continue;
     }
-    armourPoints += Math.max(0, mech.design.armour[location] - state.armour);
+    // The design's number is still the target: front and rear together are
+    // exactly what it paid for, so the workshop bills for whichever is missing.
+    armourPoints += Math.max(0, mech.design.armour[location] - state.armour - state.rearArmour);
     internalPoints += Math.max(0, (chassis?.internals[location] ?? 0) - state.internal);
   }
 

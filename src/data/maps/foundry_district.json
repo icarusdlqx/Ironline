@@ -4,6 +4,7 @@
   "tileSize": 24,
   "width": 40,
   "height": 40,
+  "atmosphereId": "ash_dusk",
   "legend": {
     ".": "open",
     "r": "rough",

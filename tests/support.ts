@@ -59,6 +59,7 @@ export function makeGrid(spec: GridSpec): TerrainGrid {
     height,
     legend: spec.legend,
     tiles: spec.tiles,
+    atmosphereId: 'overcast_day',
     ...(spec.elevation === undefined ? {} : { elevation: spec.elevation }),
   };
 

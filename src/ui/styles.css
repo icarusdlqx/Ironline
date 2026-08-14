@@ -239,6 +239,17 @@ button {
   background: var(--accent);
 }
 
+/* The same plate seen from the other side: same colour, dimmed and thinner, so
+   it reads as armour rather than as a new statistic to learn. */
+.doll-bar.rear {
+  height: 3px;
+}
+
+.doll-bar.rear span {
+  background: var(--accent);
+  opacity: 0.45;
+}
+
 .doll-bar.internal span {
   background: var(--warn);
 }

@@ -54,6 +54,13 @@ export type KillMethod = 'centre_torso' | 'head' | 'ammo_explosion';
 export interface LocationState {
   armour: number;
   armourMax: number;
+  /**
+   * The plate over the back, thinner than the glacis. Zero on everything but
+   * the torsos — a rearArmourMax of 0 is how the rest of the code asks whether
+   * a location has a back at all.
+   */
+  rearArmour: number;
+  rearArmourMax: number;
   internal: number;
   internalMax: number;
   destroyed: boolean;
@@ -105,6 +112,11 @@ export interface PilotState {
   criticalChanceFactor: number;
   /** Their odds of walking away from a wreck, applied by the campaign. */
   survivalFactor: number;
+  /**
+   * Knocks taken this battle. Never fatal in the field — a coin-flip loss from
+   * one bad fall is miserable — but they ride home as infirmary days.
+   */
+  wounds: number;
   dead: boolean;
   ejected: boolean;
 }
@@ -157,6 +169,13 @@ export interface MechEntity {
   heatSinks: number;
   dissipationPerSecond: number;
   shutdownRemaining: number;
+
+  /** How badly the mech has been shoved about, and how far off its feet that is. */
+  stability: number;
+  /** Seconds left on the ground. Zero means upright. */
+  downRemaining: number;
+  /** Tick until which the mech cannot be shoved again, having just got up. */
+  footingUntilTick: number;
 
   incomingAccuracyFactor: number;
   outgoingAccuracyFactor: number;
@@ -272,6 +291,16 @@ export function isOperational(entity: MechEntity): boolean {
 
 export function isImmobile(entity: MechEntity): boolean {
   return entity.locations.left_leg.destroyed && entity.locations.right_leg.destroyed;
+}
+
+/** On the ground: cannot move, turn, twist or shoot, and easy to hit. */
+export function isDown(entity: MechEntity): boolean {
+  return entity.downRemaining > 0;
+}
+
+/** Rocking, but still upright. The next big hit is the one that floors it. */
+export function isStaggered(entity: MechEntity, staggerThreshold: number): boolean {
+  return !isDown(entity) && entity.stability >= staggerThreshold;
 }
 
 export function legPenaltyFactor(entity: MechEntity, singleLegFactor: number): number {

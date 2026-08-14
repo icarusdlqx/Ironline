@@ -1,9 +1,30 @@
 {
   "id": "combat",
-  "gunneryBase": [0.52, 0.6, 0.69, 0.78, 0.86],
-  "rangeFactor": { "short": 1.0, "medium": 0.82, "long": 0.58, "beyond": 0.12 },
-  "shooterMotion": { "stationary": 1.0, "walk": 0.88, "run": 0.72, "jump": 0.6 },
-  "targetMotion": { "stationary": 1.0, "walk": 0.9, "run": 0.7, "jump": 0.62 },
+  "gunneryBase": [
+    0.52,
+    0.6,
+    0.69,
+    0.78,
+    0.86
+  ],
+  "rangeFactor": {
+    "short": 1,
+    "medium": 0.82,
+    "long": 0.58,
+    "beyond": 0.12
+  },
+  "shooterMotion": {
+    "stationary": 1,
+    "walk": 0.88,
+    "run": 0.72,
+    "jump": 0.6
+  },
+  "targetMotion": {
+    "stationary": 1,
+    "walk": 0.9,
+    "run": 0.7,
+    "jump": 0.62
+  },
   "minimumRangeFactor": 0.5,
   "maxRangeMultiplier": 1.25,
   "firingArcDegrees": 120,
@@ -23,7 +44,7 @@
     "frontDegrees": 120,
     "rearDegrees": 100,
     "front": {
-      "damageFactor": 1.0,
+      "damageFactor": 1,
       "hitLocationWeights": {
         "head": 2,
         "centre_torso": 20,
@@ -49,7 +70,7 @@
       }
     },
     "rear": {
-      "damageFactor": 1.5,
+      "damageFactor": 1.2,
       "hitLocationWeights": {
         "head": 2,
         "centre_torso": 26,
@@ -62,7 +83,14 @@
       }
     }
   },
-  "calledShot": { "accuracyFactor": 0.55, "locationChance": 0.7 },
+  "calledShot": {
+    "accuracyFactor": 0.55,
+    "locationChance": 0.7
+  },
   "tagFactor": 1.15,
+  "elevation": {
+    "accuracyPerLevel": 1.08,
+    "maxLevels": 2
+  },
   "returnFireSeconds": 6
 }

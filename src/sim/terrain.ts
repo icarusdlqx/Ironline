@@ -16,6 +16,7 @@ export interface TerrainGrid {
   typeAt(column: number, row: number): TerrainType;
   typeAtPoint(point: Vec2): TerrainType;
   elevationAt(column: number, row: number): number;
+  elevationAtPoint(point: Vec2): number;
   passable(column: number, row: number): boolean;
   inBounds(column: number, row: number): boolean;
   toTile(point: Vec2): TileRef;
@@ -27,6 +28,7 @@ const OFF_MAP: TerrainType = {
   coverFactor: 1,
   losObstruction: 1,
   heatDissipationMultiplier: 1,
+  signatureFactor: 1,
   passable: false,
 };
 
@@ -59,6 +61,9 @@ export function createTerrainGrid(data: TerrainMapData, rules: TerrainRules): Te
   const typeAt = (column: number, row: number): TerrainType =>
     inBounds(column, row) ? (cells[row * data.width + column] ?? OFF_MAP) : OFF_MAP;
 
+  const elevationAt = (column: number, row: number): number =>
+    inBounds(column, row) ? (elevations[row * data.width + column] ?? 0) : 0;
+
   return {
     id: data.id,
     width: data.width,
@@ -68,8 +73,9 @@ export function createTerrainGrid(data: TerrainMapData, rules: TerrainRules): Te
     typeAt,
     typeAtPoint: (point) =>
       typeAt(Math.floor(point.x / data.tileSize), Math.floor(point.y / data.tileSize)),
-    elevationAt: (column, row) =>
-      inBounds(column, row) ? (elevations[row * data.width + column] ?? 0) : 0,
+    elevationAt,
+    elevationAtPoint: (point) =>
+      elevationAt(Math.floor(point.x / data.tileSize), Math.floor(point.y / data.tileSize)),
     passable: (column, row) => {
       const terrain = typeAt(column, row);
       return terrain.passable && terrain.moveMultiplier > 0;

@@ -42,7 +42,9 @@ function integrity(state: CampaignState, mechId: string): number {
   let want = 0;
   for (const location of LOCATIONS) {
     const condition = mech.condition[location];
-    have += condition.armour + condition.internal;
+    // The design's number is the front and back together, so `want` already
+    // accounts for the split without needing to know about it.
+    have += condition.armour + condition.rearArmour + condition.internal;
     want += mech.design.armour[location] + condition.internal;
   }
   return want === 0 ? 1 : Math.max(0, Math.min(1, have / want));

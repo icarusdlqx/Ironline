@@ -1,0 +1,19 @@
+{
+  "id": "moonlit_night",
+  "name": "Moonlit Night",
+  "sky": "#05070b",
+  "exposure": 1.24,
+  "fog": { "kind": "linear", "colour": "#0a1018", "near": 480, "far": 1700 },
+  "sun": {
+    "colour": "#9fb8e0",
+    "intensity": 0.42,
+    "direction": { "azimuthDegrees": 150, "elevationDegrees": 64, "distance": 1300 },
+    "shadows": false
+  },
+  "fill": {
+    "colour": "#3a5878",
+    "intensity": 0.22,
+    "direction": { "azimuthDegrees": 330, "elevationDegrees": 20, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#2c3f5e", "ground": "#0d1210", "intensity": 0.42 }
+}

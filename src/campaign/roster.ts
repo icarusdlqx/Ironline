@@ -166,9 +166,17 @@ export function resolveCasualty(
   unit: UnitResult,
   day: number,
 ): CasualtyResult {
-  if (unit.alive) return { died: false, injuredDays: 0 };
-
   const rules = catalog.rules.economy.pilot;
+
+  // A pilot who walked off the field under their own power but got thrown
+  // about inside the cockpit still sees the surgeon — for days, not weeks.
+  // No base term: nobody had to cut them out of anything.
+  if (unit.alive) {
+    if (unit.pilotWounds <= 0) return { died: false, injuredDays: 0 };
+    const days = rules.injuryDaysPerWound * unit.pilotWounds;
+    pilot.injuredUntilDay = day + days;
+    return { died: false, injuredDays: days };
+  }
 
   if (unit.pilotDead) {
     pilot.dead = true;

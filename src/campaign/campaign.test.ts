@@ -226,6 +226,28 @@ describe('repair queue', () => {
     expect(startRepair(catalog, state, mech).ok).toBe(false);
   });
 
+  it('charges to put the back plate on again, and hangs it back where it was', () => {
+    const mech = state.mechs[0];
+    if (mech === undefined) return;
+
+    const stripped = mech.condition.centre_torso.rearArmour;
+    expect(stripped).toBeGreaterThan(0);
+    mech.condition.centre_torso.rearArmour = 0;
+
+    expect(estimateRepair(catalog, mech).armourPoints).toBe(stripped);
+
+    const cash = state.cbills;
+    expect(startRepair(catalog, state, mech).ok).toBe(true);
+    expect(state.cbills).toBeLessThan(cash);
+
+    advanceDays(catalog, state, estimateRepair(catalog, mech).days + 1);
+
+    // Rebuilt as a split, not piled onto the front.
+    const core = mech.condition.centre_torso;
+    expect(core.rearArmour).toBe(stripped);
+    expect(core.armour + core.rearArmour).toBe(mech.design.armour.centre_torso);
+  });
+
   it('refuses a repair the company cannot afford', () => {
     fightNode(state, 'militia_raid');
     const mech = state.mechs.find((entry) => estimateRepair(catalog, entry).days > 0);

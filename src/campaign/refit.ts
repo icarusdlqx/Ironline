@@ -30,6 +30,7 @@ function rescaleCondition(catalog: Catalog, mech: MechRecord, design: Design): v
     if (was === undefined || now === undefined) continue;
     next[location] = {
       armour: Math.min(was.armour, now.armour),
+      rearArmour: Math.min(was.rearArmour, now.rearArmour),
       internal: Math.min(was.internal, now.internal),
       destroyed: was.destroyed,
     };

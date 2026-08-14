@@ -1,4 +1,5 @@
 import type { MechLocation } from '../schema/common';
+import type { ArmourFace } from './arcs';
 import { detonateAmmoBin } from './damage';
 import { emit } from './events';
 import type { MechEntity, World } from './types';
@@ -14,10 +15,20 @@ export type CriticalComponent = 'weapon' | 'ammunition' | 'actuator' | 'sensors'
  * a plate that still has anything left on it takes the hit as a plate, however
  * hard the round was travelling.
  */
-export function penetrates(target: MechEntity, location: MechLocation, damage: number): boolean {
+export function penetrates(
+  target: MechEntity,
+  location: MechLocation,
+  damage: number,
+  face: ArmourFace = 'front',
+): boolean {
   const state = target.locations[location];
   if (state.destroyed) return true;
-  return damage > state.armour;
+
+  // Against the plate the shot actually meets. Testing the glacis would let an
+  // intact front keep criticals out of a mech being shot in the back, which is
+  // most of what having a back is for.
+  const plate = face === 'rear' && state.rearArmourMax > 0 ? state.rearArmour : state.armour;
+  return damage > plate;
 }
 
 /**

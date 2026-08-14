@@ -22,6 +22,26 @@ describe('critical hits', () => {
     expect(penetrates(mech, 'centre_torso', 1)).toBe(true);
   });
 
+  it('gets through the back of a torso the front would have stopped', () => {
+    const world = playerWorld('crit-rear');
+    const mech = anyMech(world);
+    mech.locations.centre_torso.armour = 30;
+    mech.locations.centre_torso.rearArmour = 10;
+
+    expect(penetrates(mech, 'centre_torso', 20, 'front')).toBe(false);
+    expect(penetrates(mech, 'centre_torso', 20, 'rear')).toBe(true);
+  });
+
+  it('finds a leg the same way from either side, because a leg has no back', () => {
+    const world = playerWorld('crit-leg');
+    const mech = anyMech(world);
+    mech.locations.left_leg.armour = 30;
+    expect(mech.locations.left_leg.rearArmourMax).toBe(0);
+
+    expect(penetrates(mech, 'left_leg', 20, 'rear')).toBe(false);
+    expect(penetrates(mech, 'left_leg', 40, 'rear')).toBe(true);
+  });
+
   it('silences a weapon fitted where the crit landed', () => {
     const world = playerWorld('weapon');
     const mech = anyMech(world);

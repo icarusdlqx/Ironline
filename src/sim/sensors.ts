@@ -90,9 +90,15 @@ export function updateVision(world: World, vision: TeamVision): void {
 
     // How near this particular machine has to be before it registers. A big
     // hull is picked up across the map; a scout has to be walked up on.
+    //
+    // Where it is standing counts too, and counts separately: signature is a
+    // property of the machine and travels with it, while a treeline is left
+    // behind the moment the mech walks out from under it.
+    const concealment = world.terrain.typeAtPoint(candidate.pos).signatureFactor;
+
     let closest = Infinity;
     for (const observer of observers) {
-      const reach = observer.sensorRange * candidate.signature;
+      const reach = observer.sensorRange * candidate.signature * concealment;
       const gap = distance(observer.pos, candidate.pos);
       if (gap > reach) continue;
       if (!lineOfSight(world.terrain, observer.pos, candidate.pos).clear) continue;

@@ -3,8 +3,10 @@ import { addHeat, currentHeatTier } from './heat';
 import { angleDifference, bearing, distance, normaliseAngle } from './math';
 import {
   findEntity,
+  isDown,
   isImmobile,
   isOperational,
+  isStaggered,
   legPenaltyFactor,
   type MechEntity,
   type Vec2,
@@ -18,7 +20,11 @@ export function speedFor(world: World, entity: MechEntity): number {
   const terrain = world.terrain.typeAtPoint(entity.pos);
   const heat = currentHeatTier(world, entity).movementFactor;
   const legs = legPenaltyFactor(entity, world.rules.damage.legDestroyedSpeedFactor);
-  return base * terrain.moveMultiplier * heat * legs;
+  // A mech fighting to stay upright is not also striding out.
+  const footing = isStaggered(entity, world.rules.stability.staggerThreshold)
+    ? world.rules.stability.staggeredSpeedFactor
+    : 1;
+  return base * terrain.moveMultiplier * heat * legs * footing;
 }
 
 function turnToward(world: World, entity: MechEntity, focus: Vec2): number {
@@ -57,7 +63,7 @@ export function jumpLanding(world: World, entity: MechEntity, to: Vec2): Vec2 | 
  */
 export function beginJump(world: World, entity: MechEntity, to: Vec2): boolean {
   if (!isOperational(entity) || entity.shutdownRemaining > 0 || isImmobile(entity)) return false;
-  if (entity.jump !== null || entity.jumpCooldown > 0) return false;
+  if (isDown(entity) || entity.jump !== null || entity.jumpCooldown > 0) return false;
 
   const landing = jumpLanding(world, entity, to);
   if (landing === null) return false;
@@ -142,7 +148,7 @@ function clearPath(entity: MechEntity): void {
 
 /** Swings the torso toward the target within its twist limit, independent of the hull. */
 export function updateTorso(world: World, entity: MechEntity): void {
-  if (!isOperational(entity) || entity.shutdownRemaining > 0) return;
+  if (!isOperational(entity) || entity.shutdownRemaining > 0 || isDown(entity)) return;
 
   const target = findEntity(world, entity.targetId);
   const limit = world.rules.movement.torsoTwistDegrees * DEGREES_TO_RADIANS;
@@ -178,7 +184,12 @@ export function updateMovement(world: World, entity: MechEntity): void {
   // Airborne: the arc owns the mech's position until it comes down.
   if (updateJump(world, entity)) return;
 
-  if (!isOperational(entity) || entity.shutdownRemaining > 0 || isImmobile(entity)) {
+  if (
+    !isOperational(entity) ||
+    entity.shutdownRemaining > 0 ||
+    isImmobile(entity) ||
+    isDown(entity)
+  ) {
     entity.motion = 'stationary';
     return;
   }

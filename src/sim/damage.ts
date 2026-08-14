@@ -1,5 +1,7 @@
 import type { MechLocation } from '../schema/common';
+import type { ArmourFace } from './arcs';
 import { emit } from './events';
+import { addStabilityImpulse } from './stability';
 import type { AmmoBin, KillMethod, MechEntity, World } from './types';
 
 export function destroyMech(world: World, entity: MechEntity, method: KillMethod): void {
@@ -71,6 +73,7 @@ export function destroyLocation(
 
   state.destroyed = true;
   state.armour = 0;
+  state.rearArmour = 0;
   state.internal = 0;
   emit(world.events, {
     type: 'location_destroyed',
@@ -100,6 +103,13 @@ export function destroyLocation(
     detonateAmmoBin(world, entity, bin);
   }
 
+  // A mech that loses a leg lurches. The design doc has always said losing one
+  // carries a chance of going over; this is that chance, and it goes through
+  // the same pool everything else does, so a good pilot can ride it out.
+  if (location === 'left_leg' || location === 'right_leg') {
+    addStabilityImpulse(world, entity, world.rules.stability.legLossImpulse);
+  }
+
   if (location === 'head') {
     if (world.rng.chance(world.rules.damage.headDestroyedEjectionChance)) {
       entity.pilot.ejected = true;
@@ -114,11 +124,17 @@ export function destroyLocation(
   if (location === 'centre_torso') destroyMech(world, entity, via ?? 'centre_torso');
 }
 
+/**
+ * The face travels with the shot, not with the location — so a round that comes
+ * in from behind, blows an arm off and spills inboard eats the side torso's back
+ * plate too, which is what it would have hit had the arm not been in the way.
+ */
 export function applyDamage(
   world: World,
   target: MechEntity,
   location: MechLocation,
   amount: number,
+  face: ArmourFace = 'front',
 ): number {
   let remaining = amount * target.damageTakenFactor;
   let absorbed = 0;
@@ -135,9 +151,11 @@ export function applyDamage(
       continue;
     }
 
-    if (state.armour > 0) {
-      const applied = Math.min(state.armour, remaining);
-      state.armour -= applied;
+    // A leg has no back, so rear fire on one meets the only plate it has.
+    const plate = face === 'rear' && state.rearArmourMax > 0 ? 'rearArmour' : 'armour';
+    if (state[plate] > 0) {
+      const applied = Math.min(state[plate], remaining);
+      state[plate] -= applied;
       remaining -= applied;
       absorbed += applied;
     }

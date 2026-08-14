@@ -207,8 +207,12 @@ export class Engine {
   private emitDamageSmoke(): void {
     for (const entity of this.world.entities) {
       if (!isOperational(entity)) continue;
+      // Front and back together, so a mech stripped from behind smokes too.
       const damaged = Object.values(entity.locations).some(
-        (location) => location.destroyed || location.armour < location.armourMax * 0.35,
+        (location) =>
+          location.destroyed ||
+          location.armour + location.rearArmour <
+            (location.armourMax + location.rearArmourMax) * 0.35,
       );
       if (!damaged) continue;
       const at = this.renderer.positionOf(entity.id);
@@ -241,6 +245,15 @@ export class Engine {
       } else if (event.type === 'shutdown') {
         const entity = findEntity(this.world, event.entityId as EntityId);
         push(`${entity?.name ?? 'Unit'} shut down from heat`);
+      } else if (event.type === 'knocked_down') {
+        const entity = findEntity(this.world, event.entityId as EntityId);
+        push(`${entity?.name ?? 'Unit'} goes down`);
+      } else if (event.type === 'stood_up') {
+        const entity = findEntity(this.world, event.entityId as EntityId);
+        push(`${entity?.name ?? 'Unit'} back on its feet`);
+      } else if (event.type === 'pilot_injured') {
+        const entity = findEntity(this.world, event.entityId as EntityId);
+        push(`${entity?.pilot.name ?? 'Pilot'} hurt in the fall`);
       } else if (event.type === 'mission_message') {
         push(String(event.text));
       } else if (event.type === 'zone_captured') {
@@ -502,7 +515,13 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   const mapData = catalog.maps.get(mission?.mapId ?? '');
   if (mapData === undefined) throw new Error(`mission "${missionId}" has no map`);
 
-  const renderer = new Renderer(host, world, mapData);
+  // The mission's own choice first, then the map's, then the default rig — so a
+  // night raid overrides the ground it borrows without touching the map file.
+  const atmosphereId = mission?.atmosphereId ?? mapData.atmosphereId;
+  const atmosphere = catalog.atmospheres.get(atmosphereId);
+  if (atmosphere === undefined) throw new Error(`unknown atmosphere "${atmosphereId}"`);
+
+  const renderer = new Renderer(host, world, mapData, atmosphere);
   const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
   renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
   engine.attach(renderer.canvas);

@@ -172,3 +172,64 @@ describe('arc hit locations', () => {
     expect(arms.near_arm).toBeLessThan(front.near_arm);
   });
 });
+
+describe('rear armour', () => {
+  const TORSOS = ['centre_torso', 'left_torso', 'right_torso'] as const;
+
+  it('splits exactly what the design paid for, and no more', () => {
+    const design = catalog.designs.get('bulwark_burner');
+    expect(design).toBeDefined();
+    for (const location of LOCATIONS) {
+      const state = target.locations[location];
+      expect(state.armourMax + state.rearArmourMax, location).toBe(design?.armour[location]);
+    }
+  });
+
+  it('eats the back plate and leaves the glacis alone', () => {
+    for (const location of LOCATIONS) {
+      const state = target.locations[location];
+      state.armour = 10_000;
+      if (state.rearArmourMax > 0) state.rearArmour = 10_000;
+    }
+
+    const glacis = TORSOS.map((location) => target.locations[location].armour);
+    for (let shot = 0; shot < 200; shot += 1) shoot(around(target, 180), 5);
+
+    // Only the torsos are checked: a head, arm or leg has no back, so rear fire
+    // on one correctly meets the only plate it has.
+    TORSOS.forEach((location, index) => {
+      expect(target.locations[location].armour, location).toBe(glacis[index]);
+    });
+    expect(Math.min(...TORSOS.map((l) => target.locations[l].rearArmour))).toBeLessThan(10_000);
+  });
+
+  it('meets the front plate on a flanking shot', () => {
+    for (const location of LOCATIONS) target.locations[location].armour = 10_000;
+    const backs = TORSOS.map((location) => target.locations[location].rearArmour);
+
+    for (let shot = 0; shot < 200; shot += 1) shoot(around(target, 90), 5);
+
+    TORSOS.forEach((location, index) => {
+      expect(target.locations[location].rearArmour, location).toBe(backs[index]);
+    });
+  });
+
+  it('gives a leg no back, so fire from behind meets its only plate', () => {
+    for (const location of LOCATIONS) target.locations[location].armour = 10_000;
+    expect(target.locations.left_leg.rearArmourMax).toBe(0);
+
+    world.projectiles.push({
+      shooterId: shooter.id,
+      targetId: target.id,
+      weaponId: 'ac5',
+      hit: true,
+      from: around(target, 180),
+      calledShot: 'left_leg',
+      damage: 40,
+      impactTick: world.tick,
+    });
+    resolveProjectiles(world);
+
+    expect(target.locations.left_leg.armour).toBeLessThan(10_000);
+  });
+});

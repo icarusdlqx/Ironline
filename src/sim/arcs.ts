@@ -9,6 +9,19 @@ const DEGREES_TO_RADIANS = Math.PI / 180;
 /** Which flank the fire is coming in on. */
 export type NearSide = 'left' | 'right';
 
+/** Which plate a shot meets: the glacis, or the thin stuff over the reactor. */
+export type ArmourFace = 'front' | 'rear';
+
+/**
+ * Side fire meets the front plate. The side arc is already paid for by its own
+ * damage factor and its near-side hit table; a third pool would want a third
+ * number on every location and a third bar on the paper doll to explain a
+ * difference nobody would feel.
+ */
+export function armourFaceOf(arc: AttackArc): ArmourFace {
+  return arc === 'rear' ? 'rear' : 'front';
+}
+
 export interface ArcHit {
   arc: AttackArc;
   near: NearSide;

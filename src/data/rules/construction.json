@@ -66,6 +66,14 @@
   "structureWeightFraction": 0.1,
   "armourPointsPerTon": 40,
   "ammoSlotsPerTon": 1,
+  "rearArmour": {
+    "fraction": 0.25,
+    "locations": [
+      "centre_torso",
+      "left_torso",
+      "right_torso"
+    ]
+  },
   "weaponSizeTonnage": [
     2,
     6,

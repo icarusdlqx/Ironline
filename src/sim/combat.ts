@@ -1,7 +1,7 @@
 import type { MechLocation } from '../schema/common';
 import type { CombatRules } from '../schema/rules';
 import type { Weapon } from '../schema/weapon';
-import { arcTableKey, attackArcFrom, type ArcHit } from './arcs';
+import { arcTableKey, attackArcFrom, armourFaceOf, type ArcHit } from './arcs';
 import { penetrates, resolveCritical } from './critical';
 import { applyDamage } from './damage';
 import { emit } from './events';
@@ -9,10 +9,13 @@ import { addHeat, currentHeatTier } from './heat';
 import { coverFactorAt, lineOfSight } from './los';
 import { angleDifference, bearing, clamp, distance as distanceBetween } from './math';
 import { weaponBearing } from './movement';
+import { addStabilityImpulse, impulseOf } from './stability';
 import {
   findAmmoBin,
   findEntity,
+  isDown,
   isOperational,
+  isStaggered,
   type AmmoBin,
   type MechEntity,
   type Projectile,
@@ -26,6 +29,21 @@ function rangeFactor(rules: CombatRules, weapon: Weapon, range: number): number 
   if (range <= weapon.range.medium) return rules.rangeFactor.medium;
   if (range <= weapon.range.long) return rules.rangeFactor.long;
   return rules.rangeFactor.beyond;
+}
+
+/**
+ * Shooting downhill. A mech on the ridge is looking down at its target instead
+ * of across at it, and gets more of the hull to aim at. Only the advantage
+ * counts and only up to a cap: on a map with four levels of relief, an
+ * uncapped bonus would turn the high ground into a firing range rather than a
+ * position worth taking.
+ */
+function heightFactor(world: World, shooter: MechEntity, target: MechEntity): number {
+  const rules = world.rules.combat.elevation;
+  const above =
+    world.terrain.elevationAtPoint(shooter.pos) - world.terrain.elevationAtPoint(target.pos);
+  if (above <= 0) return 1;
+  return rules.accuracyPerLevel ** Math.min(above, rules.maxLevels);
 }
 
 export function hitChance(
@@ -49,8 +67,17 @@ export function hitChance(
     : Math.min(1, motionPenalty * shooter.movingAccuracyFactor);
   chance *= rules.targetMotion[target.motion];
   chance *= coverFactorAt(world.terrain, target.pos);
+  chance *= heightFactor(world, shooter, target);
   chance *= target.incomingAccuracyFactor;
+  // A mech on the ground is a stationary target the size of a barn. This is the
+  // whole reward for knocking one down, and because hit chance feeds the AI's
+  // expected damage it also makes the tactical AI pile onto a downed mech
+  // without a line of AI code.
+  if (isDown(target)) chance *= world.rules.stability.proneAccuracyFactor;
   chance *= shooter.outgoingAccuracyFactor;
+  if (isStaggered(shooter, world.rules.stability.staggerThreshold)) {
+    chance *= world.rules.stability.staggeredAccuracyFactor;
+  }
   chance *= lanceGunnery(world, shooter);
   if (weapon.type === 'missile') chance *= target.amsMissileFactor;
   if (world.tick <= target.designatedUntilTick) chance *= rules.tagFactor;
@@ -157,7 +184,10 @@ export function updateWeapons(world: World, shooter: MechEntity): void {
     if (mount.cooldown > 0) mount.cooldown = Math.max(0, mount.cooldown - world.dt);
   }
 
-  if (!isOperational(shooter) || shooter.shutdownRemaining > 0) return;
+  // A mech on its back cannot bring a gun to bear. Being down is denial of
+  // everything for a few seconds, which is what makes it worth spending an
+  // autocannon on rather than just more damage by another name.
+  if (!isOperational(shooter) || shooter.shutdownRemaining > 0 || isDown(shooter)) return;
 
   const target = findEntity(world, shooter.targetId);
   if (target === null || !isOperational(target)) return;
@@ -243,13 +273,14 @@ export function resolveProjectiles(world: World): void {
       projectile.calledShot,
     );
     const factor = world.rules.combat.attackArcs[arc.arc].damageFactor;
+    const face = armourFaceOf(arc.arc);
     const fired = world.catalog.weapons.get(projectile.weaponId);
 
     // A critical is the shot that gets past the plate and finds the frame.
     // Rolled before the damage lands, because whether the armour was still
     // there is the whole question — once applyDamage has run it is not.
     let damage = projectile.damage * factor;
-    if (fired !== undefined && penetrates(target, location, damage)) {
+    if (fired !== undefined && penetrates(target, location, damage, face)) {
       // A pilot who knows where a hull comes apart aims for the seam.
       const proneness = fired.criticalChance * (shooter?.pilot.criticalChanceFactor ?? 1);
       if (world.rng.chance(Math.min(1, proneness))) {
@@ -257,8 +288,18 @@ export function resolveProjectiles(world: World): void {
       }
     }
 
-    const absorbed = applyDamage(world, target, location, damage);
+    const absorbed = applyDamage(world, target, location, damage, face);
     target.stats.damageTaken += absorbed;
+
+    // Off what actually landed, not off the weapon's paper damage: a shot into
+    // a mech whose transfer chain has already run out shoves nothing, and a
+    // hit in the back shoves harder because it did more.
+    addStabilityImpulse(
+      world,
+      target,
+      impulseOf(world.rules.stability, absorbed, fired ?? null),
+      shooter?.id ?? null,
+    );
 
     // A flamer barely scratches the armour; what it does is cook the reactor.
     if (fired !== undefined && fired.targetHeat > 0) addHeat(target, fired.targetHeat);

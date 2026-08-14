@@ -24,9 +24,12 @@ describe('createMech', () => {
     });
 
     for (const location of LOCATIONS) {
-      expect(mech.locations[location].armour).toBe(design?.armour[location]);
-      expect(mech.locations[location].internal).toBe(chassis?.internals[location]);
-      expect(mech.locations[location].destroyed).toBe(false);
+      const state = mech.locations[location];
+      // The design authors one number and the torsos hang part of it on the
+      // back, so what the machine carries is the two of them together.
+      expect(state.armour + state.rearArmour, location).toBe(design?.armour[location]);
+      expect(state.internal).toBe(chassis?.internals[location]);
+      expect(state.destroyed).toBe(false);
     }
   });
 

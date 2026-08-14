@@ -2,7 +2,8 @@ import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import type { Pilot } from '../schema/pilot';
-import type { Rules } from '../schema/rules';
+import type { ConstructionRules, Rules } from '../schema/rules';
+import { splitArmour } from './loadout';
 import { emptyOrders } from './orders';
 import { sensorRangeFor, signatureFor } from './sensors';
 import {
@@ -16,6 +17,7 @@ import {
 
 export interface LocationDamage {
   armour: number;
+  rearArmour: number;
   internal: number;
   destroyed: boolean;
 }
@@ -41,19 +43,25 @@ const GROUP_BY_WEAPON_TYPE = { energy: 1, ballistic: 2, missile: 3 } as const;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 function buildLocations(
+  rules: ConstructionRules,
   armour: Record<MechLocation, number>,
   internals: Record<MechLocation, number>,
 ): Record<MechLocation, LocationState> {
-  const entries = LOCATIONS.map((location) => [
-    location,
-    {
-      armour: armour[location],
-      armourMax: armour[location],
-      internal: internals[location],
-      internalMax: internals[location],
-      destroyed: false,
-    } satisfies LocationState,
-  ]);
+  const entries = LOCATIONS.map((location) => {
+    const plate = splitArmour(rules, location, armour[location]);
+    return [
+      location,
+      {
+        armour: plate.front,
+        armourMax: plate.front,
+        rearArmour: plate.rear,
+        rearArmourMax: plate.rear,
+        internal: internals[location],
+        internalMax: internals[location],
+        destroyed: false,
+      } satisfies LocationState,
+    ];
+  });
   return Object.fromEntries(entries) as Record<MechLocation, LocationState>;
 }
 
@@ -66,10 +74,12 @@ function applyStartingDamage(
     if (carried === undefined) continue;
     const state = locations[location];
     state.armour = Math.max(0, Math.min(state.armourMax, carried.armour));
+    state.rearArmour = Math.max(0, Math.min(state.rearArmourMax, carried.rearArmour));
     state.internal = Math.max(0, Math.min(state.internalMax, carried.internal));
     state.destroyed = carried.destroyed || state.internal <= 0;
     if (state.destroyed) {
       state.armour = 0;
+      state.rearArmour = 0;
       state.internal = 0;
     }
   }
@@ -186,7 +196,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
   const walkSpeed =
     (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor * speedFactor;
 
-  const locations = buildLocations(design.armour, chassis.internals);
+  const locations = buildLocations(rules.construction, design.armour, chassis.internals);
   if (params.damage !== undefined) applyStartingDamage(locations, params.damage);
 
   const destroyedLocations = LOCATIONS.filter((location) => locations[location].destroyed);
@@ -216,6 +226,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
       traits: [...pilot.traits],
       criticalChanceFactor,
       survivalFactor,
+      wounds: 0,
       dead: false,
       ejected: false,
     },
@@ -252,6 +263,10 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
       rules.heat.dissipationPerSinkPerSecond *
       dissipationFactor,
     shutdownRemaining: 0,
+
+    stability: 0,
+    downRemaining: 0,
+    footingUntilTick: 0,
 
     incomingAccuracyFactor,
     outgoingAccuracyFactor,

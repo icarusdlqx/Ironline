@@ -81,7 +81,15 @@ Eight damage locations, BattleTech-standard:
 
 `head, centre_torso, left_torso, right_torso, left_arm, right_arm, left_leg, right_leg`
 
-Each location has **armour** (outer, absorbs first) and **internal structure** (inner). No separate rear armour — simplification that removes a lot of UI burden with little tactical loss.
+Each location has **armour** (outer, absorbs first) and **internal structure** (inner).
+
+The three torsos also have a **rear plate**, thinner than the glacis, which is
+what fire from the rear arc meets. A design still authors one armour number per
+location — the construction rules split it, so the bay keeps a single armour
+control and tonnage arithmetic is unchanged. Arms, legs and the head have no
+back: a leg is a leg from any angle, and giving them one would double the
+paper-doll for no tactical gain. Side fire meets the front plate, since the side
+arc is already paid for by its own damage factor and hit table.
 
 Destruction consequences:
 
@@ -91,8 +99,24 @@ Destruction consequences:
 | Centre torso | Mech destroyed (reactor breach). |
 | Side torso | Weapons in it destroyed; carried ammo detonates unless CASE fitted. |
 | Arm | Weapons in it destroyed. |
-| One leg | Speed reduced 50%, piloting penalty, chance to fall. |
+| One leg | Speed reduced 50%, and a lurch that may put the mech on the ground. |
 | Both legs | Immobilised. Can still fire. **Prime salvage state.** |
+
+**Stability.** A pool of shove that builds from heavy single hits and bleeds
+away on its own. Only impacts over a floor contribute, so knockdown belongs to
+big guns rather than to volume — a twenty-tube missile volley never rocks
+anything, one autocannon shell does. A weapon's `recoil` separates guns that
+land the same damage: a gauss slug and a large laser can burn the same plate off
+a hull, but only one moves the mech behind it. Tonnage and the pilot's hands
+divide the shove, so an assault takes twice the punishment a medium does.
+
+Crossing the first threshold **staggers** — slower, less accurate, and visibly
+in trouble. Crossing the second *while already staggered* puts the mech
+**down**: four seconds unable to move, turn, twist or fire, and much easier to
+hit. The pool is capped at the knockdown threshold, so nothing ever goes from
+steady to floored in one shot; being knocked down is always something the player
+saw coming. Standing clears the pool and buys a few seconds of solid footing, or
+a mech under sustained heavy fire would never get up again.
 
 ### 3.2 Chassis schema
 
@@ -182,10 +206,17 @@ p_hit = clamp(
   * shooterMotion                   // stationary 1.0, walk 0.88, run 0.72, jumping 0.6
   * targetMotion                    // stationary 1.0, walk 0.9, run 0.7, jumping 0.62
   * coverFactor(tile)               // open 1.0, forest 0.8, building 0.7, hull-down 0.62
+  * heightFactor(shooter, target)   // 1.08 per level of advantage, capped at two
+  * proneFactor(target)             // target knocked down 1.5
+  * staggerFactor(shooter)          // shooter fighting to stay upright 0.85
   * sensorFactor                    // ECM on target 0.85; TAG/NARC on target 1.15
   * weaponAccuracy                  // pulse 1.15, LB-X 1.1, standard 1.0
   , 0.05, 0.95)
 ```
+
+Height only counts downhill and only to the cap: on a map with four levels of
+relief, an uncapped bonus turns the ridge into a firing range rather than a
+position worth taking.
 
 **Hit location** on success — weighted table:
 

@@ -9,7 +9,7 @@ import { findPath } from '../pathfind';
 import { isVisibleTo } from '../sensors';
 import { canJump } from '../orders';
 import { beginJump } from '../movement';
-import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../types';
+import { isDown, isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../types';
 import {
   approachPoint,
   choosePosition,
@@ -146,7 +146,7 @@ export function decideTactical(
   /** Ground this mech has been told to take and hold, if the mission scores any. */
   zone: ZoneState | null = null,
 ): void {
-  if (!isOperational(mech) || mech.shutdownRemaining > 0) {
+  if (!isOperational(mech) || mech.shutdownRemaining > 0 || isDown(mech)) {
     halt(mech);
     return;
   }

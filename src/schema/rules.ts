@@ -120,6 +120,15 @@ export const CombatRulesSchema = z.strictObject({
     locationChance: Probability,
   }),
   tagFactor: Factor,
+  /**
+   * Shooting downhill. A mech on the high ground sees more of what it is aiming
+   * at and less of the ground in front of it; the cap stops a four-level map
+   * turning a ridge into a firing range.
+   */
+  elevation: z.strictObject({
+    accuracyPerLevel: Factor,
+    maxLevels: z.number().int().min(0).max(9),
+  }),
   /** How long a mech under return-fire orders remembers who shot at it. */
   returnFireSeconds: z.number().positive(),
 });
@@ -208,6 +217,12 @@ export const TerrainTypeSchema = z.strictObject({
   coverFactor: Factor,
   losObstruction: z.number().min(0).max(4),
   heatDissipationMultiplier: Factor,
+  /**
+   * How loud a machine standing here is to somebody else's sensors. Kept apart
+   * from the hull's own signature on purpose: what a mech is stays with it, and
+   * what a treeline hides is left behind when it walks out.
+   */
+  signatureFactor: Factor,
   passable: z.boolean(),
 });
 
@@ -470,6 +485,18 @@ export const ConstructionRulesSchema = z.strictObject({
   armourPointsPerTon: z.number().positive(),
   ammoSlotsPerTon: z.number().positive(),
   /**
+   * A design authors one armour number per location; that is the whole plating,
+   * and this says how much of it hangs on the back. Splitting it here rather
+   * than in the design keeps the bay at one armour control, keeps every design
+   * file and save that predates rear armour loading, and keeps tonnage
+   * arithmetic reading the one authored number it always read.
+   */
+  rearArmour: z.strictObject({
+    fraction: z.number().positive().max(0.5),
+    /** Only the torsos have a back. A leg is a leg from any angle. */
+    locations: z.array(MechLocationSchema),
+  }),
+  /**
    * Upper tonnage of a size-1, size-2 and size-3 weapon; anything heavier is
    * size 4. A mount is built around the gun it was meant to carry — the cradle,
    * the feed, the recoil path — so what stops a light chassis taking a gauss
@@ -506,11 +533,54 @@ export const TerrainRulesSchema = z.strictObject({
   types: z.record(IdSchema, TerrainTypeSchema),
 });
 
+/**
+ * How hard a mech is to knock off its feet. Stability is a pool of shove that
+ * builds from big single hits and bleeds away on its own; crossing the first
+ * threshold staggers, crossing the second while already staggered puts the mech
+ * on the ground. Nothing goes from steady to floored in one shot, so being
+ * knocked down is always something the player saw coming.
+ */
+export const StabilityRulesSchema = z
+  .strictObject({
+    id: z.literal('stability'),
+    /** What a single hit has to land before it shoves rather than scratches. */
+    impactFloor: z.number().nonnegative(),
+    /** How much a weapon's recoil multiplies its shove. Zero ignores recoil. */
+    recoilWeight: z.number().nonnegative().max(4),
+    /** The tonnage that takes shove at face value; heavier mechs take less. */
+    referenceTonnage: z.number().positive(),
+    pilotingResistFactor: z.number().min(0).max(0.2),
+    staggerThreshold: z.number().positive(),
+    knockdownThreshold: z.number().positive(),
+    recoveryPerSecond: z.number().positive(),
+    downSeconds: z.number().positive(),
+    /** Seconds after standing in which nothing can shake the mech again. */
+    footingSeconds: z.number().positive(),
+    /** The lurch of losing a leg, on top of whatever took the leg off. */
+    legLossImpulse: z.number().nonnegative(),
+    pilotInjuryChance: Probability,
+    woundAccuracyFactor: Factor,
+    /** How much easier a mech on the ground is to hit. */
+    proneAccuracyFactor: Factor,
+    staggeredAccuracyFactor: Factor,
+    staggeredSpeedFactor: Factor,
+  })
+  .superRefine((rules, ctx) => {
+    if (rules.knockdownThreshold <= rules.staggerThreshold) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['knockdownThreshold'],
+        message: 'a mech staggers before it falls: knockdownThreshold must exceed staggerThreshold',
+      });
+    }
+  });
+
 export type SimulationRules = z.infer<typeof SimulationRulesSchema>;
 export type MovementRules = z.infer<typeof MovementRulesSchema>;
 export type CombatRules = z.infer<typeof CombatRulesSchema>;
 export type HeatRules = z.infer<typeof HeatRulesSchema>;
 export type DamageRules = z.infer<typeof DamageRulesSchema>;
+export type StabilityRules = z.infer<typeof StabilityRulesSchema>;
 export type TerrainRules = z.infer<typeof TerrainRulesSchema>;
 export type SensorRules = z.infer<typeof SensorRulesSchema>;
 export type ConstructionRules = z.infer<typeof ConstructionRulesSchema>;
@@ -533,6 +603,7 @@ export interface Rules {
   readonly combat: CombatRules;
   readonly heat: HeatRules;
   readonly damage: DamageRules;
+  readonly stability: StabilityRules;
   readonly terrain: TerrainRules;
   readonly sensors: SensorRules;
   readonly construction: ConstructionRules;
@@ -552,6 +623,7 @@ export const RULE_SCHEMAS = {
   combat: CombatRulesSchema,
   heat: HeatRulesSchema,
   damage: DamageRulesSchema,
+  stability: StabilityRulesSchema,
   terrain: TerrainRulesSchema,
   sensors: SensorRulesSchema,
   construction: ConstructionRulesSchema,

@@ -4,6 +4,8 @@ import type { RngState } from '../sim/rng';
 
 export interface LocationCondition {
   armour: number;
+  /** Zero on everything but the torsos; only they have a back to lose. */
+  rearArmour: number;
   internal: number;
   destroyed: boolean;
 }

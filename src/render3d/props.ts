@@ -69,6 +69,8 @@ export class PropLayer {
     grid: TerrainGrid,
     data: TerrainMapData,
     heightAt: (x: number, y: number) => number,
+    /** The same tint the ground took, so the scenery matches the ground it is on. */
+    tint: { colour: Color; strength: number } | null = null,
   ) {
     this.group.name = 'props';
     const size = grid.tileSize;
@@ -105,7 +107,10 @@ export class PropLayer {
       pending[kind].push({
         tile,
         matrix: new Matrix4().compose(position, rotation, scale),
-        colour: new Color(colour),
+        colour:
+          tint === null
+            ? new Color(colour)
+            : new Color(colour).lerp(tint.colour, tint.strength),
       });
     };
 

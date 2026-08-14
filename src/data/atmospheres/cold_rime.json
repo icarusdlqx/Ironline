@@ -1,0 +1,19 @@
+{
+  "id": "cold_rime",
+  "name": "Cold Rime",
+  "sky": "#0f1418",
+  "exposure": 1.08,
+  "fog": { "kind": "linear", "colour": "#1e2830", "near": 600, "far": 2200 },
+  "sun": {
+    "colour": "#e8f2ff",
+    "intensity": 1.7,
+    "direction": { "azimuthDegrees": 200, "elevationDegrees": 22, "distance": 1200 }
+  },
+  "fill": {
+    "colour": "#8fb4d8",
+    "intensity": 0.85,
+    "direction": { "azimuthDegrees": 40, "elevationDegrees": 28, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#cfe4f6", "ground": "#38424a", "intensity": 1.15 },
+  "terrainTint": { "colour": "#9fc4dd", "strength": 0.14 }
+}

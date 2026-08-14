@@ -2,6 +2,7 @@ import type { Chassis } from '../schema/chassis';
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
+import type { ConstructionRules } from '../schema/rules';
 import type { Weapon, WeaponType } from '../schema/weapon';
 
 export interface LocationUsage {
@@ -101,6 +102,22 @@ export function weaponSizeLabel(catalog: Catalog, size: number): string {
 
 function roundHalf(value: number): number {
   return Math.round(value * 2) / 2;
+}
+
+/**
+ * Hangs part of a location's plating on its back. The front is what is left
+ * over rather than a second rounding, so the two always add back up to the one
+ * number the design authored — which is what lets tonnage, repair costs and the
+ * armourMax ceiling go on reading that number and never learn about the split.
+ */
+export function splitArmour(
+  rules: ConstructionRules,
+  location: MechLocation,
+  total: number,
+): { front: number; rear: number } {
+  if (!rules.rearArmour.locations.includes(location)) return { front: total, rear: 0 };
+  const rear = Math.round(total * rules.rearArmour.fraction);
+  return { front: total - rear, rear };
 }
 
 export function engineWeightFor(catalog: Catalog, engineRating: number): number | null {

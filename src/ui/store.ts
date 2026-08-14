@@ -40,6 +40,8 @@ export interface WeaponSnapshot {
 export interface LocationSnapshot {
   armour: number;
   armourMax: number;
+  rearArmour: number;
+  rearArmourMax: number;
   internal: number;
   internalMax: number;
   destroyed: boolean;
@@ -60,6 +62,10 @@ export interface UnitSnapshot {
   heat: number;
   heatCapacity: number;
   shutdownRemaining: number;
+  /** Seconds left on the ground; zero means upright. */
+  downRemaining: number;
+  /** Rocking but still standing — the next heavy hit is the one that floors it. */
+  staggered: boolean;
   motion: string;
   targetName: string | null;
   /** Metres to whatever this mech is shooting at, so ranges mean something. */

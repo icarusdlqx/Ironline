@@ -8,6 +8,9 @@ const STORAGE_KEY = 'ironline.campaign';
 
 const LocationConditionSchema = z.strictObject({
   armour: z.number().nonnegative(),
+  // Saves written before mechs had a back load with the rear plate stripped;
+  // the first trip through the workshop puts it right.
+  rearArmour: z.number().nonnegative().default(0),
   internal: z.number().nonnegative(),
   destroyed: z.boolean(),
 });

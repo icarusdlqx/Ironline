@@ -42,6 +42,10 @@ export type SimEvent =
     }
   | { type: 'shutdown'; tick: number; entityId: EntityId; forced: boolean }
   | { type: 'restart'; tick: number; entityId: EntityId }
+  | { type: 'staggered'; tick: number; entityId: EntityId }
+  | { type: 'knocked_down'; tick: number; entityId: EntityId; attackerId: EntityId | null }
+  | { type: 'stood_up'; tick: number; entityId: EntityId }
+  | { type: 'pilot_injured'; tick: number; entityId: EntityId; wounds: number }
   | { type: 'jump_started'; tick: number; entityId: EntityId; x: number; y: number }
   | { type: 'jump_landed'; tick: number; entityId: EntityId; x: number; y: number }
   | { type: 'pilot_ejected'; tick: number; entityId: EntityId }

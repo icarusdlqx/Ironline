@@ -104,7 +104,12 @@ export interface TerrainMesh {
  * rather than a texture — the palette is the same one the 2D map used, so the
  * ground still reads as the same place.
  */
-export function buildTerrain(grid: TerrainGrid, data: TerrainMapData): TerrainMesh {
+export function buildTerrain(
+  grid: TerrainGrid,
+  data: TerrainMapData,
+  /** Ash, rime or whatever else the air is carrying. Null leaves the palette alone. */
+  tint: { colour: Color; strength: number } | null = null,
+): TerrainMesh {
   const size = grid.tileSize;
   const across = grid.width + 1;
   const down = grid.height + 1;
@@ -183,6 +188,7 @@ export function buildTerrain(grid: TerrainGrid, data: TerrainMapData): TerrainMe
       }
 
       scratch.setHex(colour);
+      if (tint !== null) scratch.lerp(tint.colour, tint.strength);
       colours[index * 3] = scratch.r;
       colours[index * 3 + 1] = scratch.g;
       colours[index * 3 + 2] = scratch.b;

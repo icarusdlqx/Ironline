@@ -1,12 +1,61 @@
 {
   "id": "terrain",
   "types": {
-    "road":       { "moveMultiplier": 1.2, "coverFactor": 1.0,  "losObstruction": 0.0, "heatDissipationMultiplier": 1.0, "passable": true },
-    "open":       { "moveMultiplier": 1.0, "coverFactor": 1.0,  "losObstruction": 0.0, "heatDissipationMultiplier": 1.0, "passable": true },
-    "rough":      { "moveMultiplier": 0.7, "coverFactor": 0.9,  "losObstruction": 0.0, "heatDissipationMultiplier": 1.0, "passable": true },
-    "forest":     { "moveMultiplier": 0.6, "coverFactor": 0.8,  "losObstruction": 0.5, "heatDissipationMultiplier": 1.0, "passable": true },
-    "water":      { "moveMultiplier": 0.5, "coverFactor": 1.0,  "losObstruction": 0.0, "heatDissipationMultiplier": 2.0, "passable": true },
-    "building":   { "moveMultiplier": 0.0, "coverFactor": 0.7,  "losObstruction": 1.0, "heatDissipationMultiplier": 1.0, "passable": false },
-    "impassable": { "moveMultiplier": 0.0, "coverFactor": 0.62, "losObstruction": 1.0, "heatDissipationMultiplier": 1.0, "passable": false }
+    "road": {
+      "moveMultiplier": 1.2,
+      "coverFactor": 1,
+      "losObstruction": 0,
+      "heatDissipationMultiplier": 1,
+      "signatureFactor": 1,
+      "passable": true
+    },
+    "open": {
+      "moveMultiplier": 1,
+      "coverFactor": 1,
+      "losObstruction": 0,
+      "heatDissipationMultiplier": 1,
+      "signatureFactor": 1,
+      "passable": true
+    },
+    "rough": {
+      "moveMultiplier": 0.7,
+      "coverFactor": 0.9,
+      "losObstruction": 0,
+      "heatDissipationMultiplier": 1,
+      "signatureFactor": 0.95,
+      "passable": true
+    },
+    "forest": {
+      "moveMultiplier": 0.6,
+      "coverFactor": 0.8,
+      "losObstruction": 0.5,
+      "heatDissipationMultiplier": 1,
+      "signatureFactor": 0.6,
+      "passable": true
+    },
+    "water": {
+      "moveMultiplier": 0.5,
+      "coverFactor": 1,
+      "losObstruction": 0,
+      "heatDissipationMultiplier": 2,
+      "signatureFactor": 1,
+      "passable": true
+    },
+    "building": {
+      "moveMultiplier": 0,
+      "coverFactor": 0.7,
+      "losObstruction": 1,
+      "heatDissipationMultiplier": 1,
+      "signatureFactor": 0.7,
+      "passable": false
+    },
+    "impassable": {
+      "moveMultiplier": 0,
+      "coverFactor": 0.62,
+      "losObstruction": 1,
+      "heatDissipationMultiplier": 1,
+      "signatureFactor": 1,
+      "passable": false
+    }
   }
 }

@@ -1,7 +1,7 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import { canJump, isHoldingFire } from '../sim/orders';
 import { isIdentifiedBy } from '../sim/sensors';
-import { findEntity, isOperational, type MechEntity, type World } from '../sim/types';
+import { findEntity, isOperational, isStaggered, type MechEntity, type World } from '../sim/types';
 import type { LocationSnapshot, UnitSnapshot, WeaponSnapshot } from './store';
 
 function locationsOf(entity: MechEntity): Record<MechLocation, LocationSnapshot> {
@@ -12,6 +12,8 @@ function locationsOf(entity: MechEntity): Record<MechLocation, LocationSnapshot>
       {
         armour: state.armour,
         armourMax: state.armourMax,
+        rearArmour: state.rearArmour,
+        rearArmourMax: state.rearArmourMax,
         internal: state.internal,
         internalMax: state.internalMax,
         destroyed: state.destroyed,
@@ -72,6 +74,8 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     heat: entity.heat,
     heatCapacity: entity.heatCapacity,
     shutdownRemaining: entity.shutdownRemaining,
+    downRemaining: entity.downRemaining,
+    staggered: isStaggered(entity, world.rules.stability.staggerThreshold),
     motion: entity.motion,
     targetName: target === null ? null : target.name,
     targetRange:

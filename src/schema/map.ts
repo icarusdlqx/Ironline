@@ -11,6 +11,8 @@ export const TerrainMapSchema = z
     legend: z.record(z.string().length(1), IdSchema),
     tiles: z.array(z.string()).min(4),
     elevation: z.array(z.string()).optional(),
+    /** The air and light over this ground. The default restates the old rig. */
+    atmosphereId: IdSchema.default('overcast_day'),
   })
   .superRefine((map, ctx) => {
     if (map.tiles.length !== map.height) {

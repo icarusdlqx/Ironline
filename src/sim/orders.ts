@@ -7,6 +7,7 @@ import { isVisibleTo } from './sensors';
 import {
   findEntity,
   isImmobile,
+  isDown,
   isOperational,
   type EntityId,
   type MechEntity,
@@ -119,6 +120,7 @@ export function canJump(entity: MechEntity): boolean {
     entity.jumpCooldown <= 0 &&
     isOperational(entity) &&
     entity.shutdownRemaining <= 0 &&
+    !isDown(entity) &&
     !isImmobile(entity)
   );
 }
@@ -169,7 +171,7 @@ function autoAcquire(world: World, entity: MechEntity): MechEntity | null {
 }
 
 export function updatePlayerControl(world: World, entity: MechEntity): void {
-  if (!isOperational(entity) || entity.shutdownRemaining > 0) {
+  if (!isOperational(entity) || entity.shutdownRemaining > 0 || isDown(entity)) {
     entity.motion = 'stationary';
     entity.intendedMotion = entity.motion;
     return;

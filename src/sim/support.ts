@@ -2,6 +2,7 @@ import type { Deployment } from '../schema/mission';
 import { applyDamage } from './damage';
 import { emit } from './events';
 import { bearing, distance } from './math';
+import { addStabilityImpulse, impulseOf } from './stability';
 import { spawnUnits } from './triggers';
 import { isOperational, type MechEntity, type Vec2, type World } from './types';
 
@@ -123,6 +124,9 @@ function damageAt(world: World, team: number, point: Vec2, radius: number, damag
     const location = world.rng.weighted(world.hitLocationTable);
     const absorbed = applyDamage(world, entity, location, damage);
     entity.stats.damageTaken += absorbed;
+    // A shell coming down has no recoil to speak of and no arc — it just lands
+    // heavily enough to matter, and the impact floor decides whether it does.
+    addStabilityImpulse(world, entity, impulseOf(world.rules.stability, absorbed, null));
   }
 }
 
@@ -273,6 +277,7 @@ function detonateMines(world: World): void {
       const location = world.rng.weighted(world.hitLocationTable);
       const absorbed = applyDamage(world, entity, location, field.damage);
       entity.stats.damageTaken += absorbed;
+      addStabilityImpulse(world, entity, impulseOf(world.rules.stability, absorbed, null));
       if (field.mines <= 0) break;
     }
   }

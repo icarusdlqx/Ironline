@@ -35,6 +35,11 @@ export const WeaponSchema = z
     range: RangeBandsSchema,
     ammoPerTon: z.number().int().positive().nullable(),
     cost: z.number().int().positive(),
+    /**
+     * How much of the shot arrives as a shove rather than as a hole. A gauss
+     * slug and a large laser can burn the same plate off a hull; only one of
+     * them moves the mech behind it. Read by the stability rules.
+     */
     recoil: z.number().min(0).max(1),
     accuracy: z.number().positive().max(2).default(1),
     /**

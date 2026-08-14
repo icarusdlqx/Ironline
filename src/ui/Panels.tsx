@@ -129,11 +129,12 @@ export function LanceBar({
     <div className="lance" data-testid="lance-bar">
       {units.map((unit) => {
         const total = Object.values(unit.locations).reduce(
-          (sum, location) => sum + location.armour + location.internal,
+          (sum, location) => sum + location.armour + location.rearArmour + location.internal,
           0,
         );
         const max = Object.values(unit.locations).reduce(
-          (sum, location) => sum + location.armourMax + location.internalMax,
+          (sum, location) =>
+            sum + location.armourMax + location.rearArmourMax + location.internalMax,
           0,
         );
         const health = max === 0 ? 0 : total / max;
@@ -153,11 +154,15 @@ export function LanceBar({
             </span>
             <span className="lance-status">
               {unit.alive
-                ? unit.shutdownRemaining > 0
-                  ? 'SHUTDOWN'
-                  : unit.holdingFire
-                    ? 'HOLDING'
-                    : unit.motion.toUpperCase()
+                ? unit.downRemaining > 0
+                  ? 'DOWN'
+                  : unit.shutdownRemaining > 0
+                    ? 'SHUTDOWN'
+                    : unit.staggered
+                      ? 'STAGGERED'
+                      : unit.holdingFire
+                        ? 'HOLDING'
+                        : unit.motion.toUpperCase()
                 : (unit.killMethod ?? 'LOST').toUpperCase()}
             </span>
           </button>
@@ -437,11 +442,11 @@ export function HostileBar({
       </span>
       {standing.map((enemy) => {
         const structure = Object.values(enemy.locations).reduce(
-          (total, part) => total + part.armour + part.internal,
+          (total, part) => total + part.armour + part.rearArmour + part.internal,
           0,
         );
         const intact = Object.values(enemy.locations).reduce(
-          (total, part) => total + part.armourMax + part.internalMax,
+          (total, part) => total + part.armourMax + part.rearArmourMax + part.internalMax,
           0,
         );
         const health = intact === 0 ? 0 : structure / intact;

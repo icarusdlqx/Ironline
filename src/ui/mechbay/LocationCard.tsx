@@ -2,7 +2,7 @@ import type { Chassis } from '../../schema/chassis';
 import type { MechLocation } from '../../schema/common';
 import type { Design } from '../../schema/design';
 import type { Catalog } from '../../schema/load';
-import { weaponSize, weaponSizeLabel, type LocationUsage } from '../../sim/loadout';
+import { splitArmour, weaponSize, weaponSizeLabel, type LocationUsage } from '../../sim/loadout';
 
 const SHORT_NAMES: Record<MechLocation, string> = {
   head: 'Head',
@@ -136,6 +136,8 @@ export function LocationCard({
   // an arm, and two free slots visibly will not take one.
   const columns = Math.max(1, Math.min(usage.slotsAvailable, 12));
 
+  const plate = splitArmour(catalog.rules.construction, location, design.armour[location]);
+
   const classes = ['bay-location', `loc-${location}`];
   if (slotsOver || hardpointOver || sizeOver) classes.push('invalid');
   if (armed !== null) classes.push('armed-target');
@@ -235,9 +237,19 @@ export function LocationCard({
       </ul>
 
       {/* Armour reads here and is set from the machine column: one slider for
-          the whole mech, with per-location detail behind a disclosure. */}
-      <span className="bay-armour-read" title="Armour on this location">
+          the whole mech, with per-location detail behind a disclosure. The
+          front/back split is the workshop's business, not a control — this is
+          where the player finds out the torsos have a thin side. */}
+      <span
+        className="bay-armour-read"
+        title={
+          plate.rear === 0
+            ? 'Armour on this location'
+            : `${plate.front} on the front, ${plate.rear} on the back — a shot from behind meets the thin plate`
+        }
+      >
         {design.armour[location]}/{chassis.armourMax[location]} armour
+        {plate.rear === 0 ? '' : ` (${plate.front} front / ${plate.rear} rear)`}
       </span>
     </div>
   );
