@@ -118,6 +118,25 @@ Known finding: light mechs are near-unsurvivable in a stand-up 4v4, because
 working as intended rather than a balance fault — lights belong on scouting and
 flanking work — but it means a line lance should not be built around one.
 
+## Mission prep
+
+A contract is fought with what you decide to take. Signing one and pressing
+**Deploy** opens the dropship manifest rather than launching:
+
+- **The profile** — how many berths the dropship has, how many tonnes it will
+  carry, and what the contract is. The lance is limited by weight as well as by
+  berths, so fielding the hundred-tonne hull means leaving something behind.
+- **The crew** — every fit pilot, what their skills buy in the units you see on
+  the field, and which machine they are in. Pilots can be reseated into any hull
+  and held back from a drop.
+- **The loadout** — **Refit** opens the bay on that machine, stocked from the
+  company's own stores. What you take off goes back on the shelf; what you bolt
+  on comes off it; a refit the company cannot pay for is refused.
+
+Everything there is a trade. A heavier machine costs a berth's worth of
+allowance, a better gun costs tonnage that was buying armour, and the pilot who
+sees furthest is not the one who shoots straightest.
+
 ## Controls
 
 | Input | Action |

@@ -404,7 +404,12 @@ async function main() {
     });
     check('clicking a disabled save writes nothing to storage', blocked.added === 0);
 
-    await page.locator('[data-testid="bay-location-right_arm"] .bay-items button').last().click();
+    // Locations are slot grids now: the last filled block in the arm is the
+    // gun that was just dragged in, and clicking it takes it back off.
+    await page
+      .locator('[data-testid="bay-location-right_arm"] .slot-block:not(.empty) button')
+      .last()
+      .click();
     check('removing the weapon restores a legal build', !(await page.locator('[data-testid="bay-save"]').isDisabled()));
     check('free tonnage returns to its starting value', (await freeTonnage()) === startingFree);
 
