@@ -1,9 +1,9 @@
 {
   "id": "base_capture_ridge",
-  "name": "Base Capture \u2014 Ridge Pass",
+  "name": "Base Capture — Ridge Pass",
   "type": "base_capture",
   "mapId": "ridge_pass",
-  "briefing": "Two comm posts anchor the enemy position at the pass. Take both and hold the ground. Expect the garrison to call a relief lance the moment the first post changes hands \u2014 the dropship is holding a reserve mech for you, and there are Resource Points on the books for support.",
+  "briefing": "Two comm posts anchor the enemy position at the pass. Take both and hold the ground. Expect the garrison to call a relief lance the moment the first post changes hands — the dropship is holding a reserve mech for you, and there are Resource Points on the books for support.",
   "maxDurationSeconds": 480,
   "startingResourcePoints": 900,
   "lances": [
@@ -72,11 +72,11 @@
           "facingDegrees": 135
         },
         {
-          "designId": "cairn_battery",
+          "designId": "redoubt_emplacement",
           "pilotId": "willem_torrance",
           "spawn": {
-            "x": 852,
-            "y": 108
+            "x": 708,
+            "y": 336
           },
           "facingDegrees": 135
         }

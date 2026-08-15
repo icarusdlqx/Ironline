@@ -9,7 +9,14 @@ import { findPath } from '../pathfind';
 import { isVisibleTo } from '../sensors';
 import { canJump } from '../orders';
 import { beginJump } from '../movement';
-import { isDown, isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../types';
+import {
+  isDown,
+  isOperational,
+  type EntityId,
+  type MechEntity,
+  type Vec2,
+  type World,
+} from '../types';
 import {
   approachPoint,
   choosePosition,
@@ -138,6 +145,42 @@ function holdingCommitment(world: World, mech: MechEntity): boolean {
   return mech.path.length > 0;
 }
 
+/**
+ * What a machine that cannot move does with its turn: pick the best thing it
+ * can reach, run the reactor governor, and shoot. It never withdraws, because
+ * there is nowhere to withdraw to, and it never gives up its target for being
+ * out of reach — an emplacement waiting for something to walk back into range
+ * is doing exactly what an emplacement is for.
+ */
+function holdAndShoot(
+  world: World,
+  mech: MechEntity,
+  focusTargetId: EntityId | null,
+  tier: DifficultyTier,
+): void {
+  halt(mech);
+  mech.ai.withdrawing = false;
+  mech.ai.stance = 'hold';
+  mech.ai.focusTargetId = focusTargetId;
+
+  const chosen = scoreTargets(world, mech, {
+    focusTargetId,
+    currentTargetId: mech.targetId,
+  })[0];
+
+  if (chosen === undefined) {
+    mech.targetId = null;
+    mech.calledShot = null;
+    return;
+  }
+
+  mech.targetId = chosen.target.id;
+  const nearlyDead =
+    structureFraction(chosen.target) <= world.rules.ai.heat.finisherOverrideFraction;
+  applyHeatGovernor(world, mech, nearlyDead);
+  chooseCalledShot(world, mech, chosen.target, tier);
+}
+
 export function decideTactical(
   world: World,
   mech: MechEntity,
@@ -148,6 +191,18 @@ export function decideTactical(
 ): void {
   if (!isOperational(mech) || mech.shutdownRemaining > 0 || isDown(mech)) {
     halt(mech);
+    return;
+  }
+
+  // A hull that was bolted down has no positioning problem, only a shooting
+  // one. Left to the rest of this function it would solve a path to a better
+  // firing position ten times a second, for ever, and never take a step.
+  //
+  // Deliberately the frame and not `isImmobile`: a mech that has lost both legs
+  // is also going nowhere, but it went on hoping — withdrawing, re-planning,
+  // failing to walk — and how those fights end is not this change's business.
+  if (!mech.mobile) {
+    holdAndShoot(world, mech, focusTargetId, tier);
     return;
   }
 

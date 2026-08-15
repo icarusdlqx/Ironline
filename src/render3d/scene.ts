@@ -575,6 +575,14 @@ export class Renderer {
     const moved = anim.lastAt === null ? 0 : Math.hypot(at.x - anim.lastAt.x, at.y - anim.lastAt.y);
     anim.lastAt = { x: at.x, y: at.y };
 
+    // None of what follows belongs to a machine on tracks: no stride to
+    // advance, no hull to bob with it, and above all no footfalls. It still
+    // tips to the ground it sits on, which is true of anything with weight.
+    if (model.legs.length === 0) {
+      model.root.rotation.x = anim.pitch;
+      return;
+    }
+
     // Phase advances with ground covered, so feet plant against the terrain
     // rather than pedalling at a fixed rate; π of phase is one footstep.
     anim.phase += (moved / Math.max(1, model.strideLength)) * Math.PI;

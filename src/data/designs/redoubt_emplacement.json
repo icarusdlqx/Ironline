@@ -1,0 +1,48 @@
+{
+  "id": "redoubt_emplacement",
+  "name": "Redoubt RDT-1 'Emplacement'",
+  "chassisId": "redoubt_rdt1",
+  "armour": {
+    "head": 15,
+    "centre_torso": 62,
+    "left_torso": 43,
+    "right_torso": 43,
+    "left_arm": 3,
+    "right_arm": 3,
+    "left_leg": 3,
+    "right_leg": 3
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 12,
+  "mounts": [
+    {
+      "weaponId": "ac10",
+      "location": "centre_torso"
+    },
+    {
+      "weaponId": "large_laser",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "large_laser",
+      "location": "right_torso"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "head"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "ac10",
+      "location": "centre_torso",
+      "tons": 2
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "centre_torso"
+    }
+  ]
+}

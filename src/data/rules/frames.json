@@ -1,0 +1,106 @@
+{
+  "id": "frames",
+  "entries": {
+    "mech": {
+      "label": "BattleMech",
+      "mobile": true,
+      "knockable": true,
+      "twistFactor": 1,
+      "arcs": null
+    },
+    "vehicle": {
+      "label": "Combat vehicle",
+      "mobile": true,
+      "knockable": false,
+      "twistFactor": 1.5,
+      "arcs": {
+        "front": {
+          "damageFactor": 1,
+          "hitLocationWeights": {
+            "head": 3,
+            "centre_torso": 30,
+            "near_torso": 20,
+            "far_torso": 14,
+            "near_arm": 0,
+            "far_arm": 0,
+            "near_leg": 18,
+            "far_leg": 15
+          }
+        },
+        "side": {
+          "damageFactor": 1.2,
+          "hitLocationWeights": {
+            "head": 2,
+            "centre_torso": 22,
+            "near_torso": 30,
+            "far_torso": 8,
+            "near_arm": 0,
+            "far_arm": 0,
+            "near_leg": 26,
+            "far_leg": 12
+          }
+        },
+        "rear": {
+          "damageFactor": 1.5,
+          "hitLocationWeights": {
+            "head": 2,
+            "centre_torso": 34,
+            "near_torso": 20,
+            "far_torso": 16,
+            "near_arm": 0,
+            "far_arm": 0,
+            "near_leg": 16,
+            "far_leg": 12
+          }
+        }
+      }
+    },
+    "turret": {
+      "label": "Emplacement",
+      "mobile": false,
+      "knockable": false,
+      "twistFactor": 3,
+      "arcs": {
+        "front": {
+          "damageFactor": 0.85,
+          "hitLocationWeights": {
+            "head": 6,
+            "centre_torso": 54,
+            "near_torso": 20,
+            "far_torso": 20,
+            "near_arm": 0,
+            "far_arm": 0,
+            "near_leg": 0,
+            "far_leg": 0
+          }
+        },
+        "side": {
+          "damageFactor": 1.1,
+          "hitLocationWeights": {
+            "head": 5,
+            "centre_torso": 35,
+            "near_torso": 45,
+            "far_torso": 15,
+            "near_arm": 0,
+            "far_arm": 0,
+            "near_leg": 0,
+            "far_leg": 0
+          }
+        },
+        "rear": {
+          "damageFactor": 1.6,
+          "hitLocationWeights": {
+            "head": 4,
+            "centre_torso": 40,
+            "near_torso": 28,
+            "far_torso": 28,
+            "near_arm": 0,
+            "far_arm": 0,
+            "near_leg": 0,
+            "far_leg": 0
+          }
+        }
+      }
+    }
+  }
+}

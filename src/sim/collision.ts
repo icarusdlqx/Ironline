@@ -55,15 +55,35 @@ export function separateBodies(world: World): void {
       }
 
       const overlap = (clearance - gap) * rate;
-      const total = a.tonnage + b.tonnage;
       const unitX = dx / gap;
       const unitY = dy / gap;
 
-      // Each gives ground in proportion to how light it is against the pair.
-      nudge(world, a, -unitX * overlap * (b.tonnage / total), -unitY * overlap * (b.tonnage / total));
-      nudge(world, b, unitX * overlap * (a.tonnage / total), unitY * overlap * (a.tonnage / total));
+      const [shareA, shareB] = separationShares(a, b);
+      nudge(world, a, -unitX * overlap * shareA, -unitY * overlap * shareA);
+      nudge(world, b, unitX * overlap * shareB, unitY * overlap * shareB);
     }
   }
+}
+
+/**
+ * How much of an overlap each of a pair gives up. Normally in proportion to how
+ * light it is against the other, so an assault barely notices a scout and the
+ * scout gives way — but a hull that was bolted down gives nothing, and whatever
+ * walked into it gives all of it. An emplacement is not an obstacle a lance can
+ * shoulder aside, and two of them cannot push each other anywhere at all.
+ *
+ * This asks whether the frame moves, not `isImmobile`: a mech with both legs
+ * gone is going nowhere under its own power, but it is still a hundred tonnes
+ * of body with a mass to be shoved about, and treating it as a bollard would
+ * quietly change how every fight that legs something plays out.
+ */
+function separationShares(a: MechEntity, b: MechEntity): [number, number] {
+  if (!a.mobile && !b.mobile) return [0, 0];
+  if (!a.mobile) return [0, 1];
+  if (!b.mobile) return [1, 0];
+
+  const total = a.tonnage + b.tonnage;
+  return [b.tonnage / total, a.tonnage / total];
 }
 
 /** Moves a mech if the ground there will take it, and leaves it alone if not. */

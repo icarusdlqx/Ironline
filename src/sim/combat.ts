@@ -115,7 +115,7 @@ function rollHitLocation(
     return { location: called, arc };
   }
 
-  return { location: world.rng.weighted(world.arcHitTables[arcTableKey(arc)]), arc };
+  return { location: world.rng.weighted(world.arcHitTables[target.frame].tables[arcTableKey(arc)]), arc };
 }
 
 function recordShot(world: World, weapon: Weapon, hit: boolean): void {
@@ -272,7 +272,9 @@ export function resolveProjectiles(world: World): void {
       projectile.from,
       projectile.calledShot,
     );
-    const factor = world.rules.combat.attackArcs[arc.arc].damageFactor;
+    // What the plate on that side is worth, for the kind of hull it is on: the
+    // back of a turret mount is where the ammunition hoist lives.
+    const factor = world.arcHitTables[target.frame].profiles[arc.arc].damageFactor;
     const face = armourFaceOf(arc.arc);
     const fired = world.catalog.weapons.get(projectile.weaponId);
 

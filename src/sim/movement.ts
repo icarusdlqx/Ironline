@@ -171,7 +171,7 @@ export function updateTorso(world: World, entity: MechEntity): void {
   if (!isOperational(entity) || entity.shutdownRemaining > 0 || isDown(entity)) return;
 
   const target = findEntity(world, entity.targetId);
-  const limit = world.rules.movement.torsoTwistDegrees * DEGREES_TO_RADIANS;
+  const limit = entity.twistLimit;
   const rate = world.rules.movement.torsoTurnRateDegreesPerSecond * DEGREES_TO_RADIANS * world.dt;
 
   if (target === null) {

@@ -9,5 +9,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    // A great many of these tests fight whole battles, which take seconds
+    // rather than milliseconds and got longer the moment the AI stopped
+    // charging into everything. Under vitest's five-second default every one
+    // of them was a balance change away from failing on the clock rather than
+    // on what it was testing. The genuinely long runs — the mirror-match gate,
+    // the campaign acceptance run — still declare their own budget.
+    testTimeout: 30_000,
   },
 });

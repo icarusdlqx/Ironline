@@ -1,0 +1,102 @@
+{
+  "id": "courser_crs1",
+  "name": "Courser CRS-1",
+  "frame": "vehicle",
+  "class": "light",
+  "tonnage": 30,
+  "baseCost": 900000,
+  "engineRating": 280,
+  "internalHeatSinks": 6,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "left_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 1
+    },
+    "right_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 1
+    },
+    "left_arm": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "right_arm": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 8,
+    "centre_torso": 30,
+    "left_torso": 22,
+    "right_torso": 22,
+    "left_arm": 4,
+    "right_arm": 4,
+    "left_leg": 18,
+    "right_leg": 18
+  },
+  "internals": {
+    "head": 3,
+    "centre_torso": 14,
+    "left_torso": 9,
+    "right_torso": 9,
+    "left_arm": 2,
+    "right_arm": 2,
+    "left_leg": 9,
+    "right_leg": 9
+  },
+  "silhouette": {
+    "form": "wheeled",
+    "torsoLength": 1.1,
+    "torsoWidth": 0.9,
+    "shoulder": 0.7,
+    "legLength": 0.5,
+    "stance": 1.1
+  },
+  "summary": "Six wheels, a light turret and no illusions about what happens if it is caught.",
+  "lore": "Ostrow Holdings sells the CRS-1 as a border patrol car and everyone on the line uses it as a spotter. It is faster over a road than anything walking and it dies to a single autocannon burst, which its crews describe as a fair trade right up until it is not. The turret ring came off a farm harvester and traverses all the way round, which is the only reason any of them come home.",
+  "traits": [
+    "narrow_profile"
+  ]
+}

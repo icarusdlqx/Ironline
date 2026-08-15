@@ -118,6 +118,35 @@ steady to floored in one shot; being knocked down is always something the player
 saw coming. Standing clears the pool and buys a few seconds of solid footing, or
 a mech under sustained heavy fire would never get up again.
 
+**Frames.** Not everything on the field walks. A chassis declares a `frame` —
+`mech`, `vehicle` or `turret` — and `/data/rules/frames.json` says what being one
+changes: whether it moves at all, whether it can be shoved off its feet, how far
+its guns come round off the nose, and which hit table its plating uses.
+
+The mech frame is defined by absence. Its arc entry is `null`, meaning "the arcs
+already in combat.json", and its twist is a factor of `1` on the one twist limit
+in movement.json. A weighted draw walks its table in order, so a frame that
+restated the mech weights could move every hit location in every battle in the
+game; expressing the other frames as additions rather than as a replacement set
+is what makes the file provably unable to do that.
+
+All eight locations are kept for every frame, and the hit tables decide what
+exists. A vehicle has no arms — weight zero, so the location is never drawn —
+and its legs are its running gear, which means shooting the tracks off a carrier
+immobilises it through exactly the both-legs rule above. An emplacement has
+neither: everything goes into the hull and the cupola, and its thin plate is at
+the back, where the ammunition hoist lives. Flanking one is the answer to it.
+
+Immobility is one question with two causes. An emplacement was bolted down to
+begin with; a mech with both legs gone has arrived at the same place by a worse
+route. Pace, pathing, jets and being shoved aside all ask the same predicate, so
+a turret never solves a route it cannot walk and a lance cannot shoulder one out
+of the way.
+
+Vehicles and emplacements are opposition, not roster. They are filtered out of
+the bay, the yard and the dropship manifest, and a wrecked one yields its guns
+but never its hull — there is no berth for something that does not walk.
+
 ### 3.2 Chassis schema
 
 ```json

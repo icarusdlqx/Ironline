@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LOCATIONS } from '../schema/common';
 import { catalog, testWorld, unitOf } from '../../tests/support';
-import { attackArcFrom, buildArcTables } from './arcs';
+import { attackArcFrom, buildFrameArcTables } from './arcs';
 import { resolveProjectiles } from './combat';
 import { eventsOfType } from './events';
 import type { MechEntity, Vec2, World } from './types';
@@ -127,12 +127,46 @@ describe('arc damage', () => {
 });
 
 describe('arc hit locations', () => {
-  const tables = buildArcTables(catalog.rules.combat);
+  const tables = buildFrameArcTables(catalog.rules).mech.tables;
 
   it('builds a table for both flanks of every arc', () => {
     for (const key of ['front:left', 'front:right', 'side:left', 'side:right', 'rear:left', 'rear:right'] as const) {
       expect(tables[key].length, key).toBeGreaterThan(0);
     }
+  });
+
+  it('lays every table out in exactly this order', () => {
+    // A weighted draw walks the array in order, so the order of these entries
+    // is not presentation: reordering one, or letting a location that is
+    // currently weighted out back in, moves every hit location in every battle
+    // in the game. That is the thing the mirror-match gate measures, so any
+    // change here should be a decision rather than a side effect of tidying.
+    expect(tables['front:right'].map((entry) => entry.value)).toEqual([
+      'head',
+      'centre_torso',
+      'right_torso',
+      'left_torso',
+      'right_arm',
+      'left_arm',
+      'right_leg',
+      'left_leg',
+    ]);
+    expect(tables['front:left'].map((entry) => entry.value)).toEqual([
+      'head',
+      'centre_torso',
+      'left_torso',
+      'right_torso',
+      'left_arm',
+      'right_arm',
+      'left_leg',
+      'right_leg',
+    ]);
+    expect(tables['side:right'].map((entry) => entry.value)).toEqual(
+      tables['front:right'].map((entry) => entry.value),
+    );
+    expect(tables['rear:right'].map((entry) => entry.value)).toEqual(
+      tables['front:right'].map((entry) => entry.value),
+    );
   });
 
   it('mirrors the near side onto the flank the fire is coming from', () => {

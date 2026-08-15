@@ -72,7 +72,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "cairn_battery",
+          "designId": "drover_carrier",
           "pilotId": "cato_ferrin",
           "spawn": {
             "x": 924,
@@ -81,7 +81,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "wisp_scout",
+          "designId": "courser_patrol",
           "pilotId": "juno_reyes",
           "spawn": {
             "x": 684,

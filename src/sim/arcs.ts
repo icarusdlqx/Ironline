@@ -1,6 +1,6 @@
 import type { MechLocation } from '../schema/common';
-import type { AttackArc, CombatRules } from '../schema/rules';
-import { ATTACK_ARCS } from '../schema/rules';
+import type { ArcProfile, AttackArc, CombatRules, Frame, Rules } from '../schema/rules';
+import { ATTACK_ARCS, FRAMES } from '../schema/rules';
 import { angleDifference, bearing } from './math';
 import type { MechEntity, Vec2 } from './types';
 
@@ -29,6 +29,39 @@ export interface ArcHit {
 
 export type ArcTableKey = `${AttackArc}:${NearSide}`;
 export type ArcTables = Record<ArcTableKey, readonly { value: MechLocation; weight: number }[]>;
+
+/** The three arc profiles for one kind of hull. */
+export type ArcProfiles = Record<AttackArc, ArcProfile>;
+
+/** Hit tables and arc damage, per frame, resolved once at world creation. */
+export interface FrameArcs {
+  profiles: ArcProfiles;
+  tables: ArcTables;
+}
+export type FrameArcTables = Record<Frame, FrameArcs>;
+
+/**
+ * One set of tables per kind of hull.
+ *
+ * A mech falls through to `combat.attackArcs` untouched rather than to a copy
+ * of it in frames.json: the surviving order of these arrays feeds the weighted
+ * draw, so a frame that restated the mech weights could quietly move every hit
+ * location in every battle the moment somebody tidied the file.
+ */
+export function buildFrameArcTables(rules: Rules): FrameArcTables {
+  const mech: ArcProfiles = {
+    front: rules.combat.attackArcs.front,
+    side: rules.combat.attackArcs.side,
+    rear: rules.combat.attackArcs.rear,
+  };
+
+  const built = {} as FrameArcTables;
+  for (const frame of FRAMES) {
+    const profiles = rules.frames.entries[frame].arcs ?? mech;
+    built[frame] = { profiles, tables: buildArcTables(profiles) };
+  }
+  return built;
+}
 
 /**
  * Where a shot is coming from, relative to the way the target's hull is pointed.
@@ -63,13 +96,13 @@ export function arcTableKey(hit: ArcHit): ArcTableKey {
  * at world creation. Six small tables cost nothing to hold and save resolving
  * the sided names on every shot of every battle.
  */
-export function buildArcTables(rules: CombatRules): ArcTables {
+function buildArcTables(profiles: ArcProfiles): ArcTables {
   const tables = {} as ArcTables;
 
   for (const arc of ATTACK_ARCS) {
     for (const near of ['left', 'right'] as const) {
       const far = near === 'left' ? 'right' : 'left';
-      const weights = rules.attackArcs[arc].hitLocationWeights;
+      const weights = profiles[arc].hitLocationWeights;
 
       const entries: { value: MechLocation; weight: number }[] = [
         { value: 'head', weight: weights.head },

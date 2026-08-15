@@ -65,8 +65,11 @@ export function marketListings(catalog: Catalog, state: CampaignState): Listing[
   const rng = createRng(`${state.seed}:market:${period}`);
 
   // Sorted first so the lot does not depend on the order the content happened
-  // to load in.
-  const designs = [...catalog.designs.values()].sort((a, b) => a.id.localeCompare(b.id));
+  // to load in. Mechs only: a yard that sold emplacements would be selling
+  // something the company cannot drop from a dropship.
+  const designs = [...catalog.designs.values()]
+    .filter((design) => catalog.chassis.get(design.chassisId)?.frame === 'mech')
+    .sort((a, b) => a.id.localeCompare(b.id));
   const pools = CLASSES.map((weight) =>
     rng.shuffle(designs.filter((design) => catalog.chassis.get(design.chassisId)?.class === weight)),
   );

@@ -92,10 +92,50 @@ const ArcHitWeightsSchema = z.strictObject({
   far_leg: z.number().nonnegative(),
 });
 
-const ArcProfileSchema = z.strictObject({
+export const ArcProfileSchema = z.strictObject({
   /** Multiplies incoming damage. Rear plating is thinner than the glacis. */
   damageFactor: z.number().positive().max(4),
   hitLocationWeights: ArcHitWeightsSchema,
+});
+
+export const FRAMES = ['mech', 'vehicle', 'turret'] as const;
+export const FrameSchema = z.enum(FRAMES);
+export type Frame = z.infer<typeof FrameSchema>;
+
+/**
+ * What kind of machine a hull is, and what being one changes.
+ *
+ * The mech profile is deliberately not restated here: `arcs: null` means "the
+ * arcs already in combat.json" and `twistFactor` scales the one twist limit in
+ * movement.json. A weighted draw walks its table in order, so any reordering of
+ * the mech tables would move every hit location in every battle; expressing the
+ * other frames as additions rather than as a replacement set is what makes this
+ * file provably unable to do that.
+ */
+const FrameProfileSchema = z.strictObject({
+  label: z.string().min(1),
+  /** Whether the hull can move under its own power at all. */
+  mobile: z.boolean(),
+  /** Whether it can be shoved off its feet. Tracks and concrete cannot. */
+  knockable: z.boolean(),
+  /** A turret ring traverses further than a waist does. */
+  twistFactor: z.number().positive().max(4),
+  arcs: z
+    .strictObject({
+      front: ArcProfileSchema,
+      side: ArcProfileSchema,
+      rear: ArcProfileSchema,
+    })
+    .nullable(),
+});
+
+export const FrameRulesSchema = z.strictObject({
+  id: z.literal('frames'),
+  entries: z.strictObject({
+    mech: FrameProfileSchema,
+    vehicle: FrameProfileSchema,
+    turret: FrameProfileSchema,
+  }),
 });
 
 export const CombatRulesSchema = z.strictObject({
@@ -672,6 +712,9 @@ export type Trait = z.infer<typeof TraitSchema>;
 export type TraitRules = z.infer<typeof TraitRulesSchema>;
 export type PilotTrait = z.infer<typeof PilotTraitSchema>;
 export type PilotTraitRules = z.infer<typeof PilotTraitRulesSchema>;
+export type ArcProfile = z.infer<typeof ArcProfileSchema>;
+export type FrameRules = z.infer<typeof FrameRulesSchema>;
+export type FrameProfile = z.infer<typeof FrameProfileSchema>;
 export type DifficultyRules = z.infer<typeof DifficultyRulesSchema>;
 export type DifficultyTier = z.infer<typeof DifficultyTierSchema>;
 export type TerrainType = z.infer<typeof TerrainTypeSchema>;
@@ -693,6 +736,7 @@ export interface Rules {
   readonly balance: BalanceRules;
   readonly traits: TraitRules;
   readonly pilotTraits: PilotTraitRules;
+  readonly frames: FrameRules;
   readonly difficulty: DifficultyRules;
 }
 
@@ -713,6 +757,7 @@ export const RULE_SCHEMAS = {
   balance: BalanceRulesSchema,
   traits: TraitRulesSchema,
   pilotTraits: PilotTraitRulesSchema,
+  frames: FrameRulesSchema,
   difficulty: DifficultyRulesSchema,
 } as const;
 

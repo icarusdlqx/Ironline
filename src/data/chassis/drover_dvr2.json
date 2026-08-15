@@ -1,0 +1,102 @@
+{
+  "id": "drover_dvr2",
+  "name": "Drover DVR-2",
+  "frame": "vehicle",
+  "class": "medium",
+  "tonnage": 50,
+  "baseCost": 1650000,
+  "engineRating": 200,
+  "internalHeatSinks": 8,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 5,
+      "size": 3
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 2,
+      "slots": 10,
+      "size": 3
+    },
+    "right_torso": {
+      "energy": 1,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 6,
+      "size": 3
+    },
+    "left_arm": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "right_arm": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 10,
+    "centre_torso": 44,
+    "left_torso": 34,
+    "right_torso": 34,
+    "left_arm": 5,
+    "right_arm": 5,
+    "left_leg": 26,
+    "right_leg": 26
+  },
+  "internals": {
+    "head": 4,
+    "centre_torso": 22,
+    "left_torso": 15,
+    "right_torso": 15,
+    "left_arm": 2,
+    "right_arm": 2,
+    "left_leg": 14,
+    "right_leg": 14
+  },
+  "silhouette": {
+    "form": "tracked",
+    "torsoLength": 1.2,
+    "torsoWidth": 1.1,
+    "shoulder": 0.8,
+    "legLength": 0.5,
+    "stance": 1.2
+  },
+  "summary": "A missile deck on tracks. Devastating from a ridge, useless once anything reaches it.",
+  "lore": "The Halloran Combine builds the DVR-2 by the hundred because it costs a fifth of a mech and puts the same weight of missiles on a hillside. Doctrine is simple and honest: park it where nothing can walk to it inside a minute, and move it before the minute is up. Crews call the track units the obituary, since losing one ends the argument about whether there is time to withdraw.",
+  "traits": [
+    "wide_stance"
+  ]
+}

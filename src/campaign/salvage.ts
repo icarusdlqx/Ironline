@@ -107,7 +107,13 @@ export function resolveSalvage(
     const outcome = outcomeFor(unit, lostTeams.has(unit.team));
     if (outcome === null) continue;
 
-    const chassisChance = rules.chassisRecoveryByOutcome[outcome] * salvageShare;
+    // A hull the company cannot field is not a hull worth towing. The guns come
+    // off a burnt-out carrier the same as off anything else, but the carrier is
+    // scrap: there is no berth on the dropship for something that does not walk.
+    const design = catalog.designs.get(unit.designId);
+    const towable = catalog.chassis.get(design?.chassisId ?? '')?.frame === 'mech';
+
+    const chassisChance = towable ? rules.chassisRecoveryByOutcome[outcome] * salvageShare : 0;
     candidates.push({
       designId: unit.designId,
       name: unit.name,
@@ -115,7 +121,7 @@ export function resolveSalvage(
       chassisChance,
     });
 
-    if (rng.chance(chassisChance)) chassisRecovered.push(unit.designId);
+    if (chassisChance > 0 && rng.chance(chassisChance)) chassisRecovered.push(unit.designId);
     items.push(...itemsFrom(catalog, rng, unit, unit.designId, salvageShare));
   }
 

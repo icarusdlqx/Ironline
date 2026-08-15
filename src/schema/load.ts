@@ -17,6 +17,7 @@ import {
   CombatRulesSchema,
   ConstructionRulesSchema,
   DifficultyRulesSchema,
+  FrameRulesSchema,
   DamageRulesSchema,
   StabilityRulesSchema,
   EconomyRulesSchema,
@@ -222,6 +223,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const balance = parseRule('balance', BalanceRulesSchema, byStem, issues);
   const traits = parseRule('traits', TraitRulesSchema, byStem, issues);
   const pilotTraits = parseRule('pilotTraits', PilotTraitRulesSchema, byStem, issues);
+  const frames = parseRule('frames', FrameRulesSchema, byStem, issues);
   const difficulty = parseRule('difficulty', DifficultyRulesSchema, byStem, issues);
 
   if (
@@ -241,6 +243,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     balance === null ||
     traits === null ||
     pilotTraits === null ||
+    frames === null ||
     difficulty === null
   ) {
     return null;
@@ -263,6 +266,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     balance,
     traits,
     pilotTraits,
+    frames,
     difficulty,
   };
 }

@@ -291,11 +291,14 @@ export function Mechbay({
               {catalog.designs.has(design.id) ? null : (
                 <option value="">{design.name} (custom)</option>
               )}
-              {[...catalog.designs.values()].map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name}
-                </option>
-              ))}
+              {/* Mechs only: the bay outfits what the company can drop. */}
+              {[...catalog.designs.values()]
+                .filter((entry) => catalog.chassis.get(entry.chassisId)?.frame === 'mech')
+                .map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name}
+                  </option>
+                ))}
             </select>
           </>
         ) : (

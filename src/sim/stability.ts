@@ -35,6 +35,8 @@ export function addStabilityImpulse(
   attackerId: number | null = null,
 ): void {
   if (raw <= 0 || !isOperational(entity)) return;
+  // Nothing shoves a hull that is sitting on its tracks, or bolted to a pad.
+  if (!entity.knockable) return;
 
   const rules = world.rules.stability;
 

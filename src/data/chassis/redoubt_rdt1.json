@@ -1,0 +1,103 @@
+{
+  "id": "redoubt_rdt1",
+  "name": "Redoubt RDT-1",
+  "frame": "turret",
+  "class": "medium",
+  "tonnage": 40,
+  "baseCost": 900000,
+  "engineRating": 100,
+  "internalHeatSinks": 10,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 0,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 12,
+      "size": 3
+    },
+    "left_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "right_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "left_arm": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "right_arm": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 16,
+    "centre_torso": 66,
+    "left_torso": 46,
+    "right_torso": 46,
+    "left_arm": 4,
+    "right_arm": 4,
+    "left_leg": 4,
+    "right_leg": 4
+  },
+  "internals": {
+    "head": 6,
+    "centre_torso": 28,
+    "left_torso": 18,
+    "right_torso": 18,
+    "left_arm": 2,
+    "right_arm": 2,
+    "left_leg": 2,
+    "right_leg": 2
+  },
+  "silhouette": {
+    "form": "emplacement",
+    "torsoLength": 1.1,
+    "torsoWidth": 1.3,
+    "shoulder": 1.1,
+    "legLength": 0.3,
+    "stance": 1.3
+  },
+  "summary": "Bolted to a concrete pad. It cannot follow you, and head-on it does not need to.",
+  "lore": "Sarn Foundry sells the RDT-1 to anyone with something worth losing. The reactor is barely large enough to run the traverse motors, which is the point: the tonnage that would have bought a way of going somewhere went into the mantlet instead. Nothing wins a shooting match with one from the front. Everything wins by walking round it, because the back of the mount is where the ammunition hoist lives, and nobody armours a wall.",
+  "traits": [
+    "hardened_mantlet",
+    "sensor_mast"
+  ]
+}

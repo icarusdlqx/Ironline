@@ -3,7 +3,7 @@ import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import type { Pilot } from '../schema/pilot';
 import { decideBaseline } from './ai/baseline';
-import { buildArcTables } from './arcs';
+import { buildFrameArcTables } from './arcs';
 import { difficultyTier, resolveDisengagement, runTeamAi } from './ai/tactical';
 import { separateBodies } from './collision';
 import { resolveProjectiles, updateWeapons } from './combat';
@@ -173,7 +173,7 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
     projectiles: [],
     events: [],
     hitLocationTable,
-    arcHitTables: buildArcTables(catalog.rules.combat),
+    arcHitTables: buildFrameArcTables(catalog.rules),
     weaponStats: new Map(),
     playerTeam,
     vision: null,

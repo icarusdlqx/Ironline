@@ -1,8 +1,8 @@
 import type { MechLocation } from '../schema/common';
-import type { ArcTables } from './arcs';
+import type { FrameArcTables } from './arcs';
 import type { Catalog } from '../schema/load';
 import type { Mission } from '../schema/mission';
-import type { Rules } from '../schema/rules';
+import type { Frame, Rules } from '../schema/rules';
 import type { SimEvent } from './events';
 import type { ObjectiveState } from './objectives';
 import type { OrderState } from './orders';
@@ -137,6 +137,14 @@ export interface MechEntity {
   name: string;
   designId: string;
   chassisId: string;
+  /** What kind of machine this is, which decides most of what follows. */
+  frame: Frame;
+  /** Whether the hull was ever going anywhere. False for an emplacement. */
+  mobile: boolean;
+  /** Whether it can be shoved off its feet. Tracks and concrete cannot. */
+  knockable: boolean;
+  /** How far the guns come round off the nose, in radians. */
+  twistLimit: number;
   tonnage: number;
   pilot: PilotState;
 
@@ -272,8 +280,8 @@ export interface World {
   events: SimEvent[];
   /** Fire arriving from above — artillery, air strikes, mines — has no arc. */
   hitLocationTable: readonly { value: MechLocation; weight: number }[];
-  /** One table per attack arc and flank, resolved once at world creation. */
-  arcHitTables: ArcTables;
+  /** One table per frame, arc and flank, resolved once at world creation. */
+  arcHitTables: FrameArcTables;
   weaponStats: Map<string, WeaponStat>;
   playerTeam: number | null;
   vision: TeamVision | null;
@@ -297,7 +305,14 @@ export function isOperational(entity: MechEntity): boolean {
   return !entity.destroyed && !entity.withdrawn && !entity.pilot.dead && !entity.pilot.ejected;
 }
 
+/**
+ * Going nowhere, for either of the two reasons there are. An emplacement was
+ * bolted down to begin with; a mech with both legs gone has arrived at the same
+ * place by a worse route. Everything downstream — jets, pathing, pace, being
+ * shoved aside — asks this one question rather than each asking its own.
+ */
 export function isImmobile(entity: MechEntity): boolean {
+  if (!entity.mobile) return true;
   return entity.locations.left_leg.destroyed && entity.locations.right_leg.destroyed;
 }
 

@@ -1,0 +1,53 @@
+{
+  "id": "drover_carrier",
+  "name": "Drover DVR-2 'Carrier'",
+  "chassisId": "drover_dvr2",
+  "armour": {
+    "head": 10,
+    "centre_torso": 44,
+    "left_torso": 34,
+    "right_torso": 34,
+    "left_arm": 5,
+    "right_arm": 5,
+    "left_leg": 26,
+    "right_leg": 26
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 12,
+  "mounts": [
+    {
+      "weaponId": "lrm15",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "lrm10",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "lrm10",
+      "location": "centre_torso"
+    },
+    {
+      "weaponId": "medium_laser",
+      "location": "right_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "lrm15",
+      "location": "left_torso",
+      "tons": 3
+    },
+    {
+      "weaponId": "lrm10",
+      "location": "centre_torso",
+      "tons": 3
+    }
+  ],
+  "equipment": [
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
+    }
+  ]
+}

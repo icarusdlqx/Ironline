@@ -112,7 +112,12 @@ describe('mirror match against the baseline controller', () => {
       `tactical ${aiWins}, baseline ${baselineWins}, draws ${draws} of ${ITERATIONS} ` +
         `(${(share * 100).toFixed(1)}% ± ${(error * 100).toFixed(1)})`,
     ).toBeGreaterThanOrEqual(GATE);
-  }, 900_000);
+    // Two hundred mirror battles at a measured 5.7 seconds each. The fifteen
+    // minutes this used to allow were enough when both sides charged; teaching
+    // the AI to stand off made the average fight longer, and the gate started
+    // failing on the clock rather than on the win rate. Thirty is not comfort,
+    // it is the measured cost plus room for a slower machine.
+  }, 1_800_000);
 
   it('is deterministic across runs', () => {
     const once = fight(DETERMINISM_ITERATIONS);

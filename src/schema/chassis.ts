@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, LOCATIONS, NameSchema, perLocation } from './common';
+import { FrameSchema } from './rules';
 
 export const HardpointsSchema = z.strictObject({
   energy: z.number().int().min(0).max(12),
@@ -23,6 +24,11 @@ export const ChassisSchema = z
   .strictObject({
     id: IdSchema,
     name: NameSchema,
+    /**
+     * What kind of machine this is. Absent means a mech, so the hulls that
+     * were here before frames existed never had to be told they are mechs.
+     */
+    frame: FrameSchema.default('mech'),
     class: ChassisClassSchema,
     tonnage: z.number().int().min(20).max(100).multipleOf(5),
     baseCost: z.number().int().positive(),
@@ -45,6 +51,9 @@ export const ChassisSchema = z
           'squat',
           'bastion',
           'siege',
+          'tracked',
+          'wheeled',
+          'emplacement',
         ]),
         /** Torso length and width as fractions of the chassis radius. */
         torsoLength: z.number().positive().max(2).default(1),

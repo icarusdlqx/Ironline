@@ -194,11 +194,15 @@ export function Battle() {
           tonnage: catalog.chassis.get(berthDesign(catalog, berth)?.chassisId ?? '')?.tonnage ?? 0,
           pilot: catalog.pilots.get(berth.pilotId) ?? null,
         })),
-        designs: [...catalog.designs.values()].map((design) => ({
-          value: design.id,
-          label: design.name,
-          tonnage: catalog.chassis.get(design.chassisId)?.tonnage ?? 0,
-        })),
+        // Mechs only. Vehicles and emplacements are what the other side
+        // fields; a berth on the dropship is for something that walks.
+        designs: [...catalog.designs.values()]
+          .filter((design) => catalog.chassis.get(design.chassisId)?.frame === 'mech')
+          .map((design) => ({
+            value: design.id,
+            label: design.name,
+            tonnage: catalog.chassis.get(design.chassisId)?.tonnage ?? 0,
+          })),
         saved: listStoredDesigns().map((id) => ({ value: `saved:${id}`, label: id })),
         pilots: [...catalog.pilots.values()].map((pilot) => ({ id: pilot.id, name: pilot.name })),
         total: lanceTonnage(catalog, lance),

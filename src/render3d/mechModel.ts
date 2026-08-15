@@ -144,14 +144,18 @@ export function buildMechModel(
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
     mesh.castShadow = true;
 
-    if (part.location === 'left_leg' || part.location === 'right_leg') {
-      const rig = rigFor(part.location, part.at[2] * scale);
+    const running = part.location === 'left_leg' || part.location === 'right_leg';
+
+    if (running && plan.articulated) {
+      const rig = rigFor(part.location as 'left_leg' | 'right_leg', part.at[2] * scale);
       // Everything at or below the knee bends with it; the thigh only swings.
       const joint = part.at[1] <= plan.legs.kneeHeight + 0.01 ? rig.knee : rig.hip;
       mesh.position.sub(jointWorld(joint, rig));
       mesh.position.z = 0;
       joint.add(mesh);
-    } else if (part.location === null) {
+    } else if (part.location === null || part.fixed === true || running) {
+      // Hull, running gear, and anything else bolted down. It still belongs to
+      // a location for damage, but it stays put while the guns traverse.
       root.add(mesh);
     } else {
       torso.add(mesh);

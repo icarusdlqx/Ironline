@@ -193,8 +193,14 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
   const sinkStats = catalog.equipment.get(design.heatSinkId)?.stats ?? {};
   const dissipationPerSink = sinkStats.dissipation ?? 1;
 
-  const walkSpeed =
-    (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor * speedFactor;
+  const frame = rules.frames.entries[chassis.frame];
+  // An emplacement's reactor is there to turn the guns, not the hull. Zeroing
+  // the pace here rather than refusing to move it later means everything that
+  // reasons about speed — whether it can outrun what is chasing it, whether
+  // backing off would work — gets the right answer without knowing about frames.
+  const walkSpeed = !frame.mobile
+    ? 0
+    : (chassis.engineRating / chassis.tonnage) * rules.movement.walkSpeedFactor * speedFactor;
 
   const locations = buildLocations(rules.construction, design.armour, chassis.internals);
   if (params.damage !== undefined) applyStartingDamage(locations, params.damage);
@@ -216,6 +222,13 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     name: design.name,
     designId: design.id,
     chassisId: chassis.id,
+    frame: chassis.frame,
+    mobile: frame.mobile,
+    knockable: frame.knockable,
+    twistLimit: Math.min(
+      Math.PI,
+      rules.movement.torsoTwistDegrees * frame.twistFactor * DEGREES_TO_RADIANS,
+    ),
     tonnage: chassis.tonnage,
     pilot: {
       id: pilot.id,
@@ -245,10 +258,11 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     posture: 'free',
     threatenedBy: null,
     threatenedUntilTick: 0,
-    turnRate:
-      rules.movement.turnRateDegreesPerSecond *
-      (rules.movement.turnRateReferenceTonnage / chassis.tonnage) *
-      DEGREES_TO_RADIANS,
+    turnRate: !frame.mobile
+      ? 0
+      : rules.movement.turnRateDegreesPerSecond *
+        (rules.movement.turnRateReferenceTonnage / chassis.tonnage) *
+        DEGREES_TO_RADIANS,
 
     locations,
     weapons,

@@ -1,0 +1,43 @@
+{
+  "id": "courser_patrol",
+  "name": "Courser CRS-1 'Patrol'",
+  "chassisId": "courser_crs1",
+  "armour": {
+    "head": 8,
+    "centre_torso": 30,
+    "left_torso": 22,
+    "right_torso": 22,
+    "left_arm": 4,
+    "right_arm": 4,
+    "left_leg": 18,
+    "right_leg": 18
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 8,
+  "mounts": [
+    {
+      "weaponId": "medium_laser",
+      "location": "centre_torso"
+    },
+    {
+      "weaponId": "machine_gun",
+      "location": "centre_torso"
+    },
+    {
+      "weaponId": "small_laser",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "small_laser",
+      "location": "right_torso"
+    }
+  ],
+  "ammo": [
+    {
+      "weaponId": "machine_gun",
+      "location": "centre_torso",
+      "tons": 1
+    }
+  ],
+  "equipment": []
+}

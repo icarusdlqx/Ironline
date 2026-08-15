@@ -42,6 +42,12 @@ export interface BlueprintPart {
   tone: Tone;
   /** Lean about the lateral axis, in radians. Positive pitches the nose down. */
   tilt?: number;
+  /**
+   * Stays with the hull rather than turning with the guns. A vehicle's glacis
+   * belongs to the centre torso structurally and to the chassis visually, and
+   * a turret that took the whole hull round with it would look like a mech.
+   */
+  fixed?: boolean;
   /** Shaped side view. A plain rectangle when absent. */
   profile?: Profile;
 }
@@ -163,6 +169,12 @@ export interface Blueprint {
     /** How far forward of the hip the knee sits — the joint the shin hangs from. */
     kneeForward: number;
   };
+  /**
+   * Whether the leg locations are limbs that swing. Tracks and concrete are
+   * filed under the legs because that is what they structurally are, but
+   * nothing about them articulates and a walk cycle would be a catastrophe.
+   */
+  articulated: boolean;
 }
 
 function part(
@@ -176,6 +188,11 @@ function part(
   return tilt === undefined
     ? { location, shape, at, size, tone }
     : { location, shape, at, size, tone, tilt };
+}
+
+/** Marks a piece as hull, so the guns traverse without taking it round too. */
+function bolted(piece: BlueprintPart): BlueprintPart {
+  return { ...piece, fixed: true };
 }
 
 /** A plate cut to a shaped outline rather than left as a box. */
@@ -929,6 +946,175 @@ const squatPlan: Plan = (b, has, fit) => {
   };
 };
 
+// ------------------------------------------------------------ ground frames
+
+/**
+ * A track unit: a long low box under the hull with road wheels along it and a
+ * drive sprocket at each end. It is filed under the leg locations because that
+ * is structurally what it is, and losing one ends the argument about whether
+ * there is time to withdraw.
+ */
+function trackUnit(parts: BlueprintPart[], b: Bones, side: number): void {
+  const z = side * b.spread;
+  const location = side < 0 ? 'left_leg' : 'right_leg';
+  const height = b.hip * 0.9;
+
+  parts.push(
+    shaped(location, PROFILES.skirt, [0, height * 0.66, z], [b.long * 1.2, height * 0.5, b.thigh * 1.4], 'plate'),
+    part(location, 'box', [0, height * 0.34, z], [b.long * 1.24, height * 0.52, b.thigh * 1.2], 'deep'),
+  );
+  for (const along of [-0.38, -0.13, 0.13, 0.38]) {
+    parts.push(part(location, 'cylinder', [b.long * along, height * 0.24, z],
+      [height * 0.34, b.thigh * 1.3, height * 0.34], 'accent', Math.PI / 2));
+  }
+  // Drive sprocket and idler, one at each end, which is what makes it a track.
+  for (const end of [-0.56, 0.56]) {
+    parts.push(part(location, 'cylinder', [b.long * end, height * 0.4, z],
+      [height * 0.44, b.thigh * 1.24, height * 0.44], 'trim', Math.PI / 2));
+  }
+}
+
+/** Road wheels: what a patrol car has instead, and why it dies to one burst. */
+function wheelUnit(parts: BlueprintPart[], b: Bones, side: number): void {
+  const z = side * b.spread;
+  const location = side < 0 ? 'left_leg' : 'right_leg';
+  const radius = b.hip * 0.46;
+
+  parts.push(part(location, 'box', [0, b.hip * 0.74, z], [b.long * 1.1, b.hip * 0.3, b.thigh], 'deep'));
+  for (const along of [-0.44, 0, 0.44]) {
+    parts.push(
+      part(location, 'cylinder', [b.long * along, radius, z], [radius * 2, b.thigh * 1.1, radius * 2], 'deep', Math.PI / 2),
+      part(location, 'cylinder', [b.long * along, radius, z * 1.05], [radius, b.thigh * 1.2, radius], 'accent', Math.PI / 2),
+    );
+  }
+}
+
+/**
+ * The hull and turret every ground vehicle shares. Where a mech twists at the
+ * waist, this traverses: the turret is the torso and the hull is bolted down,
+ * which is the whole difference in silhouette between the two kinds of machine.
+ */
+function vehicleBody(
+  parts: BlueprintPart[],
+  b: Bones,
+  has: (trait: string) => boolean,
+  fit: HardpointMap,
+): void {
+  const deck = b.hip * 0.92;
+
+  parts.push(
+    bolted(shaped('centre_torso', PROFILES.hull, [0, deck + b.tall * 0.16, 0],
+      [b.long * 1.5, b.tall * 0.56, b.wide * 1.5], 'plate')),
+    bolted(part('centre_torso', 'cylinder', [0, deck + b.tall * 0.46, 0],
+      [b.wide * 0.92, b.tall * 0.12, b.wide * 0.92], 'deep')),
+    // The traversing part: everything from here up turns with the guns.
+    shaped('centre_torso', PROFILES.wedge, [0, deck + b.tall * 0.72, 0],
+      [b.long * 0.94, b.tall * 0.46, b.wide * 0.96], 'plate'),
+  );
+
+  for (const side of [-1, 1]) {
+    const location = side < 0 ? 'left_torso' : 'right_torso';
+    parts.push(shaped(location, PROFILES.block, [-b.long * 0.08, deck + b.tall * 0.7, side * b.wide * 0.54],
+      [b.long * 0.72, b.tall * 0.4, b.wide * 0.24], 'deep'));
+    shoulderMount(parts, b, side, fittingFor(fit[location]), 1, 0.9, 0.4);
+  }
+
+  // The cupola stands in for a cockpit: it is where the crew are, and it is
+  // what a called shot to the head is aimed at.
+  const headX = -b.long * 0.18;
+  const headY = deck + b.tall * 1.04;
+  parts.push(
+    part('head', 'cylinder', [headX, headY, b.wide * 0.26], [0.34, 0.24, 0.34], 'deep'),
+    part('head', 'box', [headX + 0.16, headY + 0.02, b.wide * 0.26], [0.1, 0.12, 0.26], 'glass'),
+  );
+  aerials(parts, has, headX, headY + 0.12);
+}
+
+/** Where a vehicle's guns hang, shared by both running gears. */
+function vehicleHardpoints(b: Bones): Blueprint['hardpoints'] {
+  const deck = b.hip * 0.92;
+  return {
+    left_torso: [b.long * 0.2, deck + b.tall * 0.76, -b.wide * 0.64],
+    right_torso: [b.long * 0.2, deck + b.tall * 0.76, b.wide * 0.64],
+    centre_torso: [b.long * 0.48, deck + b.tall * 0.72, 0],
+    head: [-b.long * 0.18, deck + b.tall * 1.2, b.wide * 0.26],
+    left_arm: [0, deck, -b.wide * 0.72],
+    right_arm: [0, deck, b.wide * 0.72],
+  };
+}
+
+/** Tracked: the missile deck. Devastating from a ridge, finished once reached. */
+const trackedPlan: Plan = (b, has, fit) => {
+  const parts: BlueprintPart[] = [];
+  for (const side of [-1, 1]) trackUnit(parts, b, side);
+  vehicleBody(parts, b, has, fit);
+  if (has('oversized_sinks')) radiators(parts, b);
+
+  return { parts, hardpoints: vehicleHardpoints(b), crown: b.tall * 1.5 };
+};
+
+/** Wheeled: the patrol car. The same hull, on tyres, with nothing to spare. */
+const wheeledPlan: Plan = (b, has, fit) => {
+  const parts: BlueprintPart[] = [];
+  for (const side of [-1, 1]) wheelUnit(parts, b, side);
+  vehicleBody(parts, b, has, fit);
+
+  return { parts, hardpoints: vehicleHardpoints(b), crown: b.tall * 1.5 };
+};
+
+/**
+ * An emplacement: a concrete pad, a ring, and a slab of a mount that traverses
+ * on it. There is no running gear because there is nowhere to run to, and the
+ * tonnage an engine would have taken went into the mantlet instead.
+ */
+const emplacementPlan: Plan = (b, has, fit) => {
+  const parts: BlueprintPart[] = [];
+
+  // The pad, filed under the legs so a wreck still greys out from the ground up.
+  for (const side of [-1, 1]) {
+    parts.push(part(side < 0 ? 'left_leg' : 'right_leg', 'box',
+      [0, b.hip * 0.16, side * b.spread * 0.9],
+      [b.long * 1.6, b.hip * 0.32, b.wide * 0.86], 'deep'));
+  }
+  parts.push(bolted(part(null, 'cylinder', [0, b.hip * 0.46, 0],
+    [b.wide * 1.5, b.hip * 0.28, b.wide * 1.5], 'trim')));
+
+  parts.push(
+    shaped('centre_torso', PROFILES.wedge, [0, b.tall * 0.08, 0], [b.long * 1.2, b.tall * 0.9, b.wide * 1.2], 'plate'),
+    // The mantlet. The whole point of the machine, and the reason flanking one
+    // is the only sensible answer to it.
+    shaped('centre_torso', PROFILES.pauldron, [b.long * 0.56, 0, 0], [0.34, b.tall * 1.06, b.wide * 1.1], 'trim'),
+  );
+
+  for (const side of [-1, 1]) {
+    const location = side < 0 ? 'left_torso' : 'right_torso';
+    parts.push(shaped(location, PROFILES.block, [-b.long * 0.1, b.tall * 0.06, side * b.wide * 0.68],
+      [b.long * 0.9, b.tall * 0.74, b.wide * 0.34], 'deep'));
+    shoulderMount(parts, b, side, fittingFor(fit[location]), 1, 1, 0.2);
+  }
+
+  const headX = -b.long * 0.3;
+  const headY = b.tall * 0.6;
+  parts.push(
+    part('head', 'box', [headX, headY, 0], [0.4, 0.28, 0.5], 'deep'),
+    part('head', 'box', [headX + 0.2, headY, 0], [0.1, 0.14, 0.34], 'glass'),
+  );
+  aerials(parts, has, headX, headY + 0.14);
+
+  return {
+    parts,
+    hardpoints: {
+      left_torso: [b.long * 0.3, b.tall * 0.1, -b.wide * 0.8],
+      right_torso: [b.long * 0.3, b.tall * 0.1, b.wide * 0.8],
+      centre_torso: [b.long * 0.62, b.tall * 0.02, 0],
+      head: [headX, headY + 0.2, 0],
+      left_arm: [0, 0, -b.wide * 0.92],
+      right_arm: [0, 0, b.wide * 0.92],
+    },
+    crown: b.tall * 0.9,
+  };
+};
+
 /** Base proportions per plan, before a chassis scales them to its own build. */
 const BASE: Record<Silhouette['form'], Bones> = {
   scout: { hip: 1.2, spread: 0.3, kneeHeight: 0.66, knee: 0.3, thigh: 0.19, long: 0.8, wide: 0.56, tall: 0.5, pitch: 0.2, shoulder: 0.4 },
@@ -939,6 +1125,11 @@ const BASE: Record<Silhouette['form'], Bones> = {
   squat: { hip: 0.92, spread: 0.56, kneeHeight: 0.42, knee: 0, thigh: 0.34, long: 1.0, wide: 1.14, tall: 0.72, pitch: 0.02, shoulder: 0.88 },
   bastion: { hip: 0.88, spread: 0.62, kneeHeight: 0.4, knee: -0.04, thigh: 0.38, long: 1.16, wide: 1.24, tall: 0.7, pitch: 0, shoulder: 0.96 },
   siege: { hip: 0.98, spread: 0.58, kneeHeight: 0.46, knee: 0, thigh: 0.4, long: 1.08, wide: 1.2, tall: 0.94, pitch: 0.08, shoulder: 1.02 },
+  // Ground frames sit low and wide. `hip` is the height of the running gear
+  // rather than of a joint, and `spread` is how far out the tracks are set.
+  tracked: { hip: 0.42, spread: 0.62, kneeHeight: 0.2, knee: 0, thigh: 0.3, long: 1.06, wide: 0.92, tall: 0.6, pitch: 0, shoulder: 0.8 },
+  wheeled: { hip: 0.38, spread: 0.56, kneeHeight: 0.18, knee: 0, thigh: 0.24, long: 0.98, wide: 0.78, tall: 0.5, pitch: 0, shoulder: 0.7 },
+  emplacement: { hip: 0.3, spread: 0.7, kneeHeight: 0.14, knee: 0, thigh: 0.34, long: 1.1, wide: 1.16, tall: 0.86, pitch: 0, shoulder: 0.94 },
 };
 
 const PLANS: Record<Silhouette['form'], Plan> = {
@@ -950,7 +1141,22 @@ const PLANS: Record<Silhouette['form'], Plan> = {
   squat: squatPlan,
   bastion: bastionPlan,
   siege: siegePlan,
+  tracked: trackedPlan,
+  wheeled: wheeledPlan,
+  emplacement: emplacementPlan,
 };
+
+/** Which plans build something with legs that swing. */
+const WALKS: ReadonlySet<Silhouette['form']> = new Set([
+  'scout',
+  'bird',
+  'humanoid',
+  'brawler',
+  'battle',
+  'squat',
+  'bastion',
+  'siege',
+]);
 
 /**
  * Builds a chassis from its body plan, then lets its traits mark it: a sensor
@@ -995,5 +1201,6 @@ export function chassisBlueprint(
       kneeHeight: bones.kneeHeight,
       kneeForward: bones.knee,
     },
+    articulated: WALKS.has(shape.form),
   };
 }
