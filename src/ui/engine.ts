@@ -128,7 +128,7 @@ export class Engine {
 
   destroy(): void {
     this.running = false;
-    this.audio.stopAmbient();
+    this.audio.destroy();
     this.detachInput?.();
     for (const run of this.teardown) run();
     this.renderer.destroy();

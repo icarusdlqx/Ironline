@@ -92,6 +92,9 @@ const NOZZLE = new Vector3();
 /** Scratch for the body pick, so hovering the battlefield allocates nothing. */
 const PICK_DELTA = new Vector3();
 
+/** Scratch for the weapon-reach rings, reused across machines and frames. */
+const REACHES: number[] = [];
+
 function damageSignature(entity: MechEntity): string {
   const lost = Object.values(entity.locations)
     .map((state) => (state.destroyed ? '1' : '0'))
@@ -113,6 +116,8 @@ export class Renderer {
   private readonly scars = new ScarLayer();
   /** Seconds since the battle opened, so the jet flicker has a clock to run on. */
   private elapsed = 0;
+  /** The sim tick the shroud was last shaded for. -1 forces the first pass. */
+  private visionTick = -1;
   private readonly markers = new Group();
   private readonly views = new Map<EntityId, EntityView>();
   private readonly samples = new Map<EntityId, MotionSample>();
@@ -554,8 +559,14 @@ export class Renderer {
     this.drawMarkers(world, view);
     this.tracers.update(deltaSeconds);
     this.smoke.update(deltaSeconds);
-    this.fog.update(world.terrain, world.vision);
-    this.props.update(world.vision);
+    // What the lance can see only changes when the simulation steps, so the
+    // shroud and the props are reshaded per tick, not per frame — the fog
+    // pass walks every tile on the map and re-uploads its colours.
+    if (world.tick !== this.visionTick) {
+      this.visionTick = world.tick;
+      this.fog.update(world.terrain, world.vision);
+      this.props.update(world.vision);
+    }
 
     const viewport = this.viewport;
     this.camera.advance(deltaSeconds);
@@ -747,19 +758,24 @@ export class Renderer {
 
       // Weapon reach, drawn while the player is lining up an attack so range
       // stops being a number in a panel and becomes a circle on the ground.
+      // Built in a shared scratch array: this runs per selected machine per
+      // frame for as long as the player is aiming.
       if (
         view.orderMode === 'attack' ||
         view.orderMode === 'attack_move' ||
         view.orderMode === 'called_shot'
       ) {
-        const reaches = new Set<number>();
+        REACHES.length = 0;
         for (const mount of entity.weapons) {
           if (mount.destroyed) continue;
           const weapon = world.catalog.weapons.get(mount.weaponId);
-          if (weapon !== undefined) reaches.add(Math.round(weapon.range.long));
+          if (weapon === undefined) continue;
+          const reach = Math.round(weapon.range.long);
+          if (!REACHES.includes(reach)) REACHES.push(reach);
         }
-        for (const reach of [...reaches].sort((a, b) => a - b).slice(0, 3)) {
-          this.groundRing(entity.pos, reach, UI.attackMarker, 0.35);
+        REACHES.sort((a, b) => a - b);
+        for (let index = 0; index < REACHES.length && index < 3; index += 1) {
+          this.groundRing(entity.pos, REACHES[index] ?? 0, UI.attackMarker, 0.35);
         }
       }
 

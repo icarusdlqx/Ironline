@@ -9,6 +9,14 @@ const UNSEEN = 1;
 const REMEMBERED = 0.62;
 const VISIBLE = 0;
 
+/** The four corners of a tile, hoisted: this runs for every lit tile. */
+const TILE_CORNERS = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
+  [1, 1],
+] as const;
+
 /**
  * The shroud is a second skin over the terrain, black, with its opacity carried
  * per corner. Ground nobody has walked is solid; ground the lance has seen and
@@ -89,12 +97,7 @@ export class FogLayer {
           vision.tiles[cell] === 1 ? VISIBLE : vision.explored[cell] === 1 ? REMEMBERED : UNSEEN;
         if (alpha === UNSEEN) continue;
 
-        for (const [dx, dy] of [
-          [0, 0],
-          [1, 0],
-          [0, 1],
-          [1, 1],
-        ] as const) {
+        for (const [dx, dy] of TILE_CORNERS) {
           const corner = (row + dy) * this.across + (column + dx);
           const current = this.alphas[corner];
           if (current !== undefined && alpha < current) this.alphas[corner] = alpha;

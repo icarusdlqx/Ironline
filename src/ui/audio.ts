@@ -111,6 +111,22 @@ export class AudioDirector {
     if (this.context !== null) this.startAmbient(atmosphereId);
   }
 
+  /**
+   * Tears the whole audio graph down, context included. Each battle builds
+   * its own director, and browsers cap how many live AudioContexts a page may
+   * hold — a campaign's worth of battles must not accumulate them.
+   */
+  destroy(): void {
+    this.stopAmbient();
+    const context = this.context;
+    this.context = null;
+    this.master = null;
+    this.noise = null;
+    if (context !== null) {
+      void context.close().catch(() => undefined);
+    }
+  }
+
   /** Fades the bed out and forgets it; the battle screen is going away. */
   stopAmbient(): void {
     this.pendingAmbient = null;
