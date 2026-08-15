@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { createMech } from '../sim/entity';
-import { availableHires, availableXp, awardXp, hirePilot, promote, skillCost } from './roster';
+import {
+  availableHires,
+  availableXp,
+  awardXp,
+  chooseTrait,
+  hirePilot,
+  offeredTraits,
+  pendingTraitPicks,
+  promote,
+  skillCost,
+  skillTotal,
+} from './roster';
 import { startCampaign } from './campaign';
 import type { CampaignState, PilotRecord } from './types';
 import type { UnitResult } from '../sim/world';
@@ -169,5 +180,122 @@ describe('the pilot register', () => {
     const pilot = record(state);
     pilot.dead = true;
     expect(availableHires(catalog, state).some((hire) => hire.id === pilot.templateId)).toBe(false);
+  });
+});
+
+describe('specialities', () => {
+  const marks = catalog.rules.pilotTraits.pickAtTotalSkill;
+
+  function bare(state: CampaignState): PilotRecord {
+    const pilot = record(state);
+    pilot.traits = [];
+    pilot.gunnery = 3;
+    pilot.piloting = 3;
+    pilot.sensors = 3;
+    return pilot;
+  }
+
+  it('owes a pick for every threshold a pilot’s skills have passed', () => {
+    const state = campaign();
+    const pilot = bare(state);
+    expect(skillTotal(pilot)).toBe(9);
+    expect(pendingTraitPicks(catalog, pilot)).toBe(0);
+
+    const first = marks[0];
+    if (first === undefined) throw new Error('no thresholds authored');
+    pilot.gunnery += first - skillTotal(pilot);
+    expect(pendingTraitPicks(catalog, pilot)).toBe(1);
+  });
+
+  it('counts specialities a company could have trained against what it owes', () => {
+    // Deriving the count rather than keeping a counter means a save from before
+    // picks existed grants the right number, and nothing can drift out of step
+    // with the skills that justified it.
+    const state = campaign();
+    const pilot = bare(state);
+    const first = marks[0];
+    if (first === undefined) throw new Error('no thresholds authored');
+    pilot.gunnery += first - skillTotal(pilot);
+
+    pilot.traits = ['marksman'];
+    expect(pendingTraitPicks(catalog, pilot)).toBe(0);
+
+    // Traits nobody teaches are who the pilot already was. They do not spend a
+    // pick, but they do take up a slot.
+    pilot.traits = ['veteran'];
+    expect(pendingTraitPicks(catalog, pilot)).toBe(1);
+  });
+
+  it('stops at the ceiling however many thresholds are passed', () => {
+    const state = campaign();
+    const pilot = bare(state);
+    pilot.gunnery = 5;
+    pilot.piloting = 5;
+    pilot.sensors = 5;
+    pilot.traits = ['veteran', 'green'];
+
+    expect(pendingTraitPicks(catalog, pilot)).toBe(catalog.rules.pilotTraits.maxTraits - 2);
+  });
+
+  it('offers only what can be taught, and only what the pilot lacks', () => {
+    const state = campaign();
+    const pilot = bare(state);
+    const offered = offeredTraits(catalog, pilot);
+
+    expect(offered.length).toBeGreaterThan(0);
+    expect(offered.every((id) => catalog.rules.pilotTraits.entries[id]?.trainable)).toBe(true);
+
+    pilot.traits = [offered[0] ?? ''];
+    expect(offeredTraits(catalog, pilot)).not.toContain(offered[0]);
+  });
+
+  it('awards an earned speciality once, and refuses to be asked twice', () => {
+    const state = campaign();
+    const pilot = bare(state);
+    const first = marks[0];
+    if (first === undefined) throw new Error('no thresholds authored');
+    pilot.gunnery += first - skillTotal(pilot);
+
+    expect(chooseTrait(catalog, pilot, 'marksman').ok).toBe(true);
+    expect(pilot.traits).toContain('marksman');
+
+    const again = chooseTrait(catalog, pilot, 'snap_shot');
+    expect(again.ok).toBe(false);
+    expect(pilot.traits).toHaveLength(1);
+  });
+
+  it('refuses a speciality the pilot has not earned, and one nobody teaches', () => {
+    const state = campaign();
+    const pilot = bare(state);
+
+    expect(chooseTrait(catalog, pilot, 'marksman').ok).toBe(false);
+
+    const first = marks[0];
+    if (first === undefined) throw new Error('no thresholds authored');
+    pilot.gunnery += first - skillTotal(pilot);
+    const untrainable = chooseTrait(catalog, pilot, 'hard_to_kill');
+    expect(untrainable.ok).toBe(false);
+    expect(untrainable.reason).toMatch(/not on offer/);
+  });
+
+  it('owes the dead nothing', () => {
+    const state = campaign();
+    const pilot = bare(state);
+    pilot.gunnery = 5;
+    pilot.piloting = 5;
+    pilot.sensors = 5;
+    pilot.dead = true;
+    expect(pendingTraitPicks(catalog, pilot)).toBe(0);
+  });
+
+  it('points a pilot’s own experience at their speciality', () => {
+    const state = campaign();
+    const pilot = bare(state);
+    pilot.gunnery = 2;
+    pilot.traits = ['marksman'];
+    pilot.xp = 100_000;
+
+    const gained = promote(catalog, pilot);
+    expect(gained[0]?.skill).toBe('gunnery');
   });
 });

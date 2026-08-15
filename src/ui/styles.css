@@ -1090,7 +1090,8 @@ button {
     'map      contract'
     'map      hall'
     'bay      roster'
-    'store    log';
+    'store    market'
+    'log      log';
   gap: 12px;
   height: 100%;
   padding: 12px;
@@ -2787,4 +2788,66 @@ button {
 .pilot-stats.compact li {
   grid-template-columns: 48px 1fr 16px;
   font-size: 9px;
+}
+
+
+/* The yard: what is for sale, and what the company could sell. Two lists in one
+   panel because buying and selling are the same decision seen from either end. */
+.camp-market {
+  grid-area: market;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.camp-market h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.camp-market ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.camp-market .market-sell {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.camp-market li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.camp-market li.empty {
+  display: block;
+  color: var(--muted);
+}
+
+.market-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.market-name small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.market-price {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
 }

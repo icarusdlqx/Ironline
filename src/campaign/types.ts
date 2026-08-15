@@ -117,6 +117,8 @@ export interface CampaignState {
    * and it is pruned at every rollover rather than growing.
    */
   sideTaken: string[];
+  /** Yard listings already bought this week; pruned at every rollover. */
+  marketBought: string[];
   contract: Contract | null;
   history: MissionOutcome[];
   log: CampaignLogEntry[];

@@ -24,7 +24,7 @@ import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
 import { Debrief, debriefedCount, markDebriefed } from './Debrief';
 import { LanceManifest } from './LanceManifest';
-import { BarracksPanel, MechBayPanel, StoresPanel } from './Panels';
+import { BarracksPanel, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
 import { useGame } from '../store';
 
 const catalog = getCatalog();
@@ -86,11 +86,16 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           },
         };
 
-  const mutate = (change: (draft: CampaignState) => void, message?: string): void => {
+  // A change may say what happened. What it says wins over the caller's
+  // caption: a refusal knows more than the button that hoped it would work.
+  const mutate = (
+    change: (draft: CampaignState) => string | null | void,
+    message?: string,
+  ): void => {
     const draft = JSON.parse(JSON.stringify(state)) as CampaignState;
-    change(draft);
+    const said = change(draft);
     setState(draft);
-    setStatus(message ?? null);
+    setStatus(said ?? message ?? null);
   };
 
   // Deploying opens the manifest rather than launching. Who flies what is the
@@ -298,9 +303,10 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         </section>
       )}
 
-      <MechBayPanel state={state} mutate={mutate} setStatus={setStatus} />
-      <BarracksPanel state={state} mutate={mutate} setStatus={setStatus} />
-      <StoresPanel state={state} mutate={mutate} setStatus={setStatus} />
+      <MechBayPanel state={state} mutate={mutate} />
+      <BarracksPanel state={state} mutate={mutate} />
+      <StoresPanel state={state} mutate={mutate} />
+      <MarketPanel state={state} mutate={mutate} />
 
       <footer className="camp-log" data-testid="camp-log">
         <span className="camp-status" data-testid="camp-status">

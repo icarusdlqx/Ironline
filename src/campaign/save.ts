@@ -107,6 +107,8 @@ export const CampaignStateSchema = z.strictObject({
   failedNodes: z.array(IdSchema),
   // Saves written before the hiring hall existed have nothing signed at it.
   sideTaken: z.array(IdSchema).default([]),
+  // Saves written before the yard existed have bought nothing from it.
+  marketBought: z.array(IdSchema).default([]),
   contract: ContractSchema.nullable(),
   history: z.array(MissionOutcomeSchema),
   log: z.array(z.strictObject({ day: z.number().int(), text: z.string() })),

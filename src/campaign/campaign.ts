@@ -1,5 +1,6 @@
 import type { CampaignNode } from '../schema/campaign';
 import type { Catalog } from '../schema/load';
+import { pruneMarket } from './market';
 import { isSideContract, pruneSideOffers, sideContracts } from './sidework';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
 import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
@@ -49,6 +50,7 @@ export function startCampaign(catalog: Catalog, campaignId: string, seed: string
     completedNodes: [],
     failedNodes: [],
     sideTaken: [],
+    marketBought: [],
     contract: null,
     history: [],
     log: [],
@@ -532,6 +534,7 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
   fillEmptySeats(state);
 
   pruneSideOffers(catalog, state);
+  pruneMarket(catalog, state);
 
   if (state.finished) return;
 

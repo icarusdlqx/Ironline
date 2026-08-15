@@ -33,7 +33,16 @@
     "perHit": 1.5
   },
   "market": {
-    "sellFraction": 0.45
+    "sellFraction": 0.45,
+    "refreshDays": 7,
+    "listings": 4,
+    "priceVariance": [
+      0.9,
+      1.15
+    ],
+    "priceRounding": 25000,
+    "wornChance": 0.4,
+    "wornDiscount": 0.72
   },
   "sideContracts": {
     "refreshDays": 7,

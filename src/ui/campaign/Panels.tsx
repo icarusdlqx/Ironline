@@ -3,13 +3,17 @@ import {
   rebuildHulk,
   stripToStore,
 } from '../../campaign/refit';
+import { buyMech, marketListings, saleValueOf, sellMech } from '../../campaign/market';
 import { estimateRepair, startRepair } from '../../campaign/repair';
 import {
   assign,
   availableHires,
   availableXp,
+  chooseTrait,
   hireCost,
   hirePilot,
+  offeredTraits,
+  pendingTraitPicks,
   raiseSkill,
   skillCost,
   SKILLS,
@@ -26,11 +30,15 @@ export function cbills(value: number): string {
 
 export interface PanelProps {
   state: CampaignState;
-  mutate: (change: (draft: CampaignState) => void, message?: string) => void;
-  setStatus: (text: string | null) => void;
+  /**
+   * Applies a change to a copy of the campaign. What the change returns is what
+   * the screen says about it, so a refusal reports itself rather than being
+   * overwritten by the caption of the button that hoped it would work.
+   */
+  mutate: (change: (draft: CampaignState) => string | null | void, message?: string) => void;
 }
 
-export function MechBayPanel({ state, mutate, setStatus }: PanelProps) {
+export function MechBayPanel({ state, mutate }: PanelProps) {
   return (
       <section className="camp-bay" data-testid="camp-bay">
         <h3>Mech bay</h3>
@@ -56,9 +64,9 @@ export function MechBayPanel({ state, mutate, setStatus }: PanelProps) {
                     onClick={() =>
                       mutate((draft) => {
                         const target = draft.mechs.find((entry) => entry.id === mech.id);
-                        if (target === undefined) return;
+                        if (target === undefined) return null;
                         const result = rebuildHulk(catalog, draft, target);
-                        if (!result.ok) setStatus(result.reason);
+                        return result.ok ? `${target.design.name} rebuilt.` : result.reason;
                       })
                     }
                   >
@@ -70,9 +78,9 @@ export function MechBayPanel({ state, mutate, setStatus }: PanelProps) {
                     onClick={() =>
                       mutate((draft) => {
                         const target = draft.mechs.find((entry) => entry.id === mech.id);
-                        if (target === undefined) return;
+                        if (target === undefined) return null;
                         const result = startRepair(catalog, draft, target);
-                        if (!result.ok) setStatus(result.reason);
+                        return result.ok ? `${target.design.name} in the shop.` : result.reason;
                       })
                     }
                     data-testid={`camp-repair-${mech.id}`}
@@ -88,7 +96,7 @@ export function MechBayPanel({ state, mutate, setStatus }: PanelProps) {
   );
 }
 
-export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
+export function BarracksPanel({ state, mutate }: PanelProps) {
   return (
       <section className="camp-roster" data-testid="camp-roster">
         <h3>Barracks</h3>
@@ -115,6 +123,39 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
                     ? `${availableXp(pilot)} XP`
                     : `injured to day ${pilot.injuredUntilDay}`}
               </span>
+              {/* A speciality the pilot has earned. The commander picks it:
+                  what somebody becomes good at is the most characterful
+                  decision the roster has, and it was being made by a table. */}
+              {pendingTraitPicks(catalog, pilot) <= 0 ? null : (
+                <select
+                  className="pilot-pick"
+                  value=""
+                  onChange={(event) => {
+                    const traitId = event.target.value;
+                    if (traitId === '') return;
+                    mutate((draft) => {
+                      const target = draft.pilots.find((entry) => entry.id === pilot.id);
+                      if (target === undefined) return null;
+                      const result = chooseTrait(catalog, target, traitId);
+                      return result.ok
+                        ? `${target.name} trained ${catalog.rules.pilotTraits.entries[traitId]?.label ?? traitId}.`
+                        : result.reason;
+                    });
+                  }}
+                  data-testid={`camp-pick-${pilot.id}`}
+                  aria-label={`Speciality for ${pilot.name}`}
+                >
+                  <option value="">Train a speciality…</option>
+                  {offeredTraits(catalog, pilot).map((traitId) => {
+                    const trait = catalog.rules.pilotTraits.entries[traitId];
+                    return (
+                      <option key={traitId} value={traitId} title={trait?.note}>
+                        {trait?.label ?? traitId}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
               {/* Seats are filled automatically after every battle, but a
                   commander who wants their best gunner in the assault mech
                   had no way to say so. Assigning an occupied mech evicts
@@ -148,9 +189,11 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
                     onClick={() =>
                       mutate((draft) => {
                         const target = draft.pilots.find((entry) => entry.id === pilot.id);
-                        if (target === undefined) return;
+                        if (target === undefined) return null;
                         const result = raiseSkill(catalog, target, skill);
-                        if (!result.ok) setStatus(result.reason);
+                        return result.ok
+                          ? `${target.name} up to ${skill} ${target[skill]}.`
+                          : result.reason;
                       })
                     }
                     data-testid={`camp-skill-${pilot.id}-${skill}`}
@@ -192,8 +235,8 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
                   onClick={() =>
                     mutate((draft) => {
                       const result = hirePilot(catalog, draft, hire.id);
-                      if (!result.ok) setStatus(result.reason);
-                    }, `${hire.name} signed.`)
+                      return result.ok ? `${hire.name} signed.` : result.reason;
+                    })
                   }
                   data-testid={`camp-sign-${hire.id}`}
                 >
@@ -210,7 +253,7 @@ export function BarracksPanel({ state, mutate, setStatus }: PanelProps) {
   );
 }
 
-export function StoresPanel({ state, mutate, setStatus }: PanelProps) {
+export function StoresPanel({ state, mutate }: PanelProps) {
   return (
       <section className="camp-store" data-testid="camp-store">
         <h3>Stores</h3>
@@ -234,10 +277,11 @@ export function StoresPanel({ state, mutate, setStatus }: PanelProps) {
                       const mechId = event.target.value;
                       mutate((draft) => {
                         const target = draft.mechs.find((entry) => entry.id === mechId);
-                        if (target === undefined) return;
+                        if (target === undefined) return null;
                         const result = fitFromStore(catalog, draft, target, item.itemId);
-                        if (!result.ok) setStatus(result.reason);
-                        else setStatus(`Fitted to ${target.design.name} ${result.location}.`);
+                        return result.ok
+                          ? `Fitted to ${target.design.name} ${result.location}.`
+                          : result.reason;
                       });
                     }}
                     data-testid={`camp-fit-${item.itemId}`}
@@ -271,9 +315,9 @@ export function StoresPanel({ state, mutate, setStatus }: PanelProps) {
                     const index = Number(event.target.value);
                     mutate((draft) => {
                       const target = draft.mechs.find((entry) => entry.id === mech.id);
-                      if (target === undefined) return;
+                      if (target === undefined) return null;
                       const result = stripToStore(catalog, draft, target, index);
-                      if (!result.ok) setStatus(result.reason);
+                      return result.ok ? `Stripped from ${target.design.name}.` : result.reason;
                     });
                   }}
                 >
@@ -294,3 +338,87 @@ export function StoresPanel({ state, mutate, setStatus }: PanelProps) {
   );
 }
 
+
+/**
+ * The yard. Machines used to enter the company only as salvage and never leave
+ * it, which made a mech the one asset with no price on it — a bay full of hulls
+ * you could not use and could not turn into anything else.
+ */
+export function MarketPanel({ state, mutate }: PanelProps) {
+  const listings = marketListings(catalog, state);
+  const signed = state.contract !== null;
+
+  return (
+    <section className="camp-market" data-testid="camp-market">
+      <h3>Yard</h3>
+
+      <h4>On the lot</h4>
+      <ul className="market-stock">
+        {listings.length === 0 ? (
+          <li className="empty">Nothing on the lot this week.</li>
+        ) : (
+          listings.map((listing) => (
+            <li key={listing.id} data-testid={`market-${listing.id}`}>
+              <span className="market-name">
+                {listing.design.name}
+                <small>
+                  {catalog.chassis.get(listing.design.chassisId)?.tonnage ?? 0}t
+                  {listing.worn ? ' · sold as seen' : ''}
+                </small>
+              </span>
+              <span className="market-price">{cbills(listing.price)}</span>
+              <button
+                type="button"
+                disabled={state.cbills < listing.price}
+                title={
+                  state.cbills < listing.price
+                    ? `${cbills(listing.price - state.cbills)} short`
+                    : `Buy the ${listing.design.name}`
+                }
+                onClick={() =>
+                  mutate((draft) => {
+                    const result = buyMech(catalog, draft, listing.id);
+                    return result.ok ? `Bought a ${listing.design.name}.` : result.reason;
+                  })
+                }
+                data-testid={`market-buy-${listing.id}`}
+              >
+                Buy
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+
+      <h4>{signed ? 'Sell — not while a contract is signed' : 'Sell'}</h4>
+      <ul className="market-sell">
+        {state.mechs.map((mech) => (
+          <li key={mech.id} data-testid={`market-sell-row-${mech.id}`}>
+            <span className="market-name">
+              {mech.design.name}
+              <small>{mech.status === 'hulk' ? 'wreck' : mech.status}</small>
+            </span>
+            <span className="market-price">{cbills(saleValueOf(catalog, mech))}</span>
+            <button
+              type="button"
+              // Selling under contract is how a company arrives at a drop with
+              // nothing to drop; the rule refuses it, and so does the button.
+              disabled={signed || state.mechs.length <= 1}
+              onClick={() =>
+                mutate((draft) => {
+                  const result = sellMech(catalog, draft, mech.id);
+                  return result.ok
+                    ? `Sold the ${mech.design.name} for ${cbills(saleValueOf(catalog, mech))}.`
+                    : result.reason;
+                })
+              }
+              data-testid={`market-sell-${mech.id}`}
+            >
+              Sell
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

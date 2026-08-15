@@ -383,11 +383,31 @@ export const PilotTraitSchema = z.strictObject({
   survivalFactor: z.number().positive().max(2).default(1),
   /** How fast they learn. */
   xpFactor: z.number().positive().max(2).default(1),
+  /**
+   * The skill this speciality inclines a pilot toward. Left to themselves,
+   * people get better at what they already do — a marksman works on gunnery, a
+   * scout on sensors. This used to be a table in roster.ts, which put a balance
+   * number in code where nobody tuning the game would look for it.
+   */
+  speciality: z.enum(['gunnery', 'piloting', 'sensors']).nullable().default(null),
+  /**
+   * Whether a company can train this into somebody. Some specialities are what
+   * a pilot arrived with and cannot be taught.
+   */
+  trainable: z.boolean().default(false),
 });
 
 export const PilotTraitRulesSchema = z.strictObject({
   id: z.literal('pilotTraits'),
   entries: z.record(IdSchema, PilotTraitSchema),
+  /**
+   * Every skill level at which a pilot has earned the right to a new
+   * speciality. Crossing one banks a pick the commander spends, rather than
+   * the game deciding for them.
+   */
+  pickAtTotalSkill: z.array(z.number().int().positive()).default([]),
+  /** How many specialities one pilot may ever hold. */
+  maxTraits: z.number().int().positive().max(6).default(3),
 });
 
 export const BalanceRulesSchema = z.strictObject({
@@ -502,7 +522,21 @@ export const EconomyRulesSchema = z.strictObject({
     skillCostBase: z.number().positive(),
     skillCostGrowth: z.number().min(1).max(5),
   }),
-  market: z.strictObject({ sellFraction: z.number().positive().max(1) }),
+  /**
+   * The yard. Machines used to enter the company only by salvage and never
+   * leave it, which made a mech the one asset with no price on it.
+   */
+  market: z.strictObject({
+    /** What the yard pays for a machine, against what it is worth new. */
+    sellFraction: z.number().positive().max(1),
+    refreshDays: z.number().int().positive().max(60),
+    listings: z.number().int().positive().max(8),
+    priceVariance: z.tuple([z.number().positive(), z.number().positive()]),
+    priceRounding: z.number().int().positive(),
+    /** Odds a listing is somebody's tired machine rather than a refurbished one. */
+    wornChance: Probability,
+    wornDiscount: z.number().positive().max(1),
+  }),
   /**
    * Work the hiring hall is posting this week. Side contracts exist so a
    * company that is not ready for the next authored job has something to do

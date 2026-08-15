@@ -4,42 +4,58 @@
     "marksman": {
       "label": "Marksman",
       "note": "Puts the shot where the gunnery rating says they should, and then a little better.",
-      "accuracyFactor": 1.1
+      "accuracyFactor": 1.1,
+      "speciality": "gunnery",
+      "trainable": true
     },
     "snap_shot": {
       "label": "Snap Shot",
       "note": "Fires on the move without the usual apology for it. Rare, and worth what it costs.",
-      "movingAccuracyFactor": 1.22
+      "movingAccuracyFactor": 1.22,
+      "speciality": "piloting",
+      "trainable": true
     },
     "butcher": {
       "label": "Butcher",
       "note": "Knows where a hull comes apart and aims for the seam rather than the middle.",
-      "criticalChanceFactor": 1.6
+      "criticalChanceFactor": 1.6,
+      "speciality": "gunnery",
+      "trainable": true
     },
     "cool_hand": {
       "label": "Cool Hand",
       "note": "Runs the reactor past where the manual stops giving advice, and gets away with it.",
-      "dissipationFactor": 1.15
+      "dissipationFactor": 1.15,
+      "speciality": "piloting",
+      "trainable": true
     },
     "evasive": {
       "label": "Evasive",
       "note": "Never quite where the last volley was aimed. Exhausting to fly with, worse to shoot at.",
-      "incomingAccuracyFactor": 0.88
+      "incomingAccuracyFactor": 0.88,
+      "speciality": "piloting",
+      "trainable": true
     },
     "spotter": {
       "label": "Spotter",
       "note": "Reads a sensor return three seconds before the return resolves. Sees first, every time.",
-      "sensorRangeFactor": 1.25
+      "sensorRangeFactor": 1.25,
+      "speciality": "sensors",
+      "trainable": true
     },
     "hard_to_kill": {
       "label": "Hard To Kill",
       "note": "Has walked out of two hulls that nobody else walked out of. Nobody asks how any more.",
-      "survivalFactor": 0.5
+      "survivalFactor": 0.5,
+      "speciality": "piloting",
+      "trainable": false
     },
     "quick_study": {
       "label": "Quick Study",
       "note": "Debriefs like a machine and comes back to the next drop having actually changed something.",
-      "xpFactor": 1.3
+      "xpFactor": 1.3,
+      "speciality": "sensors",
+      "trainable": false
     },
     "veteran": {
       "label": "Veteran",
@@ -47,14 +63,24 @@
       "accuracyFactor": 1.05,
       "incomingAccuracyFactor": 0.94,
       "survivalFactor": 0.75,
-      "xpFactor": 0.8
+      "xpFactor": 0.8,
+      "speciality": null,
+      "trainable": false
     },
     "green": {
       "label": "Green",
       "note": "Two simulator hours and a contract. Learns fast, mostly because everything is a lesson.",
       "accuracyFactor": 0.94,
       "incomingAccuracyFactor": 1.08,
-      "xpFactor": 1.4
+      "xpFactor": 1.4,
+      "speciality": null,
+      "trainable": false
     }
-  }
+  },
+  "pickAtTotalSkill": [
+    11,
+    13,
+    15
+  ],
+  "maxTraits": 3
 }

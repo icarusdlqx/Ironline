@@ -105,22 +105,13 @@ export function traitFactor(
  * Which skill a pilot puts their own experience into.
  *
  * Left to themselves, people get better at what they already do: a marksman
- * works on gunnery, a scout on sensors. The player can still spend XP
- * deliberately before a debrief — this is what happens to whatever is left.
+ * works on gunnery, a scout on sensors. Which speciality points where is
+ * authored on the trait now rather than kept in a table here.
  */
-const SPECIALITY: Record<string, Skill> = {
-  marksman: 'gunnery',
-  butcher: 'gunnery',
-  snap_shot: 'piloting',
-  evasive: 'piloting',
-  hard_to_kill: 'piloting',
-  cool_hand: 'piloting',
-  spotter: 'sensors',
-  quick_study: 'sensors',
-};
-
-function preferredSkills(pilot: PilotRecord): Skill[] {
-  const wanted = pilot.traits.map((traitId) => SPECIALITY[traitId]).filter((skill): skill is Skill => skill !== undefined);
+function preferredSkills(catalog: Catalog, pilot: PilotRecord): Skill[] {
+  const wanted = pilot.traits
+    .map((traitId) => catalog.rules.pilotTraits.entries[traitId]?.speciality ?? null)
+    .filter((skill): skill is Skill => skill !== null);
   // Their speciality first, then whatever is furthest behind — a pilot with no
   // speciality still rounds themselves out rather than stalling.
   const rest = [...SKILLS].sort((a, b) => pilot[a] - pilot[b]);
@@ -139,7 +130,7 @@ export interface Promotion {
 export function promote(catalog: Catalog, pilot: PilotRecord): Promotion[] {
   const gained: Promotion[] = [];
   for (let round = 0; round < SKILLS.length * MAX_SKILL; round += 1) {
-    const skill = preferredSkills(pilot).find(
+    const skill = preferredSkills(catalog, pilot).find(
       (candidate) => pilot[candidate] < MAX_SKILL && availableXp(pilot) >= skillCost(catalog, pilot[candidate]),
     );
     if (skill === undefined) break;
@@ -272,4 +263,57 @@ export function hirePilot(
     text: `Signed ${template.name} for ${cost.toLocaleString()} C-bills.`,
   });
   return { ok: true, reason: null, pilot: record };
+}
+
+/** Total skill across the three tracks — what a pilot's promotions add up to. */
+export function skillTotal(pilot: PilotRecord): number {
+  return pilot.gunnery + pilot.piloting + pilot.sensors;
+}
+
+/**
+ * How many specialities this pilot has earned but not yet been given.
+ *
+ * Derived from what they have rather than counted into a field: a pick is owed
+ * for each threshold their skills have passed, less the specialities they are
+ * already carrying that a company could have trained. Deriving it means a save
+ * from before picks existed grants the right number rather than none, and no
+ * counter can drift out of step with the skills that justify it.
+ */
+export function pendingTraitPicks(catalog: Catalog, pilot: PilotRecord): number {
+  const rules = catalog.rules.pilotTraits;
+  if (pilot.dead) return 0;
+
+  const earned = rules.pickAtTotalSkill.filter((mark) => skillTotal(pilot) >= mark).length;
+  const trained = pilot.traits.filter((id) => rules.entries[id]?.trainable === true).length;
+
+  const room = rules.maxTraits - pilot.traits.length;
+  return Math.max(0, Math.min(earned - trained, room));
+}
+
+/** Specialities this pilot could be given: trainable, and not already held. */
+export function offeredTraits(catalog: Catalog, pilot: PilotRecord): string[] {
+  return Object.entries(catalog.rules.pilotTraits.entries)
+    .filter(([id, trait]) => trait.trainable && !pilot.traits.includes(id))
+    .map(([id]) => id)
+    .sort();
+}
+
+/**
+ * Awards a speciality the pilot has earned. Refuses anything they have not,
+ * so the campaign screen cannot hand out a trait by asking twice.
+ */
+export function chooseTrait(
+  catalog: Catalog,
+  pilot: PilotRecord,
+  traitId: string,
+): { ok: boolean; reason: string | null } {
+  if (pendingTraitPicks(catalog, pilot) <= 0) {
+    return { ok: false, reason: `${pilot.name} has not earned a speciality` };
+  }
+  if (!offeredTraits(catalog, pilot).includes(traitId)) {
+    return { ok: false, reason: 'that speciality is not on offer' };
+  }
+
+  pilot.traits.push(traitId);
+  return { ok: true, reason: null };
 }
