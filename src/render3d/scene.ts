@@ -131,7 +131,11 @@ export class Renderer {
     this.mapData = mapData;
     this.host = host;
     this.renderer = new WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio ?? 1));
+    // Capped below the display's own ratio on Retina: the scene is fill-bound
+    // there, and 1.5 is ~44% fewer pixels than 2 for a difference nobody has
+    // picked out of a moving battle. Effects stack additive transparency, so
+    // fill is what firefight frame spikes are made of.
+    this.renderer.setPixelRatio(Math.min(1.5, globalThis.devicePixelRatio ?? 1));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.toneMapping = ACESFilmicToneMapping;
@@ -213,6 +217,11 @@ export class Renderer {
   /** The canvas the input layer listens on. */
   get canvas(): HTMLCanvasElement {
     return this.renderer.domElement;
+  }
+
+  /** How many draw calls the last frame issued, for the perf overlay. */
+  get drawCalls(): number {
+    return this.renderer.info.render.calls;
   }
 
   get viewport(): Viewport {

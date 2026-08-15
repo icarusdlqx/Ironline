@@ -521,6 +521,9 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
         engine.nudgeSpeed(1);
         event.preventDefault();
         break;
+      case 'KeyP':
+        engine.togglePerf();
+        break;
       case 'Escape':
         state.setOrderMode(null);
         state.setSupportMode(null);

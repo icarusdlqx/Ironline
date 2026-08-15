@@ -375,8 +375,8 @@ export function Battle() {
           ))}
         </select>
         <span className="hint">
-          Space pauses · , . change speed · click an enemy to attack · right-click moves
-          (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms
+          Space pauses · , . change speed · P perf graph · click an enemy to attack ·
+          right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms
         </span>
       </header>
 

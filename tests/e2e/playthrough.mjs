@@ -97,7 +97,7 @@ async function main() {
     await page.waitForSelector('[data-testid="lance-bar"]');
 
     process.stdout.write('\nboot\n');
-    const canvas = await page.locator('.viewport canvas').boundingBox();
+    const canvas = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
     check('canvas is mounted at full size', (canvas?.width ?? 0) > 1000 && (canvas?.height ?? 0) > 700);
     check('no page errors during boot', pageErrors.length === 0, pageErrors.join(' | '));
 
@@ -152,7 +152,7 @@ async function main() {
 
     process.stdout.write('\norders while paused\n');
     const selectedId = (await state(page)).selection[0];
-    const box = await page.locator('.viewport canvas').boundingBox();
+    const box = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
     await page.mouse.click(box.x + box.width * 0.62, box.y + box.height * 0.32, { button: 'right' });
 
     const afterOrder = await sim(page);
@@ -279,7 +279,7 @@ async function main() {
       Number((await page.locator('[data-testid="resource-points"]').innerText()).replace(/[^0-9]/g, ''));
     const rpBefore = await rpText();
 
-    const canvasBox = await page.locator('.viewport canvas').boundingBox();
+    const canvasBox = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
     // Report rather than hang: a disabled button times the click out after
     // thirty seconds and kills the run, which says nothing about why.
     check(
@@ -445,7 +445,7 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/06-mechbay-legal.png` });
     await page.locator('[data-testid="bay-exit"]').click();
     await page.waitForSelector('[data-testid="lance-bar"]');
-    check('returning to the skirmish remounts the battle', (await page.locator('.viewport canvas').count()) === 1);
+    check('returning to the skirmish remounts the battle', (await page.locator('.viewport canvas:not(.perf-overlay)').count()) === 1);
 
     process.stdout.write('\ncampaign\n');
     await page.evaluate(() => localStorage.clear());
@@ -580,7 +580,7 @@ async function main() {
     await page.waitForSelector('[data-testid="briefing"]');
     check('the contracted mission opens on its briefing', true);
     await page.locator('[data-testid="briefing-deploy"]').click();
-    check('deploying launches the contracted mission', (await page.locator('.viewport canvas').count()) === 1);
+    check('deploying launches the contracted mission', (await page.locator('.viewport canvas:not(.perf-overlay)').count()) === 1);
 
     const deployed = await page.evaluate(() => {
       const { world } = globalThis.__ironline;

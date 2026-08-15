@@ -26,6 +26,8 @@ import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } 
 import { attachInput } from './input';
 import { AudioDirector } from './audio';
 import { hitPreview } from '../sim/preview';
+import { FramePacer } from './framePacer';
+import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
 import { useGame, type HitPreviewView, type OrderMode } from './store';
 
@@ -51,6 +53,9 @@ export class Engine {
 
   private running = true;
   private accumulator = 0;
+  private readonly pacer = new FramePacer();
+  /** The frame-time overlay, attached by createEngine and toggled with P. */
+  perf: PerfOverlay | null = null;
   private lastFrame = 0;
   private hudTimer = 0;
   private smokeTimer = 0;
@@ -67,6 +72,7 @@ export class Engine {
   }
 
   setPaused(paused: boolean): void {
+    this.pacer.reset();
     useGame.getState().patch({ paused });
   }
 
@@ -79,7 +85,12 @@ export class Engine {
 
   setSpeed(speed: number): void {
     if (!Engine.SPEEDS.includes(speed as 1 | 2 | 4)) return;
+    this.pacer.reset();
     useGame.getState().patch({ speed, paused: false });
+  }
+
+  togglePerf(): void {
+    this.perf?.toggle();
   }
 
   /** Steps along 1× → 2× → 4×, clamped at the ends rather than wrapping. */
@@ -97,9 +108,12 @@ export class Engine {
   start(): void {
     const frame = (now: number): void => {
       if (!this.running) return;
-      const deltaSeconds = this.lastFrame === 0 ? 0 : Math.min(0.25, (now - this.lastFrame) / 1000);
+      // The sim clamps its catch-up, but the pacer wants the honest interval:
+      // a clamped reading would hide exactly the slowness it exists to catch.
+      const rawMs = this.lastFrame === 0 ? 0 : now - this.lastFrame;
+      const deltaSeconds = Math.min(0.25, rawMs / 1000);
       this.lastFrame = now;
-      this.tick(deltaSeconds);
+      this.tick(deltaSeconds, rawMs);
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
@@ -121,10 +135,21 @@ export class Engine {
   }
 
   // Fixed 20Hz simulation; the renderer interpolates between steps at display rate.
-  private tick(deltaSeconds: number): void {
+  private tick(deltaSeconds: number, rawMs = deltaSeconds * 1000): void {
     const state = useGame.getState();
+    let simMs = 0;
+    let stepsRun = 0;
 
     if (!state.paused && !this.world.finished) {
+      // When the display cannot hold the chosen fast-forward, step it down and
+      // say so — sustained late frames read as "the game broke", not as "I
+      // asked this machine for more than it has".
+      const verdict = this.pacer.record(rawMs, state.speed);
+      if (verdict !== null && verdict < state.speed) {
+        state.patch({ speed: verdict });
+        state.pushLog(`Frame rate cannot hold ${state.speed}× — dropping to ${verdict}×.`);
+      }
+
       // Fast-forward stretches how much battle each real second buys. The sim
       // still steps at its fixed rate — determinism never rides on the clock.
       this.accumulator += deltaSeconds * state.speed;
@@ -134,11 +159,14 @@ export class Engine {
       // fast-forward at whatever rate the guard was tuned for at 1×.
       const cap = MAX_CATCHUP_STEPS * state.speed;
       let steps = 0;
+      const simStart = performance.now();
       while (this.accumulator >= this.world.dt && steps < cap) {
         this.accumulator -= this.world.dt;
         steps += 1;
         this.forceStep();
       }
+      simMs = performance.now() - simStart;
+      stepsRun = steps;
       if (steps >= cap) this.accumulator = 0;
     }
 
@@ -149,6 +177,7 @@ export class Engine {
     }
 
     const alpha = state.paused ? 1 : Math.min(1, this.accumulator / this.world.dt);
+    const drawStart = performance.now();
     this.renderer.draw(this.world, alpha, deltaSeconds, {
       selection: new Set(state.selection),
       hovered: this.hoveredId,
@@ -156,6 +185,15 @@ export class Engine {
       orderMode: state.orderMode,
       selectionBox: this.selectionBox,
       supportRun: this.supportRun(),
+    });
+
+    this.perf?.record({
+      frameMs: rawMs,
+      simMs,
+      drawMs: performance.now() - drawStart,
+      steps: stepsRun,
+      speed: state.speed,
+      drawCalls: this.renderer.drawCalls,
     });
 
     this.hudTimer += deltaSeconds;
@@ -617,6 +655,8 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
   renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
   engine.audio.setAmbient(atmosphereId);
+  engine.perf = new PerfOverlay(host);
+  engine.onDestroy(() => engine.perf?.destroy());
   engine.attach(renderer.canvas);
 
   const onResize = (): void => renderer.resize();
