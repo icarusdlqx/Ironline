@@ -302,7 +302,9 @@ describe('three-mission campaign', () => {
     ).toBe(true);
   });
 
-  it('is winnable to the victory node', () => {
+  // Three whole missions back to back. Fights got longer once the AI stopped
+  // charging into everything, which put this past the five-second default.
+  it('is winnable to the victory node', { timeout: 60_000 }, () => {
     const run = start('victory');
 
     for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
