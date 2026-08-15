@@ -519,10 +519,14 @@ async function main() {
     // Deploying opens the manifest; launching from it is what starts the drop.
     await page.locator('[data-testid="camp-deploy"]').click();
     await page.waitForSelector('[data-testid="lance-manifest"]');
+    // Five rated bars per pilot, not three lines of prose: what the player
+    // needs off this screen is to be able to tell two pilots apart.
+    const rated = page.locator('.manifest-row [data-testid="pilot-stats"]').first();
     check(
       'the manifest lists the crew with their skills',
       (await page.locator('.manifest-row').count()) >= 4 &&
-        (await page.locator('.manifest-skills').first().innerText()).includes('hit chance'),
+        (await rated.locator('li').count()) === 5 &&
+        (await rated.innerText()).includes('Gunnery'),
     );
     check(
       'the manifest marks who is actually dropping',
