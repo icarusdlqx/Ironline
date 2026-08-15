@@ -29,6 +29,7 @@ const OFF_MAP: TerrainType = {
   losObstruction: 1,
   heatDissipationMultiplier: 1,
   signatureFactor: 1,
+  visionFactor: 1,
   passable: false,
 };
 

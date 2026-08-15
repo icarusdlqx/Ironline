@@ -73,6 +73,9 @@ interface AnimationState {
   lastStep: number;
   /** Death fall, 0 standing to 1 down. */
   fall: number;
+  /** Pitch and roll of the ground under the feet, eased so the hull is not jittery. */
+  pitch: number;
+  roll: number;
   /** Whether the wreck has already hit the ground and raised its dust. */
   landedFall: boolean;
 }
@@ -468,6 +471,10 @@ export class Renderer {
       // down; the same angle round the world's up axis runs the other way.
       shown.model.root.rotation.y = -at.facing;
       shown.model.torso.rotation.y = -at.torso;
+      // Stand the mech on the ground rather than on the idea of the ground: a
+      // hull that stays level walking up a scarp is what makes a ridge read as
+      // a painted backdrop.
+      this.standOnSlope(entity, at);
 
       this.animate(entity, shown, at, deltaSeconds);
       // After animate(), or the nozzles ride a frame behind the legs.
@@ -561,7 +568,7 @@ export class Renderer {
       // the legs gather under the mech instead of dragging.
       if (down) return;
     } else {
-      model.root.rotation.z = 0;
+      model.root.rotation.z = anim.roll;
     }
 
     // ------------------------------------------------------------ walk cycle
@@ -586,7 +593,7 @@ export class Renderer {
     // The hull rides the stride: two bobs per cycle, and a touch of roll.
     model.torso.position.y =
       model.torsoRestY + Math.abs(Math.sin(anim.phase)) * model.torsoRestY * 0.035 * anim.amp;
-    model.root.rotation.x = Math.sin(anim.phase) * 0.02 * anim.amp;
+    model.root.rotation.x = anim.pitch + Math.sin(anim.phase) * 0.02 * anim.amp;
 
     // A footstep lands every π once the stride is actually carrying weight.
     const step = Math.floor(anim.phase / Math.PI);
@@ -598,6 +605,44 @@ export class Renderer {
     }
   }
 
+  /**
+   * Tips the hull to match the ground it is standing on, sampled a stride
+   * ahead and to each side rather than under the feet — a mech reads the slope
+   * it is walking onto, and sampling a single point makes the pose jitter every
+   * time a foot crosses a tile edge.
+   *
+   * Eased rather than snapped, and capped, because the terrain has step-height
+   * scarps in it and a hull lying at 40 degrees reads as a bug.
+   */
+  private standOnSlope(entity: MechEntity, at: Interpolated): void {
+    const anim = this.animationFor(entity.id);
+    const reach = 22;
+
+    const ahead = this.terrain.heightAt(
+      at.x + Math.cos(at.facing) * reach,
+      at.y + Math.sin(at.facing) * reach,
+    );
+    const behind = this.terrain.heightAt(
+      at.x - Math.cos(at.facing) * reach,
+      at.y - Math.sin(at.facing) * reach,
+    );
+    const left = this.terrain.heightAt(
+      at.x + Math.cos(at.facing + Math.PI / 2) * reach,
+      at.y + Math.sin(at.facing + Math.PI / 2) * reach,
+    );
+    const right = this.terrain.heightAt(
+      at.x + Math.cos(at.facing - Math.PI / 2) * reach,
+      at.y + Math.sin(at.facing - Math.PI / 2) * reach,
+    );
+
+    const LIMIT = 0.32;
+    const wantPitch = Math.max(-LIMIT, Math.min(LIMIT, Math.atan2(ahead - behind, reach * 2)));
+    const wantRoll = Math.max(-LIMIT, Math.min(LIMIT, Math.atan2(left - right, reach * 2)));
+
+    anim.pitch += (wantPitch - anim.pitch) * 0.12;
+    anim.roll += (wantRoll - anim.roll) * 0.12;
+  }
+
   private animationFor(id: EntityId): AnimationState {
     const existing = this.animation.get(id);
     if (existing !== undefined) return existing;
@@ -607,6 +652,8 @@ export class Renderer {
       lastAt: null,
       lastStep: 0,
       fall: 0,
+      pitch: 0,
+      roll: 0,
       landedFall: false,
     };
     this.animation.set(id, fresh);

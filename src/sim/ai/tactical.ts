@@ -21,7 +21,7 @@ import {
   canStillFight,
   coreFraction,
   healthFraction,
-  preferredRange,
+  engagementRange,
   scoreTargets,
   structureFraction,
 } from './utility';
@@ -225,17 +225,17 @@ export function decideTactical(
   // it does have to close when the target is genuinely out of its reach.
   const marchesIn =
     roleOf(world, mech).aggression >= 1 ||
-    chosen.range > preferredRange(world, mech, chosen.target) * 1.3;
+    chosen.range > engagementRange(world, mech, chosen.target) * 1.3;
 
   if (stance === 'close' && chosen.range > approachThreshold && zone === null && marchesIn) {
     // A closer with jets uses them: the walk in is where brawlers die. Only
     // when the target is well past its guns, and never toward point blank —
     // the landing aims for the mech's own preferred band, not the target.
-    if (chosen.range > preferredRange(world, mech, chosen.target) * 1.6) {
+    if (chosen.range > engagementRange(world, mech, chosen.target) * 1.6) {
       const landing = pointAtRange(
         mech.pos,
         chosen.target.pos,
-        preferredRange(world, mech, chosen.target),
+        engagementRange(world, mech, chosen.target),
       );
       if (jumpTowards(world, mech, landing, 60)) return;
     }

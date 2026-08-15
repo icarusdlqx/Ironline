@@ -45,6 +45,19 @@ export const MovementRulesSchema = z.strictObject({
   waypointRadius: z.number().positive(),
   arrivalRadius: z.number().positive(),
   /**
+   * How much nearer a mech has to get to its waypoint to count as making
+   * progress, and how many ticks of not making it before the path is judged
+   * hopeless and dropped for whoever gave it to re-solve.
+   */
+  progressEpsilon: z.number().positive(),
+  stallTicks: z.number().int().positive(),
+  /**
+   * What a full level of climb costs, as a share of pace. Ground that rises
+   * under a mech should be felt: without this a ridge is a painted backdrop
+   * that costs nothing to walk up.
+   */
+  climbSpeedFactor: z.number().min(0).max(1),
+  /**
    * How much room a mech takes up on the ground, so two of them cannot stand
    * in the same spot. These have to agree with the radius the renderer draws a
    * hull at, or mechs visibly overlap while the simulation believes they are
@@ -128,6 +141,8 @@ export const CombatRulesSchema = z.strictObject({
   elevation: z.strictObject({
     accuracyPerLevel: Factor,
     maxLevels: z.number().int().min(0).max(9),
+    /** What a level of height adds to how far a mech can see from it. */
+    visionPerLevel: Factor,
   }),
   /** How long a mech under return-fire orders remembers who shot at it. */
   returnFireSeconds: z.number().positive(),
@@ -223,6 +238,12 @@ export const TerrainTypeSchema = z.strictObject({
    * what a treeline hides is left behind when it walks out.
    */
   signatureFactor: Factor,
+  /**
+   * How far a mech standing here can see. Cover cuts both ways — a treeline
+   * you cannot be picked out of is also a treeline you cannot see out of, and
+   * without this the woods were pure advantage.
+   */
+  visionFactor: Factor,
   passable: z.boolean(),
 });
 
@@ -235,6 +256,12 @@ const RoleProfileSchema = z.strictObject({
   aggression: z.number().positive().max(3),
   /** How far behind the lance's leading edge it prefers to sit, in metres. */
   standoff: z.number().min(-200).max(400),
+  /**
+   * How heavily return fire counts when choosing a range to fight at. Zero is a
+   * machine that maximises its own output and walks into anything; high is one
+   * that will only shoot from where it cannot be shot back.
+   */
+  caution: z.number().nonnegative().max(4),
 });
 
 export const AiRulesSchema = z.strictObject({

@@ -192,6 +192,7 @@ export function Battle() {
           customLabel: berth.designId === null ? (berth.design?.name ?? 'Custom build') : null,
           pilotId: berth.pilotId,
           tonnage: catalog.chassis.get(berthDesign(catalog, berth)?.chassisId ?? '')?.tonnage ?? 0,
+          pilot: catalog.pilots.get(berth.pilotId) ?? null,
         })),
         designs: [...catalog.designs.values()].map((design) => ({
           value: design.id,

@@ -90,7 +90,8 @@
   "tagFactor": 1.15,
   "elevation": {
     "accuracyPerLevel": 1.08,
-    "maxLevels": 2
+    "maxLevels": 2,
+    "visionPerLevel": 1.12
   },
   "returnFireSeconds": 6
 }

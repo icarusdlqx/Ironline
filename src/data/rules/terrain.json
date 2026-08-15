@@ -7,6 +7,7 @@
       "losObstruction": 0,
       "heatDissipationMultiplier": 1,
       "signatureFactor": 1,
+      "visionFactor": 1,
       "passable": true
     },
     "open": {
@@ -15,6 +16,7 @@
       "losObstruction": 0,
       "heatDissipationMultiplier": 1,
       "signatureFactor": 1,
+      "visionFactor": 1,
       "passable": true
     },
     "rough": {
@@ -23,6 +25,7 @@
       "losObstruction": 0,
       "heatDissipationMultiplier": 1,
       "signatureFactor": 0.95,
+      "visionFactor": 0.95,
       "passable": true
     },
     "forest": {
@@ -31,6 +34,7 @@
       "losObstruction": 0.5,
       "heatDissipationMultiplier": 1,
       "signatureFactor": 0.6,
+      "visionFactor": 0.65,
       "passable": true
     },
     "water": {
@@ -39,6 +43,7 @@
       "losObstruction": 0,
       "heatDissipationMultiplier": 2,
       "signatureFactor": 1,
+      "visionFactor": 1,
       "passable": true
     },
     "building": {
@@ -47,6 +52,7 @@
       "losObstruction": 1,
       "heatDissipationMultiplier": 1,
       "signatureFactor": 0.7,
+      "visionFactor": 0.7,
       "passable": false
     },
     "impassable": {
@@ -55,6 +61,7 @@
       "losObstruction": 1,
       "heatDissipationMultiplier": 1,
       "signatureFactor": 1,
+      "visionFactor": 1,
       "passable": false
     }
   }

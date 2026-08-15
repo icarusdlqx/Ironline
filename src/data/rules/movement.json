@@ -1,6 +1,6 @@
 {
   "id": "movement",
-  "walkSpeedFactor": 3.0,
+  "walkSpeedFactor": 3,
   "runMultiplier": 1.5,
   "turnRateDegreesPerSecond": 260,
   "turnRateReferenceTonnage": 20,
@@ -17,5 +17,8 @@
   "torsoTurnRateDegreesPerSecond": 130,
   "bodyRadiusBase": 8,
   "bodyRadiusPerTon": 0.14,
-  "separationRate": 0.5
+  "separationRate": 0.5,
+  "progressEpsilon": 0.25,
+  "stallTicks": 40,
+  "climbSpeedFactor": 0.42
 }

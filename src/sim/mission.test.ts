@@ -108,8 +108,16 @@ describe('zone capture', () => {
 
     // Both sides inside it, spread out — mechs no longer share a spot, and a
     // heap dropped on the marker would simply shove itself back out again.
+    // Pinned in place: what is under test is the zone rule, not whether the AI
+    // feels like standing there, and a long-range machine left free to choose
+    // now walks out of the ring to get to the range it wants.
     world.entities.forEach((entity, index) => {
       entity.pos = ringAround(zone, index);
+      // Under orders and told to hold: the AI controllers do not read posture,
+      // and one left to its own judgement now walks out of the ring to reach
+      // the range its guns want.
+      entity.controller = 'orders';
+      entity.posture = 'hold_position';
     });
     run(world, 400);
 

@@ -73,7 +73,9 @@ export function updateVision(world: World, vision: TeamVision): void {
   );
 
   for (const observer of observers) {
-    markTiles(world, vision, observer.pos, observer.sensorRange);
+    // The same vantage the contact check uses, or the fog would lift off ground
+    // the mech has no business seeing from inside a wood.
+    markTiles(world, vision, observer.pos, observer.sensorRange * vantageOf(world, observer));
   }
 
   // A sensor probe, or a scripted recon sweep, looks at the ground from above:
@@ -98,7 +100,12 @@ export function updateVision(world: World, vision: TeamVision): void {
 
     let closest = Infinity;
     for (const observer of observers) {
-      const reach = observer.sensorRange * candidate.signature * concealment;
+      // Where the observer is standing counts as much as where the target is.
+      // Cover cuts both ways: the treeline nobody can pick you out of is the
+      // treeline you cannot see out of either, and height is the whole reason
+      // a scout climbs something before it looks.
+      const reach =
+        observer.sensorRange * candidate.signature * concealment * vantageOf(world, observer);
       const gap = distance(observer.pos, candidate.pos);
       if (gap > reach) continue;
       if (!lineOfSight(world.terrain, observer.pos, candidate.pos).clear) continue;
@@ -150,4 +157,15 @@ export function tileVisible(vision: TeamVision | null, cell: number): boolean {
 export function tileExplored(vision: TeamVision | null, cell: number): boolean {
   if (vision === null) return true;
   return vision.explored[cell] === 1;
+}
+
+/**
+ * How much further a mech can see for standing where it is standing. Woods and
+ * buildings cut it down; height opens it up, which is what makes a ridge worth
+ * walking a scout onto before anything else moves.
+ */
+export function vantageOf(world: World, observer: MechEntity): number {
+  const ground = world.terrain.typeAtPoint(observer.pos).visionFactor;
+  const height = world.terrain.elevationAtPoint(observer.pos);
+  return ground * world.rules.combat.elevation.visionPerLevel ** height;
 }

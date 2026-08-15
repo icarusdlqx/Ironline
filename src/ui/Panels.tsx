@@ -1,4 +1,6 @@
+import { getCatalog } from '../schema/load';
 import type { SupportCallId } from '../sim/support';
+import { PilotStats, type RateablePilot } from './PilotStats';
 import type { ObjectiveView, UnitSnapshot, WeaponSnapshot, ZoneView } from './store';
 
 export function HeatBar({
@@ -286,6 +288,8 @@ export interface BriefingBerth {
   customLabel: string | null;
   pilotId: string;
   tonnage: number;
+  /** Who is flying it, so the briefing can show what they are worth. */
+  pilot: RateablePilot | null;
 }
 
 export interface BriefingLance {
@@ -393,6 +397,11 @@ export function Briefing({
               >
                 Customise
               </button>
+              {/* Who is in the seat matters as much as what they are sitting in,
+                  and a name alone is not something a player can choose between. */}
+              {berth.pilot === null ? null : (
+                <PilotStats catalog={getCatalog()} pilot={berth.pilot} compact />
+              )}
             </div>
           ))}
         </div>

@@ -3,6 +3,7 @@ import { coverFactorAt, lineOfSight } from '../los';
 import { distance } from '../math';
 import { isVisibleTo } from '../sensors';
 import { findAmmoBin, isOperational, type MechEntity, type World } from '../types';
+import { roleOf } from './roles';
 
 export interface TargetScore {
   target: MechEntity;
@@ -86,6 +87,51 @@ export function exchangeRatio(
   const mine = expectedDps(world, mech, target, range);
   const theirs = expectedDps(world, target, mech, range);
   return theirs <= 0 ? mine + 1 : mine / theirs;
+}
+
+/**
+ * The range where the trade is best, not where this mech's own guns are loudest.
+ *
+ * This is the difference between a lance that fights and one that marches. The
+ * range factors reward short range for every weapon in the game, so maximising
+ * your own damage alone always points at the target's face — which is why every
+ * machine on the field used to close regardless of what it was carrying.
+ *
+ * Scoring the exchange instead gives a gauss carrier somewhere to stand: out
+ * where its own output is merely good and the brawler's is nothing. How much a
+ * mech cares about what it is taking back is `caution`, off its role — a
+ * brawler barely counts it and walks in, a scout will not trade at all.
+ */
+export function engagementRange(world: World, shooter: MechEntity, target: MechEntity): number {
+  const step = world.rules.ai.positioning.rangeSampleStep;
+  const caution = roleOf(world, shooter).caution;
+
+  let longest = 0;
+  for (const mount of shooter.weapons) {
+    if (mount.destroyed) continue;
+    const weapon = world.catalog.weapons.get(mount.weaponId);
+    if (weapon === undefined) continue;
+    longest = Math.max(longest, weapon.range.long * world.rules.combat.maxRangeMultiplier);
+  }
+  if (longest === 0) return 0;
+
+  let best = step;
+  let bestScore = -Infinity;
+
+  for (let range = step; range <= longest; range += step) {
+    const mine = expectedDps(world, shooter, target, range);
+    if (mine <= 0) continue;
+    const theirs = expectedDps(world, target, shooter, range);
+
+    const score = mine - theirs * caution;
+    // Ties go to the longer range: standing off is free damage avoidance.
+    if (score >= bestScore) {
+      bestScore = score;
+      best = range;
+    }
+  }
+
+  return best;
 }
 
 /** The range at which this mech's own guns are worth the most against that target. */

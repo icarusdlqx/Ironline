@@ -11,6 +11,12 @@ export interface RoleProfile {
   aggression: number;
   /** How far behind the lance's leading edge this mech prefers to sit, in metres. */
   standoff: number;
+  /**
+   * How much return fire counts when picking a range to fight at. Near zero is
+   * a machine that will trade all day; high is one that only shoots from where
+   * it cannot be shot back.
+   */
+  caution: number;
 }
 
 interface Battery {
@@ -59,7 +65,12 @@ export function roleOf(world: World, mech: MechEntity): RoleProfile {
   const rules = world.rules.ai.roles;
   const role = classify(rules, batteryOf(world, mech));
   const profile = rules.profiles[role];
-  return { role, aggression: profile.aggression, standoff: profile.standoff };
+  return {
+    role,
+    aggression: profile.aggression,
+    standoff: profile.standoff,
+    caution: profile.caution,
+  };
 }
 
 /**

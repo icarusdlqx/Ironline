@@ -4,7 +4,7 @@ import { angleDifference, bearing, distance } from '../math';
 import { nearestPassable } from '../pathfind';
 import { isOperational, type MechEntity, type Stance, type Vec2, type World } from '../types';
 import { lanceFrontage, roleOf } from './roles';
-import { exchangeRatio, expectedDps, healthFraction, preferredRange } from './utility';
+import { engagementRange, exchangeRatio, expectedDps, healthFraction } from './utility';
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
@@ -20,7 +20,7 @@ export function stanceFor(
 
   const rules = world.rules.ai.positioning;
   const range = distance(mech.pos, target.pos);
-  const preferred = preferredRange(world, mech, target);
+  const preferred = engagementRange(world, mech, target);
 
   if (range > preferred + rules.rangeTolerance) return 'close';
   if (range >= preferred - rules.rangeTolerance) return 'hold';
@@ -134,7 +134,7 @@ export function choosePosition(
   bounds: { x: number; y: number; radius: number } | null = null,
 ): Vec2 | null {
   const rules = world.rules.ai.positioning;
-  const preferred = preferredRange(world, mech, target);
+  const preferred = engagementRange(world, mech, target);
   const step = rules.repositionStep;
   const motion = world.rules.combat.shooterMotion;
   const profile = roleOf(world, mech);

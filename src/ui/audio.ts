@@ -32,6 +32,8 @@ export class AudioDirector {
   private readonly heatWas = new Map<number, number>();
   /** Non-sim randomness for detuning. Never touches the battle's rng. */
   private seed = 0x9e3779b9;
+  /** How far off the last sound was, so begin() can dull it for the distance. */
+  private lastDistance = 0;
 
   constructor() {
     this.mutedState = readMuted();
@@ -176,7 +178,7 @@ export class AudioDirector {
         this.beam(gain);
         return;
       case 'pulse':
-        for (let i = 0; i < 3; i += 1) this.blipAt(i * 0.055, 1180 - i * 240, 0.05, gain * 0.5);
+        this.pulses(3, gain);
         return;
       case 'bolt':
         this.bolt(gain);
@@ -198,69 +200,72 @@ export class AudioDirector {
     }
   }
 
+  /** A laser is air tearing, not a note: hiss with a resonance that closes. */
+  /** A pulse laser: the same tear as a beam, chopped into three. */
+  private pulses(count: number, gain: number): void {
+    const started = this.begin(gain);
+    if (started === null) return;
+    const { now, out } = started;
+
+    for (let i = 0; i < count; i += 1) {
+      const t = now + i * 0.058;
+      this.crack(t, 0.18, 3400, out);
+      this.body(t, 0.075, 4600 - i * 500, 900, 0.3, 4, out);
+    }
+  }
+
   private beam(gain: number): void {
     const started = this.begin(gain);
     if (started === null) return;
-    const { context, out, now } = started;
+    const { out, now } = started;
 
-    const osc = context.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(340, now);
-    osc.frequency.exponentialRampToValueAtTime(150, now + 0.22);
-    const level = context.createGain();
-    level.gain.setValueAtTime(0.4, now);
-    level.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
-    osc.connect(level).connect(out);
-    osc.start(now);
-    osc.stop(now + 0.26);
-
-    this.noiseBurst(now, 0.16, 2400, 0.14, out);
+    this.crack(now, 0.22, 3200, out);
+    this.body(now, 0.3, 5200, 700, 0.34, 3.5, out);
+    this.thump(now, 0.12, 120, 60, 0.12, out);
   }
 
+  /** A particle bolt: a hard electrical snap over a discharge that falls away. */
   private bolt(gain: number): void {
     const started = this.begin(gain);
     if (started === null) return;
-    const { context, out, now } = started;
+    const { out, now } = started;
 
-    const osc = context.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(980, now);
-    osc.frequency.exponentialRampToValueAtTime(140, now + 0.16);
-    const level = context.createGain();
-    level.gain.setValueAtTime(0.5, now);
-    level.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-    osc.connect(level).connect(out);
-    osc.start(now);
-    osc.stop(now + 0.22);
-
-    this.noiseBurst(now, 0.08, 4200, 0.3, out);
+    this.crack(now, 0.5, 2600, out);
+    this.body(now, 0.26, 7000, 400, 0.42, 5, out);
+    this.thump(now, 0.2, 180, 48, 0.34, out);
   }
 
+  /**
+   * A gauss slug. Almost no muzzle blast — the mass driver is quiet at the
+   * front end — so the weight is all in the sub, with a capacitor snap on top.
+   */
   private slug(gain: number): void {
     const started = this.begin(gain);
     if (started === null) return;
-    const { context, out, now } = started;
+    const { out, now } = started;
 
-    const osc = context.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(95, now);
-    osc.frequency.exponentialRampToValueAtTime(34, now + 0.3);
-    const level = context.createGain();
-    level.gain.setValueAtTime(0.9, now);
-    level.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-    osc.connect(level).connect(out);
-    osc.start(now);
-    osc.stop(now + 0.34);
-
-    this.noiseBurst(now, 0.05, 3000, 0.4, out);
+    this.crack(now, 0.34, 1800, out);
+    this.thump(now, 0.42, 88, 28, 0.95, out);
+    this.body(now, 0.2, 900, 120, 0.3, 1.2, out);
   }
 
+  /**
+   * An autocannon. Each round is a crack, a short body and a thump — a
+   * bandpassed noise burst on its own is a hi-hat, which is most of why the
+   * ballistics used to sound like a toy drum kit.
+   */
   private cannon(rounds: number, gain: number): void {
     const started = this.begin(gain);
     if (started === null) return;
-    const { now } = started;
+    const { now, out } = started;
+
     for (let i = 0; i < rounds; i += 1) {
-      this.noiseBurst(now + i * 0.07, 0.06, 700 + this.random() * 300, 0.5, started.out);
+      // Rounds are never machined to the same millisecond. The jitter is what
+      // makes a burst read as a burst rather than as a metronome.
+      const t = now + i * (0.062 + this.random() * 0.016);
+      this.crack(t, 0.42, 2200, out);
+      this.body(t, 0.11, 2600, 260, 0.46, 2.2, out);
+      this.thump(t, 0.14, 130 + this.random() * 30, 45, 0.5, out);
     }
   }
 
@@ -306,17 +311,24 @@ export class AudioDirector {
     src.stop(now + seconds + 0.05);
   }
 
+  /** Something heavy striking plate: a sharp clang over the ring of the hull. */
   private impact(gain: number): void {
     const started = this.begin(gain * 0.7);
     if (started === null) return;
-    this.noiseBurst(started.now, 0.09, 420, 0.5, started.out);
+    const { now, out } = started;
+    this.crack(now, 0.3, 1600, out);
+    this.body(now, 0.14, 1800, 180, 0.42, 2.6, out);
+    this.thump(now, 0.16, 150, 60, 0.35, out);
   }
 
+  /** Structure failing: the tear first, then the weight of it coming apart. */
   private crunch(gain: number): void {
     const started = this.begin(gain);
     if (started === null) return;
-    this.noiseBurst(started.now, 0.16, 1800, 0.6, started.out);
-    this.noiseBurst(started.now + 0.05, 0.12, 300, 0.6, started.out);
+    const { now, out } = started;
+    this.crack(now, 0.45, 1200, out);
+    this.body(now, 0.3, 3000, 200, 0.55, 1.6, out);
+    this.thump(now + 0.04, 0.34, 110, 34, 0.6, out);
   }
 
   private explosion(size: number, gain: number): void {
@@ -419,22 +431,31 @@ export class AudioDirector {
     this.blipAtAbsolute(0, frequency, seconds, gain);
   }
 
-  private blipAt(offset: number, frequency: number, seconds: number, gain: number): void {
-    this.blipAtAbsolute(offset, frequency, seconds, gain);
-  }
-
+  /**
+   * A console acknowledging a keypress. A triangle behind a low-pass, not a
+   * square wave: a bare square at a fixed pitch is a toy, and it was the first
+   * thing the player heard on every order they gave.
+   */
   private blipAtAbsolute(offset: number, frequency: number, seconds: number, gain: number): void {
     const started = this.begin(gain, true);
     if (started === null) return;
     const { context, out } = started;
     const t = started.now + offset;
+
     const osc = context.createOscillator();
-    osc.type = 'square';
-    osc.frequency.value = frequency;
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(frequency, t);
+    osc.frequency.exponentialRampToValueAtTime(frequency * 0.82, t + seconds);
+
+    const soften = context.createBiquadFilter();
+    soften.type = 'lowpass';
+    soften.frequency.value = frequency * 2.2;
+
     const level = context.createGain();
-    level.gain.setValueAtTime(0.12, t);
-    level.gain.exponentialRampToValueAtTime(0.001, t + seconds);
-    osc.connect(level).connect(out);
+    level.gain.setValueAtTime(0.0001, t);
+    level.gain.exponentialRampToValueAtTime(0.09, t + 0.004);
+    level.gain.exponentialRampToValueAtTime(0.0001, t + seconds);
+    osc.connect(soften).connect(level).connect(out);
     osc.start(t);
     osc.stop(t + seconds + 0.02);
   }
@@ -465,30 +486,112 @@ export class AudioDirector {
 
     const out = context.createGain();
     out.gain.value = Math.min(1, gain);
-    out.connect(this.master);
+
+    if (ui) {
+      out.connect(this.master);
+    } else {
+      // Air absorption. Nothing far away keeps its top end, and a shot that
+      // does sounds like it is being played next to your ear.
+      const air = context.createBiquadFilter();
+      air.type = 'lowpass';
+      air.frequency.value = Math.max(600, 18_000 - this.lastDistance * 22);
+      out.connect(air).connect(this.master);
+    }
+
     return { context, out, now: context.currentTime };
   }
 
-  private noiseBurst(at: number, seconds: number, frequency: number, gain: number, out: GainNode): void {
+  /**
+   * The crack at the front of a shot: a few milliseconds of broadband noise
+   * through a high shelf. This is what a gun has and a beep does not — without
+   * a transient the ear hears a tone, and a tone at any pitch is a cartoon.
+   */
+  private crack(at: number, gain: number, colour: number, out: GainNode): void {
     const context = this.context;
     if (context === null || this.noise === null) return;
+
     const src = context.createBufferSource();
     src.buffer = this.noise;
-    const band = context.createBiquadFilter();
-    band.type = 'bandpass';
-    band.frequency.value = frequency;
-    band.Q.value = 0.9;
+
+    const shelf = context.createBiquadFilter();
+    shelf.type = 'highpass';
+    shelf.frequency.value = colour;
+
     const level = context.createGain();
     level.gain.setValueAtTime(gain, at);
-    level.gain.exponentialRampToValueAtTime(0.001, at + seconds);
-    src.connect(band).connect(level).connect(out);
+    level.gain.exponentialRampToValueAtTime(0.0001, at + 0.012);
+
+    src.connect(shelf).connect(level).connect(out);
+    src.start(at, this.random());
+    src.stop(at + 0.03);
+  }
+
+  /**
+   * The body of a shot: noise driven through a resonant low-pass that opens
+   * and shuts. Real ordnance is broadband — the pitch you hear is a resonance,
+   * not an oscillator — so sweeping a filter over noise reads as machinery
+   * where sweeping an oscillator reads as a slide whistle.
+   */
+  private body(
+    at: number,
+    seconds: number,
+    from: number,
+    to: number,
+    gain: number,
+    resonance: number,
+    out: GainNode,
+  ): void {
+    const context = this.context;
+    if (context === null || this.noise === null) return;
+
+    const src = context.createBufferSource();
+    src.buffer = this.noise;
+
+    const filter = context.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(from, at);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, to), at + seconds);
+    filter.Q.value = resonance;
+
+    const level = context.createGain();
+    level.gain.setValueAtTime(0.0001, at);
+    level.gain.exponentialRampToValueAtTime(gain, at + 0.006);
+    level.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+
+    src.connect(filter).connect(level).connect(out);
     src.start(at, this.random());
     src.stop(at + seconds + 0.02);
   }
 
-  /** Louder near the middle of the screen, gone a map away. */
+  /** The weight under a heavy shot. Felt more than heard, so it stays a sine. */
+  private thump(at: number, seconds: number, from: number, to: number, gain: number, out: GainNode): void {
+    const context = this.context;
+    if (context === null) return;
+
+    const osc = context.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(from, at);
+    osc.frequency.exponentialRampToValueAtTime(to, at + seconds);
+
+    const level = context.createGain();
+    level.gain.setValueAtTime(gain, at);
+    level.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+
+    osc.connect(level).connect(out);
+    osc.start(at);
+    osc.stop(at + seconds + 0.02);
+  }
+
+  /**
+   * Louder near the middle of the screen, gone a map away — and the distance is
+   * kept, because volume alone is not what far away sounds like. Air eats the
+   * top end first, so a gun across the valley is duller as well as quieter.
+   * Without that everything sounds like it is happening in the room with you,
+   * which is most of what reads as toy-like.
+   */
   private gainAt(at: Vec2): number {
     const distance = Math.hypot(at.x - this.listenAt.x, at.y - this.listenAt.y);
+    this.lastDistance = distance;
     return Math.max(0, 1 - distance / 900) ** 1.4;
   }
 

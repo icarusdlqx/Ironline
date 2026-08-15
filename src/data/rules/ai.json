@@ -59,11 +59,31 @@
     "shortShare": 0.45,
     "minimumRangeMetres": 60,
     "profiles": {
-      "brawler": { "aggression": 1.18, "standoff": -15 },
-      "skirmisher": { "aggression": 1.05, "standoff": 0 },
-      "sniper": { "aggression": 0.93, "standoff": 22 },
-      "missile_boat": { "aggression": 0.85, "standoff": 35 },
-      "scout": { "aggression": 0.9, "standoff": 18 }
+      "brawler": {
+        "aggression": 1.18,
+        "standoff": -15,
+        "caution": 0.3
+      },
+      "skirmisher": {
+        "aggression": 1.05,
+        "standoff": 0,
+        "caution": 0.7
+      },
+      "sniper": {
+        "aggression": 0.93,
+        "standoff": 22,
+        "caution": 1.3
+      },
+      "missile_boat": {
+        "aggression": 0.85,
+        "standoff": 35,
+        "caution": 1.5
+      },
+      "scout": {
+        "aggression": 0.9,
+        "standoff": 18,
+        "caution": 1.9
+      }
     }
   }
 }

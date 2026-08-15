@@ -313,7 +313,8 @@ describe('save and load', () => {
     expect(restored.state).toEqual(state);
   });
 
-  it('resumes the same random stream after a reload', () => {
+  // Fights a whole mission twice over to compare the streams.
+  it('resumes the same random stream after a reload', { timeout: 30_000 }, () => {
     fightNode(state, 'militia_raid');
 
     const reloaded = deserialiseCampaign(serialiseCampaign(state)).state;

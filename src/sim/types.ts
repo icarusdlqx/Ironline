@@ -170,6 +170,14 @@ export interface MechEntity {
   dissipationPerSecond: number;
   shutdownRemaining: number;
 
+  /**
+   * Nearest this mech has got to its current waypoint, and how long it has
+   * failed to beat that. A mech wedged against a wall walks on the spot
+   * forever otherwise, because sliding is movement and arriving is not.
+   */
+  closestApproach: number;
+  stalledTicks: number;
+
   /** How badly the mech has been shoved about, and how far off its feet that is. */
   stability: number;
   /** Seconds left on the ground. Zero means upright. */

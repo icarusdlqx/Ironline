@@ -4,6 +4,13 @@ import type { Vec2 } from './types';
 
 const DIAGONAL_COST = Math.SQRT2;
 
+/**
+ * What one level of climb adds to a step. Kept here rather than in the rules
+ * because the pathfinder is a pure grid search with no World to read from, and
+ * threading rules into it for one number would touch every caller.
+ */
+const CLIMB_COST = 1.4;
+
 const NEIGHBOURS: readonly (readonly [number, number, number])[] = [
   [1, 0, 1],
   [-1, 0, 1],
@@ -192,7 +199,11 @@ export function findPath(
 
       const nextCell = nextRow * grid.width + nextColumn;
       const terrain = grid.typeAt(nextColumn, nextRow);
-      const nextCost = currentCost + stepCost / terrain.moveMultiplier;
+      // Climbing costs what climbing costs, so a route round the shoulder of a
+      // ridge beats one straight over the top. Descending is free: a mech picks
+      // its way down at its own pace rather than falling faster.
+      const rise = Math.max(0, grid.elevationAt(nextColumn, nextRow) - grid.elevationAt(column, row));
+      const nextCost = currentCost + (stepCost / terrain.moveMultiplier) * (1 + rise * CLIMB_COST);
 
       if (stamp[nextCell] === generation && nextCost >= (cost[nextCell] ?? 0)) continue;
 
@@ -230,6 +241,10 @@ export function lineCost(grid: TerrainGrid, from: Vec2, to: Vec2): number | null
   let blocked = false;
   let tiles = 1;
   let cost = 1 / grid.typeAt(start.column, start.row).moveMultiplier;
+  // Total climb over the run. The smoother uses this to refuse a shortcut that
+  // saves distance by going over a scarp the long way round avoids.
+  let climb = 0;
+  let lastElevation = grid.elevationAt(start.column, start.row);
 
   traceTiles(grid, from, to, (column, row) => {
     if (!grid.passable(column, row)) {
@@ -238,6 +253,8 @@ export function lineCost(grid: TerrainGrid, from: Vec2, to: Vec2): number | null
     }
     tiles += 1;
     cost += 1 / grid.typeAt(column, row).moveMultiplier;
+    climb += Math.max(0, grid.elevationAt(column, row) - lastElevation);
+    lastElevation = grid.elevationAt(column, row);
     return true;
   });
 
@@ -247,8 +264,11 @@ export function lineCost(grid: TerrainGrid, from: Vec2, to: Vec2): number | null
   cost += 1 / grid.typeAt(end.column, end.row).moveMultiplier;
   tiles += 1;
 
-  // Mean per-tile cost over the run, scaled to the run's true length.
-  return (cost / tiles) * (span / grid.tileSize);
+  climb += Math.max(0, grid.elevationAt(end.column, end.row) - lastElevation);
+
+  // Mean per-tile cost over the run, scaled to the run's true length, plus what
+  // the climb over it costs.
+  return (cost / tiles) * (span / grid.tileSize) * (1 + climb * CLIMB_COST);
 }
 
 export function walkableLine(grid: TerrainGrid, from: Vec2, to: Vec2): boolean {

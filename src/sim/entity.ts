@@ -264,6 +264,9 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
       dissipationFactor,
     shutdownRemaining: 0,
 
+    closestApproach: Number.POSITIVE_INFINITY,
+    stalledTicks: 0,
+
     stability: 0,
     downRemaining: 0,
     footingUntilTick: 0,

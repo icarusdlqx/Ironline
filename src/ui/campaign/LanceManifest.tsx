@@ -3,7 +3,7 @@ import type { Catalog } from '../../schema/load';
 import { dropTeam, dropTonnageFor, missionSlots } from '../../campaign/campaign';
 import { assign } from '../../campaign/roster';
 import { isPilotAvailable, type CampaignState, type PilotRecord } from '../../campaign/types';
-import { sensorRangeFor } from '../../sim/sensors';
+import { PilotStats } from '../PilotStats';
 
 interface Props {
   catalog: Catalog;
@@ -13,25 +13,6 @@ interface Props {
   onCancel: () => void;
   /** Opens the bay on one of the company's machines, for a pre-drop refit. */
   onRefit: (mechId: string) => void;
-}
-
-/** What a skill actually buys, in the units the player sees on the field. */
-function effects(catalog: Catalog, pilot: PilotRecord): { label: string; value: string }[] {
-  const combat = catalog.rules.combat;
-  const base = combat.gunneryBase[pilot.gunnery - 1] ?? combat.gunneryBase[0] ?? 0.5;
-  const shutdown = Math.max(0, 1 - pilot.piloting * catalog.rules.heat.pilotingOverrideFactor);
-
-  return [
-    { label: 'Gunnery', value: `${pilot.gunnery} — ${Math.round(base * 100)}% base hit chance` },
-    {
-      label: 'Piloting',
-      value: `${pilot.piloting} — ${Math.round(shutdown * 100)}% of the usual shutdown risk`,
-    },
-    {
-      label: 'Sensors',
-      value: `${pilot.sensors} — ${Math.round(sensorRangeFor(catalog.rules.sensors, pilot.sensors))}m detection`,
-    },
-  ];
 }
 
 /** How much of a mech is still there, as a fraction of what it should have. */
@@ -167,14 +148,7 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
                   <small className="manifest-status">{status}</small>
                 </div>
 
-                <dl className="manifest-skills">
-                  {effects(catalog, pilot).map((entry) => (
-                    <div key={entry.label}>
-                      <dt>{entry.label}</dt>
-                      <dd>{entry.value}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <PilotStats catalog={catalog} pilot={pilot} />
 
                 <div className="manifest-mech">
                   <select

@@ -15,7 +15,21 @@ import {
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
-export function speedFor(world: World, entity: MechEntity): number {
+/**
+ * How steeply the ground rises in the direction a mech is walking, in levels.
+ * Negative going downhill, which costs nothing — a mech picks its way down a
+ * scarp at its own pace, it does not tumble faster.
+ */
+function climbAhead(world: World, entity: MechEntity, heading: number): number {
+  const reach = world.terrain.tileSize;
+  const ahead = {
+    x: entity.pos.x + Math.cos(heading) * reach,
+    y: entity.pos.y + Math.sin(heading) * reach,
+  };
+  return world.terrain.elevationAtPoint(ahead) - world.terrain.elevationAtPoint(entity.pos);
+}
+
+export function speedFor(world: World, entity: MechEntity, heading = entity.facing): number {
   const base = entity.motion === 'run' ? entity.runSpeed : entity.walkSpeed;
   const terrain = world.terrain.typeAtPoint(entity.pos);
   const heat = currentHeatTier(world, entity).movementFactor;
@@ -24,7 +38,13 @@ export function speedFor(world: World, entity: MechEntity): number {
   const footing = isStaggered(entity, world.rules.stability.staggerThreshold)
     ? world.rules.stability.staggeredSpeedFactor
     : 1;
-  return base * terrain.moveMultiplier * heat * legs * footing;
+
+  // Ground that rises under a mech has to be felt, or a ridge is a painted
+  // backdrop that costs nothing to walk up and the high ground is free.
+  const rise = Math.max(0, climbAhead(world, entity, heading));
+  const climb = 1 / (1 + rise * (1 - world.rules.movement.climbSpeedFactor));
+
+  return base * terrain.moveMultiplier * heat * legs * footing * climb;
 }
 
 function turnToward(world: World, entity: MechEntity, focus: Vec2): number {
@@ -234,7 +254,7 @@ export function updateMovement(world: World, entity: MechEntity): void {
   // Aligned and about to move: report the pace the controller actually asked for.
   entity.motion = entity.intendedMotion === 'stationary' ? 'walk' : entity.intendedMotion;
 
-  const step = speedFor(world, entity) * pace * world.dt;
+  const step = speedFor(world, entity, heading) * pace * world.dt;
   if (step <= 0) {
     entity.motion = 'stationary';
     return;
@@ -242,11 +262,22 @@ export function updateMovement(world: World, entity: MechEntity): void {
 
   const dx = Math.cos(heading) * step;
   const dy = Math.sin(heading) * step;
-  const next: Vec2 = { x: entity.pos.x + dx, y: entity.pos.y + dy };
+  let next: Vec2 = { x: entity.pos.x + dx, y: entity.pos.y + dy };
 
   if (!passableAt(world, next)) {
-    clearPath(entity);
-    return;
+    // Clipping the corner of a building is not a reason to abandon the walk.
+    // Try each axis on its own first: sliding along whatever is in the way
+    // carries a mech round it, where dropping the path left it standing
+    // against the obstacle until something else moved it.
+    const alongX: Vec2 = { x: entity.pos.x + dx, y: entity.pos.y };
+    const alongY: Vec2 = { x: entity.pos.x, y: entity.pos.y + dy };
+
+    if (passableAt(world, alongX)) next = alongX;
+    else if (passableAt(world, alongY)) next = alongY;
+    else {
+      clearPath(entity);
+      return;
+    }
   }
 
   entity.pos = next;
@@ -256,8 +287,27 @@ export function updateMovement(world: World, entity: MechEntity): void {
       ? world.rules.movement.arrivalRadius
       : world.rules.movement.waypointRadius;
 
-  if (distance(entity.pos, waypoint) > radius) return;
+  const gap = distance(entity.pos, waypoint);
+
+  // A mech that has stopped closing on its waypoint is wedged — sliding along
+  // a wall that never ends, or shouldered off its line by the rest of the
+  // lance. Drop the path so whoever gave it re-solves, rather than walking on
+  // the spot for the rest of the battle.
+  if (gap < entity.closestApproach - world.rules.movement.progressEpsilon) {
+    entity.closestApproach = gap;
+    entity.stalledTicks = 0;
+  } else {
+    entity.stalledTicks += 1;
+    if (entity.stalledTicks > world.rules.movement.stallTicks) {
+      clearPath(entity);
+      return;
+    }
+  }
+
+  if (gap > radius) return;
 
   entity.pathIndex += 1;
+  entity.closestApproach = Number.POSITIVE_INFINITY;
+  entity.stalledTicks = 0;
   if (entity.pathIndex >= entity.path.length) clearPath(entity);
 }

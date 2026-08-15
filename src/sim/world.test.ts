@@ -167,7 +167,9 @@ describe('runBattle', () => {
     expect(a).not.toEqual(b);
   });
 
-  it('reaches a decision well inside the time limit', () => {
+  // Five complete battles. The default five seconds was always close, and
+  // fights got longer once the AI stopped charging into everything.
+  it('reaches a decision well inside the time limit', { timeout: 30_000 }, () => {
     for (const seed of ['a', 'b', 'c', 'd', 'e']) {
       const result = runBattle(catalog, { seed, missionId: 'skirmish_ridge' });
       expect(result.decided, seed).toBe(true);

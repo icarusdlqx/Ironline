@@ -2733,3 +2733,58 @@ button {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* Five bars and five numbers. A pilot the player cannot rate at a glance is a
+   name, and choosing between names is not a decision. */
+.pilot-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pilot-stats li {
+  display: grid;
+  grid-template-columns: 54px 1fr 18px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.pilot-stats .stat-label {
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.pilot-stats .stat-bar {
+  height: 5px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pilot-stats .stat-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.pilot-stats .stat-score {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* In the briefing the bars sit under a berth's selects and share its width. */
+.pilot-stats.compact {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  gap: 2px;
+}
+
+.pilot-stats.compact li {
+  grid-template-columns: 48px 1fr 16px;
+  font-size: 9px;
+}
