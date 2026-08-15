@@ -513,6 +513,14 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       case 'KeyJ':
         state.setOrderMode('jump');
         return;
+      case 'Comma':
+        engine.nudgeSpeed(-1);
+        event.preventDefault();
+        break;
+      case 'Period':
+        engine.nudgeSpeed(1);
+        event.preventDefault();
+        break;
       case 'Escape':
         state.setOrderMode(null);
         state.setSupportMode(null);

@@ -53,6 +53,13 @@ export function Battle() {
   const engineRef = useRef<Engine | null>(null);
   const state = useGame();
   const unit = selectedUnit(state);
+  // The readout is only trusted when it is priced for the mech on screen: the
+  // HUD refreshes at 10Hz, and a stale reading for the last selection is worse
+  // than none.
+  const preview =
+    unit !== null && state.hitPreview !== null && state.hitPreview.shooterId === unit.id
+      ? state.hitPreview
+      : null;
 
   const [resolved, setResolved] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -295,6 +302,20 @@ export function Battle() {
         >
           {state.paused ? '▶ Resume' : '❚❚ Pause'}
         </button>
+        <span className="speed-controls" data-testid="speed-controls">
+          {[1, 2, 4].map((speed) => (
+            <button
+              key={speed}
+              type="button"
+              className={`pause ${!state.paused && state.speed === speed ? 'active' : ''}`}
+              onClick={() => engineRef.current?.setSpeed(speed)}
+              title={`Run the battle at ${speed}× (, and . step speed)`}
+              data-testid={`speed-${speed}`}
+            >
+              {speed}×
+            </button>
+          ))}
+        </span>
         <button
           type="button"
           className="pause"
@@ -354,8 +375,8 @@ export function Battle() {
           ))}
         </select>
         <span className="hint">
-          Space pauses · click an enemy to attack · right-click moves (shift queues) · A
-          attack-moves · drag selects · arrows pan · wheel zooms
+          Space pauses · , . change speed · click an enemy to attack · right-click moves
+          (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms
         </span>
       </header>
 
@@ -434,11 +455,36 @@ export function Battle() {
             />
             <HeatBar heat={unit.heat} capacity={unit.heatCapacity} thresholds={state.heatTiers} />
             <div className="target-line">
-              Target: <strong>{unit.targetName ?? 'none'}</strong>
+              {preview === null ? (
+                <>
+                  Target: <strong>{unit.targetName ?? 'none'}</strong>
+                </>
+              ) : (
+                <>
+                  {preview.hover ? 'Sizing up' : 'Target'}:{' '}
+                  <strong>{preview.targetName}</strong>
+                  <span className="target-range">{Math.round(preview.range)}m</span>
+                </>
+              )}
             </div>
+            {preview === null || preview.factors.length === 0 ? null : (
+              <div className="hit-factors" data-testid="hit-factors">
+                {preview.factors.map((factor) => (
+                  <span
+                    key={factor.id}
+                    className={factor.value < 1 ? 'penalty' : 'bonus'}
+                    title={`×${factor.value.toFixed(2)}`}
+                  >
+                    {factor.label} {factor.value < 1 ? '−' : '+'}
+                    {Math.abs(Math.round((factor.value - 1) * 100))}%
+                  </span>
+                ))}
+              </div>
+            )}
             <WeaponGroups
               unit={unit}
               onToggleGroup={(group) => engineRef.current?.toggleGroup(group)}
+              {...(preview === null ? {} : { preview })}
             />
           </>
         )}

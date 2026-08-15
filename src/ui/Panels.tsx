@@ -1,7 +1,7 @@
 import { getCatalog } from '../schema/load';
 import type { SupportCallId } from '../sim/support';
 import { PilotStats, type RateablePilot } from './PilotStats';
-import type { ObjectiveView, UnitSnapshot, WeaponSnapshot, ZoneView } from './store';
+import type { HitPreviewView, ObjectiveView, UnitSnapshot, WeaponSnapshot, ZoneView } from './store';
 
 export function HeatBar({
   heat,
@@ -45,14 +45,28 @@ function CooldownRing({ weapon }: { weapon: WeaponSnapshot }) {
   );
 }
 
+/** What a gun that cannot fire says instead of a number. */
+const BLOCK_LABELS: Record<string, string> = {
+  destroyed: '',
+  ammo: 'dry',
+  range: 'too far',
+  sight: 'no sight',
+  arc: 'off arc',
+};
+
 export function WeaponGroups({
   unit,
   onToggleGroup,
+  preview,
 }: {
   unit: UnitSnapshot;
   onToggleGroup: (group: number) => void;
+  preview?: HitPreviewView;
 }) {
   const groups = [1, 2, 3, 4];
+  const previewByIndex = new Map(
+    (preview?.weapons ?? []).map((entry) => [entry.index, entry]),
+  );
 
   return (
     <div className="weapons" data-testid="weapon-groups">
@@ -107,6 +121,24 @@ export function WeaponGroups({
                           ? '—'
                           : weapon.rounds}
                     </span>
+                    {(() => {
+                      if (preview === undefined) return null;
+                      const priced = previewByIndex.get(weapon.index);
+                      if (priced === undefined || weapon.destroyed) return null;
+                      if (priced.chance !== null) {
+                        const percent = Math.round(priced.chance * 100);
+                        const grade = percent >= 60 ? 'good' : percent >= 30 ? 'fair' : 'poor';
+                        return (
+                          <span className={`weapon-hit ${grade}`} data-testid={`tohit-${weapon.index}`}>
+                            {percent}%
+                          </span>
+                        );
+                      }
+                      const label = BLOCK_LABELS[priced.blocked ?? ''] ?? '';
+                      return label === '' ? null : (
+                        <span className="weapon-hit blocked">{label}</span>
+                      );
+                    })()}
                   </li>
                 );
               })}

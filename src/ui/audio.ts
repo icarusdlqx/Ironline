@@ -34,6 +34,10 @@ export class AudioDirector {
   private seed = 0x9e3779b9;
   /** How far off the last sound was, so begin() can dull it for the distance. */
   private lastDistance = 0;
+  /** The battlefield's standing sound, kept so it can be faded and stopped. */
+  private ambientBed: { level: GainNode; sources: { stop(): void }[] } | null = null;
+  /** Requested before the context existed; started the moment unlock() runs. */
+  private pendingAmbient: string | null = null;
 
   constructor() {
     this.mutedState = readMuted();
@@ -88,6 +92,103 @@ export class AudioDirector {
     this.context = context;
     this.master = master;
     this.noise = noise;
+
+    if (this.pendingAmbient !== null) this.startAmbient(this.pendingAmbient);
+  }
+
+  /**
+   * The standing sound of the battlefield: wind over the ground, and on some
+   * maps the things the ground is doing. Requested when the battle is built —
+   * before the browser will allow any audio — so the id is held until the
+   * first gesture unlocks the context.
+   *
+   * The bed exists because the AI learned to stand off: fights now hold long
+   * silences between exchanges, and total silence reads as a broken game
+   * rather than as tension.
+   */
+  setAmbient(atmosphereId: string): void {
+    this.pendingAmbient = atmosphereId;
+    if (this.context !== null) this.startAmbient(atmosphereId);
+  }
+
+  /** Fades the bed out and forgets it; the battle screen is going away. */
+  stopAmbient(): void {
+    this.pendingAmbient = null;
+    const bed = this.ambientBed;
+    const context = this.context;
+    this.ambientBed = null;
+    if (bed === null || context === null) return;
+
+    bed.level.gain.setTargetAtTime(0, context.currentTime, 0.15);
+    const sources = bed.sources;
+    setTimeout(() => {
+      for (const source of sources) {
+        try {
+          source.stop();
+        } catch {
+          // Already stopped; nothing to wind down.
+        }
+      }
+    }, 700);
+  }
+
+  private startAmbient(atmosphereId: string): void {
+    this.stopAmbient();
+    this.pendingAmbient = atmosphereId;
+    const context = this.context;
+    if (context === null || this.master === null || this.noise === null) return;
+
+    // How each sky sounds. Wind is the constant; the filter decides whether it
+    // is a warm afternoon or ice hissing across plate, and the drone is the
+    // foundry district being a foundry district.
+    const profile = AMBIENT_PROFILES[atmosphereId] ?? AMBIENT_PROFILES['overcast_day'];
+    if (profile === undefined) return;
+
+    const level = context.createGain();
+    level.gain.value = 0;
+    level.connect(this.master);
+    level.gain.setTargetAtTime(AMBIENT_LEVEL * profile.level, context.currentTime, 2.0);
+
+    const sources: { stop(): void }[] = [];
+
+    // Wind: the shared noise buffer, looped, banded down to a distant rush.
+    const wind = context.createBufferSource();
+    wind.buffer = this.noise;
+    wind.loop = true;
+    const band = context.createBiquadFilter();
+    band.type = 'lowpass';
+    band.frequency.value = profile.windHz;
+    band.Q.value = 0.4;
+
+    // Gusts: a very slow oscillator swaying the wind's gain, so the bed
+    // breathes instead of holding one note for seven minutes.
+    const sway = context.createGain();
+    sway.gain.value = 0.55;
+    const gust = context.createOscillator();
+    gust.type = 'sine';
+    gust.frequency.value = profile.gustHz * (0.9 + this.random() * 0.2);
+    const depth = context.createGain();
+    depth.gain.value = 0.3;
+    gust.connect(depth).connect(sway.gain);
+
+    wind.connect(band).connect(sway).connect(level);
+    wind.start();
+    gust.start();
+    sources.push(wind, gust);
+
+    // The ground's own voice, where it has one: a just-audible machine drone.
+    if (profile.droneHz !== null) {
+      const drone = context.createOscillator();
+      drone.type = 'triangle';
+      drone.frequency.value = profile.droneHz;
+      const droneLevel = context.createGain();
+      droneLevel.gain.value = 0.16;
+      drone.connect(droneLevel).connect(level);
+      drone.start();
+      sources.push(drone);
+    }
+
+    this.ambientBed = { level, sources };
   }
 
   /** The battle's events, straight from the simulation. */
@@ -624,6 +725,28 @@ export class AudioDirector {
 }
 
 const MASTER_LEVEL = 0.5;
+
+/** Loud enough to end the silence, quiet enough never to fight a weapon. */
+const AMBIENT_LEVEL = 0.055;
+
+interface AmbientProfile {
+  /** Where the wind's top end sits. Low is warm and distant, high is ice. */
+  windHz: number;
+  /** How often a gust leans on the bed, in cycles per second. */
+  gustHz: number;
+  /** A standing machine tone, for ground that is itself running. */
+  droneHz: number | null;
+  /** Trim against the shared ambient level. */
+  level: number;
+}
+
+const AMBIENT_PROFILES: Record<string, AmbientProfile> = {
+  overcast_day: { windHz: 480, gustHz: 0.07, droneHz: null, level: 1 },
+  hard_noon: { windHz: 720, gustHz: 0.05, droneHz: null, level: 0.8 },
+  moonlit_night: { windHz: 300, gustHz: 0.04, droneHz: null, level: 0.75 },
+  ash_dusk: { windHz: 420, gustHz: 0.08, droneHz: 46, level: 1.1 },
+  cold_rime: { windHz: 1200, gustHz: 0.1, droneHz: null, level: 0.9 },
+};
 
 function positionOf(world: World, id: number): Vec2 | null {
   const entity = world.entities.find((candidate) => candidate.id === id);

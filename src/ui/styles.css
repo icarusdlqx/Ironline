@@ -2851,3 +2851,68 @@ button {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
+
+/* ------------------------------------------------- battle tempo & readout */
+
+.speed-controls {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.speed-controls .pause {
+  min-width: 2.2rem;
+  padding-inline: 0.35rem;
+}
+
+.target-line .target-range {
+  margin-left: 0.5rem;
+  color: var(--dim, #8fa1a8);
+  font-size: 0.82em;
+}
+
+/* The why of the number: one chip per situational factor that is biting. */
+.hit-factors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0.25rem 0 0.35rem;
+}
+
+.hit-factors span {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #9fb2ba;
+}
+
+.hit-factors .penalty {
+  color: #e0a86e;
+}
+
+.hit-factors .bonus {
+  color: #8fd49a;
+}
+
+.weapon-hit {
+  min-width: 2.6rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.weapon-hit.good {
+  color: #8fd49a;
+}
+
+.weapon-hit.fair {
+  color: #e0c86e;
+}
+
+.weapon-hit.poor {
+  color: #e0876e;
+}
+
+.weapon-hit.blocked {
+  color: #75858c;
+  font-size: 0.72rem;
+}

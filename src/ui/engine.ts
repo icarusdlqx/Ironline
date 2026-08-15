@@ -25,8 +25,9 @@ import {
 import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } from '../sim/world';
 import { attachInput } from './input';
 import { AudioDirector } from './audio';
+import { hitPreview } from '../sim/preview';
 import { snapshotUnits } from './snapshot';
-import { useGame, type OrderMode } from './store';
+import { useGame, type HitPreviewView, type OrderMode } from './store';
 
 const HUD_INTERVAL_SECONDS = 0.1;
 const SMOKE_INTERVAL_SECONDS = 0.7;
@@ -73,6 +74,22 @@ export class Engine {
     this.setPaused(!this.paused);
   }
 
+  /** The rates on offer. Walking to the fight should cost patience, not time. */
+  static readonly SPEEDS = [1, 2, 4] as const;
+
+  setSpeed(speed: number): void {
+    if (!Engine.SPEEDS.includes(speed as 1 | 2 | 4)) return;
+    useGame.getState().patch({ speed, paused: false });
+  }
+
+  /** Steps along 1× → 2× → 4×, clamped at the ends rather than wrapping. */
+  nudgeSpeed(direction: 1 | -1): void {
+    const current = useGame.getState().speed;
+    const at = Engine.SPEEDS.findIndex((speed) => speed >= current);
+    const index = Math.max(0, Math.min(Engine.SPEEDS.length - 1, (at === -1 ? 0 : at) + direction));
+    this.setSpeed(Engine.SPEEDS[index] ?? 1);
+  }
+
   attach(canvas: HTMLCanvasElement): void {
     this.detachInput = attachInput(this, canvas);
   }
@@ -97,6 +114,7 @@ export class Engine {
 
   destroy(): void {
     this.running = false;
+    this.audio.stopAmbient();
     this.detachInput?.();
     for (const run of this.teardown) run();
     this.renderer.destroy();
@@ -107,14 +125,21 @@ export class Engine {
     const state = useGame.getState();
 
     if (!state.paused && !this.world.finished) {
-      this.accumulator += deltaSeconds;
+      // Fast-forward stretches how much battle each real second buys. The sim
+      // still steps at its fixed rate — determinism never rides on the clock.
+      this.accumulator += deltaSeconds * state.speed;
+      // The step cap is the spiral-of-death guard: a frame that cannot keep up
+      // must shed sim time rather than fall further behind forever. It has to
+      // scale with the chosen speed, though, or a slow display quietly caps
+      // fast-forward at whatever rate the guard was tuned for at 1×.
+      const cap = MAX_CATCHUP_STEPS * state.speed;
       let steps = 0;
-      while (this.accumulator >= this.world.dt && steps < MAX_CATCHUP_STEPS) {
+      while (this.accumulator >= this.world.dt && steps < cap) {
         this.accumulator -= this.world.dt;
         steps += 1;
         this.forceStep();
       }
-      if (steps === MAX_CATCHUP_STEPS) this.accumulator = 0;
+      if (steps >= cap) this.accumulator = 0;
     }
 
     this.smokeTimer += deltaSeconds;
@@ -275,10 +300,76 @@ export class Engine {
     }
   }
 
+  /** Every hostile the lance has ever laid eyes on, for the new-contact brake. */
+  private readonly sighted = new Set<EntityId>();
+  private contactsSeeded = false;
+
+  /**
+   * Drops fast-forward the moment a hostile nobody has seen before appears.
+   * Mechs blink in and out of sensor shadow all battle, so re-acquiring an old
+   * contact is not news — only a machine this lance has never laid eyes on
+   * pulls the clock back to 1×. Whatever was already visible at the drop is
+   * seeded silently: the opening of a mirror match is not a surprise.
+   */
+  private brakeOnNewContact(enemies: readonly { id: EntityId }[]): void {
+    if (!this.contactsSeeded) {
+      this.contactsSeeded = true;
+      for (const enemy of enemies) this.sighted.add(enemy.id);
+      return;
+    }
+    let fresh = false;
+    for (const enemy of enemies) {
+      if (this.sighted.has(enemy.id)) continue;
+      this.sighted.add(enemy.id);
+      fresh = true;
+    }
+    const state = useGame.getState();
+    if (fresh && state.speed > 1) {
+      state.patch({ speed: 1 });
+      state.pushLog('New contact — speed back to 1×.');
+    }
+  }
+
+  /** The to-hit readout: primary selection priced against cursor or target. */
+  private previewFor(selection: readonly EntityId[]): HitPreviewView | null {
+    const shooterId = selection.find(
+      (id) => findEntity(this.world, id)?.team === (this.world.playerTeam ?? 0),
+    );
+    const shooter = shooterId === undefined ? null : findEntity(this.world, shooterId);
+    if (shooter === null || !isOperational(shooter)) return null;
+
+    const hoveredEntity = this.hoveredId === null ? null : findEntity(this.world, this.hoveredId);
+    const hovered =
+      hoveredEntity !== null && hoveredEntity.team !== shooter.team && isOperational(hoveredEntity)
+        ? hoveredEntity
+        : null;
+    const target = hovered ?? findEntity(this.world, shooter.targetId);
+    if (target === null) return null;
+
+    const preview = hitPreview(this.world, shooter, target);
+    if (preview === null) return null;
+
+    return {
+      shooterId: shooter.id,
+      targetId: target.id,
+      targetName: target.name,
+      range: preview.range,
+      hover: hovered !== null,
+      weapons: preview.weapons.map((weapon) => ({
+        index: weapon.index,
+        chance: weapon.chance,
+        blocked: weapon.blocked,
+      })),
+      factors: preview.factors,
+    };
+  }
+
   private publish(): void {
     const playerTeam = this.world.playerTeam ?? 0;
     const { units, enemies } = snapshotUnits(this.world, playerTeam);
     const state = useGame.getState();
+
+    this.brakeOnNewContact(enemies);
 
     const selection = state.selection.filter((id) => {
       const entity = findEntity(this.world, id);
@@ -313,6 +404,7 @@ export class Engine {
         captureSeconds: zone.captureSeconds,
         contested: zone.contested,
       })),
+      hitPreview: this.previewFor(selection),
       ...(selection.length === state.selection.length ? {} : { selection }),
     });
   }
@@ -524,6 +616,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   const renderer = new Renderer(host, world, mapData, atmosphere);
   const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
   renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
+  engine.audio.setAmbient(atmosphereId);
   engine.attach(renderer.canvas);
 
   const onResize = (): void => renderer.resize();
@@ -543,6 +636,8 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
     briefing: mission?.briefing ?? '',
     briefingSeen: false,
     paused: true,
+    speed: 1,
+    hitPreview: null,
     supportMode: null,
     heatTiers: catalog.rules.heat.tiers.map((tier) => tier.fraction),
   });

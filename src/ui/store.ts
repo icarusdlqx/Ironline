@@ -98,6 +98,22 @@ export interface UnitSnapshot {
 
 export type Screen = 'battle' | 'mechbay' | 'campaign';
 
+/**
+ * The to-hit readout for the primary selected mech, refreshed with the HUD.
+ * `hover` says whether it is priced against the hull under the cursor or the
+ * mech's standing target, so the panel can say which question it is answering.
+ */
+export interface HitPreviewView {
+  shooterId: EntityId;
+  targetId: EntityId;
+  targetName: string;
+  range: number;
+  hover: boolean;
+  /** Chance per weapon, keyed by the mount index the weapon rows carry. */
+  weapons: { index: number; chance: number | null; blocked: string | null }[];
+  factors: { id: string; label: string; value: number }[];
+}
+
 /** The AI strength the player picked, kept across sessions. */
 export function readDifficulty(): string {
   try {
@@ -121,6 +137,8 @@ export interface GameState {
   ready: boolean;
   error: string | null;
   paused: boolean;
+  /** Simulation rate as a multiple of real time. Pause is a separate flag. */
+  speed: number;
   tick: number;
   elapsedSeconds: number;
   finished: boolean;
@@ -150,6 +168,8 @@ export interface GameState {
   reservesLeft: number;
   /** The drag-select box in screen pixels, while one is open. */
   marquee: { x: number; y: number; width: number; height: number } | null;
+  /** To-hit readout for the primary selection, or null with nothing to price. */
+  hitPreview: HitPreviewView | null;
 }
 
 export interface GameActions {
@@ -170,6 +190,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   ready: false,
   error: null,
   paused: false,
+  speed: 1,
   tick: 0,
   elapsedSeconds: 0,
   finished: false,
@@ -197,6 +218,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   supportMode: null,
   reservesLeft: 0,
   marquee: null,
+  hitPreview: null,
 
   setSelection: (ids) => set({ selection: ids }),
   assignControlGroup: (slot, ids) =>

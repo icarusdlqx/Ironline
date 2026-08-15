@@ -38,7 +38,7 @@ function rangeFactor(rules: CombatRules, weapon: Weapon, range: number): number 
  * uncapped bonus would turn the high ground into a firing range rather than a
  * position worth taking.
  */
-function heightFactor(world: World, shooter: MechEntity, target: MechEntity): number {
+export function heightFactor(world: World, shooter: MechEntity, target: MechEntity): number {
   const rules = world.rules.combat.elevation;
   const above =
     world.terrain.elevationAtPoint(shooter.pos) - world.terrain.elevationAtPoint(target.pos);

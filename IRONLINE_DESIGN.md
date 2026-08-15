@@ -247,6 +247,16 @@ Height only counts downhill and only to the cap: on a map with four levels of
 relief, an uncapped bonus turns the ridge into a firing range rather than a
 position worth taking.
 
+**The readout.** Every one of these prices is shown before the shot, not
+discovered after it. The weapon rows in the HUD carry the exact `p_hit` the
+resolver will roll — the same function, never a parallel approximation that can
+drift — for the selected mech's target, or for whatever hull the cursor is
+over. Chips above them name the situational factors that are biting, and only
+those. A gun that cannot fire says why instead of a number: dry, off arc, no
+sight, too far. A system the player cannot see the price of is not a system
+they are making decisions with; this is where the terrain, motion and arc
+rules stop being flavour.
+
 **Hit location** on success — weighted table:
 
 ```
