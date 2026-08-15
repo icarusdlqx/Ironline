@@ -54,6 +54,19 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   /** Where a left-drag started, in world space, while a marquee is open. */
   let marqueeFrom: Vec2 | null = null;
   let marqueeScreenFrom: Vec2 | null = null;
+  /**
+   * The pointer's last known place on the canvas, and whether it has moved
+   * since hover was last resolved. Pointer events only carry where the mouse
+   * is; what the game says is under it — the hovered mech, the cursor's ground
+   * point — is resolved once per frame from here instead of once per event,
+   * because each resolution costs a raycast into the terrain and a pick over
+   * every machine on the field.
+   */
+  let lastPointer: Vec2 | null = null;
+  let pointerDirty = false;
+  let lastHoverTick = -1;
+  let lastCameraKey = '';
+  let lastCursorStyle = '';
 
   const DRAG_THRESHOLD = 6;
 
@@ -87,12 +100,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   // Every click has to become a point on the battlefield, whichever way the
   // camera has been spun. The terrain mesh is offered to the ray first so that
   // clicking a ridge means the ridge and not the flat ground behind it.
+  const screenWorld = (screen: Vec2): Vec2 =>
+    engine.renderer.camera.screenToWorld(screen, viewport(), engine.renderer.groundMesh);
   const toWorld = (event: PointerEvent | WheelEvent): Vec2 =>
-    engine.renderer.camera.screenToWorld(
-      pointerToScreen(canvas, event),
-      viewport(),
-      engine.renderer.groundMesh,
-    );
+    screenWorld(pointerToScreen(canvas, event));
 
   /**
    * The mech a click at this point would act on. Hostiles win ties: with a
@@ -114,7 +125,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   /**
    * Marks what the pointer is over. The ring this draws is the only way a
    * player can tell "the game does not think I am pointing at that mech" apart
-   * from "the click did nothing", so it is worth a raycast per move.
+   * from "the click did nothing", so it is worth a pick per frame.
    */
   const updateHover = (screen: Vec2): void => {
     const over = pickAt(screen);
@@ -123,7 +134,13 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     const state = useGame.getState();
     const attackable =
       over !== null && over.team !== state.playerTeam && engine.selectedEntities().length > 0;
-    canvas.style.cursor = attackable ? 'crosshair' : 'default';
+    // Only written on change: assigning the same cursor string every frame
+    // still costs the browser a style pass.
+    const style = attackable ? 'crosshair' : 'default';
+    if (style !== lastCursorStyle) {
+      lastCursorStyle = style;
+      canvas.style.cursor = style;
+    }
   };
 
   /** How far apart the two fingers on the glass are. */
@@ -349,27 +366,31 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
-    engine.cursorWorld = toWorld(event);
-    updateHover(pointerToScreen(canvas, event));
+    // What is under the pointer — the hovered mech, the cursor's ground point
+    // — is resolved once per frame in the frame loop below, not here: the
+    // browser can deliver a burst of moves per frame, and each resolution is
+    // a raycast into the terrain plus a pick across the field.
+    const screen = pointerToScreen(canvas, event);
+    lastPointer = screen;
+    pointerDirty = true;
 
     const aim = engine.supportAim;
     if (aim !== null) {
-      engine.supportAim = { ...aim, to: toWorld(event) };
+      engine.supportAim = { ...aim, to: screenWorld(screen) };
       return;
     }
 
     if (marqueeFrom !== null) {
-      engine.selectionBox = { a: marqueeFrom, b: toWorld(event) };
+      engine.selectionBox = { a: marqueeFrom, b: screenWorld(screen) };
       // The box the player is dragging is a screen rectangle, so it is drawn
       // as one over the canvas rather than projected back onto the ground.
-      const now = pointerToScreen(canvas, event);
       if (marqueeScreenFrom !== null) {
         useGame.getState().patch({
           marquee: {
-            x: Math.min(marqueeScreenFrom.x, now.x),
-            y: Math.min(marqueeScreenFrom.y, now.y),
-            width: Math.abs(now.x - marqueeScreenFrom.x),
-            height: Math.abs(now.y - marqueeScreenFrom.y),
+            x: Math.min(marqueeScreenFrom.x, screen.x),
+            y: Math.min(marqueeScreenFrom.y, screen.y),
+            width: Math.abs(screen.x - marqueeScreenFrom.x),
+            height: Math.abs(screen.y - marqueeScreenFrom.y),
           },
         });
       }
@@ -377,7 +398,6 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     }
 
     if (!panning || lastPan === null) return;
-    const screen = pointerToScreen(canvas, event);
 
     // Pan in the plane the player is looking at, scaled so a drag moves the
     // ground under the cursor by roughly the distance dragged.
@@ -605,6 +625,26 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       // Screen-space directions, so the keys keep meaning the same thing on
       // screen after the camera has been swung round.
       engine.renderer.camera.panBy(dx * speed, -dy * speed);
+    }
+
+    // Hover and the cursor's ground point, once per frame from wherever the
+    // pointer last was. Recomputed when the pointer or the camera has moved,
+    // or when the sim has stepped — a mech can walk under a resting cursor.
+    // While the map is being panned or a marquee dragged, what is under the
+    // pointer is not a question anyone is asking, so it is not answered.
+    const busy =
+      panning || marqueeFrom !== null || engine.supportAim !== null || touches.size > 0;
+    if (lastPointer !== null && !busy) {
+      const camera = engine.renderer.camera;
+      const cameraKey = `${camera.target.x}:${camera.target.y}:${camera.distance}`;
+      const moved = pointerDirty || cameraKey !== lastCameraKey;
+      if (moved) engine.cursorWorld = screenWorld(lastPointer);
+      if (moved || engine.world.tick !== lastHoverTick) {
+        updateHover(lastPointer);
+        lastHoverTick = engine.world.tick;
+      }
+      pointerDirty = false;
+      lastCameraKey = cameraKey;
     }
 
     if (cameraRunning) requestAnimationFrame(cameraFrame);

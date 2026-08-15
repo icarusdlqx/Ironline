@@ -1,5 +1,6 @@
 import {
   ACESFilmicToneMapping,
+  BufferAttribute,
   BufferGeometry,
   Group,
   Line,
@@ -88,6 +89,9 @@ interface MuzzleFlash {
 /** Scratch for reading a knee joint's world position, so the frame allocates none. */
 const NOZZLE = new Vector3();
 
+/** Scratch for the body pick, so hovering the battlefield allocates nothing. */
+const PICK_DELTA = new Vector3();
+
 function damageSignature(entity: MechEntity): string {
   const lost = Object.values(entity.locations)
     .map((state) => (state.destroyed ? '1' : '0'))
@@ -120,6 +124,24 @@ export class Renderer {
   private shakeTime = 0;
   /** Brief lights on muzzles, pooled because lights are not free. */
   private readonly flashes: MuzzleFlash[] = [];
+  /**
+   * The marker layer is redrawn every frame, so everything it draws with is
+   * pooled and cached: rebuilding rings from scratch meant a geometry and a
+   * material allocated and uploaded to the GPU per ring per frame — tens of
+   * kilobytes of garbage and a stack of buffer churn every frame a lance was
+   * selected, which is what periodic GC stutter is made of.
+   */
+  private readonly ringGeometries = new Map<number, RingGeometry>();
+  private readonly markerMaterials = new Map<string, MeshBasicMaterial>();
+  private readonly ringPool: Mesh[] = [];
+  private ringsUsed = 0;
+  private readonly pathPool: Line[] = [];
+  private pathsUsed = 0;
+  private readonly pathMaterial = new LineBasicMaterial({
+    color: UI.moveMarker,
+    transparent: true,
+    opacity: 0.7,
+  });
   /** Reported when an animated leg plants, so footsteps can sound. */
   onFootfall: ((at: Vec2, tonnage: number) => void) | null = null;
   private readonly host: HTMLElement;
@@ -245,9 +267,24 @@ export class Renderer {
   }
 
   destroy(): void {
-    for (const view of this.views.values()) disposeModel(view.model.root);
+    for (const view of this.views.values()) {
+      disposeModel(view.model.root);
+      this.disposeRings(view);
+    }
+    for (const geometry of this.ringGeometries.values()) geometry.dispose();
+    for (const material of this.markerMaterials.values()) material.dispose();
+    for (const line of this.pathPool) line.geometry.dispose();
+    this.pathMaterial.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
+  }
+
+  /** Selection and hover rings own their buffers; models are handled apart. */
+  private disposeRings(view: EntityView): void {
+    for (const ring of [view.ring, view.hoverRing]) {
+      ring.geometry.dispose();
+      (ring.material as MeshBasicMaterial).dispose();
+    }
   }
 
   snapshot(world: World): void {
@@ -387,6 +424,7 @@ export class Renderer {
     if (existing !== undefined) {
       this.scene.remove(existing.model.root, existing.ring, existing.hoverRing);
       disposeModel(existing.model.root);
+      this.disposeRings(existing);
     }
 
     const chassis = world.catalog.chassis.get(entity.chassisId);
@@ -678,44 +716,34 @@ export class Renderer {
   }
 
   private drawMarkers(world: World, view: ViewState): void {
-    // These are rebuilt every frame, so their GPU buffers have to be freed by
-    // hand — clear() alone drops the references and keeps the buffers, which
-    // is a leak of several rings per frame for a whole battle.
-    for (const child of this.markers.children) {
-      if (child instanceof Mesh || child instanceof Line) {
-        child.geometry.dispose();
-        (child.material as { dispose(): void }).dispose();
-      }
-    }
-    this.markers.clear();
+    this.ringsUsed = 0;
+    this.pathsUsed = 0;
 
     for (const zone of world.zones) {
       const colour = zone.owner === null ? UI.ghost : teamColour(zone.owner);
-      this.markers.add(this.groundRing(zone, zone.radius, colour, 0.55));
+      this.groundRing(zone, zone.radius, colour, 0.55);
     }
 
     for (const reveal of world.reveals) {
       if (world.playerTeam !== null && reveal.team !== world.playerTeam) continue;
-      this.markers.add(
-        this.groundRing({ x: reveal.x, y: reveal.y }, reveal.radius, UI.selection, 0.3),
-      );
+      this.groundRing({ x: reveal.x, y: reveal.y }, reveal.radius, UI.selection, 0.3);
     }
 
     for (const pending of world.support.pending) {
-      this.markers.add(this.groundRing(pending.target, 26, UI.attackMarker, 0.85));
+      this.groundRing(pending.target, 26, UI.attackMarker, 0.85);
     }
 
     for (const entity of world.entities) {
       if (!view.selection.has(entity.id) || !isOperational(entity)) continue;
 
       if (view.orderMode === 'jump' && entity.jumpRange > 0 && entity.jumpCooldown <= 0) {
-        this.markers.add(this.groundRing(entity.pos, entity.jumpRange, UI.moveMarker, 0.5));
+        this.groundRing(entity.pos, entity.jumpRange, UI.moveMarker, 0.5);
       }
 
       // How far this machine can see, against a hull of average signature.
       // Drawn faintly and always: where the lance's sensor envelope reaches is
       // a standing fact about the position, not something to go and look up.
-      this.markers.add(this.groundRing(entity.pos, entity.sensorRange, UI.selection, 0.14));
+      this.groundRing(entity.pos, entity.sensorRange, UI.selection, 0.14);
 
       // Weapon reach, drawn while the player is lining up an attack so range
       // stops being a number in a panel and becomes a circle on the ground.
@@ -731,34 +759,101 @@ export class Renderer {
           if (weapon !== undefined) reaches.add(Math.round(weapon.range.long));
         }
         for (const reach of [...reaches].sort((a, b) => a - b).slice(0, 3)) {
-          this.markers.add(this.groundRing(entity.pos, reach, UI.attackMarker, 0.35));
+          this.groundRing(entity.pos, reach, UI.attackMarker, 0.35);
         }
       }
 
-      if (entity.path.length > 0) {
-        const at = this.interpolated.get(entity.id) ?? entity.pos;
-        const points = [at, ...entity.path.slice(entity.pathIndex)].map(
-          (point) => new Vector3(point.x, this.terrain.heightAt(point.x, point.y) + 1.5, point.y),
-        );
-        this.markers.add(
-          new Line(
-            new BufferGeometry().setFromPoints(points),
-            new LineBasicMaterial({ color: UI.moveMarker, transparent: true, opacity: 0.7 }),
-          ),
-        );
-      }
+      if (entity.path.length > 0) this.pathLine(entity);
+    }
+
+    // Whatever this frame did not need stays parked, invisible, for the next.
+    for (let index = this.ringsUsed; index < this.ringPool.length; index += 1) {
+      const ring = this.ringPool[index];
+      if (ring !== undefined) ring.visible = false;
+    }
+    for (let index = this.pathsUsed; index < this.pathPool.length; index += 1) {
+      const line = this.pathPool[index];
+      if (line !== undefined) line.visible = false;
     }
   }
 
   /** A flat ring laid on the ground, lifted just clear of the terrain. */
-  private groundRing(at: Vec2, radius: number, colour: number, opacity: number): Mesh {
-    const ring = new Mesh(
-      new RingGeometry(Math.max(1, radius - 1.6), radius, 40),
-      new MeshBasicMaterial({ color: colour, transparent: true, opacity, depthWrite: false }),
-    );
-    ring.rotation.x = -Math.PI / 2;
+  private groundRing(at: Vec2, radius: number, colour: number, opacity: number): void {
+    let ring = this.ringPool[this.ringsUsed];
+    if (ring === undefined) {
+      ring = new Mesh();
+      ring.rotation.x = -Math.PI / 2;
+      this.markers.add(ring);
+      this.ringPool.push(ring);
+    }
+    this.ringsUsed += 1;
+
+    ring.geometry = this.ringGeometry(radius);
+    ring.material = this.markerMaterial(colour, opacity);
     ring.position.set(at.x, this.terrain.heightAt(at.x, at.y) + 1, at.y);
-    return ring;
+    ring.visible = true;
+  }
+
+  /**
+   * Ring geometries live as long as the battle. Every radius drawn is a fixed
+   * fact of it — a zone's size, a chassis's sensor reach, a weapon's range —
+   * so the same handful of radii recur every frame.
+   */
+  private ringGeometry(radius: number): RingGeometry {
+    const existing = this.ringGeometries.get(radius);
+    if (existing !== undefined) return existing;
+    const fresh = new RingGeometry(Math.max(1, radius - 1.6), radius, 40);
+    this.ringGeometries.set(radius, fresh);
+    return fresh;
+  }
+
+  private markerMaterial(colour: number, opacity: number): MeshBasicMaterial {
+    const key = `${colour}:${opacity}`;
+    const existing = this.markerMaterials.get(key);
+    if (existing !== undefined) return existing;
+    const fresh = new MeshBasicMaterial({ color: colour, transparent: true, opacity, depthWrite: false });
+    this.markerMaterials.set(key, fresh);
+    return fresh;
+  }
+
+  /** How many corners a pooled path line can hold. Paths are clamped to fit. */
+  private static readonly PATH_POINTS = 128;
+
+  /** The route a selected mech is walking, written into a pooled line. */
+  private pathLine(entity: MechEntity): void {
+    let line = this.pathPool[this.pathsUsed];
+    if (line === undefined) {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute(
+        'position',
+        new BufferAttribute(new Float32Array(Renderer.PATH_POINTS * 3), 3),
+      );
+      line = new Line(geometry, this.pathMaterial);
+      // The draw range changes every frame; culling against stale bounds
+      // blinks the line off, and recomputing them would cost the pooling back.
+      line.frustumCulled = false;
+      this.markers.add(line);
+      this.pathPool.push(line);
+    }
+    this.pathsUsed += 1;
+
+    const positions = line.geometry.getAttribute('position') as BufferAttribute;
+    const at = this.interpolated.get(entity.id) ?? entity.pos;
+    positions.setXYZ(0, at.x, this.terrain.heightAt(at.x, at.y) + 1.5, at.y);
+    let count = 1;
+    for (
+      let index = entity.pathIndex;
+      index < entity.path.length && count < Renderer.PATH_POINTS;
+      index += 1
+    ) {
+      const point = entity.path[index];
+      if (point === undefined) break;
+      positions.setXYZ(count, point.x, this.terrain.heightAt(point.x, point.y) + 1.5, point.y);
+      count += 1;
+    }
+    positions.needsUpdate = true;
+    line.geometry.setDrawRange(0, count);
+    line.visible = true;
   }
 
   positionOf(id: EntityId): Vec2 | null {
@@ -772,9 +867,12 @@ export class Renderer {
    * like it lands on a mech's chest actually raycasts through to ground well
    * behind its feet, because the camera is tilted and the machine is twenty
    * metres tall — so picking by world distance from that ground point misses
-   * the thing the player was obviously pointing at. The hulls themselves are
-   * offered to the ray first; failing that, the nearest body centre within a
-   * screen-space radius catches a click that grazed the edge.
+   * the thing the player was obviously pointing at. Each body is offered to
+   * the ray as a bounding sphere — a whole battlefield costs a handful of
+   * dot products, where raycasting the articulated hulls costs a triangle
+   * test against every plate of every machine, and this runs on hover every
+   * frame. Failing that, the nearest body centre within a screen-space radius
+   * catches a click that grazed the edge.
    */
   entityAtScreen(
     world: World,
@@ -790,17 +888,32 @@ export class Renderer {
         world.vision.visible.has(entity.id)) &&
       wanted(entity);
 
-    const roots = world.entities
-      .filter((entity) => visible(entity) && isOperational(entity))
-      .map((entity) => this.views.get(entity.id)?.model.root)
-      .filter((root): root is Group => root !== undefined && root.visible);
+    const ray = this.camera.rayAt(screen, viewport);
+    let bodyHit: MechEntity | null = null;
+    let bodyAlong = Infinity;
+    for (const entity of world.entities) {
+      if (!visible(entity) || !isOperational(entity)) continue;
+      const view = this.views.get(entity.id);
+      if (view === undefined || !view.model.root.visible) continue;
 
-    const hit = this.camera.pick(screen, viewport, roots);
-    if (hit !== null) {
-      const id = hit.userData.entityId as EntityId | undefined;
-      const found = world.entities.find((entity) => entity.id === id);
-      if (found !== undefined) return found;
+      const at = this.interpolated.get(entity.id) ?? entity.pos;
+      const height = view.model.height;
+      // Slightly generous around the hull on purpose: a scout at combat zoom
+      // is a few pixels wide, and a click that grazes it should still count.
+      const radius = Math.max(radiusFor(entity.tonnage) * 1.1, height * 0.55);
+      const lift = jumpHeight(entity) * radiusFor(entity.tonnage) * 2.2;
+      PICK_DELTA.set(
+        at.x - ray.origin.x,
+        this.terrain.heightAt(at.x, at.y) + lift + height * 0.5 - ray.origin.y,
+        at.y - ray.origin.z,
+      );
+      const along = PICK_DELTA.dot(ray.direction);
+      if (along < 0 || along >= bodyAlong) continue;
+      if (PICK_DELTA.lengthSq() - along * along > radius * radius) continue;
+      bodyHit = entity;
+      bodyAlong = along;
     }
+    if (bodyHit !== null) return bodyHit;
 
     let best: MechEntity | null = null;
     let bestRange = radiusPixels;

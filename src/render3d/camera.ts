@@ -5,6 +5,7 @@ import {
   Raycaster,
   Vector2,
   Vector3,
+  type Ray,
 } from 'three';
 
 import type { Vec2 } from '../sim/types';
@@ -179,23 +180,13 @@ export class TacticalCamera {
   }
 
   /**
-   * The nearest object under a screen point, returned as whichever ancestor
-   * carries an entity id — a mech is a tree of plates, and the plate that got
-   * hit is not what the player was pointing at.
+   * The pick ray under a screen point, in world space. The ray is the
+   * raycaster's own scratch — read it, don't keep it.
    */
-  pick(screen: Vec2, viewport: Viewport, roots: readonly Object3D[]): Object3D | null {
-    if (roots.length === 0) return null;
+  rayAt(screen: Vec2, viewport: Viewport): Ray {
     this.update(viewport);
     this.raycaster.setFromCamera(this.ndc(screen, viewport), this.camera);
-
-    for (const hit of this.raycaster.intersectObjects(roots as Object3D[], true)) {
-      let node: Object3D | null = hit.object;
-      while (node !== null) {
-        if (node.userData.entityId !== undefined) return node;
-        node = node.parent;
-      }
-    }
-    return null;
+    return this.raycaster.ray;
   }
 
   /** Where a battlefield point lands on screen, for HUD markers and marquees. */
