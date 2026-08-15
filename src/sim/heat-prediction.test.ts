@@ -100,7 +100,7 @@ function rateBetween(bench: Bench, fromSeconds: number, toSeconds: number): numb
 
 const BUILDS = [
   { designId: 'rampart_breaker', label: 'ballistic assault (predicted sustainable)' },
-  { designId: 'sentinel_sniper', label: 'energy medium (predicted to overheat)' },
+  { designId: 'cairn_battery', label: 'energy medium (predicted to overheat)' },
   { designId: 'bulwark_assault', label: 'mixed heavy (predicted to overheat)' },
 ] as const;
 

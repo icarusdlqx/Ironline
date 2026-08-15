@@ -24,7 +24,7 @@ function settle(seconds: number): void {
 
 beforeEach(() => {
   world = testWorld('stability');
-  mech = unitOf(world, 'bulwark_burner');
+  mech = unitOf(world, 'bulwark_assault');
 });
 
 describe('impulse', () => {

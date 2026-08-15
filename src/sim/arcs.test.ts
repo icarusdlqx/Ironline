@@ -36,7 +36,7 @@ function shoot(from: Vec2, damage = 20): number {
 beforeEach(() => {
   world = testWorld('arcs');
   shooter = unitOf(world, 'bulwark_assault');
-  target = unitOf(world, 'bulwark_burner');
+  target = unitOf(world, 'cairn_battery');
   target.pos = { x: 500, y: 500 };
   target.facing = 0;
 });
@@ -177,7 +177,7 @@ describe('rear armour', () => {
   const TORSOS = ['centre_torso', 'left_torso', 'right_torso'] as const;
 
   it('splits exactly what the design paid for, and no more', () => {
-    const design = catalog.designs.get('bulwark_burner');
+    const design = catalog.designs.get('cairn_battery');
     expect(design).toBeDefined();
     for (const location of LOCATIONS) {
       const state = target.locations[location];

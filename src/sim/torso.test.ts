@@ -18,7 +18,7 @@ function settle(ticks: number): void {
 beforeEach(() => {
   world = testWorld('torso');
   shooter = unitOf(world, 'sentinel_brawler');
-  target = unitOf(world, 'bulwark_burner');
+  target = unitOf(world, 'halberd_prime');
 
   shooter.pos = { x: 400, y: 400 };
   shooter.facing = 0;
@@ -91,9 +91,12 @@ describe('designators', () => {
     target.motion = 'stationary';
     shooter.motion = 'stationary';
 
-    const plain = hitChance(world, shooter, target, weapon, 60);
+    // Far enough out that the painted shot has room under the hit-chance
+    // ceiling: at knife range the base chance is already near it and the
+    // factor is clipped away before it can be measured.
+    const plain = hitChance(world, shooter, target, weapon, 200);
     target.designatedUntilTick = world.tick + 20;
-    const painted = hitChance(world, shooter, target, weapon, 60);
+    const painted = hitChance(world, shooter, target, weapon, 200);
 
     // Both sit below the ceiling, so the factor shows through.
     expect(painted).toBeGreaterThan(plain);

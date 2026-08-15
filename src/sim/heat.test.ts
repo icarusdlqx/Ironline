@@ -10,7 +10,7 @@ let mech: MechEntity;
 
 beforeEach(() => {
   world = testWorld('heat');
-  mech = unitOf(world, 'bulwark_burner');
+  mech = unitOf(world, 'bulwark_assault');
 });
 
 describe('heatTierFor', () => {
@@ -107,7 +107,7 @@ describe('flamers', () => {
     expect(flamer.targetHeat).toBeGreaterThan(0);
 
     const shooter = unitOf(world, 'sentinel_brawler');
-    const target = unitOf(world, 'bulwark_burner');
+    const target = unitOf(world, 'halberd_prime');
     target.pos = { x: shooter.pos.x + 20, y: shooter.pos.y };
     target.heat = 0;
 
@@ -130,7 +130,7 @@ describe('flamers', () => {
 
   it('leaves the target cold when an ordinary weapon lands', () => {
     const shooter = unitOf(world, 'sentinel_brawler');
-    const target = unitOf(world, 'bulwark_burner');
+    const target = unitOf(world, 'halberd_prime');
     target.heat = 0;
 
     world.projectiles = [

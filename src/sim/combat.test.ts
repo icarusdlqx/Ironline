@@ -28,7 +28,7 @@ function offTheNose(of: MechEntity): { x: number; y: number } {
 beforeEach(() => {
   world = testWorld('combat');
   shooter = unitOf(world, 'bulwark_assault');
-  target = unitOf(world, 'bulwark_burner');
+  target = unitOf(world, 'halberd_prime');
   shooter.pos = { x: 500, y: 500 };
   target.pos = { x: 560, y: 500 };
   shooter.facing = 0;
@@ -199,16 +199,20 @@ describe('resolveProjectiles', () => {
 
     resolveProjectiles(world);
 
-    expect(shooter.stats.damageDealt).toBe(5);
-    expect(target.stats.damageTaken).toBe(5);
+    // What lands is what the target's own hull lets land: a long-strided frame
+    // takes more of it than a hardened one, and the fixture has to say so
+    // rather than assume whichever chassis happens to be in the mission.
+    const landed = 5 * target.damageTakenFactor;
+    expect(shooter.stats.damageDealt).toBeCloseTo(landed, 6);
+    expect(target.stats.damageTaken).toBeCloseTo(landed, 6);
 
     // The location is rolled at impact now, so the fixture cannot name it —
-    // but exactly one plate should be five points down.
+    // but exactly one plate should be down by what the hull let through.
     const lost = LOCATIONS.reduce(
       (sum, location) => sum + (target.locations[location].armourMax - target.locations[location].armour),
       0,
     );
-    expect(lost).toBe(5);
+    expect(lost).toBeCloseTo(landed, 6);
   });
 
   it('reports misses without dealing damage', () => {

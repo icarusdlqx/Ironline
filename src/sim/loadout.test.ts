@@ -224,7 +224,7 @@ describe('validation', () => {
   });
 
   it('checks unplaced heat sinks against the whole chassis', () => {
-    const design = clone('wisp_harasser');
+    const design = clone('wisp_scout');
     design.heatSinks = 40;
     const loadout = computeLoadout(catalog, design);
     expect(loadout.issues.some((issue) => issue.code === 'slots' && issue.location === null)).toBe(
@@ -235,7 +235,7 @@ describe('validation', () => {
 
 describe('heat profile', () => {
   it('sums alpha strike heat across every mount', () => {
-    const design = designOf('bulwark_burner');
+    const design = designOf('bulwark_assault');
     const expected = design.mounts.reduce(
       (sum, mount) => sum + (catalog.weapons.get(mount.weaponId)?.heat ?? 0),
       0,
@@ -244,7 +244,7 @@ describe('heat profile', () => {
   });
 
   it('derives sustained heat from cooldowns', () => {
-    const design = designOf('sentinel_sniper');
+    const design = designOf('cairn_battery');
     const expected = design.mounts.reduce((sum, mount) => {
       const weapon = catalog.weapons.get(mount.weaponId);
       return sum + (weapon === undefined ? 0 : weapon.heat / weapon.cooldown);
@@ -253,8 +253,8 @@ describe('heat profile', () => {
   });
 
   it('scales dissipation with sink count and type', () => {
-    const single = clone('sentinel_sniper');
-    const double = clone('sentinel_sniper');
+    const single = clone('cairn_battery');
+    const double = clone('cairn_battery');
     double.heatSinkId = 'double_heat_sink';
 
     expect(computeHeatProfile(catalog, double).dissipationPerSecond).toBeGreaterThan(
@@ -264,7 +264,7 @@ describe('heat profile', () => {
 
   it('flags a ballistic build as sustainable and an energy build as not', () => {
     expect(computeHeatProfile(catalog, designOf('rampart_breaker')).sustainable).toBe(true);
-    expect(computeHeatProfile(catalog, designOf('sentinel_sniper')).sustainable).toBe(false);
+    expect(computeHeatProfile(catalog, designOf('cairn_battery')).sustainable).toBe(false);
   });
 
   it('reports no shutdown time for a sustainable build', () => {
@@ -275,8 +275,8 @@ describe('heat profile', () => {
   });
 
   it('shortens time to shutdown as sinks are removed', () => {
-    const cool = clone('bulwark_burner');
-    const hot = clone('bulwark_burner');
+    const cool = clone('bulwark_assault');
+    const hot = clone('bulwark_assault');
     hot.heatSinks = 12;
 
     const coolProfile = computeHeatProfile(catalog, cool);
@@ -287,7 +287,7 @@ describe('heat profile', () => {
   });
 
   it('measures the climb from the alpha strike, not from a cold reactor', () => {
-    const design = designOf('sentinel_sniper');
+    const design = designOf('cairn_battery');
     const profile = computeHeatProfile(catalog, design);
     expect(profile.secondsToShutdownRisk).not.toBeNull();
 
@@ -297,10 +297,38 @@ describe('heat profile', () => {
   });
 
   it('marks a build whose alpha strike alone risks shutdown', () => {
-    const design = clone('bulwark_burner');
+    const design = clone('bulwark_assault');
     design.heatSinks = 12;
     const profile = computeHeatProfile(catalog, design);
     expect(profile.alphaStrikeHeat).toBeGreaterThan(0);
     expect(profile.alphaSafe).toBe(profile.alphaStrikeHeat < 0.85 * profile.heatCapacity);
+  });
+});
+
+describe('the roster', () => {
+  it('is ten machines, one to a chassis', () => {
+    // No prime-and-variant pairs: each chassis is one machine, so choosing
+    // between them is choosing between designs rather than between trims.
+    expect(catalog.designs.size).toBe(10);
+    const chassis = [...catalog.designs.values()].map((design) => design.chassisId);
+    expect(new Set(chassis).size).toBe(chassis.length);
+  });
+
+  it('lets every mission deploy the lance it fields itself', () => {
+    // A drop allowance below the mission's own lance is a briefing with the
+    // deploy button greyed out, which is only ever found by trying to play it.
+    for (const mission of catalog.missions.values()) {
+      const lance = mission.lances.find((entry) => entry.team === 0);
+      if (lance === undefined) continue;
+
+      const tonnage = lance.units.reduce((total, unit) => {
+        const design = catalog.designs.get(unit.designId);
+        const hull = design === undefined ? undefined : catalog.chassis.get(design.chassisId);
+        return total + (hull?.tonnage ?? 0);
+      }, 0);
+
+      const allowance = mission.dropTonnage ?? tonnage;
+      expect(tonnage, `${mission.id} fields ${tonnage}t into a ${allowance}t hold`).toBeLessThanOrEqual(allowance);
+    }
   });
 });

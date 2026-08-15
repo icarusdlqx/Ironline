@@ -1,6 +1,6 @@
 {
   "id": "mirror_ridge",
-  "name": "Mirror Match \u2014 Ridge Pass",
+  "name": "Mirror Match — Ridge Pass",
   "type": "skirmish",
   "mapId": "ridge_pass",
   "maxDurationSeconds": 600,
@@ -37,7 +37,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "ilse_brant",
           "spawn": {
             "x": 132,
@@ -79,7 +79,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "ilse_brant",
           "spawn": {
             "x": 828,
@@ -108,5 +108,5 @@
       "required": true
     }
   ],
-  "dropTonnage": 200
+  "dropTonnage": 225
 }

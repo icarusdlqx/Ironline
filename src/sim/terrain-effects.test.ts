@@ -41,7 +41,7 @@ function standOff(metres: number): boolean {
 beforeEach(() => {
   world = playerWorld('terrain-effects');
   scout = unitOf(world, 'hornet_spotter');
-  enemy = unitOf(world, 'bulwark_burner');
+  enemy = unitOf(world, 'halberd_prime');
 
   // Flat, empty ground with nothing to break the sightline, so the only thing
   // under test is the tile the hostile happens to be standing on.

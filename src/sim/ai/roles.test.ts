@@ -38,26 +38,28 @@ describe('combat roles', () => {
 
   it('classifies a light hull as a scout rather than something to brawl with', () => {
     expect(assigned.get('wisp_scout')).toBe('scout');
-    expect(assigned.get('hornet_striker')).toBe('scout');
+    expect(assigned.get('hornet_spotter')).toBe('scout');
   });
 
   it('classifies a heavy short-range hull as a brawler', () => {
-    expect(assigned.get('colossus_hammer')).toBe('brawler');
+    expect(assigned.get('warden_lancer')).toBe('brawler');
     expect(assigned.get('sentinel_brawler')).toBe('brawler');
   });
 
   it('separates the direct-fire long guns from the indirect ones', () => {
-    // LRMs are both long-ranged and indirect, so whichever test runs first
-    // claims them. The long guns go first, and only what is left is artillery.
+    // An LRM reaches as far as an ER large laser, so counting it as a long gun
+    // claimed every missile carrier as a sniper before the indirect check could
+    // see it. Only direct fire counts as long, and a hull given over to racks
+    // is artillery.
     expect(assigned.get('colossus_siege')).toBe('sniper');
-    expect(assigned.get('warden_picket')).toBe('missile_boat');
+    expect(assigned.get('cairn_battery')).toBe('missile_boat');
   });
 
   it('measures the frontage over the rest of the lance, not the mech itself', () => {
     const line = testWorld('frontage');
     const target = spawnDesign(line, 'rampart_breaker', 1, { x: 600, y: 300 });
-    const front = spawnDesign(line, 'colossus_hammer', 0, { x: 300, y: 300 });
-    const back = spawnDesign(line, 'warden_picket', 0, { x: 100, y: 300 });
+    const front = spawnDesign(line, 'colossus_siege', 0, { x: 300, y: 300 });
+    const back = spawnDesign(line, 'cairn_battery', 0, { x: 100, y: 300 });
     for (const other of line.entities) {
       if (other !== target && other !== front && other !== back) other.destroyed = true;
     }
@@ -70,7 +72,7 @@ describe('combat roles', () => {
   });
 
   it('treats a disarmed mech as a spotter', () => {
-    const mech = spawnDesign(world, 'colossus_hammer');
+    const mech = spawnDesign(world, 'colossus_siege');
     for (const mount of mech.weapons) mount.destroyed = true;
     expect(roleOf(world, mech).role).toBe('scout');
   });

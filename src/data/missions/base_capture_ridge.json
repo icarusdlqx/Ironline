@@ -39,7 +39,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "ilse_brant",
           "spawn": {
             "x": 132,
@@ -63,7 +63,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "wisp_harasser",
+          "designId": "wisp_scout",
           "pilotId": "juno_reyes",
           "spawn": {
             "x": 660,
@@ -72,7 +72,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "willem_torrance",
           "spawn": {
             "x": 852,
@@ -85,7 +85,7 @@
   ],
   "reserves": [
     {
-      "designId": "bulwark_burner",
+      "designId": "bulwark_assault",
       "pilotId": "nadia_ostrow",
       "spawn": {
         "x": 156,
@@ -168,7 +168,7 @@
           "team": 1,
           "units": [
             {
-              "designId": "bulwark_burner",
+              "designId": "bulwark_assault",
               "pilotId": "nadia_ostrow",
               "spawn": {
                 "x": 876,

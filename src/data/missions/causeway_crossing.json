@@ -1,6 +1,6 @@
 {
   "id": "causeway_crossing",
-  "name": "Assault \u2014 The Causeway",
+  "name": "Assault — The Causeway",
   "type": "assault",
   "mapId": "causeway",
   "briefing": "One raised road across a drowned valley, and Halloran wants the far bank. The causeway is fast and murderous; the fords are slow and cold. Take the hardstand at mid-span, then break what is left of the garrison.",
@@ -30,7 +30,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "wisp_harasser",
+          "designId": "wisp_scout",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 180,
@@ -39,7 +39,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "ilse_brant",
           "spawn": {
             "x": 36,
@@ -54,7 +54,7 @@
       "name": "Far Bank Garrison",
       "units": [
         {
-          "designId": "bulwark_burner",
+          "designId": "bulwark_assault",
           "pilotId": "nadia_ostrow",
           "spawn": {
             "x": 756,
@@ -63,7 +63,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "hornet_striker",
+          "designId": "hornet_spotter",
           "pilotId": "willem_torrance",
           "spawn": {
             "x": 732,
@@ -72,7 +72,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "cato_ferrin",
           "spawn": {
             "x": 924,
@@ -141,7 +141,7 @@
       "effects": [
         {
           "type": "message",
-          "text": "Recon: fords north-east and south-west \u2014 slow going, but off the killing line of the causeway."
+          "text": "Recon: fords north-east and south-west — slow going, but off the killing line of the causeway."
         }
       ]
     },
@@ -155,7 +155,7 @@
       "effects": [
         {
           "type": "message",
-          "text": "Hardstand ours. The far bank is open \u2014 finish it."
+          "text": "Hardstand ours. The far bank is open — finish it."
         },
         {
           "type": "award_resource_points",
@@ -165,5 +165,5 @@
       ]
     }
   ],
-  "dropTonnage": 200
+  "dropTonnage": 215
 }

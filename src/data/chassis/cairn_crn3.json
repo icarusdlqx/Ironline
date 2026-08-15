@@ -1,0 +1,102 @@
+{
+  "id": "cairn_crn3",
+  "name": "Cairn CRN-3",
+  "class": "heavy",
+  "tonnage": 65,
+  "baseCost": 5200000,
+  "engineRating": 260,
+  "internalHeatSinks": 10,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 2
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 2,
+      "slots": 10,
+      "size": 4
+    },
+    "right_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 2,
+      "slots": 10,
+      "size": 4
+    },
+    "left_arm": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "right_arm": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 20,
+    "centre_torso": 88,
+    "left_torso": 66,
+    "right_torso": 66,
+    "left_arm": 38,
+    "right_arm": 38,
+    "left_leg": 58,
+    "right_leg": 58
+  },
+  "internals": {
+    "head": 8,
+    "centre_torso": 48,
+    "left_torso": 30,
+    "right_torso": 30,
+    "left_arm": 18,
+    "right_arm": 18,
+    "left_leg": 30,
+    "right_leg": 30
+  },
+  "silhouette": {
+    "form": "squat",
+    "torsoLength": 1.04,
+    "torsoWidth": 1.22,
+    "shoulder": 1.16,
+    "legLength": 0.9,
+    "stance": 1.1
+  },
+  "summary": "Two shoulders of cells and just enough gun to argue with whatever walks into them.",
+  "lore": "Ferrous Guild built the Cairn to hold a road, and it does that better than it does anything else. The hull is a launcher carriage with legs bolted under it; the arms are an afterthought the crews are grateful for. A Cairn that has been allowed to set up is a problem. A Cairn caught moving is a gift.",
+  "traits": [
+    "wide_stance",
+    "reinforced_legs"
+  ]
+}

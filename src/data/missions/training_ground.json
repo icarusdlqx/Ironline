@@ -140,7 +140,7 @@
           "team": 1,
           "units": [
             {
-              "designId": "wisp_harasser",
+              "designId": "wisp_scout",
               "pilotId": "bo_ferrant",
               "spawn": {
                 "x": 804,

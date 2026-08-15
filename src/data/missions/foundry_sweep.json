@@ -21,7 +21,7 @@
           "facingDegrees": 45
         },
         {
-          "designId": "hornet_striker",
+          "designId": "hornet_spotter",
           "pilotId": "willem_torrance",
           "spawn": {
             "x": 108,
@@ -30,7 +30,7 @@
           "facingDegrees": 45
         },
         {
-          "designId": "wisp_harasser",
+          "designId": "wisp_scout",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 180,
@@ -63,7 +63,7 @@
           "facingDegrees": -135
         },
         {
-          "designId": "wisp_harasser",
+          "designId": "wisp_scout",
           "pilotId": "roz_havel",
           "spawn": {
             "x": 708,
@@ -72,7 +72,7 @@
           "facingDegrees": -135
         },
         {
-          "designId": "hornet_striker",
+          "designId": "hornet_spotter",
           "pilotId": "bo_ferrant",
           "spawn": {
             "x": 852,
@@ -81,7 +81,7 @@
           "facingDegrees": -135
         },
         {
-          "designId": "bulwark_burner",
+          "designId": "bulwark_assault",
           "pilotId": "teodor_krysa",
           "spawn": {
             "x": 780,

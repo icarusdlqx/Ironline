@@ -12,7 +12,7 @@
       "name": "Overwatch Lance",
       "units": [
         {
-          "designId": "sentinel_sniper",
+          "designId": "cairn_battery",
           "pilotId": "ilse_brant",
           "spawn": {
             "x": 636,
@@ -21,7 +21,7 @@
           "facingDegrees": 135
         },
         {
-          "designId": "warden_picket",
+          "designId": "warden_lancer",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 708,
@@ -54,7 +54,7 @@
       "name": "Combine Column",
       "units": [
         {
-          "designId": "bulwark_burner",
+          "designId": "bulwark_assault",
           "pilotId": "nadia_ostrow",
           "spawn": {
             "x": 36,
@@ -72,7 +72,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "hornet_striker",
+          "designId": "hornet_spotter",
           "pilotId": "willem_torrance",
           "spawn": {
             "x": 180,
@@ -90,7 +90,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "wisp_harasser",
+          "designId": "wisp_scout",
           "pilotId": "roz_havel",
           "spawn": {
             "x": 348,

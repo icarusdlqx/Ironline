@@ -54,8 +54,8 @@
     "longRangeMetres": 330,
     "scoutTonnage": 35,
     "brawlerTonnage": 45,
-    "longShare": 0.5,
-    "indirectShare": 0.35,
+    "longShare": 0.26,
+    "indirectShare": 0.65,
     "shortShare": 0.45,
     "minimumRangeMetres": 60,
     "profiles": {

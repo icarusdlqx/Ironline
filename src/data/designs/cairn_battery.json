@@ -1,16 +1,16 @@
 {
-  "id": "halberd_prime",
-  "name": "Halberd HLB-4 'Halberdier'",
-  "chassisId": "halberd_hlb4",
+  "id": "cairn_battery",
+  "name": "Cairn CRN-3 'Battery'",
+  "chassisId": "cairn_crn3",
   "armour": {
-    "head": 22,
-    "centre_torso": 92,
-    "left_torso": 64,
-    "right_torso": 64,
-    "left_arm": 28,
-    "right_arm": 28,
-    "left_leg": 48,
-    "right_leg": 48
+    "head": 20,
+    "centre_torso": 88,
+    "left_torso": 66,
+    "right_torso": 66,
+    "left_arm": 38,
+    "right_arm": 38,
+    "left_leg": 58,
+    "right_leg": 58
   },
   "heatSinkId": "heat_sink",
   "heatSinks": 13,
@@ -24,11 +24,15 @@
       "location": "right_torso"
     },
     {
-      "weaponId": "er_large_laser",
+      "weaponId": "lrm10",
+      "location": "left_torso"
+    },
+    {
+      "weaponId": "medium_laser",
       "location": "left_arm"
     },
     {
-      "weaponId": "er_large_laser",
+      "weaponId": "medium_laser",
       "location": "right_arm"
     },
     {
@@ -40,12 +44,12 @@
     {
       "weaponId": "lrm15",
       "location": "left_torso",
-      "tons": 1
+      "tons": 3
     },
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "right_torso",
-      "tons": 1
+      "tons": 2
     }
   ],
   "equipment": [

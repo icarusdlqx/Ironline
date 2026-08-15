@@ -86,7 +86,7 @@ describe('createMech', () => {
   });
 
   it('spreads walking speed across the weight classes', () => {
-    const speeds = ['wisp_scout', 'sentinel_sniper', 'warden_lancer', 'colossus_siege'].map(
+    const speeds = ['wisp_scout', 'falchion_duellist', 'halberd_prime', 'colossus_siege'].map(
       (designId) => spawnDesign(world, designId).walkSpeed,
     );
     // §3.3 wants a real spread: a scout should roughly triple an assault's pace.

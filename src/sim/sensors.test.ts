@@ -18,7 +18,7 @@ let enemy: MechEntity;
 beforeEach(() => {
   world = playerWorld('sensors');
   scout = unitOf(world, 'hornet_spotter');
-  enemy = unitOf(world, 'bulwark_burner');
+  enemy = unitOf(world, 'halberd_prime');
 });
 
 describe('sensorRangeFor', () => {
@@ -42,7 +42,17 @@ describe('sensorRangeFor', () => {
         (total, traitId) => total * (catalog.rules.pilotTraits.entries[traitId]?.sensorRangeFactor ?? 1),
         1,
       );
-      expect(entity.sensorRange).toBeCloseTo(fromSkill * kit * speciality, 6);
+      // And so is the hull's own aerial. A masted chassis carries its reach in
+      // its traits, which this missed until a masted hull was on the field.
+      const chassis = catalog.chassis.get(entity.chassisId);
+      const mast = (chassis?.traits ?? []).reduce(
+        (total, traitId) => total * (catalog.rules.traits.entries[traitId]?.sensorRangeFactor ?? 1),
+        1,
+      );
+      expect(entity.sensorRange, entity.designId).toBeCloseTo(
+        fromSkill * kit * speciality * mast,
+        6,
+      );
     }
   });
 

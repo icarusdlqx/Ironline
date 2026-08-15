@@ -1,0 +1,102 @@
+{
+  "id": "falchion_fal2",
+  "name": "Falchion FAL-2",
+  "class": "medium",
+  "tonnage": 50,
+  "baseCost": 3800000,
+  "engineRating": 250,
+  "internalHeatSinks": 11,
+  "jumpCapable": true,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 2
+    },
+    "left_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 7,
+      "size": 2
+    },
+    "right_torso": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 7,
+      "size": 2
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 6,
+      "size": 3
+    },
+    "right_arm": {
+      "energy": 1,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 6,
+      "size": 3
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 18,
+    "centre_torso": 66,
+    "left_torso": 50,
+    "right_torso": 50,
+    "left_arm": 34,
+    "right_arm": 34,
+    "left_leg": 44,
+    "right_leg": 44
+  },
+  "internals": {
+    "head": 6,
+    "centre_torso": 36,
+    "left_torso": 22,
+    "right_torso": 22,
+    "left_arm": 15,
+    "right_arm": 15,
+    "left_leg": 22,
+    "right_leg": 22
+  },
+  "silhouette": {
+    "form": "humanoid",
+    "torsoLength": 0.9,
+    "torsoWidth": 0.86,
+    "shoulder": 0.92,
+    "legLength": 1.16,
+    "stance": 0.92
+  },
+  "summary": "A duellist. Jets, reach and no interest in standing where it was a moment ago.",
+  "lore": "The Falchion came out of a Vasi programme to build something that could fight a heavy and leave before the heavy could answer. It is all arms and legs: the guns hang where a fencer would hold them and the jets sit where the armour should. Pilots who like it will not fly anything else. Pilots who do not, do not last long in one.",
+  "traits": [
+    "long_stride",
+    "narrow_profile"
+  ]
+}

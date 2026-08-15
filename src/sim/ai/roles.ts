@@ -36,7 +36,7 @@ function batteryOf(world: World, mech: MechEntity): Battery {
     long: 0,
     indirect: 0,
     total: 0,
-    minimumRange: 0,
+    minimumRange: Number.POSITIVE_INFINITY,
     tonnage: mech.tonnage,
   };
 
@@ -46,13 +46,23 @@ function batteryOf(world: World, mech: MechEntity): Battery {
     if (weapon === undefined) continue;
 
     const output = (weapon.damage * weapon.projectiles) / weapon.cooldown;
+    const indirect = weapon.tags.includes('indirect_fire');
+
     battery.total += output;
     if (weapon.range.long <= rules.shortRangeMetres) battery.short += output;
-    if (weapon.range.long >= rules.longRangeMetres) battery.long += output;
-    if (weapon.tags.includes('indirect_fire')) battery.indirect += output;
-    battery.minimumRange = Math.max(battery.minimumRange, weapon.range.min);
+    // Direct fire only. An LRM reaches as far as an ER large laser, so counting
+    // it here claimed every missile carrier as a sniper before the indirect
+    // check below could ever see it — which is not what the ordering says it
+    // does, and left the missile_boat profile unreachable from the roster.
+    if (!indirect && weapon.range.long >= rules.longRangeMetres) battery.long += output;
+    if (indirect) battery.indirect += output;
+    // The closest this mech can still fight, not the furthest one gun has to
+    // stand off. Taking the maximum meant a single LRM rack on an otherwise
+    // brawling hull declared the whole machine a back-line sniper.
+    battery.minimumRange = Math.min(battery.minimumRange, weapon.range.min);
   }
 
+  if (!Number.isFinite(battery.minimumRange)) battery.minimumRange = 0;
   return battery;
 }
 

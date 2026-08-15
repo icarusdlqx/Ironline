@@ -368,7 +368,7 @@ describe('drop allowance', () => {
     if (heavy === undefined || pilot === undefined) throw new Error('empty company');
 
     // One machine that eats most of the allowance on its own.
-    const colossus = catalog.designs.get('colossus_hammer');
+    const colossus = catalog.designs.get('colossus_siege');
     if (colossus === undefined) throw new Error('missing design');
     heavy.design = JSON.parse(JSON.stringify(colossus)) as typeof colossus;
 
