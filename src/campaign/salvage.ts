@@ -2,7 +2,7 @@ import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
 import type { Rng } from '../sim/rng';
 import type { BattleResult, UnitResult } from '../sim/world';
-import { addToStore, type StoreItem } from './types';
+import { addToStore, takeFromStore, type StoreItem } from './types';
 import type { CampaignState } from './types';
 
 export type SalvageOutcome = 'centre_torso' | 'head' | 'ammo_explosion' | 'legged' | 'ejected';
@@ -17,8 +17,19 @@ export interface SalvageCandidate {
 export interface SalvageReport {
   candidates: SalvageCandidate[];
   chassisRecovered: string[];
+  /** What the crews actually got off the field: the shortlist to choose from. */
+  offered: StoreItem[];
+  /** What was taken. A subset of `offered`, sized by the salvage rules. */
   items: StoreItem[];
 }
+
+/**
+ * How many of the recovered items the dropship has room for. Everything the
+ * crews cut loose is offered; the commander decides what comes home, which is
+ * a decision worth having and a reason to look at the debrief at all.
+ */
+export const SALVAGE_PICKS = 2;
+export const SALVAGE_OFFERED = 5;
 
 /**
  * How the mech was taken out decides what is left to tow home. An immobilised
@@ -125,7 +136,41 @@ export function resolveSalvage(
     items.push(...itemsFrom(catalog, rng, unit, unit.designId, salvageShare));
   }
 
-  return { candidates, chassisRecovered, items: merge(items) };
+  // Everything cut loose is offered; the hold takes what the commander picks.
+  const offered = merge(items).slice(0, SALVAGE_OFFERED);
+  return {
+    candidates,
+    chassisRecovered,
+    offered,
+    items: offered.slice(0, SALVAGE_PICKS),
+  };
+}
+
+/**
+ * Swaps what was taken for a different choice out of the same offer. Anything
+ * not on the offer is refused outright — the debrief is a decision about what
+ * the crews found, not a shopping list.
+ */
+export function rechooseSalvage(
+  state: CampaignState,
+  report: SalvageReport,
+  wanted: readonly StoreItem[],
+): StoreItem[] {
+  const allowed = new Map(report.offered.map((item) => [`${item.kind}:${item.itemId}`, item]));
+  const picked: StoreItem[] = [];
+  for (const item of wanted) {
+    const match = allowed.get(`${item.kind}:${item.itemId}`);
+    if (match === undefined || picked.length >= SALVAGE_PICKS) continue;
+    if (picked.some((held) => held.kind === match.kind && held.itemId === match.itemId)) continue;
+    picked.push({ ...match });
+  }
+
+  // Put back what was taken, then take what was chosen. Doing it in that order
+  // means a pick that overlaps the old one nets out to no change at all.
+  for (const item of report.items) takeFromStore(state, item.kind, item.itemId, item.count);
+  for (const item of picked) addToStore(state, item.kind, item.itemId, item.count);
+  report.items = picked;
+  return picked;
 }
 
 export function applySalvage(state: CampaignState, report: SalvageReport): void {

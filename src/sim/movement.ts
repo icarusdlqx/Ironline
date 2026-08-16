@@ -1,3 +1,4 @@
+import { abilityFactor } from './abilities';
 import { emit } from './events';
 import { addHeat, currentHeatTier } from './heat';
 import { angleDifference, bearing, distance, normaliseAngle } from './math';
@@ -44,7 +45,7 @@ export function speedFor(world: World, entity: MechEntity, heading = entity.faci
   const rise = Math.max(0, climbAhead(world, entity, heading));
   const climb = 1 / (1 + rise * (1 - world.rules.movement.climbSpeedFactor));
 
-  return base * terrain.moveMultiplier * heat * legs * footing * climb;
+  return base * terrain.moveMultiplier * heat * legs * footing * climb * abilityFactor(world, entity, 'speed');
 }
 
 function turnToward(world: World, entity: MechEntity, focus: Vec2): number {

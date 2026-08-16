@@ -1,0 +1,54 @@
+{
+  "id": "abilities",
+  "cooldownSeconds": 55,
+  "default": "steady_aim",
+  "byTrait": {
+    "marksman": "aimed_volley",
+    "butcher": "aimed_volley",
+    "evasive": "evasive_burn",
+    "snap_shot": "evasive_burn",
+    "spotter": "sensor_sweep",
+    "cool_hand": "coolant_flush",
+    "hard_to_kill": "brace"
+  },
+  "entries": {
+    "aimed_volley": {
+      "label": "Aimed Volley",
+      "note": "Everything stops but the reticle. For a few seconds the shots go where they are pointed.",
+      "durationSeconds": 8,
+      "accuracyFactor": 1.35
+    },
+    "evasive_burn": {
+      "label": "Evasive Burn",
+      "note": "Throttle up and refuse to be where the last volley was aimed.",
+      "durationSeconds": 8,
+      "incomingAccuracyFactor": 0.68,
+      "speedFactor": 1.25
+    },
+    "sensor_sweep": {
+      "label": "Sensor Sweep",
+      "note": "Everything the dish can reach, lit up at once — and everything looking back knows it.",
+      "durationSeconds": 10,
+      "sensorRangeFactor": 2
+    },
+    "coolant_flush": {
+      "label": "Coolant Flush",
+      "note": "Dump the reserve through the loop. Buys one more alpha, and there is no second bottle.",
+      "durationSeconds": 0,
+      "heatShedFraction": 0.55
+    },
+    "brace": {
+      "label": "Brace",
+      "note": "Set the feet, drop the shoulder, and take it. Nothing shifts this for a while.",
+      "durationSeconds": 9,
+      "damageTakenFactor": 0.7,
+      "stabilityFactor": 0.4
+    },
+    "steady_aim": {
+      "label": "Steady Aim",
+      "note": "The pilot settles, breathes out, and shoots like the range officer taught them.",
+      "durationSeconds": 8,
+      "accuracyFactor": 1.2
+    }
+  }
+}

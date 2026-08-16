@@ -19,6 +19,7 @@ import {
 import type { CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
+import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
@@ -330,6 +331,23 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         <Debrief
           catalog={catalog}
           outcome={pendingDebrief}
+          onChooseSalvage={(picks) => {
+            mutate((draft) => {
+              const record = draft.history[draft.history.length - 1];
+              if (record === undefined) return null;
+              // The report the debrief is choosing from lives on the record, so
+              // re-picking is a swap against what was already taken aboard.
+              const report = {
+                candidates: [],
+                chassisRecovered: record.salvagedChassis,
+                offered: record.salvageOffered ?? [],
+                items: record.salvagedItems,
+              };
+              rechooseSalvage(draft, report, picks);
+              record.salvagedItems = report.items;
+              return null;
+            });
+          }}
           onClose={() => {
             markDebriefed(state.history.length);
             setDebriefed(state.history.length);

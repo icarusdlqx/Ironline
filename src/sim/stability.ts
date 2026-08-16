@@ -1,3 +1,4 @@
+import { abilityFactor } from './abilities';
 import type { StabilityRules } from '../schema/rules';
 import type { Weapon } from '../schema/weapon';
 import { emit } from './events';
@@ -38,6 +39,10 @@ export function addStabilityImpulse(
   // Nothing shoves a hull that is sitting on its tracks, or bolted to a pad.
   if (!entity.knockable) return;
 
+  // A braced pilot has set their feet for exactly this.
+  const impulse = raw * abilityFactor(world, entity, 'stability');
+  if (impulse <= 0) return;
+
   const rules = world.rules.stability;
 
   // Already down: nothing left to knock over. Just got up: a moment of solid
@@ -50,7 +55,7 @@ export function addStabilityImpulse(
 
   const grip = Math.max(0, 1 - entity.pilot.piloting * rules.pilotingResistFactor);
   const mass = rules.referenceTonnage / entity.tonnage;
-  const shove = raw * grip * mass;
+  const shove = impulse * grip * mass;
   if (shove <= 0) return;
 
   const wasStaggered = entity.stability >= rules.staggerThreshold;

@@ -2927,3 +2927,50 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px;
 }
+
+/* The debrief's salvage choice: what the crews found, and what fits in the hold. */
+.debrief-salvage {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.6rem;
+}
+.debrief-salvage h4 {
+  margin: 0 0 0.15rem;
+}
+.salvage-note {
+  margin: 0 0 0.5rem;
+  color: #8fa3ab;
+  font-size: 0.78rem;
+}
+.salvage-offer {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.salvage-offer button {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr auto auto;
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  width: 100%;
+}
+.salvage-offer button.taken {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.salvage-kind {
+  color: #7c8f97;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.salvage-mark {
+  color: #8fa3ab;
+  font-size: 0.7rem;
+}
+.salvage-offer button.taken .salvage-mark {
+  color: var(--accent);
+}

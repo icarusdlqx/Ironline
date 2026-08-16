@@ -307,6 +307,9 @@ Weapons on surviving locations are recovered independently at 60–90%. A mech y
 
 Repair costs C-bills **and days**. A cored chassis might sit in the bay for three weeks. Attrition is the difficulty curve.
 
+
+**Choosing what comes home.** The crews cut loose more than the dropship will carry: a win offers up to five recovered items and the hold takes two. The debrief is where that decision is made, which is the difference between a screen the player skims and a screen they think about.
+
 ---
 
 ## 5. Resource Points (in-mission economy)
@@ -328,6 +331,20 @@ Artillery, minelayer and reinforcement still exist in the rules and resolve fine
 This creates a live mid-mission economy: push for an optional objective to fund the airstrike that wins the fight.
 
 ---
+
+### 5.1 Heat is the decision, not the bookkeeping
+
+Weapons carry cooldowns, but a cooldown is automatic — it fires when it is ready and asks nothing of the player. Heat is the limiter that creates a choice, because it is shared across the machine and cumulative: alpha now and risk cooking, or pace the fire and stay mobile. It is also what makes the bay a puzzle rather than a shopping list, since sinks, guns and armour compete for the same tonnage.
+
+So heat stays, and the parts of it that were invisible are the parts that go:
+
+- **Stay Cool** (T) is a visible stance, not a silent governor. Off means weapons free and the shutdown is the player's to risk.
+- **Alpha Strike** (X) drops the heat-capacity gate for a moment: every gun that bears fires at once, and the reactor's opinion becomes a problem for the next few seconds. It has its own cooldown, and it un-holds the guns so the volley actually leaves.
+- A mech running hot **steams on the battlefield**, so "that one is about to shut down" is read from the fight rather than from a bar.
+
+### 5.2 What a pilot can do
+
+Every pilot carries one active ability on a cooldown, chosen by the specialities they hold — Aimed Volley, Evasive Burn, Sensor Sweep, Coolant Flush, Brace, or Steady Aim for a pilot with nothing relevant. Traits already made pilots differ, but only as numbers quietly multiplying other numbers; an ability is the same difference expressed as a button, so the roster screen and the battlefield finally talk about the same person. Fired with **V**, resolved in the simulation, and deterministic under replay.
 
 ## 6. Pilots
 

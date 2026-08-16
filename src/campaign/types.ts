@@ -84,6 +84,8 @@ export interface MissionOutcome {
   payout: number;
   salvagedChassis: string[];
   salvagedItems: StoreItem[];
+  /** Everything the crews cut loose, of which `salvagedItems` was taken. */
+  salvageOffered: StoreItem[];
   pilotCasualties: string[];
   mechsLost: string[];
   /**

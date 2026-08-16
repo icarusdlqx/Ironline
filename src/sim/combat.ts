@@ -1,6 +1,7 @@
 import type { MechLocation } from '../schema/common';
 import type { CombatRules } from '../schema/rules';
 import type { Weapon } from '../schema/weapon';
+import { abilityFactor } from './abilities';
 import { arcTableKey, attackArcFrom, armourFaceOf, type ArcHit } from './arcs';
 import { penetrates, resolveCritical } from './critical';
 import { applyDamage } from './damage';
@@ -68,13 +69,13 @@ export function hitChance(
   chance *= rules.targetMotion[target.motion];
   chance *= coverFactorAt(world.terrain, target.pos);
   chance *= heightFactor(world, shooter, target);
-  chance *= target.incomingAccuracyFactor;
+  chance *= target.incomingAccuracyFactor * abilityFactor(world, target, 'incoming');
   // A mech on the ground is a stationary target the size of a barn. This is the
   // whole reward for knocking one down, and because hit chance feeds the AI's
   // expected damage it also makes the tactical AI pile onto a downed mech
   // without a line of AI code.
   if (isDown(target)) chance *= world.rules.stability.proneAccuracyFactor;
-  chance *= shooter.outgoingAccuracyFactor;
+  chance *= shooter.outgoingAccuracyFactor * abilityFactor(world, shooter, 'accuracy');
   if (isStaggered(shooter, world.rules.stability.staggerThreshold)) {
     chance *= world.rules.stability.staggeredAccuracyFactor;
   }
@@ -210,14 +211,19 @@ export function updateWeapons(world: World, shooter: MechEntity): void {
   // where the capacity gate actually bites.
   const heatAccuracy = currentHeatTier(world, shooter).accuracyFactor;
 
+  // Mid alpha strike the capacity gate comes off: everything that can fire,
+  // fires, and the reactor's opinion is a problem for the next few seconds.
+  // That gamble is the whole point of the button.
+  const alpha = world.tick <= shooter.alphaUntilTick;
+
   for (const mount of shooter.weapons) {
     if (mount.destroyed || mount.cooldown > 0) continue;
-    if (shooter.groupEnabled[mount.group - 1] !== true) continue;
+    if (!alpha && shooter.groupEnabled[mount.group - 1] !== true) continue;
 
     const weapon = world.catalog.weapons.get(mount.weaponId);
     if (weapon === undefined) continue;
     if (range > weapon.range.long * world.rules.combat.maxRangeMultiplier) continue;
-    if (shooter.heat + weapon.heat >= shooter.heatCapacity) continue;
+    if (!alpha && shooter.heat + weapon.heat >= shooter.heatCapacity) continue;
 
     let bin: AmmoBin | null = null;
     if (weapon.ammoPerTon !== null) {

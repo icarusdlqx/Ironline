@@ -1,4 +1,5 @@
 import type { SensorRules } from '../schema/rules';
+import { abilityFactor } from './abilities';
 import { lineOfSight } from './los';
 import { distance } from './math';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from './types';
@@ -75,7 +76,12 @@ export function updateVision(world: World, vision: TeamVision): void {
   for (const observer of observers) {
     // The same vantage the contact check uses, or the fog would lift off ground
     // the mech has no business seeing from inside a wood.
-    markTiles(world, vision, observer.pos, observer.sensorRange * vantageOf(world, observer));
+    markTiles(
+      world,
+      vision,
+      observer.pos,
+      observer.sensorRange * vantageOf(world, observer) * abilityFactor(world, observer, 'sensor'),
+    );
   }
 
   // A sensor probe, or a scripted recon sweep, looks at the ground from above:
@@ -105,7 +111,11 @@ export function updateVision(world: World, vision: TeamVision): void {
       // treeline you cannot see out of either, and height is the whole reason
       // a scout climbs something before it looks.
       const reach =
-        observer.sensorRange * candidate.signature * concealment * vantageOf(world, observer);
+        observer.sensorRange *
+        candidate.signature *
+        concealment *
+        vantageOf(world, observer) *
+        abilityFactor(world, observer, 'sensor');
       const gap = distance(observer.pos, candidate.pos);
       if (gap > reach) continue;
       if (!lineOfSight(world.terrain, observer.pos, candidate.pos).clear) continue;

@@ -162,8 +162,16 @@ export function Battle() {
       engine.toggleHoldFire();
       return;
     }
-    if (command.id === 'hold_position' || command.id === 'return_fire' || command.id === 'keep_facing') {
+    if (command.id === 'hold_position') {
       engine.setPosture(command.id);
+      return;
+    }
+    if (command.id === 'ability') {
+      engine.useAbilities();
+      return;
+    }
+    if (command.id === 'alpha_strike') {
+      engine.alphaStrike();
       return;
     }
     if (command.id === 'heat_safety') {

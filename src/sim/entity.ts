@@ -5,6 +5,7 @@ import type { Pilot } from '../schema/pilot';
 import type { ConstructionRules, Rules } from '../schema/rules';
 import { splitArmour } from './loadout';
 import { emptyOrders } from './orders';
+import { abilityIdFor } from './abilities';
 import { sensorRangeFor, signatureFor } from './sensors';
 import {
   WEAPON_GROUPS,
@@ -256,6 +257,13 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
     jumpCooldown: 0,
     jump: null,
     posture: 'free',
+    ability: {
+      id: abilityIdFor(rules.abilities, pilot.traits),
+      readyAtTick: 0,
+      activeUntilTick: -1,
+    },
+    alphaUntilTick: -1,
+    alphaReadyAtTick: 0,
     threatenedBy: null,
     threatenedUntilTick: 0,
     turnRate: !frame.mobile

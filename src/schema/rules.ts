@@ -200,6 +200,9 @@ export const HeatTierSchema = z.strictObject({
 export const HeatRulesSchema = z
   .strictObject({
     id: z.literal('heat'),
+    /** How long an alpha strike ignores the capacity gate, and its cooldown. */
+    alphaStrikeSeconds: z.number().positive().max(10).default(1.5),
+    alphaStrikeCooldownSeconds: z.number().positive().max(120).default(20),
     capacityBase: z.number().positive(),
     capacityPerSink: z.number().nonnegative(),
     dissipationPerSinkPerSecond: z.number().positive(),
@@ -448,6 +451,36 @@ export const PilotTraitRulesSchema = z.strictObject({
   pickAtTotalSkill: z.array(z.number().int().positive()).default([]),
   /** How many specialities one pilot may ever hold. */
   maxTraits: z.number().int().positive().max(6).default(3),
+});
+
+/**
+ * One thing a pilot can DO, on a cooldown, as opposed to a trait that quietly
+ * multiplies a number all battle. A pilot with a button is a character; a pilot
+ * with a modifier is a stat block.
+ */
+export const AbilitySchema = z.strictObject({
+  label: z.string().min(1),
+  note: z.string().default(''),
+  /** Zero means it happens at once and is over — a coolant dump, not a stance. */
+  durationSeconds: z.number().nonnegative().max(60),
+  accuracyFactor: z.number().positive().max(3).default(1),
+  incomingAccuracyFactor: z.number().positive().max(3).default(1),
+  speedFactor: z.number().positive().max(3).default(1),
+  sensorRangeFactor: z.number().positive().max(4).default(1),
+  damageTakenFactor: z.number().positive().max(2).default(1),
+  stabilityFactor: z.number().positive().max(2).default(1),
+  /** Share of current heat shed the instant it is used. */
+  heatShedFraction: z.number().min(0).max(1).default(0),
+});
+
+export const AbilityRulesSchema = z.strictObject({
+  id: z.literal('abilities'),
+  cooldownSeconds: z.number().positive().max(600),
+  entries: z.record(IdSchema, AbilitySchema),
+  /** Which ability a pilot earns from a speciality they hold. First match wins. */
+  byTrait: z.record(IdSchema, IdSchema).default({}),
+  /** What a pilot with no relevant speciality carries instead. */
+  default: IdSchema,
 });
 
 export const BalanceRulesSchema = z.strictObject({
@@ -712,6 +745,8 @@ export type Trait = z.infer<typeof TraitSchema>;
 export type TraitRules = z.infer<typeof TraitRulesSchema>;
 export type PilotTrait = z.infer<typeof PilotTraitSchema>;
 export type PilotTraitRules = z.infer<typeof PilotTraitRulesSchema>;
+export type AbilityRules = z.infer<typeof AbilityRulesSchema>;
+export type Ability = z.infer<typeof AbilitySchema>;
 export type ArcProfile = z.infer<typeof ArcProfileSchema>;
 export type FrameRules = z.infer<typeof FrameRulesSchema>;
 export type FrameProfile = z.infer<typeof FrameProfileSchema>;
@@ -736,6 +771,7 @@ export interface Rules {
   readonly balance: BalanceRules;
   readonly traits: TraitRules;
   readonly pilotTraits: PilotTraitRules;
+  readonly abilities: AbilityRules;
   readonly frames: FrameRules;
   readonly difficulty: DifficultyRules;
 }
@@ -757,6 +793,7 @@ export const RULE_SCHEMAS = {
   balance: BalanceRulesSchema,
   traits: TraitRulesSchema,
   pilotTraits: PilotTraitRulesSchema,
+  abilities: AbilityRulesSchema,
   frames: FrameRulesSchema,
   difficulty: DifficultyRulesSchema,
 } as const;

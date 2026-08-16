@@ -1,4 +1,7 @@
 import type { Catalog } from '../../schema/load';
+import { useState } from 'react';
+import { SALVAGE_PICKS } from '../../campaign/salvage';
+import type { StoreItem } from '../../campaign/types';
 import type { MissionOutcome } from '../../campaign/types';
 
 const DEBRIEFED_KEY = 'ironline.campaign.debriefed';
@@ -27,12 +30,36 @@ export function Debrief({
   catalog,
   outcome,
   onClose,
+  onChooseSalvage,
 }: {
   catalog: Catalog;
   outcome: MissionOutcome;
   onClose: () => void;
+  /** Swaps what came home for a different pick out of the same offer. */
+  onChooseSalvage?: (picks: StoreItem[]) => void;
 }) {
   const mission = catalog.missions.get(outcome.missionId);
+  const offered = outcome.salvageOffered ?? [];
+  const [picks, setPicks] = useState<string[]>(() =>
+    outcome.salvagedItems.map((item) => `${item.kind}:${item.itemId}`),
+  );
+
+  const nameOf = (item: StoreItem): string =>
+    (item.kind === 'weapon'
+      ? catalog.weapons.get(item.itemId)?.name
+      : catalog.equipment.get(item.itemId)?.name) ?? item.itemId;
+
+  const toggle = (key: string): void => {
+    const next = picks.includes(key)
+      ? picks.filter((held) => held !== key)
+      : [...picks, key].slice(-SALVAGE_PICKS);
+    setPicks(next);
+    onChooseSalvage?.(
+      next
+        .map((entry) => offered.find((item) => `${item.kind}:${item.itemId}` === entry))
+        .filter((item): item is StoreItem => item !== undefined),
+    );
+  };
 
   return (
     <div className="manifest-backdrop" data-testid="debrief">
@@ -48,6 +75,37 @@ export function Debrief({
               : ''}
           </p>
         </header>
+
+        {offered.length === 0 ? null : (
+          <div className="debrief-salvage" data-testid="debrief-salvage">
+            <h4>
+              Salvage — the hold takes {SALVAGE_PICKS} ({picks.length}/{SALVAGE_PICKS} chosen)
+            </h4>
+            <p className="salvage-note">
+              The crews cut loose more than the dropship will carry. Choose what comes home.
+            </p>
+            <ul className="salvage-offer">
+              {offered.map((item) => {
+                const key = `${item.kind}:${item.itemId}`;
+                const taken = picks.includes(key);
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={taken ? 'taken' : ''}
+                      onClick={() => toggle(key)}
+                      data-testid={`salvage-pick-${item.itemId}`}
+                    >
+                      <span className="salvage-name">{nameOf(item)}</span>
+                      <span className="salvage-kind">{item.kind}</span>
+                      <span className="salvage-mark">{taken ? 'aboard' : 'left'}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {outcome.pilotReports.length === 0 ? (
           <p className="empty">No crew records for this drop.</p>

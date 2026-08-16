@@ -65,6 +65,8 @@ const MissionOutcomeSchema = z.strictObject({
   payout: z.number().int(),
   salvagedChassis: z.array(IdSchema),
   salvagedItems: z.array(StoreItemSchema),
+  /** Older saves predate the salvage choice and simply offered nothing. */
+  salvageOffered: z.array(StoreItemSchema).default([]),
   pilotCasualties: z.array(z.string()),
   mechsLost: z.array(z.string()),
   // Saves written before debriefs were recorded load with none.

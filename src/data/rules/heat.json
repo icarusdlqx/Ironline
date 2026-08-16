@@ -46,5 +46,7 @@
       "ammoExplosionChancePerSecond": 0.05,
       "forcedShutdown": true
     }
-  ]
+  ],
+  "alphaStrikeSeconds": 1.5,
+  "alphaStrikeCooldownSeconds": 20
 }

@@ -220,6 +220,17 @@ export interface MechEntity {
 
   /** The standing instruction this mech is following between orders. */
   posture: Posture;
+  /**
+   * The one thing this pilot can DO, and when they may do it again. Which
+   * ability it is comes from the specialities they hold.
+   */
+  ability: { id: string; readyAtTick: number; activeUntilTick: number };
+  /**
+   * While this tick is not past, the mech is mid alpha strike: it fires
+   * everything it has and accepts whatever that does to the reactor.
+   */
+  alphaUntilTick: number;
+  alphaReadyAtTick: number;
   /** Who last put fire on this mech, and the tick that memory expires. */
   threatenedBy: EntityId | null;
   threatenedUntilTick: number;

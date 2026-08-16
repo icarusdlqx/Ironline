@@ -13,6 +13,7 @@ import {
   AiRulesSchema,
   BalanceRulesSchema,
   PilotTraitRulesSchema,
+  AbilityRulesSchema,
   TraitRulesSchema,
   CombatRulesSchema,
   ConstructionRulesSchema,
@@ -223,6 +224,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
   const balance = parseRule('balance', BalanceRulesSchema, byStem, issues);
   const traits = parseRule('traits', TraitRulesSchema, byStem, issues);
   const pilotTraits = parseRule('pilotTraits', PilotTraitRulesSchema, byStem, issues);
+  const abilities = parseRule('abilities', AbilityRulesSchema, byStem, issues);
   const frames = parseRule('frames', FrameRulesSchema, byStem, issues);
   const difficulty = parseRule('difficulty', DifficultyRulesSchema, byStem, issues);
 
@@ -243,6 +245,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     balance === null ||
     traits === null ||
     pilotTraits === null ||
+    abilities === null ||
     frames === null ||
     difficulty === null
   ) {
@@ -266,6 +269,7 @@ function parseRules(files: RawFiles, issues: ContentIssue[]): Rules | null {
     balance,
     traits,
     pilotTraits,
+    abilities,
     frames,
     difficulty,
   };

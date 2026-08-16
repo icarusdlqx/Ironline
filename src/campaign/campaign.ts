@@ -453,7 +453,7 @@ export function resolveMission(
     ? withRng(state, (rng) =>
         resolveSalvage(catalog, rng, battle, PLAYER_TEAM, contract.salvageShare),
       )
-    : { candidates: [], chassisRecovered: [], items: [] };
+    : { candidates: [], chassisRecovered: [], offered: [], items: [] };
 
   if (won) {
     applySalvage(state, salvage);
@@ -489,6 +489,7 @@ export function resolveMission(
     payout: won ? contract.payout : 0,
     salvagedChassis: salvage.chassisRecovered,
     salvagedItems: salvage.items,
+    salvageOffered: salvage.offered,
     pilotCasualties: casualties,
     mechsLost,
     pilotReports,

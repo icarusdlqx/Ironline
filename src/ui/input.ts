@@ -601,11 +601,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       case 'KeyG':
         engine.setPosture('hold_position');
         return;
-      case 'KeyB':
-        engine.setPosture('return_fire');
+      case 'KeyV':
+        engine.useAbilities();
         return;
-      case 'KeyK':
-        engine.setPosture('keep_facing');
+      case 'KeyX':
+        engine.alphaStrike();
         return;
       case 'KeyT':
         engine.toggleHeatSafety();
@@ -644,12 +644,6 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       case 'Digit8':
       case 'Digit9': {
         const slot = Number(event.code.slice(5));
-        if (event.shiftKey) {
-          // Weapon groups are per-mech and rarer than picking a lance element,
-          // so the bare number keys go to control groups.
-          if (slot <= 4) engine.toggleGroup(slot);
-          return;
-        }
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
           state.assignControlGroup(slot, state.selection);

@@ -142,6 +142,32 @@ export function canJump(entity: MechEntity): boolean {
   );
 }
 
+/**
+ * Everything at once, and damn the reactor.
+ *
+ * The heat capacity gate normally stops a mech firing a volley it cannot
+ * afford, which is sensible and completely invisible — the player never sees
+ * the alpha they did not throw. This is that decision handed over: one button,
+ * a couple of seconds where every gun that will bear fires, and a real chance
+ * of standing there cooking while the enemy walks around you.
+ */
+export function issueAlphaStrike(world: World, entity: MechEntity): boolean {
+  if (!isOperational(entity) || entity.shutdownRemaining > 0 || isDown(entity)) return false;
+  if (world.tick < entity.alphaReadyAtTick) return false;
+
+  const rules = world.rules.heat;
+  entity.alphaUntilTick = world.tick + Math.round(rules.alphaStrikeSeconds / world.dt);
+  entity.alphaReadyAtTick = world.tick + Math.round(rules.alphaStrikeCooldownSeconds / world.dt);
+  // The guns come back on for it: an alpha the pilot has to un-hold first is
+  // an alpha they will fumble.
+  for (let group = 0; group < entity.groupIntent.length; group += 1) {
+    entity.groupIntent[group] = true;
+    entity.groupEnabled[group] = true;
+  }
+  emit(world.events, { type: 'alpha_strike', tick: world.tick, entityId: entity.id });
+  return true;
+}
+
 export function issueStop(entity: MechEntity): void {
   entity.orders.move = null;
   entity.path = [];

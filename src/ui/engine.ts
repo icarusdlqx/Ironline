@@ -4,6 +4,7 @@ import { Renderer } from '../render3d/scene';
 import { restoreIntent } from '../sim/governor';
 import {
   isHoldingFire,
+  issueAlphaStrike,
   issueAttack,
   issueJump,
   issueMove,
@@ -26,6 +27,7 @@ import { createWorld, stepWorld, toResult, type BattleResult, type LanceEntry } 
 import { attachInput } from './input';
 import { AudioDirector } from './audio';
 import { hitPreview } from '../sim/preview';
+import { useAbility } from '../sim/abilities';
 import { FramePacer } from './framePacer';
 import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
@@ -324,6 +326,15 @@ export class Engine {
   private emitDamageSmoke(): void {
     for (const entity of this.world.entities) {
       if (!isOperational(entity)) continue;
+
+      // A mech running hot says so on the battlefield, not just in a panel:
+      // steam off the vents is how a player reads "that one is about to shut
+      // down" while looking at the fight rather than at a bar.
+      if (entity.heat > entity.heatCapacity * 0.62) {
+        const vent = this.renderer.positionOf(entity.id);
+        if (vent !== null) this.renderer.spawnSmoke(vent);
+      }
+
       // Front and back together, so a mech stripped from behind smokes too.
       const damaged = Object.values(entity.locations).some(
         (location) =>
@@ -658,6 +669,45 @@ export class Engine {
       // back to whatever the pilot last asked for — not to everything.
       if (!entity.heatSafety) restoreIntent(entity);
     }
+  }
+
+  /** Spends the selected pilots' abilities, and says so when one is not ready. */
+  useAbilities(): void {
+    this.hudDirty = true;
+    let used = 0;
+    let asked = 0;
+    for (const id of this.selectedEntities()) {
+      const entity = findEntity(this.world, id);
+      if (entity === null || entity.autopilot) continue;
+      asked += 1;
+      if (!useAbility(this.world, entity)) continue;
+      used += 1;
+      const ability = this.world.rules.abilities.entries[entity.ability.id];
+      useGame
+        .getState()
+        .pushLog(`${entity.pilot.name}: ${ability?.label ?? entity.ability.id}.`);
+    }
+    if (used > 0) this.audio.order();
+    else if (asked > 0) useGame.getState().pushLog('Nothing ready to call on yet.');
+    else useGame.getState().pushLog('No mech selected to give that order to.');
+  }
+
+  /** Everything at once, reactor be damned. */
+  alphaStrike(): void {
+    this.hudDirty = true;
+    let fired = 0;
+    let asked = 0;
+    for (const id of this.selectedEntities()) {
+      const entity = findEntity(this.world, id);
+      if (entity === null || entity.autopilot) continue;
+      asked += 1;
+      if (issueAlphaStrike(this.world, entity)) fired += 1;
+    }
+    if (fired > 0) {
+      this.audio.order();
+      useGame.getState().pushLog(`Alpha strike — ${fired} mech${fired === 1 ? '' : 's'}.`);
+    } else if (asked > 0) useGame.getState().pushLog('Guns are not ready for an alpha yet.');
+    else useGame.getState().pushLog('No mech selected to give that order to.');
   }
 
   toggleGroup(group: number): void {

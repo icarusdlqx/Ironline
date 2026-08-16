@@ -1,3 +1,4 @@
+import { abilityFactor } from './abilities';
 import type { MechLocation } from '../schema/common';
 import type { ArmourFace } from './arcs';
 import { emit } from './events';
@@ -136,7 +137,7 @@ export function applyDamage(
   amount: number,
   face: ArmourFace = 'front',
 ): number {
-  let remaining = amount * target.damageTakenFactor;
+  let remaining = amount * target.damageTakenFactor * abilityFactor(world, target, 'damageTaken');
   let absorbed = 0;
   let current: MechLocation | null = location;
   const visited = new Set<MechLocation>();
