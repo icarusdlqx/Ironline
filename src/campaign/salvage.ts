@@ -27,8 +27,14 @@ export interface SalvageReport {
  * How many of the recovered items the dropship has room for. Everything the
  * crews cut loose is offered; the commander decides what comes home, which is
  * a decision worth having and a reason to look at the debrief at all.
+ *
+ * Three, not two, and measured rather than guessed: a win recovers two to five
+ * items, so a hold of three leaves the thin hauls whole and makes the choice
+ * bite only on the rich ones. Two taxed every mission by half, which is not a
+ * decision — it is a toll, and it starved the refit economy badly enough that
+ * a campaign could run three contracts without ever fielding what it salvaged.
  */
-export const SALVAGE_PICKS = 2;
+export const SALVAGE_PICKS = 3;
 export const SALVAGE_OFFERED = 5;
 
 /**
