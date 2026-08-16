@@ -530,9 +530,10 @@ export class Engine {
       if (issueMove(this.world, entity, to, pace, options)) moved += 1;
     }
     if (moved > 0) this.audio.order();
-    // An order that silently does nothing reads as a broken control. The only
-    // way every path solve fails is ground that cannot even be approached.
+    // An order that silently does nothing reads as a broken control — and an
+    // order given with nothing selected was the commonest way to see one.
     else if (asked > 0) useGame.getState().pushLog('No route to that point.');
+    else useGame.getState().pushLog('No mech selected to give that order to.');
   }
 
   /** Fires the jets of whatever is selected and can jump, toward one point. */

@@ -26,8 +26,11 @@ describe('findPath', () => {
     expect(first).toEqual(second);
   });
 
-  it('returns an empty path when start and goal share a tile', () => {
-    expect(findPath(maze, { x: 2, y: 2 }, { x: 8, y: 8 }, MAX_NODES)).toEqual([]);
+  it('walks the last few metres when start and goal share a tile', () => {
+    // A tile is wider than most short orders. Handing back an empty route drew
+    // no line, and while the battle is paused nothing ever ran to fill one in,
+    // so the order was indistinguishable from a click the game ignored.
+    expect(findPath(maze, { x: 2, y: 2 }, { x: 8, y: 8 }, MAX_NODES)).toEqual([{ x: 8, y: 8 }]);
   });
 
   it('walks to the near bank when the goal is walled off', () => {

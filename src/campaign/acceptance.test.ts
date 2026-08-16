@@ -261,13 +261,17 @@ describe('three-mission campaign', () => {
       if (deployableLance(candidate).length === 0) continue;
 
       // Any of the salvage will do: the claim is that what the lance drags
-      // home can be bolted on and fielded, not that the first item in the
-      // crate happens to suit whichever mech walked away.
+      // home can be bolted on and FIELDED, not that the first item in the
+      // crate happens to suit whichever mech walked away. The host is drawn
+      // from the machines that would actually drop — a mech can be repaired
+      // and still have nobody fit to fly it, and a refit on that one proves
+      // nothing about fielding it.
+      const fieldable = new Set(deployableLance(candidate).map((pair) => pair.mech.id));
       const found = crate
         .map((item) => ({
           weaponId: item.itemId,
           host: candidate.mechs.find(
-            (mech) => mech.status === 'ready' && planFit(catalog, mech.design, item.itemId) !== null,
+            (mech) => fieldable.has(mech.id) && planFit(catalog, mech.design, item.itemId) !== null,
           ),
         }))
         .find((entry) => entry.host !== undefined);

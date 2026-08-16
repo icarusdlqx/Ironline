@@ -1,5 +1,6 @@
 import type { MechLocation } from '../schema/common';
 import { bodyRadius } from './collision';
+import { emit } from './events';
 import { applyHeatGovernor } from './governor';
 import { lineOfSight } from './los';
 import { distance } from './math';
@@ -99,6 +100,13 @@ export function issueMove(
   entity.orders.queue = options.queued === true ? entity.orders.queue : [];
   entity.path = path;
   entity.pathIndex = 0;
+  // A new order starts with a clean record of how it is going. Carrying the
+  // last one's counters over meant a mech that had been wedged took a stall
+  // strike on the very first tick of its fresh order — the closest it had
+  // ever been to the OLD waypoint is not a bar the new one can clear — and
+  // the route was wiped before the player ever saw the line.
+  entity.stalledTicks = 0;
+  entity.closestApproach = Number.POSITIVE_INFINITY;
   entity.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
   entity.motion = run ? 'run' : 'walk';
   entity.intendedMotion = entity.motion;
@@ -160,6 +168,26 @@ function reachableDestination(world: World, path: readonly Vec2[], asked: Vec2):
 
 /** How many stalled re-solves mean the route is hopeless and the order drops. */
 const HOPELESS_STRIKES = 3;
+
+/**
+ * Whether another machine is parked on the destination, close enough that the
+ * walker cannot take the spot, and the walker is already up against it. This
+ * is the honest test for "the ground I was sent to is taken".
+ */
+function standingOnDestination(world: World, entity: MechEntity, to: Vec2): boolean {
+  const reach = bodyRadius(world, entity);
+  for (const other of world.entities) {
+    if (other.id === entity.id || !isOperational(other) || other.jump !== null) continue;
+    const clearance = reach + bodyRadius(world, other);
+    if (distance(other.pos, to) > clearance) continue;
+    // Something is on the spot; the order is done when the walker is up
+    // against that machine rather than still crossing the map towards it.
+    if (distance(entity.pos, other.pos) <= clearance + world.rules.movement.arrivalRadius) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /** An order from the pilot: sets intent, and takes effect immediately. */
 export function setGroupEnabled(entity: MechEntity, group: number, enabled: boolean): void {
@@ -253,13 +281,14 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
     entity.intendedMotion = entity.motion;
   } else if (
     distance(entity.pos, order.to) <= world.rules.movement.arrivalRadius ||
-    // Stalled out within a couple of body-widths of the spot: the last stretch
-    // is another machine standing on it, not ground. That is as arrived as
-    // this order is ever going to get — looping walk-shove-stall against a
-    // lance-mate for the rest of the battle is what "my mech is stuck" means.
-    (entity.stallStrikes > 0 &&
-      distance(entity.pos, order.to) <=
-        world.rules.movement.arrivalRadius + 2 * bodyRadius(world, entity))
+    // Stalled out with the destination itself under another machine: the last
+    // stretch is a body, not ground. That is as arrived as this order is ever
+    // going to get — looping walk-shove-stall against a lance-mate for the
+    // rest of the battle is what "my mech is stuck" means. It has to be the
+    // spot that is occupied, not merely somewhere near it: measuring from the
+    // walker's own bulk made this discard orders to open ground up to forty
+    // metres off, which is an order the player watched vanish.
+    (entity.stallStrikes > 0 && standingOnDestination(world, entity, order.to))
   ) {
     const next = entity.orders.queue.shift();
     if (next === undefined) {
@@ -271,8 +300,17 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
     }
   } else if (entity.stallStrikes >= HOPELESS_STRIKES) {
     // Re-solved the route this many times and stalled out every time — the
-    // way is shut. Standing down beats headbutting the blockage forever.
+    // way is shut. Standing down beats headbutting the blockage forever, but
+    // it is said out loud: an order that evaporates in silence is the hardest
+    // thing to tell apart from a control that does not work.
     issueStop(entity);
+    if (!entity.autopilot) {
+      emit(world.events, {
+        type: 'mission_message',
+        tick: world.tick,
+        text: `${entity.name} cannot find a way through — order dropped.`,
+      });
+    }
   } else {
     if (entity.path.length === 0 || world.tick >= entity.nextPathTick) {
       const path = findPath(
@@ -285,9 +323,18 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
       entity.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
 
       if (path === null) {
-        // Genuinely unreachable: drop the order rather than shuffle forever.
+        // Genuinely unreachable: drop the order rather than shuffle forever,
+        // and say so — a route that quietly ceases to exist mid-walk looks
+        // from the outside exactly like the game forgetting the order.
         entity.path = [];
         entity.orders.move = null;
+        if (!entity.autopilot) {
+          emit(world.events, {
+            type: 'mission_message',
+            tick: world.tick,
+            text: `${entity.name} has no route to that point.`,
+          });
+        }
       } else if (path.length === 0) {
         // Already inside the destination tile but not yet on the spot. A tile is
         // four times the arrival radius across, so this is most short orders —

@@ -55,13 +55,24 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   let marqueeFrom: Vec2 | null = null;
   let marqueeScreenFrom: Vec2 | null = null;
   /**
-   * A press on one of the player's own mechs, held until it declares itself:
-   * released in place it is a click and selects the machine, dragged it turns
-   * into a marquee from the press point. Committing on the press made it
-   * impossible to start a drag-select anywhere near a bunched-up lance, which
-   * is exactly where drag-select earns its keep.
+   * The machine a marquee was dragged out from, if any. A box that started on
+   * one of the player's own mechs and caught nothing leaves that mech
+   * selected: the player pressed it deliberately, and taking the selection
+   * away for a gesture that found nothing is how a click becomes a mystery.
    */
-  let pendingSelect: { id: number; screen: Vec2; world: Vec2; shift: boolean } | null = null;
+  let marqueeFromMech: number | null = null;
+  /**
+   * A press on one of the player's own mechs. The machine is selected on the
+   * press — instantly, so the ring answers the click — and this record keeps
+   * the press point so a drag from there can still open a marquee.
+   *
+   * Selecting on release instead cost the player their selection every time a
+   * click wobbled: the pointer crossing a few pixels turned the click into a
+   * box that caught nothing and cleared everything, and the destination order
+   * that followed then had nothing to act on. A stalled frame makes that
+   * wobble near-certain, which is exactly when it was reported.
+   */
+  let pressedOnMech: { id: number; screen: Vec2; world: Vec2 } | null = null;
   /**
    * The pointer's last known place on the canvas, and whether it has moved
    * since hover was last resolved. Pointer events only carry where the mouse
@@ -77,8 +88,22 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   let lastCursorStyle = '';
 
   const DRAG_THRESHOLD = 6;
+  /**
+   * How far a press that landed on one of the player's own machines must
+   * travel before it counts as a box-select rather than a click. Wider than a
+   * bare-ground drag on purpose: clicking a mech is the commonest action in
+   * the game, and the cost of misreading it — losing the selection — is worse
+   * than the cost of a box that takes a moment longer to open.
+   */
+  const MECH_DRAG_THRESHOLD = 14;
 
-  /** Every mech of the player's that falls inside the dragged box. */
+  /**
+   * Every mech of the player's that falls inside the dragged box — measured on
+   * screen, in the same pixels the box is drawn in. Judging it on the ground
+   * instead selected a different set from the one the player had drawn round:
+   * the camera is tilted, so a machine's feet sit well behind its body on
+   * screen, and a box neatly around a lance contained almost none of them.
+   */
   const selectWithin = (a: Vec2, b: Vec2, add: boolean): void => {
     const state = useGame.getState();
     const minX = Math.min(a.x, b.x);
@@ -87,15 +112,18 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     const maxY = Math.max(a.y, b.y);
 
     const inside = engine.world.entities
-      .filter(
-        (entity) =>
-          entity.team === state.playerTeam &&
-          isOperational(entity) &&
-          entity.pos.x >= minX &&
-          entity.pos.x <= maxX &&
-          entity.pos.y >= minY &&
-          entity.pos.y <= maxY,
-      )
+      .filter((entity) => entity.team === state.playerTeam && isOperational(entity))
+      .filter((entity) => {
+        // The hull counts, not a point at its centre: a machine the box cuts
+        // through is one the player drew their box around.
+        const body = engine.renderer.screenBodyOf(entity);
+        return (
+          body.x + body.radius >= minX &&
+          body.x - body.radius <= maxX &&
+          body.y + body.radius >= minY &&
+          body.y - body.radius <= maxY
+        );
+      })
       .map((entity) => entity.id);
 
     if (inside.length === 0 && !add) {
@@ -250,6 +278,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onPointerDown = (event: PointerEvent): void => {
+    // A press whose release never arrived — the pointer left the window, the
+    // browser cancelled it — must not leave a gesture half-open for this one
+    // to trip over.
+    pressedOnMech = null;
     // The first gesture is what the browser lets audio start from.
     engine.audio.unlock();
     // Capture keeps a drag alive when the pointer leaves the canvas. It is a
@@ -357,18 +389,6 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
-    if (picked.team === state.playerTeam) {
-      // Held until release or drag: a press on a friendly is a select OR the
-      // start of a drag-select box, and only the pointer's next move can say.
-      pendingSelect = {
-        id: picked.id,
-        screen: pointerToScreen(canvas, event),
-        world,
-        shift: event.shiftKey,
-      };
-      return;
-    }
-
     engine.audio.select();
     if (event.shiftKey) {
       const next = state.selection.includes(picked.id)
@@ -377,6 +397,12 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       state.setSelection(next);
     } else {
       state.setSelection([picked.id]);
+    }
+
+    // Selected now, but the press may yet become a box-select dragged out
+    // from this machine — which is the only way to marquee a bunched lance.
+    if (picked.team === state.playerTeam) {
+      pressedOnMech = { id: picked.id, screen: pointerToScreen(canvas, event), world };
     }
   };
 
@@ -394,19 +420,21 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     lastPointer = screen;
     pointerDirty = true;
 
-    // A held press on a friendly declares itself a drag: open the marquee
-    // from the press point, and the click-select it might have been is off.
-    if (pendingSelect !== null) {
+    // A press that began on one of the player's machines has been dragged far
+    // enough to mean a box: open the marquee from the press point. The mech is
+    // already selected, and stays selected if the box catches nothing.
+    if (pressedOnMech !== null) {
       const drag = Math.hypot(
-        screen.x - pendingSelect.screen.x,
-        screen.y - pendingSelect.screen.y,
+        screen.x - pressedOnMech.screen.x,
+        screen.y - pressedOnMech.screen.y,
       );
-      if (drag > DRAG_THRESHOLD) {
-        marqueeFrom = pendingSelect.world;
-        marqueeScreenFrom = pendingSelect.screen;
-        engine.selectionBox = { a: pendingSelect.world, b: pendingSelect.world };
+      if (drag > MECH_DRAG_THRESHOLD) {
+        marqueeFrom = pressedOnMech.world;
+        marqueeScreenFrom = pressedOnMech.screen;
+        marqueeFromMech = pressedOnMech.id;
+        engine.selectionBox = { a: pressedOnMech.world, b: pressedOnMech.world };
         useGame.getState().patch({ marquee: null });
-        pendingSelect = null;
+        pressedOnMech = null;
       }
     }
 
@@ -453,23 +481,9 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     panning = false;
     lastPan = null;
 
-    // A press on a friendly that never became a drag: it was a click after
-    // all, and the click selects.
-    if (pendingSelect !== null) {
-      const held = pendingSelect;
-      pendingSelect = null;
-      const state = useGame.getState();
-      engine.audio.select();
-      if (held.shift) {
-        const next = state.selection.includes(held.id)
-          ? state.selection.filter((id) => id !== held.id)
-          : [...state.selection, held.id];
-        state.setSelection(next);
-      } else {
-        state.setSelection([held.id]);
-      }
-      return;
-    }
+    // A press on a machine that never became a drag: the selection it made on
+    // the way down stands, and there is nothing left to decide.
+    pressedOnMech = null;
 
     const aim = engine.supportAim;
     if (aim !== null) {
@@ -486,11 +500,23 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
         Math.hypot(screen.x - marqueeScreenFrom.x, screen.y - marqueeScreenFrom.y) >
           DRAG_THRESHOLD;
 
-      if (dragged) selectWithin(marqueeFrom, toWorld(event), event.shiftKey);
-      else if (!event.shiftKey) useGame.getState().setSelection([]);
+      const before = useGame.getState().selection;
+      if (dragged && marqueeScreenFrom !== null) {
+        selectWithin(marqueeScreenFrom, screen, event.shiftKey);
+      } else if (!event.shiftKey) useGame.getState().setSelection([]);
+
+      // A box dragged out from one of the player's own machines that came up
+      // empty leaves that machine selected. The press was deliberate; ending
+      // it with nothing selected is how an order given next silently does
+      // nothing, which reads as the game ignoring the click.
+      if (marqueeFromMech !== null && useGame.getState().selection.length === 0) {
+        const kept = before.includes(marqueeFromMech) ? before : [marqueeFromMech];
+        useGame.getState().setSelection(kept);
+      }
 
       marqueeFrom = null;
       marqueeScreenFrom = null;
+      marqueeFromMech = null;
       engine.selectionBox = null;
       useGame.getState().patch({ marquee: null });
     }
@@ -657,7 +683,19 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   // Keyup lands on whoever has focus, so a key released after the window loses
   // it is never cleared and the camera drifts on its own until it is pressed
   // again. Losing focus means nothing is held any more.
-  const onBlur = (): void => held.clear();
+  const onBlur = (): void => {
+    held.clear();
+    // Losing the window mid-gesture ends the gesture rather than leaving a
+    // marquee open across a tab switch, waiting to select on the way back.
+    pressedOnMech = null;
+    marqueeFrom = null;
+    marqueeScreenFrom = null;
+    marqueeFromMech = null;
+    panning = false;
+    lastPan = null;
+    engine.selectionBox = null;
+    useGame.getState().patch({ marquee: null });
+  };
 
   let lastCameraFrame = 0;
   const cameraFrame = (now: number): void => {

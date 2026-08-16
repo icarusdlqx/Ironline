@@ -165,6 +165,41 @@ async function main() {
     );
     await page.screenshot({ path: `${SHOTS}/03-paused-order.png` });
 
+    // A click on a mech that wobbles a few pixels — a human hand, or a stalled
+    // frame delivering a burst of pointer moves — must still be a click. It
+    // once became an empty box-select that cleared the selection, after which
+    // the destination order that followed did nothing at all, silently.
+    const wobbleTarget = await page.evaluate(() => {
+      const { engine, world, useGame } = globalThis.__ironline;
+      const s = useGame.getState();
+      s.setSelection([]);
+      const mine = world.entities.filter((e) => e.team === s.playerTeam);
+      const body = engine.renderer.screenBodyOf(mine[0]);
+      const bounds = document
+        .querySelector('.viewport canvas:not(.perf-overlay)')
+        .getBoundingClientRect();
+      return { id: mine[0].id, x: bounds.left + body.x, y: bounds.top + body.y };
+    });
+    await page.mouse.move(wobbleTarget.x, wobbleTarget.y);
+    await page.mouse.down();
+    await page.mouse.move(wobbleTarget.x + 9, wobbleTarget.y + 6);
+    await page.mouse.up();
+    const afterWobble = await state(page);
+    check(
+      'a wobbly click still selects the mech',
+      afterWobble.selection.includes(wobbleTarget.id),
+      JSON.stringify(afterWobble.selection),
+    );
+
+    await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.45, { button: 'right' });
+    const afterWobbleOrder = await sim(page);
+    const wobbleOrdered = afterWobbleOrder.entities.find((e) => e.id === wobbleTarget.id);
+    check(
+      'the destination order after a wobbly click lands with a route',
+      wobbleOrdered?.hasMoveOrder === true && (wobbleOrdered?.pathLength ?? 0) > 0,
+      `move ${wobbleOrdered?.hasMoveOrder}, path ${wobbleOrdered?.pathLength}`,
+    );
+
     process.stdout.write('\nresume and move\n');
     await page.keyboard.press('Space');
     await sleep(1500);

@@ -151,3 +151,60 @@ describe('waypoint recovery', () => {
     expect(walker.pos.x).toBeGreaterThan(spot.x - 2);
   });
 });
+
+describe('an order the player can see land', () => {
+  it('keeps the route of a fresh order given to a mech that was wedged', () => {
+    const world = playerWorld('stale-counters');
+    const [walker] = playerPair(world);
+
+    // Exactly the state a machine carries after being shouldered off its line
+    // by a lance-mate: it has stalled, and the closest it ever got to the old
+    // waypoint is a bar the new order cannot possibly clear on its first tick.
+    walker.stalledTicks = world.rules.movement.stallTicks + 20;
+    walker.closestApproach = 3;
+
+    const away = { x: walker.pos.x + 220, y: walker.pos.y + 160 };
+    expect(issueMove(world, walker, away, false)).toBe(true);
+    expect(walker.path.length).toBeGreaterThan(0);
+
+    // The very first movement ticks must not mistake a brand-new walk for the
+    // continuation of the stalled one and wipe the route before it is drawn.
+    for (let tick = 0; tick < 5; tick += 1) updateMovement(world, walker);
+    expect(walker.path.length).toBeGreaterThan(0);
+    expect(walker.orders.move).not.toBeNull();
+  });
+
+  it('does not discard an order to open ground near a mech that once stalled', () => {
+    const world = playerWorld('near-ground');
+    const [walker, other] = playerPair(world);
+    const spot = openGround(world);
+
+    // The walker carries a strike, and the destination is a few body-widths
+    // away — but nothing is standing on it, so the order is real work.
+    walker.pos = { x: spot.x - 90, y: spot.y };
+    other.pos = { x: spot.x + 400, y: spot.y + 400 };
+    issueStop(other);
+    expect(issueMove(world, walker, spot, false)).toBe(true);
+    walker.stallStrikes = 1;
+
+    stepWorld(world, 12_000);
+
+    expect(walker.orders.move, 'an order to empty ground was thrown away').not.toBeNull();
+  });
+
+  it('says so out loud when a route is abandoned as hopeless', () => {
+    const world = playerWorld('hopeless-speaks');
+    const [walker] = playerPair(world);
+    walker.autopilot = false;
+    walker.stallStrikes = 3;
+    walker.orders.move = { to: { x: walker.pos.x + 300, y: walker.pos.y }, run: false };
+
+    stepWorld(world, 12_000);
+
+    const said = world.events.some(
+      (event) => event.type === 'mission_message' && String(event.text).includes('cannot find a way'),
+    );
+    expect(walker.orders.move).toBeNull();
+    expect(said, 'the order vanished without telling the player').toBe(true);
+  });
+});

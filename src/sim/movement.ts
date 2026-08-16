@@ -162,6 +162,10 @@ export function jumpHeight(entity: MechEntity): number {
 function clearPath(entity: MechEntity): void {
   entity.path = [];
   entity.pathIndex = 0;
+  // Whatever walk comes next is judged on its own progress, not on how close
+  // this abandoned one happened to get to a waypoint it no longer has.
+  entity.stalledTicks = 0;
+  entity.closestApproach = Number.POSITIVE_INFINITY;
   entity.motion = 'stationary';
   entity.intendedMotion = 'stationary';
 }

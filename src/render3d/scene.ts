@@ -943,6 +943,27 @@ export class Renderer {
   }
 
   /**
+   * Where a machine's body sits on screen and how big it is there, at the same
+   * height the pick and the hover ring use.
+   *
+   * The selection marquee is a rectangle drawn on the glass, so what falls
+   * inside it has to be judged on the glass too: testing ground positions
+   * against a box projected back onto the map selected a different set from
+   * the one the player had drawn round, because the camera is tilted and a
+   * mech's feet are metres behind its chest on screen. The radius matters as
+   * much as the centre — a machine is a body, not a point, and one whose hull
+   * straddles the edge of the box was plainly inside the box the player drew.
+   */
+  screenBodyOf(entity: MechEntity): { x: number; y: number; radius: number } {
+    const at = this.interpolated.get(entity.id) ?? entity.pos;
+    const ground = this.terrain.heightAt(at.x, at.y);
+    const size = radiusFor(entity.tonnage);
+    const centre = this.camera.worldToScreen(at, this.viewport, ground + size);
+    const top = this.camera.worldToScreen(at, this.viewport, ground + size * 2);
+    return { x: centre.x, y: centre.y, radius: Math.abs(top.y - centre.y) };
+  }
+
+  /**
    * The mech under a point on screen.
    *
    * This has to work off the screen, not off the ground. A click that looks

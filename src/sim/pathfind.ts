@@ -162,7 +162,14 @@ export function findPath(
 
   const startCell = startTile.row * grid.width + startTile.column;
   const goalCell = goalTile.row * grid.width + goalTile.column;
-  if (startCell === goalCell) return [];
+  // Already standing in the destination's tile — but a tile is 24 metres
+  // across, which is most short orders. Hand back the walk of those last few
+  // metres rather than an empty route: an empty one draws no line, and while
+  // the battle is paused nothing ever runs to fill it in, so the order looks
+  // to the player exactly like a click the game ignored.
+  if (startCell === goalCell) {
+    return clamped ? [grid.tileCentre(goalTile.column, goalTile.row)] : [{ x: goal.x, y: goal.y }];
+  }
 
   const state = getScratch(grid.width * grid.height);
   const { cost, from, stamp, heap, generation } = state;
