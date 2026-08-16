@@ -3,6 +3,7 @@ import {
   Color,
   ConeGeometry,
   CylinderGeometry,
+  DynamicDrawUsage,
   Group,
   IcosahedronGeometry,
   InstancedMesh,
@@ -64,6 +65,16 @@ export class PropLayer {
 
   private readonly batches: Batch[] = [];
   private exploredCount = -1;
+  /**
+   * The explored map as of the last reveal, so a change only touches the
+   * tiles that actually flipped. Exploration in forest arrives one tile per
+   * sim tick — the trees block the sightlines — and rewriting and re-uploading
+   * every instance on the map twenty times a second for that is exactly the
+   * kind of buffer churn that reads as "it stutters in the woods".
+   */
+  private revealed: Uint8Array | null = null;
+  /** Instances on each tile, as [batch index, instance index] pairs. */
+  private readonly tileInstances = new Map<number, [number, number][]>();
 
   constructor(
     grid: TerrainGrid,
@@ -199,14 +210,28 @@ export class PropLayer {
       // The base geometry's bounding sphere says nothing about where the
       // instances are, so culling by it blanks the layer at some camera angles.
       mesh.frustumCulled = false;
+      // These buffers change piecemeal all battle as ground is explored;
+      // told they are static, a driver may stall revalidating each rewrite.
+      mesh.instanceMatrix.setUsage(DynamicDrawUsage);
       mesh.name = `props-${kind}`;
+
+      const batchIndex = this.batches.length;
+      for (let i = 0; i < placements.length; i += 1) {
+        const entry = placements[i];
+        if (entry === undefined) continue;
+        const on = this.tileInstances.get(entry.tile);
+        if (on === undefined) this.tileInstances.set(entry.tile, [[batchIndex, i]]);
+        else on.push([batchIndex, i]);
+      }
+
       this.batches.push({ mesh, placements });
       this.group.add(mesh);
     }
   }
 
   /** Hides props on unexplored tiles; exploration only ever grows, so this is
-   *  a cheap count-compare almost every frame and a sweep when it changes. */
+   *  a cheap count-compare almost every frame and a per-tile touch-up when it
+   *  changes — never a rewrite of the whole map's scenery. */
   update(vision: TeamVision | null): void {
     let count = Number.MAX_SAFE_INTEGER;
     if (vision !== null) {
@@ -216,14 +241,39 @@ export class PropLayer {
     if (count === this.exploredCount) return;
     this.exploredCount = count;
 
-    for (const batch of this.batches) {
-      for (let i = 0; i < batch.placements.length; i += 1) {
-        const entry = batch.placements[i];
-        if (entry === undefined) continue;
-        const shown = vision === null || vision.explored[entry.tile] === 1;
-        batch.mesh.setMatrixAt(i, shown ? entry.matrix : HIDDEN);
+    // The first look, or the shroud coming off entirely: sweep everything
+    // once and take the snapshot the incremental path diffs against.
+    if (vision === null || this.revealed === null) {
+      for (const batch of this.batches) {
+        for (let i = 0; i < batch.placements.length; i += 1) {
+          const entry = batch.placements[i];
+          if (entry === undefined) continue;
+          const shown = vision === null || vision.explored[entry.tile] === 1;
+          batch.mesh.setMatrixAt(i, shown ? entry.matrix : HIDDEN);
+        }
+        batch.mesh.instanceMatrix.needsUpdate = true;
       }
-      batch.mesh.instanceMatrix.needsUpdate = true;
+      this.revealed = vision === null ? null : Uint8Array.from(vision.explored);
+      return;
+    }
+
+    // Since exploration only grows, the change is exactly the tiles that
+    // flipped since last time — reveal their props and upload only those
+    // sixteen floats apiece.
+    const previous = this.revealed;
+    for (let tile = 0; tile < vision.explored.length; tile += 1) {
+      if (vision.explored[tile] !== 1 || previous[tile] === 1) continue;
+      previous[tile] = 1;
+      const instances = this.tileInstances.get(tile);
+      if (instances === undefined) continue;
+      for (const [batchIndex, instanceIndex] of instances) {
+        const batch = this.batches[batchIndex];
+        const entry = batch?.placements[instanceIndex];
+        if (batch === undefined || entry === undefined) continue;
+        batch.mesh.setMatrixAt(instanceIndex, entry.matrix);
+        batch.mesh.instanceMatrix.addUpdateRange(instanceIndex * 16, 16);
+        batch.mesh.instanceMatrix.needsUpdate = true;
+      }
     }
   }
 }

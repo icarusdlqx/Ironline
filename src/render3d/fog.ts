@@ -1,4 +1,11 @@
-import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, MeshBasicMaterial } from 'three';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  DoubleSide,
+  DynamicDrawUsage,
+  Mesh,
+  MeshBasicMaterial,
+} from 'three';
 import type { TerrainGrid } from '../sim/terrain';
 import type { TeamVision } from '../sim/sensors';
 
@@ -63,6 +70,9 @@ export class FogLayer {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new BufferAttribute(positions, 3));
     this.colours = new BufferAttribute(colours, 4);
+    // Rewritten whenever the lance moves; a driver told it is static may
+    // stall revalidating the rewrite instead of streaming it.
+    this.colours.setUsage(DynamicDrawUsage);
     geometry.setAttribute('color', this.colours);
     geometry.setIndex(indices);
 
@@ -105,10 +115,17 @@ export class FogLayer {
       }
     }
 
+    // Only touch the GPU when the shroud actually changed shape: most ticks
+    // of a still battlefield shade out exactly as they did last tick.
     const array = this.colours.array as Float32Array;
+    let changed = false;
     for (let index = 0; index < this.alphas.length; index += 1) {
-      array[index * 4 + 3] = this.alphas[index] ?? UNSEEN;
+      const alpha = this.alphas[index] ?? UNSEEN;
+      if (array[index * 4 + 3] !== alpha) {
+        array[index * 4 + 3] = alpha;
+        changed = true;
+      }
     }
-    this.colours.needsUpdate = true;
+    if (changed) this.colours.needsUpdate = true;
   }
 }
