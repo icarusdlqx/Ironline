@@ -1,5 +1,7 @@
 import type { MechLocation } from '../schema/common';
+import { bodyRadius } from './collision';
 import { applyHeatGovernor } from './governor';
+import { lineOfSight } from './los';
 import { distance } from './math';
 import { beginJump } from './movement';
 import { findPath } from './pathfind';
@@ -83,10 +85,11 @@ export function issueMove(
   if (isRooted(entity)) entity.posture = 'free';
 
   entity.orders.move = {
-    to: { x: to.x, y: to.y },
+    to: reachableDestination(world, path, to),
     run,
     ...(options.engage === true ? { engage: true } : {}),
   };
+  entity.stallStrikes = 0;
   entity.orders.queue = options.queued === true ? entity.orders.queue : [];
   entity.path = path;
   entity.pathIndex = 0;
@@ -129,9 +132,28 @@ export function issueStop(entity: MechEntity): void {
   entity.orders.move = null;
   entity.path = [];
   entity.pathIndex = 0;
+  entity.stallStrikes = 0;
   entity.motion = 'stationary';
   entity.intendedMotion = entity.motion;
 }
+
+/**
+ * Where an order can actually end. When the path stops short of the ask — the
+ * click was on water, a cliff, the far side of a wall — the order is retargeted
+ * to the ground the route reaches. Left pointed at the unreachable spot, the
+ * arrival check can never pass, and the mech spends the rest of the battle
+ * walking into the bank, stalling, and re-solving the same route.
+ */
+function reachableDestination(world: World, path: readonly Vec2[], asked: Vec2): Vec2 {
+  const last = path[path.length - 1];
+  if (last === undefined || distance(last, asked) <= world.rules.movement.arrivalRadius) {
+    return { x: asked.x, y: asked.y };
+  }
+  return { x: last.x, y: last.y };
+}
+
+/** How many stalled re-solves mean the route is hopeless and the order drops. */
+const HOPELESS_STRIKES = 3;
 
 /** An order from the pilot: sets intent, and takes effect immediately. */
 export function setGroupEnabled(entity: MechEntity, group: number, enabled: boolean): void {
@@ -195,10 +217,23 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
 
   const order = isRooted(entity) ? null : entity.orders.move;
   if (order === null) {
-    entity.path = [];
-    entity.pathIndex = 0;
-    entity.motion = 'stationary';
-    entity.intendedMotion = entity.motion;
+    // No march on the books — but an attack order on something out of reach
+    // is still an order to go and fight it. A target set and then stood
+    // around for reads as a control that does nothing: the panel says
+    // "no sight" on every gun and the mech never moves to change that.
+    const quarry = isRooted(entity)
+      ? null
+      : findEntity(world, entity.orders.attack?.targetId ?? null);
+    if (
+      quarry === null ||
+      !isOperational(quarry) ||
+      !approachToEngage(world, entity, quarry)
+    ) {
+      entity.path = [];
+      entity.pathIndex = 0;
+      entity.motion = 'stationary';
+      entity.intendedMotion = entity.motion;
+    }
   } else if (
     order.engage === true &&
     !isHoldingFire(entity) &&
@@ -210,7 +245,16 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
     entity.pathIndex = 0;
     entity.motion = 'stationary';
     entity.intendedMotion = entity.motion;
-  } else if (distance(entity.pos, order.to) <= world.rules.movement.arrivalRadius) {
+  } else if (
+    distance(entity.pos, order.to) <= world.rules.movement.arrivalRadius ||
+    // Stalled out within a couple of body-widths of the spot: the last stretch
+    // is another machine standing on it, not ground. That is as arrived as
+    // this order is ever going to get — looping walk-shove-stall against a
+    // lance-mate for the rest of the battle is what "my mech is stuck" means.
+    (entity.stallStrikes > 0 &&
+      distance(entity.pos, order.to) <=
+        world.rules.movement.arrivalRadius + 2 * bodyRadius(world, entity))
+  ) {
     const next = entity.orders.queue.shift();
     if (next === undefined) {
       issueStop(entity);
@@ -219,6 +263,10 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
         ...(next.engage === true ? { engage: true } : {}),
       });
     }
+  } else if (entity.stallStrikes >= HOPELESS_STRIKES) {
+    // Re-solved the route this many times and stalled out every time — the
+    // way is shut. Standing down beats headbutting the blockage forever.
+    issueStop(entity);
   } else {
     if (entity.path.length === 0 || world.tick >= entity.nextPathTick) {
       const path = findPath(
@@ -241,6 +289,9 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
         entity.path = [{ x: order.to.x, y: order.to.y }];
       } else {
         entity.path = path;
+        // The re-solve can also come up short of the ask; anchor the order to
+        // what the route actually reaches, or arrival never fires.
+        order.to = reachableDestination(world, path, order.to);
       }
     }
     entity.motion = entity.path.length === 0 ? 'stationary' : order.run ? 'run' : 'walk';
@@ -275,17 +326,56 @@ export function updatePlayerControl(world: World, entity: MechEntity): void {
   entity.targetId = autoAcquire(world, entity)?.id ?? null;
 }
 
+/** The longest reach of any working gun aboard, in metres. */
+function longestReach(world: World, entity: MechEntity): number {
+  return entity.weapons.reduce((longest, mount) => {
+    if (mount.destroyed) return longest;
+    const weapon = world.catalog.weapons.get(mount.weaponId);
+    return weapon === undefined ? longest : Math.max(longest, weapon.range.long);
+  }, 0);
+}
+
+/**
+ * Walks an attack-ordered mech into the fight: toward its quarry until it is
+ * inside most of its longest gun's reach with a line of sight, then stops to
+ * shoot from there rather than marching on to point blank. Returns true while
+ * the approach is still walking; false hands the feet back to whoever called.
+ */
+function approachToEngage(world: World, entity: MechEntity, quarry: MechEntity): boolean {
+  const reach = longestReach(world, entity);
+  // Nothing to shoot with: charging a machine you cannot hurt is not an
+  // approach, it is a donation.
+  if (reach <= 0) return false;
+
+  const gap = distance(entity.pos, quarry.pos);
+  const sighted = lineOfSight(world.terrain, entity.pos, quarry.pos).clear;
+  if (gap <= reach * 0.85 && sighted) return false;
+
+  if (entity.path.length === 0 || world.tick >= entity.nextPathTick) {
+    const path = findPath(
+      world.terrain,
+      entity.pos,
+      quarry.pos,
+      world.rules.simulation.pathfindMaxNodes,
+    );
+    entity.pathIndex = 0;
+    entity.nextPathTick = world.tick + world.rules.simulation.aiPathIntervalTicks;
+    entity.path = path ?? [];
+  }
+  if (entity.path.length === 0) return false;
+
+  entity.motion = 'walk';
+  entity.intendedMotion = 'walk';
+  return true;
+}
+
 /**
  * The contact an attack-moving mech should stop for: something visible and
  * inside the reach of a gun it is actually carrying. Passing sensor ghosts do
  * not halt an advance; a target worth shooting does.
  */
 function engageWorthTarget(world: World, entity: MechEntity): MechEntity | null {
-  const reach = entity.weapons.reduce((longest, mount) => {
-    if (mount.destroyed) return longest;
-    const weapon = world.catalog.weapons.get(mount.weaponId);
-    return weapon === undefined ? longest : Math.max(longest, weapon.range.long);
-  }, 0);
+  const reach = longestReach(world, entity);
   if (reach === 0) return null;
 
   const target = autoAcquire(world, entity);

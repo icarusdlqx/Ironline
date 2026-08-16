@@ -194,6 +194,8 @@ Turn rate is inversely proportional to tonnage. Assaults are slow to bring guns 
 
 Jump jets: 1 ton each, grants a jump of `30m × jetCount`, ignores terrain, generates 3 heat per jet, has a cooldown.
 
+**Following orders.** A move order always resolves to ground the route can actually reach: a click on water, a cliff face or the far side of a wall retargets to the nearest bank the pathfinder can touch, and a click nothing can even approach reports "No route to that point" instead of silently doing nothing. A mech shoved past a waypoint by its lance-mates skips ahead rather than doubling back. A mech that stalls out within a couple of body-widths of its destination treats the order as complete — the spot is occupied by another machine, and looping walk-shove-stall against a lance-mate is what "my mech is stuck" means. Three stalled re-solves anywhere means the route is hopeless and the order stands down. An attack order on something out of range or out of sight is also an order to close: the mech walks toward its target until it is inside most of its longest gun's reach with a line of sight, then stops and fights from there.
+
 ### 3.4 Weapons
 
 ```json
@@ -311,16 +313,15 @@ MechCommander 2's signature system. Retain it.
 
 **Earning RP:** capturing comm towers, holding objective zones, destroying priority targets, mission time bonuses.
 
-**Spending RP mid-mission:**
+**Spending RP mid-mission.** The palette offered to the player is deliberately short — one eye, one hammer, one wrench:
 
 | Support call | Cost | Effect |
 |---|---|---|
 | Sensor Probe | 200 | Reveals a map region for 30s |
-| Artillery Strike | 400 | Delayed area damage on designated point |
-| Air Strike | 700 | Fast linear strafe, high damage |
-| Repair Truck | 500 | Deploys; repairs one mech's armour over time |
-| Minelayer | 350 | Lays a defensive minefield |
-| Reinforcement | 1200 | Drops one reserve mech from the dropship |
+| Air Strike | 700 | Fast linear strafe, high damage; drag to lay the run-in |
+| Repair Truck | 500 | Deploys; repairs armour in an area over time |
+
+Artillery, minelayer and reinforcement still exist in the rules and resolve fine — missions and future content can use them — but they are off the player's palette until the game earns the extra buttons. Missions currently start with 1000 RP while the system is under test.
 
 This creates a live mid-mission economy: push for an optional objective to fund the airstrike that wins the fight.
 
@@ -362,6 +363,10 @@ Node-based operational map. Missions unlock in a branching sequence; some option
 **Mission types:** Assault, Defend, Recon, Escort, Extraction, Base Capture, Ambush, Convoy Interdiction, Headhunt.
 
 ---
+
+### 7.1 The loop
+
+One full turn of the campaign reads: **map → mechbay → deployment → battle → salvage → map.** Signing a contract and pressing "Prepare drop" walks a two-stage corridor — the hangar first (repairs, rebuilds, refits), then the dropship manifest (who flies what, against the tonnage allowance) — and launching fights the battle. The debrief brings home salvage, pay and experience, and the map opens the next contract. The drop itself is sized by **tonnage, not berth count**: up to six machines may drop so long as they fit the allowance, so three heavies instead of four mediums is a legitimate answer to it, and a skirmish berth can simply be left empty.
 
 ## 8. Enemy AI
 

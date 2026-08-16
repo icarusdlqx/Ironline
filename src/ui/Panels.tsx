@@ -389,6 +389,7 @@ export function Briefing({
                 {berth.customLabel === null ? null : (
                   <option value="custom">{berth.customLabel} (custom)</option>
                 )}
+                <option value="empty">— empty berth —</option>
                 {lance.designs.map((design) => (
                   <option key={design.value} value={design.value}>
                     {design.label} — {design.tonnage}t

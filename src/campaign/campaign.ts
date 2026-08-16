@@ -264,9 +264,19 @@ export function fillEmptySeats(state: CampaignState): void {
   }
 }
 
+/**
+ * The most machines any drop will carry, however light they are. The real
+ * constraint on a drop is the tonnage allowance — three heavies instead of
+ * four mediums is a legitimate answer to it — so berths are a wide sanity cap
+ * rather than the authored lance size they used to be.
+ */
+export const DROP_BERTHS = 6;
+
 export function missionSlots(catalog: Catalog, missionId: string): number {
   const mission = catalog.missions.get(missionId);
-  return mission?.lances.find((lance) => lance.team === PLAYER_TEAM)?.units.length ?? 0;
+  const authored =
+    mission?.lances.find((lance) => lance.team === PLAYER_TEAM)?.units.length ?? 0;
+  return authored === 0 ? 0 : Math.max(authored, DROP_BERTHS);
 }
 
 /** Tonnage of a design's chassis, or zero if the design has gone missing. */

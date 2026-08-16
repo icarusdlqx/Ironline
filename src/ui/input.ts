@@ -55,6 +55,14 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   let marqueeFrom: Vec2 | null = null;
   let marqueeScreenFrom: Vec2 | null = null;
   /**
+   * A press on one of the player's own mechs, held until it declares itself:
+   * released in place it is a click and selects the machine, dragged it turns
+   * into a marquee from the press point. Committing on the press made it
+   * impossible to start a drag-select anywhere near a bunched-up lance, which
+   * is exactly where drag-select earns its keep.
+   */
+  let pendingSelect: { id: number; screen: Vec2; world: Vec2; shift: boolean } | null = null;
+  /**
    * The pointer's last known place on the canvas, and whether it has moved
    * since hover was last resolved. Pointer events only carry where the mouse
    * is; what the game says is under it — the hovered mech, the cursor's ground
@@ -349,6 +357,18 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       return;
     }
 
+    if (picked.team === state.playerTeam) {
+      // Held until release or drag: a press on a friendly is a select OR the
+      // start of a drag-select box, and only the pointer's next move can say.
+      pendingSelect = {
+        id: picked.id,
+        screen: pointerToScreen(canvas, event),
+        world,
+        shift: event.shiftKey,
+      };
+      return;
+    }
+
     engine.audio.select();
     if (event.shiftKey) {
       const next = state.selection.includes(picked.id)
@@ -373,6 +393,22 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     const screen = pointerToScreen(canvas, event);
     lastPointer = screen;
     pointerDirty = true;
+
+    // A held press on a friendly declares itself a drag: open the marquee
+    // from the press point, and the click-select it might have been is off.
+    if (pendingSelect !== null) {
+      const drag = Math.hypot(
+        screen.x - pendingSelect.screen.x,
+        screen.y - pendingSelect.screen.y,
+      );
+      if (drag > DRAG_THRESHOLD) {
+        marqueeFrom = pendingSelect.world;
+        marqueeScreenFrom = pendingSelect.screen;
+        engine.selectionBox = { a: pendingSelect.world, b: pendingSelect.world };
+        useGame.getState().patch({ marquee: null });
+        pendingSelect = null;
+      }
+    }
 
     const aim = engine.supportAim;
     if (aim !== null) {
@@ -416,6 +452,24 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
     panning = false;
     lastPan = null;
+
+    // A press on a friendly that never became a drag: it was a click after
+    // all, and the click selects.
+    if (pendingSelect !== null) {
+      const held = pendingSelect;
+      pendingSelect = null;
+      const state = useGame.getState();
+      engine.audio.select();
+      if (held.shift) {
+        const next = state.selection.includes(held.id)
+          ? state.selection.filter((id) => id !== held.id)
+          : [...state.selection, held.id];
+        state.setSelection(next);
+      } else {
+        state.setSelection([held.id]);
+      }
+      return;
+    }
 
     const aim = engine.supportAim;
     if (aim !== null) {

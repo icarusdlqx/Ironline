@@ -23,6 +23,7 @@ import { isSideContract } from '../../campaign/sidework';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
 import { Debrief, debriefedCount, markDebriefed } from './Debrief';
+import { Hangar } from './Hangar';
 import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
 import { useGame } from '../store';
@@ -40,7 +41,12 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     return saved.state ?? startCampaign(catalog, CAMPAIGN_ID, 'border');
   });
   const [manualOpen, setManualOpen] = useState(false);
-  const [manifestOpen, setManifestOpen] = useState(false);
+  /**
+   * Where the drop preparation stands: the hangar first, then the manifest.
+   * Prep is a corridor, not a pop-up — campaign map → mechbay → deployment →
+   * battle — so the bay stops being a side door most players never find.
+   */
+  const [prep, setPrep] = useState<null | 'bay' | 'manifest'>(null);
   const [refitting, setRefitting] = useState<string | null>(null);
   // Missions fought but not yet debriefed. Counted rather than flagged so the
   // screen can be reopened without the debrief coming back each time.
@@ -98,15 +104,14 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     setStatus(said ?? message ?? null);
   };
 
-  // Deploying opens the manifest rather than launching. Who flies what is the
-  // last decision before the drop, and the only place the roster is a choice
-  // rather than a list.
+  // Deploying walks the prep corridor rather than launching: the hangar for
+  // repairs and refits first, then the manifest for who flies what.
   const onDeploy = (): void => {
     if (state.contract === null) {
       setStatus('Accept a contract first.');
       return;
     }
-    setManifestOpen(true);
+    setPrep('bay');
   };
 
   const onLaunch = (): void => {
@@ -114,7 +119,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       setStatus('No mech is ready to deploy.');
       return;
     }
-    setManifestOpen(false);
+    setPrep(null);
     saveCampaign(state);
     patch({ campaignPending: true, screen: 'battle' });
   };
@@ -228,7 +233,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
             </p>
             <div className="camp-buttons">
               <button type="button" onClick={onDeploy} data-testid="camp-deploy">
-                Deploy ({lance.length} mech{lance.length === 1 ? '' : 's'})
+                Prepare drop ({lance.length} mech{lance.length === 1 ? '' : 's'} ready)
               </button>
               <button
                 type="button"
@@ -332,13 +337,24 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         />
       )}
 
-      {!manifestOpen || refitting !== null ? null : (
+      {prep !== 'bay' || refitting !== null ? null : (
+        <Hangar
+          catalog={catalog}
+          state={state}
+          mutate={mutate}
+          onRefit={setRefitting}
+          onContinue={() => setPrep('manifest')}
+          onCancel={() => setPrep(null)}
+        />
+      )}
+
+      {prep !== 'manifest' || refitting !== null ? null : (
         <LanceManifest
           catalog={catalog}
           state={state}
           mutate={mutate}
           onLaunch={onLaunch}
-          onCancel={() => setManifestOpen(false)}
+          onCancel={() => setPrep('bay')}
           onRefit={setRefitting}
         />
       )}

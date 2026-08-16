@@ -1,11 +1,11 @@
 {
   "id": "foundry_sweep",
-  "name": "Sweep \u2014 Foundry District",
+  "name": "Sweep — Foundry District",
   "type": "assault",
   "mapId": "foundry_district",
   "briefing": "A Combine detachment has pushed into Sarn's outer works and gone quiet among the blocks. Sweep the district. Sightlines are streets; every corner belongs to whoever turned it first. Long guns count for less in here than nerve.",
   "maxDurationSeconds": 420,
-  "startingResourcePoints": 300,
+  "startingResourcePoints": 1000,
   "lances": [
     {
       "team": 0,
@@ -132,7 +132,7 @@
       "effects": [
         {
           "type": "message",
-          "text": "Half their strength down. The rest will be waiting behind corners \u2014 attack-move, and take the streets in pairs."
+          "text": "Half their strength down. The rest will be waiting behind corners — attack-move, and take the streets in pairs."
         }
       ]
     }

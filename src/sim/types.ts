@@ -185,6 +185,12 @@ export interface MechEntity {
    */
   closestApproach: number;
   stalledTicks: number;
+  /**
+   * Times in a row the current move order has stalled out without gaining a
+   * waypoint. One strike near the destination means the last stretch is
+   * bodies, not ground; a few strikes anywhere means the route is hopeless.
+   */
+  stallStrikes: number;
 
   /** How badly the mech has been shoved about, and how far off its feet that is. */
   stability: number;

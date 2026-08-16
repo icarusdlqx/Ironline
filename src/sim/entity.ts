@@ -280,6 +280,7 @@ export function createMech(catalog: Catalog, rules: Rules, params: SpawnParams):
 
     closestApproach: Number.POSITIVE_INFINITY,
     stalledTicks: 0,
+    stallStrikes: 0,
 
     stability: 0,
     downRemaining: 0,

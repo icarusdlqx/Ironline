@@ -3,7 +3,7 @@ import { dropTonnageFor, prepareDeployment, resolveMission } from '../campaign/c
 import { loadCampaign, saveCampaign } from '../campaign/save';
 import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
-import { SUPPORT_CALLS } from '../sim/support';
+import { PLAYER_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
@@ -195,7 +195,7 @@ export function Battle() {
     : {
         berths: lance.map((berth, index) => ({
           index,
-          designValue: berth.designId ?? 'custom',
+          designValue: berth.empty === true ? 'empty' : (berth.designId ?? 'custom'),
           customLabel: berth.designId === null ? (berth.design?.name ?? 'Custom build') : null,
           pilotId: berth.pilotId,
           tonnage: catalog.chassis.get(berthDesign(catalog, berth)?.chassisId ?? '')?.tonnage ?? 0,
@@ -218,14 +218,20 @@ export function Battle() {
           const next = lance.map((berth) => ({ ...berth }));
           const target = next[index];
           if (target === undefined) return;
-          if (value.startsWith('saved:')) {
+          if (value === 'empty') {
+            target.empty = true;
+            target.designId = null;
+            delete target.design;
+          } else if (value.startsWith('saved:')) {
             // A saved build is the player's own: frozen into the berth, so
             // later edits to the saved copy do not silently rewrite the lance.
             const result = loadFromStorage(value.slice('saved:'.length));
             if (result.design === null) return;
+            delete target.empty;
             target.designId = null;
             target.design = result.design;
           } else if (value !== 'custom') {
+            delete target.empty;
             target.designId = value;
             delete target.design;
           }
@@ -262,7 +268,7 @@ export function Battle() {
           },
         };
 
-  const supportOptions: SupportOption[] = SUPPORT_CALLS.map((id) => ({
+  const supportOptions: SupportOption[] = PLAYER_CALLS.map((id) => ({
     id,
     label: id
       .split('_')

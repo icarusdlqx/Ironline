@@ -120,7 +120,26 @@ export function createWorld(catalog: Catalog, options: WorldOptions): World {
 
   for (const lance of mission.lances) {
     const override = lance.team === playerTeam ? options.playerLance : undefined;
-    const slots = override === undefined ? lance.units : lance.units.slice(0, override.length);
+    // The drop is sized by tonnage, not by how many berths the mission author
+    // happened to draw: a lance bigger than the authored one fans its extra
+    // machines out beside the authored spawn points.
+    const slots =
+      override === undefined
+        ? lance.units
+        : override.map((_, index) => {
+            const authored = lance.units[index];
+            if (authored !== undefined) return authored;
+            const anchor = lance.units[index % Math.max(1, lance.units.length)];
+            if (anchor === undefined) throw new Error('a lance cannot spawn with no units');
+            const extra = index - lance.units.length + 1;
+            return {
+              ...anchor,
+              spawn: {
+                x: anchor.spawn.x + 16 * extra * (index % 2 === 0 ? 1 : -1),
+                y: anchor.spawn.y + 12 * extra,
+              },
+            };
+          });
 
     slots.forEach((unit, index) => {
       const entry = override?.[index];

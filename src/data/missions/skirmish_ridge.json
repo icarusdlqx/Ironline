@@ -91,7 +91,7 @@
     }
   ],
   "briefing": "A regular lance holds the crossing at Ridge Pass. Clear it.",
-  "startingResourcePoints": 300,
+  "startingResourcePoints": 1000,
   "objectives": [
     {
       "id": "wipe_them_out",

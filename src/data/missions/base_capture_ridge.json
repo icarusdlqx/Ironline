@@ -5,7 +5,7 @@
   "mapId": "ridge_pass",
   "briefing": "Two comm posts anchor the enemy position at the pass. Take both and hold the ground. Expect the garrison to call a relief lance the moment the first post changes hands — the dropship is holding a reserve mech for you, and there are Resource Points on the books for support.",
   "maxDurationSeconds": 480,
-  "startingResourcePoints": 900,
+  "startingResourcePoints": 1000,
   "lances": [
     {
       "team": 0,

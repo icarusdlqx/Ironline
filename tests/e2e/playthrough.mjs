@@ -273,7 +273,14 @@ async function main() {
     check('the objective tracker is on screen', (await page.locator('[data-testid="objective-list"] li').count()) >= 3);
     check('the zone tracker lists both posts', (await page.locator('[data-testid="zone-list"] li').count()) === 2);
     check('resource points are shown', (await page.locator('[data-testid="resource-points"]').innerText()).includes('RP'));
-    check('all six support calls are offered', (await page.locator('.support-call').count()) === 6);
+    // The palette is deliberately short: one eye, one hammer, one wrench.
+    check('exactly three support calls are offered', (await page.locator('.support-call').count()) === 3);
+    check(
+      'the palette offers probe, air strike and repair truck',
+      (await page.locator('[data-testid="support-sensor_probe"]').count()) === 1 &&
+        (await page.locator('[data-testid="support-air_strike"]').count()) === 1 &&
+        (await page.locator('[data-testid="support-repair_truck"]').count()) === 1,
+    );
 
     const rpText = async () =>
       Number((await page.locator('[data-testid="resource-points"]').innerText()).replace(/[^0-9]/g, ''));
@@ -284,33 +291,37 @@ async function main() {
     // thirty seconds and kills the run, which says nothing about why.
     check(
       'the mission resource points reached the HUD',
-      rpBefore >= 400,
+      rpBefore >= 1000,
       `${rpBefore} RP in the palette, ${mission.rp} in the world`,
     );
-    await page.locator('[data-testid="support-artillery_strike"]').click({ timeout: 5_000 });
-    check('picking a support call arms it', (await state(page)).supportMode === 'artillery_strike');
+
+    // The repair truck fires on the press; the air strike wants a drag for
+    // its run-in, so the truck is the one the pointer test drives.
+    await page.locator('[data-testid="support-repair_truck"]').click({ timeout: 5_000 });
+    check('picking a support call arms it', (await state(page)).supportMode === 'repair_truck');
     await page.mouse.click(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
 
+    const truckCost = 500;
     const afterCall = await page.evaluate(() => {
       const { world } = globalThis.__ironline;
       return { rp: world.resources.get(0), pending: world.support.pending.length };
     });
-    check('calling artillery spends resource points', afterCall.rp === mission.rp - 400, `${mission.rp} → ${afterCall.rp}`);
-    check('the strike is queued with a delay', afterCall.pending === 1);
+    check('calling the truck spends resource points', afterCall.rp === mission.rp - truckCost, `${mission.rp} → ${afterCall.rp}`);
+    check('the call is queued with a delay', afterCall.pending === 1);
     check('the HUD reflects the spend', (await rpText()) < rpBefore);
     await page.screenshot({ path: `${SHOTS}/09-support.png` });
 
-    const resolvedStrike = await page.evaluate(async () => {
+    const resolvedCall = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
       for (let step = 0; step < 200; step += 1) engine.forceStep();
       return engine.world.support.pending.length;
     });
-    check('the strike resolves after its delay', resolvedStrike === 0);
+    check('the call resolves after its delay', resolvedCall === 0);
 
     const supportOutcome = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
       const world = engine.world;
-      const calls = ['sensor_probe', 'air_strike', 'repair_truck', 'minelayer', 'reinforcement'];
+      const calls = ['sensor_probe', 'air_strike', 'repair_truck'];
       const mod = await import('/src/sim/support.ts');
       world.resources.set(0, 20000);
       const results = {};
@@ -319,19 +330,17 @@ async function main() {
         const point = enemy ? { x: enemy.pos.x, y: enemy.pos.y } : { x: 500, y: 500 };
         results[call] = mod.callSupport(world, 0, call, point, 0).ok;
       }
+      // Resolution and damage are pinned by the sim's own mission tests;
+      // here it is enough that every offered call is accepted and resolves.
       for (let step = 0; step < 400 && !world.finished; step += 1) engine.forceStep();
-      return {
-        results,
-        resolved: [...new Set(world.events.filter((e) => e.type === 'support_resolved').map((e) => e.call))],
-        reserves: world.reserves.length,
-      };
+      return { results, pending: world.support.pending.length };
     });
     check(
-      'every remaining support call was accepted',
+      'probe, air strike and repair truck were all accepted',
       Object.values(supportOutcome.results).every(Boolean),
       JSON.stringify(supportOutcome.results),
     );
-    check('the reinforcement emptied the dropship', supportOutcome.reserves === 0);
+    check('every accepted call resolved', supportOutcome.pending === 0);
 
     const triggered = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
@@ -516,8 +525,16 @@ async function main() {
     check('the campaign saves to storage', savedCampaign !== null && savedCampaign.length > 100);
 
     const cashBefore = await cash();
-    // Deploying opens the manifest; launching from it is what starts the drop.
+    // Deploying walks the prep corridor: the hangar first — repairs and
+    // refits — then the manifest, and launching from it starts the drop.
     await page.locator('[data-testid="camp-deploy"]').click();
+    await page.waitForSelector('[data-testid="hangar-stage"]');
+    check(
+      'the hangar stage lists the company machines',
+      (await page.locator('[data-testid^="hangar-"][data-testid*="mech_"]').count()) > 0 ||
+        (await page.locator('.hangar .manifest-row').count()) > 0,
+    );
+    await page.locator('[data-testid="hangar-continue"]').click();
     await page.waitForSelector('[data-testid="lance-manifest"]');
     // Five rated bars per pilot, not three lines of prose: what the player
     // needs off this screen is to be able to tell two pilots apart.

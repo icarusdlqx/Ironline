@@ -73,7 +73,7 @@
     }
   ],
   "briefing": "Outnumbered and nowhere to fall back to. They will come in two pushes — hold the pass for five minutes. Killing them all is optional.",
-  "startingResourcePoints": 300,
+  "startingResourcePoints": 1000,
   "objectives": [
     {
       "id": "hold_the_line",

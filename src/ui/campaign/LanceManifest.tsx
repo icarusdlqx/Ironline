@@ -207,7 +207,7 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
             Launch ({Math.min(dropping.length, slots)})
           </button>
           <button type="button" onClick={onCancel} data-testid="manifest-cancel">
-            Back to base
+            Back to the mechbay
           </button>
         </footer>
       </section>

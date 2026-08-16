@@ -166,6 +166,10 @@ export function findPath(
   heap.push({ cell: startCell, f: octile(goalTile.column - startTile.column, goalTile.row - startTile.row) * grid.minStepCost });
 
   let expanded = 0;
+  // The closest the search ever got, kept so an unreachable goal still yields
+  // a march to the near bank instead of an order that silently does nothing.
+  let bestCell = startCell;
+  let bestHeuristic = octile(goalTile.column - startTile.column, goalTile.row - startTile.row);
 
   while (heap.size > 0) {
     const current = heap.pop();
@@ -210,12 +214,22 @@ export function findPath(
       stamp[nextCell] = generation;
       cost[nextCell] = nextCost;
       from[nextCell] = cell;
-      const heuristic =
-        octile(goalTile.column - nextColumn, goalTile.row - nextRow) * grid.minStepCost;
-      heap.push({ cell: nextCell, f: nextCost + heuristic });
+      const remaining = octile(goalTile.column - nextColumn, goalTile.row - nextRow);
+      if (remaining < bestHeuristic) {
+        bestHeuristic = remaining;
+        bestCell = nextCell;
+      }
+      heap.push({ cell: nextCell, f: nextCost + remaining * grid.minStepCost });
     }
   }
 
+  // The frontier ran dry without touching the goal: it is cut off — the far
+  // side of water, a walled yard. Walking to the closest reachable ground is
+  // what a pilot told "over there" would actually do; refusing outright is
+  // reserved for asks that cannot even be approached.
+  if (bestCell !== startCell) {
+    return reconstruct(grid, from, startCell, bestCell, start, null);
+  }
   return null;
 }
 

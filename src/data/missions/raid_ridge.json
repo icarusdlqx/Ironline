@@ -82,7 +82,7 @@
     }
   ],
   "briefing": "Militia irregulars are dug in at the pass. Break them and withdraw.",
-  "startingResourcePoints": 300,
+  "startingResourcePoints": 1000,
   "objectives": [
     {
       "id": "wipe_them_out",

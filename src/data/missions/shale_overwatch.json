@@ -1,11 +1,11 @@
 {
   "id": "shale_overwatch",
-  "name": "Hold \u2014 Shale Steps",
+  "name": "Hold — Shale Steps",
   "type": "defend",
   "mapId": "shale_steps",
-  "briefing": "Kestrel's survey post sits on the top terrace and the Combine wants it gone. They have to come up the steps or the switchback \u2014 both under your guns. Hold the post until the column gives up. Height is worth more than armour here; do not give it away.",
+  "briefing": "Kestrel's survey post sits on the top terrace and the Combine wants it gone. They have to come up the steps or the switchback — both under your guns. Hold the post until the column gives up. Height is worth more than armour here; do not give it away.",
   "maxDurationSeconds": 420,
-  "startingResourcePoints": 400,
+  "startingResourcePoints": 1000,
   "lances": [
     {
       "team": 0,
@@ -144,7 +144,7 @@
       "effects": [
         {
           "type": "message",
-          "text": "Post watch: column coming up from the valley floor, five machines. The scarps slow them \u2014 that is your window."
+          "text": "Post watch: column coming up from the valley floor, five machines. The scarps slow them — that is your window."
         },
         {
           "type": "reveal",
@@ -164,7 +164,7 @@
       "effects": [
         {
           "type": "message",
-          "text": "Survey data away. Finish the column or let it limp home \u2014 the post stands either way."
+          "text": "Survey data away. Finish the column or let it limp home — the post stands either way."
         }
       ]
     }

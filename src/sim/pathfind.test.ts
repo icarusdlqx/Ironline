@@ -30,12 +30,21 @@ describe('findPath', () => {
     expect(findPath(maze, { x: 2, y: 2 }, { x: 8, y: 8 }, MAX_NODES)).toEqual([]);
   });
 
-  it('returns null when the goal is walled off', () => {
+  it('walks to the near bank when the goal is walled off', () => {
     const split = makeGrid({
       legend: OPEN_LEGEND,
       tiles: ['..#..', '..#..', '..#..', '..#..', '..#..'],
     });
-    expect(findPath(split, { x: 5, y: 5 }, { x: 45, y: 5 }, MAX_NODES)).toBeNull();
+    // The far side cannot be reached; the order should still march as close
+    // as the ground allows instead of silently doing nothing.
+    const path = findPath(split, { x: 5, y: 5 }, { x: 45, y: 5 }, MAX_NODES);
+    expect(path).not.toBeNull();
+    const last = (path ?? [])[(path ?? []).length - 1];
+    expect(last).toBeDefined();
+    if (last !== undefined) {
+      // Ends on the near side of the wall (column 2 is the wall at x 20-30).
+      expect(last.x).toBeLessThan(20);
+    }
   });
 
   it('gives up once the node budget is exhausted', () => {

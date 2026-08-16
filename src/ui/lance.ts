@@ -18,6 +18,8 @@ export interface SkirmishBerth {
   designId: string | null;
   design?: Design;
   pilotId: string;
+  /** Deliberately left empty: the drop is sized by tonnage, not berth count. */
+  empty?: boolean;
 }
 
 const STORAGE_PREFIX = 'ironline.lance.';
@@ -45,6 +47,10 @@ export function loadLance(catalog: Catalog, missionId: string): SkirmishBerth[] 
     const berths: SkirmishBerth[] = [];
     for (const entry of parsed) {
       if (typeof entry.pilotId !== 'string' || !catalog.pilots.has(entry.pilotId)) return fallback;
+      if (entry.empty === true) {
+        berths.push({ designId: null, pilotId: entry.pilotId, empty: true });
+        continue;
+      }
       if (entry.designId !== null) {
         if (!catalog.designs.has(entry.designId)) return fallback;
         berths.push({ designId: entry.designId, pilotId: entry.pilotId });
@@ -71,6 +77,7 @@ export function storeLance(missionId: string, lance: SkirmishBerth[]): void {
 }
 
 export function berthDesign(catalog: Catalog, berth: SkirmishBerth): Design | null {
+  if (berth.empty === true) return null;
   if (berth.designId !== null) return catalog.designs.get(berth.designId) ?? null;
   return berth.design ?? null;
 }
@@ -92,10 +99,13 @@ export function lanceEntries(
 ): LanceEntry[] | null {
   const entries: LanceEntry[] = [];
   for (const berth of lance) {
+    // An empty berth is a choice, not a failure: three heavies instead of
+    // four mediums is a legitimate answer to a tonnage allowance.
+    if (berth.empty === true) continue;
     const design = berthDesign(catalog, berth);
     const pilot = catalog.pilots.get(berth.pilotId);
     if (design === null || pilot === undefined) return null;
     entries.push({ design, pilot });
   }
-  return entries;
+  return entries.length === 0 ? null : entries;
 }

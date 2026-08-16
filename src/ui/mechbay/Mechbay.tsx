@@ -308,6 +308,22 @@ export function Mechbay({
         )}
         <button
           type="button"
+          onClick={() => {
+            const factory = [...catalog.designs.values()].find(
+              (entry) => entry.chassisId === design.chassisId,
+            );
+            if (factory !== undefined) {
+              apply(JSON.parse(JSON.stringify(factory)) as Design);
+              setStatus({ tone: 'ok', text: `Back to the stock ${factory.name} loadout.` });
+            }
+          }}
+          title="Put the factory loadout back. Undoes every change on the gantry — a safe base to experiment from."
+          data-testid="bay-reset-stock"
+        >
+          Reset to stock
+        </button>
+        <button
+          type="button"
           onClick={commission === undefined ? onExit : commission.onCancel}
           data-testid="bay-exit"
         >

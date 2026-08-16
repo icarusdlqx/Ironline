@@ -17,6 +17,18 @@ export const SUPPORT_CALLS = [
 
 export type SupportCallId = (typeof SUPPORT_CALLS)[number];
 
+/**
+ * What the dropship offers the player, kept deliberately short: one eye, one
+ * hammer, one wrench. The other calls still exist in the rules and resolve
+ * fine — missions and future content can use them — but the palette stays
+ * three buttons a commander can actually weigh mid-fight.
+ */
+export const PLAYER_CALLS: readonly SupportCallId[] = [
+  'sensor_probe',
+  'air_strike',
+  'repair_truck',
+];
+
 export interface PendingCall {
   call: SupportCallId;
   team: number;

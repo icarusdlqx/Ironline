@@ -214,7 +214,22 @@ export function updateMovement(world: World, entity: MechEntity): void {
     return;
   }
 
-  const waypoint = entity.path[entity.pathIndex] ?? null;
+  let waypoint = entity.path[entity.pathIndex] ?? null;
+
+  // Shouldered past the corner: already closer to the next waypoint than to
+  // this one. Turning round to touch a point the mech has effectively passed
+  // is what the rest of the lance's shoving would otherwise force.
+  if (waypoint !== null) {
+    const upcoming = entity.path[entity.pathIndex + 1];
+    if (upcoming !== undefined && distance(entity.pos, upcoming) < distance(entity.pos, waypoint)) {
+      entity.pathIndex += 1;
+      entity.closestApproach = Number.POSITIVE_INFINITY;
+      entity.stalledTicks = 0;
+      entity.stallStrikes = 0;
+      waypoint = upcoming;
+    }
+  }
+
   const target = findEntity(world, entity.targetId);
 
   // Under keep-facing orders the hull tracks the target and the legs do the
@@ -292,13 +307,15 @@ export function updateMovement(world: World, entity: MechEntity): void {
   // A mech that has stopped closing on its waypoint is wedged — sliding along
   // a wall that never ends, or shouldered off its line by the rest of the
   // lance. Drop the path so whoever gave it re-solves, rather than walking on
-  // the spot for the rest of the battle.
+  // the spot for the rest of the battle. The strike stays on the record: a
+  // re-solve that keeps stalling is how "the destination is taken" reads.
   if (gap < entity.closestApproach - world.rules.movement.progressEpsilon) {
     entity.closestApproach = gap;
     entity.stalledTicks = 0;
   } else {
     entity.stalledTicks += 1;
     if (entity.stalledTicks > world.rules.movement.stallTicks) {
+      entity.stallStrikes += 1;
       clearPath(entity);
       return;
     }
@@ -309,5 +326,6 @@ export function updateMovement(world: World, entity: MechEntity): void {
   entity.pathIndex += 1;
   entity.closestApproach = Number.POSITIVE_INFINITY;
   entity.stalledTicks = 0;
+  entity.stallStrikes = 0;
   if (entity.pathIndex >= entity.path.length) clearPath(entity);
 }

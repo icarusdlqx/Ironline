@@ -509,15 +509,19 @@ export class Engine {
   ): void {
     this.hudDirty = true;
     let moved = 0;
+    let asked = 0;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
+      asked += 1;
       // A queued leg keeps the pace of the order it extends.
       const pace = options.queued === true ? (entity.orders.move?.run ?? run) : run;
-      issueMove(this.world, entity, to, pace, options);
-      moved += 1;
+      if (issueMove(this.world, entity, to, pace, options)) moved += 1;
     }
     if (moved > 0) this.audio.order();
+    // An order that silently does nothing reads as a broken control. The only
+    // way every path solve fails is ground that cannot even be approached.
+    else if (asked > 0) useGame.getState().pushLog('No route to that point.');
   }
 
   /** Fires the jets of whatever is selected and can jump, toward one point. */
