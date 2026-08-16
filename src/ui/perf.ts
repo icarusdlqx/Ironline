@@ -21,6 +21,8 @@ const CLIP_MS = 100;
 const GUIDES_MS = [16.7, 33.3];
 /** A frame this late is a hitch the player felt, and goes in the ledger. */
 const SPIKE_MS = 50;
+/** Two missed vsyncs at 60Hz: micro-stutter worth counting, not holding. */
+const LATE_MS = 34;
 /** A gap this long is a tab switch, not a stutter anyone was watching. */
 const IGNORE_MS = 1_000;
 /** The held spike fades from the ledger once it is this stale. */
@@ -56,6 +58,8 @@ export class PerfOverlay {
   /** The worst recent hitch, held so it survives until someone looks. */
   private spike: Spike | null = null;
   private spikeCount = 0;
+  /** Frames that missed two vsyncs — the texture of micro-stutter. */
+  private lateCount = 0;
 
   constructor(host: HTMLElement) {
     this.canvas = document.createElement('canvas');
@@ -81,6 +85,7 @@ export class PerfOverlay {
     // Spikes are tracked whether or not anyone is watching: the player opens
     // the overlay after feeling the hitch, and it has to still be there.
     this.clock += sample.frameMs;
+    if (sample.frameMs >= LATE_MS && sample.frameMs < IGNORE_MS) this.lateCount += 1;
     if (sample.frameMs >= SPIKE_MS && sample.frameMs < IGNORE_MS) {
       this.spikeCount += 1;
       const standing = this.spike;
@@ -162,13 +167,15 @@ export class PerfOverlay {
    */
   private spikeCaption(): string {
     const spike = this.spike;
-    if (spike === null) return `no frames over ${SPIKE_MS}ms yet`;
+    if (spike === null) {
+      return `no ${SPIKE_MS}ms spikes · ${LATE_MS}ms+ ×${this.lateCount}`;
+    }
     const other = Math.max(0, spike.frameMs - spike.simMs - spike.drawMs);
     const age = Math.round((this.clock - spike.at) / 1000);
     return (
       `spike ${Math.round(spike.frameMs)}ms ` +
       `(sim ${Math.round(spike.simMs)} draw ${Math.round(spike.drawMs)} ` +
-      `other ${Math.round(other)}) ${age}s ago ×${this.spikeCount}`
+      `other ${Math.round(other)}) ${age}s ×${this.spikeCount} · ${LATE_MS}+ ×${this.lateCount}`
     );
   }
 }

@@ -58,7 +58,7 @@ interface MotionSample {
 
 interface EntityView {
   model: MechModel;
-  signature: string;
+  signature: number;
   ring: Mesh;
   /** Drawn under the pointer, so the player can see what a click would hit. */
   hoverRing: Mesh;
@@ -95,11 +95,21 @@ const PICK_DELTA = new Vector3();
 /** Scratch for the weapon-reach rings, reused across machines and frames. */
 const REACHES: number[] = [];
 
-function damageSignature(entity: MechEntity): string {
-  const lost = Object.values(entity.locations)
-    .map((state) => (state.destroyed ? '1' : '0'))
-    .join('');
-  return `${entity.team}:${lost}:${entity.destroyed ? 'x' : 'o'}`;
+/**
+ * What the model's appearance depends on, packed into one number: a bit per
+ * lost location, one for the wreck state, and the team in the low bits. A
+ * number instead of a string because this runs per machine per frame, and a
+ * per-frame string is garbage a long fight feeds to the collector.
+ */
+function damageSignature(entity: MechEntity): number {
+  let bits = entity.destroyed ? 1 : 0;
+  for (let index = 0; index < LOCATIONS.length; index += 1) {
+    const location = LOCATIONS[index];
+    if (location !== undefined && entity.locations[location].destroyed) {
+      bits |= 1 << (index + 1);
+    }
+  }
+  return bits * 8 + entity.team;
 }
 
 export class Renderer {
@@ -293,15 +303,29 @@ export class Renderer {
   }
 
   snapshot(world: World): void {
+    // Samples are mutated in place: two fresh objects per machine per sim
+    // step is steady garbage a whole battle hands to the collector.
     for (const entity of world.entities) {
-      const cur: Interpolated = {
-        x: entity.pos.x,
-        y: entity.pos.y,
-        facing: entity.facing,
-        torso: entity.torsoOffset,
-      };
       const existing = this.samples.get(entity.id);
-      this.samples.set(entity.id, { prev: existing?.cur ?? cur, cur });
+      if (existing === undefined) {
+        const cur: Interpolated = {
+          x: entity.pos.x,
+          y: entity.pos.y,
+          facing: entity.facing,
+          torso: entity.torsoOffset,
+        };
+        this.samples.set(entity.id, { prev: { ...cur }, cur });
+        continue;
+      }
+      const { prev, cur } = existing;
+      prev.x = cur.x;
+      prev.y = cur.y;
+      prev.facing = cur.facing;
+      prev.torso = cur.torso;
+      cur.x = entity.pos.x;
+      cur.y = entity.pos.y;
+      cur.facing = entity.facing;
+      cur.torso = entity.torsoOffset;
     }
   }
 
@@ -398,26 +422,31 @@ export class Renderer {
   }
 
   private interpolate(world: World, alpha: number): void {
-    this.interpolated.clear();
+    // Entries are mutated in place rather than rebuilt: an object per machine
+    // per frame is the kind of steady allocation that turns into a garbage
+    // collector pause twenty minutes into a campaign session. Entities are
+    // never removed from a battle, so entries never go stale.
     for (const entity of world.entities) {
+      let slot = this.interpolated.get(entity.id);
+      if (slot === undefined) {
+        slot = { x: 0, y: 0, facing: 0, torso: 0 };
+        this.interpolated.set(entity.id, slot);
+      }
+
       const sample = this.samples.get(entity.id);
       if (sample === undefined) {
-        this.interpolated.set(entity.id, {
-          x: entity.pos.x,
-          y: entity.pos.y,
-          facing: entity.facing,
-          torso: entity.torsoOffset,
-        });
+        slot.x = entity.pos.x;
+        slot.y = entity.pos.y;
+        slot.facing = entity.facing;
+        slot.torso = entity.torsoOffset;
         continue;
       }
-      this.interpolated.set(entity.id, {
-        x: sample.prev.x + (sample.cur.x - sample.prev.x) * alpha,
-        y: sample.prev.y + (sample.cur.y - sample.prev.y) * alpha,
-        facing: normaliseAngle(
-          sample.prev.facing + angleDifference(sample.prev.facing, sample.cur.facing) * alpha,
-        ),
-        torso: sample.prev.torso + (sample.cur.torso - sample.prev.torso) * alpha,
-      });
+      slot.x = sample.prev.x + (sample.cur.x - sample.prev.x) * alpha;
+      slot.y = sample.prev.y + (sample.cur.y - sample.prev.y) * alpha;
+      slot.facing = normaliseAngle(
+        sample.prev.facing + angleDifference(sample.prev.facing, sample.cur.facing) * alpha,
+      );
+      slot.torso = sample.prev.torso + (sample.cur.torso - sample.prev.torso) * alpha;
     }
   }
 

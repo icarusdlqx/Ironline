@@ -177,9 +177,15 @@ export class Engine {
     }
 
     const alpha = state.paused ? 1 : Math.min(1, this.accumulator / this.world.dt);
+    // The selection set is rebuilt only when the store's array is replaced —
+    // copying it every frame is sixty allocations a second for nothing.
+    if (state.selection !== this.selectionSource) {
+      this.selectionSource = state.selection;
+      this.selectionSet = new Set(state.selection);
+    }
     const drawStart = performance.now();
     this.renderer.draw(this.world, alpha, deltaSeconds, {
-      selection: new Set(state.selection),
+      selection: this.selectionSet,
       hovered: this.hoveredId,
       cursor: this.cursorWorld,
       orderMode: state.orderMode,
@@ -199,9 +205,46 @@ export class Engine {
     this.hudTimer += deltaSeconds;
     if (this.hudTimer >= HUD_INTERVAL_SECONDS) {
       this.hudTimer = 0;
-      this.publish();
+      // Publishing rebuilds every snapshot array and re-renders the whole
+      // HUD, so a paused battle sitting on the same tick must not pay that
+      // ten times a second. Everything the snapshot reads changes only when
+      // the sim steps; the rest of the readout hangs off what the player is
+      // pointing at and holding selected.
+      const last = this.lastPublished;
+      if (
+        this.hudDirty ||
+        this.world.tick !== last.tick ||
+        this.hoveredId !== last.hovered ||
+        state.selection !== last.selection ||
+        state.orderMode !== last.orderMode
+      ) {
+        this.hudDirty = false;
+        last.tick = this.world.tick;
+        last.hovered = this.hoveredId;
+        last.selection = state.selection;
+        last.orderMode = state.orderMode;
+        this.publish();
+      }
     }
   }
+
+  /** The store's selection array the set was last built from, by identity. */
+  private selectionSource: readonly EntityId[] | null = null;
+  private selectionSet = new Set<EntityId>();
+
+  /** What the HUD was last told, so an unchanged battle publishes nothing. */
+  private readonly lastPublished = {
+    tick: -1,
+    hovered: null as EntityId | null,
+    selection: null as readonly EntityId[] | null,
+    orderMode: null as OrderMode,
+  };
+  /**
+   * Orders given while paused change what the readout shows without moving
+   * the tick — a target set, a gun held — so they raise this to force the
+   * next publish through the unchanged-battle gate.
+   */
+  private hudDirty = true;
 
   cursorWorld: Vec2 | null = null;
   /**
@@ -464,6 +507,7 @@ export class Engine {
     run: boolean,
     options: { engage?: boolean; queued?: boolean } = {},
   ): void {
+    this.hudDirty = true;
     let moved = 0;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
@@ -478,6 +522,7 @@ export class Engine {
 
   /** Fires the jets of whatever is selected and can jump, toward one point. */
   orderJump(to: Vec2): void {
+    this.hudDirty = true;
     let fired = 0;
     let asked = 0;
     for (const id of this.selectedEntities()) {
@@ -490,6 +535,7 @@ export class Engine {
   }
 
   orderAttack(targetId: EntityId, calledShot: MechLocation | null): void {
+    this.hudDirty = true;
     let ordered = 0;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
@@ -549,6 +595,7 @@ export class Engine {
    * already following it — so the same key both commits and releases.
    */
   setPosture(posture: Posture): void {
+    this.hudDirty = true;
     const ids = this.selectedEntities();
     const mechs = ids
       .map((id) => findEntity(this.world, id))
@@ -560,6 +607,7 @@ export class Engine {
   }
 
   orderStop(): void {
+    this.hudDirty = true;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
@@ -575,6 +623,7 @@ export class Engine {
    * the control does the opposite of its label at exactly the moment it matters.
    */
   toggleHoldFire(): void {
+    this.hudDirty = true;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
@@ -584,6 +633,7 @@ export class Engine {
 
   /** Hand heat management back to the player, or take it back. */
   toggleHeatSafety(): void {
+    this.hudDirty = true;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
@@ -595,6 +645,7 @@ export class Engine {
   }
 
   toggleGroup(group: number): void {
+    this.hudDirty = true;
     for (const id of this.selectedEntities()) {
       const entity = findEntity(this.world, id);
       if (entity === null || entity.autopilot) continue;
@@ -617,6 +668,7 @@ export class Engine {
     /** Where the player dragged to; the aim point itself means "you choose". */
     runTo: Vec2 = target,
   ): { ok: boolean; reason: string | null } {
+    this.hudDirty = true;
     const team = this.world.playerTeam ?? 0;
     const result = callSupport(this.world, team, call, target, this.headingFor(target, runTo));
     if (!result.ok && result.reason !== null) useGame.getState().pushLog(result.reason);
