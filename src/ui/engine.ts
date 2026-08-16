@@ -93,6 +93,17 @@ export class Engine {
     this.perf?.toggle();
   }
 
+  /** Halves the GPU's job on the spot: shadows off, pixel ratio down. */
+  toggleLowFx(): boolean {
+    const low = !this.renderer.lowFx;
+    this.renderer.setLowFx(low);
+    this.hudDirty = true;
+    useGame
+      .getState()
+      .pushLog(low ? 'Low graphics — shadows off, resolution down.' : 'Full graphics restored.');
+    return low;
+  }
+
   /** Steps along 1× → 2× → 4×, clamped at the ends rather than wrapping. */
   nudgeSpeed(direction: 1 | -1): void {
     const current = useGame.getState().speed;

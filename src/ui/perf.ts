@@ -12,7 +12,7 @@
  * compositor, the rest of the machine — and saying so is the diagnosis.
  */
 
-const WIDTH = 312;
+const WIDTH = 344;
 const HEIGHT = 88;
 const HISTORY = 116;
 /** The sparkline's ceiling. Frames past this are clipped, not rescaled. */
@@ -175,7 +175,8 @@ export class PerfOverlay {
     return (
       `spike ${Math.round(spike.frameMs)}ms ` +
       `(sim ${Math.round(spike.simMs)} draw ${Math.round(spike.drawMs)} ` +
-      `other ${Math.round(other)}) ${age}s ×${this.spikeCount} · ${LATE_MS}+ ×${this.lateCount}`
+      `other ${Math.round(other)} ${spike.drawCalls}dc) ` +
+      `${age}s ×${this.spikeCount} · ${LATE_MS}+ ×${this.lateCount}`
     );
   }
 }

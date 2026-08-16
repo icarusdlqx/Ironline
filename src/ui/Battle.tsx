@@ -63,6 +63,7 @@ export function Battle() {
 
   const [resolved, setResolved] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [lowFx, setLowFx] = useState(false);
   const missionId = useGame((game) => game.skirmishMissionId);
   const difficulty = useGame((game) => game.difficulty);
 
@@ -179,6 +180,7 @@ export function Battle() {
 
   useEffect(() => {
     setMuted(engineRef.current?.audio.muted ?? false);
+    setLowFx(engineRef.current?.renderer.lowFx ?? false);
   }, [state.ready]);
 
   const playerControlled = unit !== null && unit.team === state.playerTeam && unit.alive;
@@ -330,6 +332,19 @@ export function Battle() {
           data-testid="mute-button"
         >
           {muted ? '\u{1F507}' : '\u{1F50A}'}
+        </button>
+        <button
+          type="button"
+          className={`pause ${lowFx ? 'active' : ''}`}
+          onClick={() => setLowFx(engineRef.current?.toggleLowFx() ?? false)}
+          title={
+            lowFx
+              ? 'Low graphics: shadows off, resolution down. Click for full.'
+              : 'Full graphics. Click to drop shadows and resolution if the game stutters.'
+          }
+          data-testid="fx-toggle"
+        >
+          {lowFx ? 'FX low' : 'FX full'}
         </button>
         <button
           type="button"

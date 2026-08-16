@@ -101,6 +101,14 @@ const REACHES: number[] = [];
  * number instead of a string because this runs per machine per frame, and a
  * per-frame string is garbage a long fight feeds to the collector.
  */
+function readLowFx(): boolean {
+  try {
+    return localStorage.getItem('ironline.lowfx') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function damageSignature(entity: MechEntity): number {
   let bits = entity.destroyed ? 1 : 0;
   for (let index = 0; index < LOCATIONS.length; index += 1) {
@@ -164,6 +172,35 @@ export class Renderer {
   /** The authored map, kept for overlays like the minimap that draw from it. */
   readonly mapData: TerrainMapData;
 
+  /**
+   * Low-FX mode: no shadows and native-resolution-capped-at-1 rendering. It
+   * exists as much as a diagnostic as a setting — when a machine stutters,
+   * one keypress that halves the GPU's job answers "is it the graphics?"
+   * faster than any profiler. Persisted, because the answer rarely changes.
+   */
+  lowFx = readLowFx();
+
+  /** Applies the mode live: shadows off, pixels down, shaders rebuilt. */
+  setLowFx(low: boolean): void {
+    this.lowFx = low;
+    try {
+      localStorage.setItem('ironline.lowfx', low ? '1' : '0');
+    } catch {
+      // Private browsing; the preference lasts for the session.
+    }
+    this.renderer.shadowMap.enabled = !low;
+    this.renderer.setPixelRatio(low ? 1 : Math.min(1.5, globalThis.devicePixelRatio ?? 1));
+    this.resize();
+    // Materials bake "does the world have shadows" into their programs;
+    // without the nudge, surfaces keep sampling maps that no longer render.
+    this.scene.traverse((node) => {
+      const mesh = node as Mesh;
+      if (mesh.material === undefined) return;
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) material.needsUpdate = true;
+    });
+  }
+
   constructor(host: HTMLElement, world: World, mapData: TerrainMapData, atmosphere: Atmosphere) {
     this.mapData = mapData;
     this.host = host;
@@ -172,8 +209,8 @@ export class Renderer {
     // there, and 1.5 is ~44% fewer pixels than 2 for a difference nobody has
     // picked out of a moving battle. Effects stack additive transparency, so
     // fill is what firefight frame spikes are made of.
-    this.renderer.setPixelRatio(Math.min(1.5, globalThis.devicePixelRatio ?? 1));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.setPixelRatio(this.lowFx ? 1 : Math.min(1.5, globalThis.devicePixelRatio ?? 1));
+    this.renderer.shadowMap.enabled = !this.lowFx;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.toneMapping = ACESFilmicToneMapping;
 
@@ -943,18 +980,42 @@ export class Renderer {
 
       const at = this.interpolated.get(entity.id) ?? entity.pos;
       const height = view.model.height;
-      // Slightly generous around the hull on purpose: a scout at combat zoom
-      // is a few pixels wide, and a click that grazes it should still count.
-      const radius = Math.max(radiusFor(entity.tonnage) * 1.1, height * 0.55);
+      // A capsule from feet to head, as wide as the hull is drawn. A sphere
+      // sized to cover a tall machine's height grows so fat sideways that a
+      // click on open ground near an enemy became an attack order — which
+      // reads as "I clicked a destination and nothing happened".
+      const radius = radiusFor(entity.tonnage) * 1.2;
       const lift = jumpHeight(entity) * radiusFor(entity.tonnage) * 2.2;
-      PICK_DELTA.set(
-        at.x - ray.origin.x,
-        this.terrain.heightAt(at.x, at.y) + lift + height * 0.5 - ray.origin.y,
-        at.y - ray.origin.z,
-      );
-      const along = PICK_DELTA.dot(ray.direction);
+      const footY = this.terrain.heightAt(at.x, at.y) + lift;
+
+      // Closest approach between the pick ray and the body's vertical axis.
+      // The axis direction is straight up, so the maths collapses nicely:
+      // minimise |o + t·d − (f + s·u)|² over t ≥ 0, 0 ≤ s ≤ height.
+      PICK_DELTA.set(at.x - ray.origin.x, footY - ray.origin.y, at.y - ray.origin.z);
+      const d = ray.direction;
+      const dDotUp = d.y;
+      const denominator = 1 - dDotUp * dDotUp;
+      let along: number;
+      let up: number;
+      if (denominator < 1e-6) {
+        // Looking straight down the axis: any point of the segment is as
+        // close as any other; take the feet.
+        along = PICK_DELTA.dot(d);
+        up = 0;
+      } else {
+        const deltaDotD = PICK_DELTA.dot(d);
+        const deltaDotUp = PICK_DELTA.y;
+        along = (deltaDotD - dDotUp * deltaDotUp) / denominator;
+        up = Math.max(0, Math.min(height, along * dDotUp - deltaDotUp));
+        // Re-derive the ray parameter for the clamped segment point.
+        along = deltaDotD + up * dDotUp;
+      }
       if (along < 0 || along >= bodyAlong) continue;
-      if (PICK_DELTA.lengthSq() - along * along > radius * radius) continue;
+
+      const gapX = PICK_DELTA.x - along * d.x;
+      const gapY = PICK_DELTA.y + up - along * d.y;
+      const gapZ = PICK_DELTA.z - along * d.z;
+      if (gapX * gapX + gapY * gapY + gapZ * gapZ > radius * radius) continue;
       bodyHit = entity;
       bodyAlong = along;
     }

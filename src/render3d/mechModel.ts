@@ -68,6 +68,20 @@ function palette(team: number, destroyed: boolean): Record<Tone, MeshStandardMat
   };
 }
 
+/**
+ * Whether a part is worth a place in the shadow pass. A mech is dozens of
+ * plates, and every caster is another draw call when the sun renders its
+ * map — but the shadow a fist-sized greeble throws is invisible at tactical
+ * zoom. Only the slabs that make the silhouette pay their way.
+ */
+const SHADOW_CASTER_MIN_RADIUS = 2.4;
+
+function castsShadow(mesh: Mesh): boolean {
+  const geometry = mesh.geometry;
+  if (geometry.boundingSphere === null) geometry.computeBoundingSphere();
+  return (geometry.boundingSphere?.radius ?? 0) >= SHADOW_CASTER_MIN_RADIUS;
+}
+
 function geometryFor(part: BlueprintPart, scale: number): BufferGeometry {
   const [w, h, d] = part.size;
   // A shaped plate is cut to its own outline. Everything else falls back to
@@ -142,7 +156,7 @@ export function buildMechModel(
     const mesh = new Mesh(geometryFor(part, scale), gone ? burnt[part.tone] : tones[part.tone]);
     mesh.position.set(part.at[0] * scale, part.at[1] * scale, part.at[2] * scale);
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
-    mesh.castShadow = true;
+    mesh.castShadow = castsShadow(mesh);
 
     const running = part.location === 'left_leg' || part.location === 'right_leg';
 
@@ -179,7 +193,7 @@ export function buildMechModel(
     const heft = 0.5 + Math.min(1, mount.tonnage / 14);
     const piece = weaponPiece(mount, heft, scale, material);
     piece.traverse((child) => {
-      if (child instanceof Mesh) child.castShadow = true;
+      if (child instanceof Mesh) child.castShadow = castsShadow(child);
     });
 
     piece.position.set(

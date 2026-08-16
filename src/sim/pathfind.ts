@@ -147,7 +147,14 @@ export function findPath(
   maxNodes: number,
 ): Vec2[] | null {
   const startTile = grid.toTile(start);
-  const rawGoal = grid.toTile(goal);
+  // A click past the map edge — the void beside the battlefield is visible
+  // from any camera position near the border — means the border, not nothing.
+  const asked = grid.toTile(goal);
+  const rawGoal = {
+    column: Math.max(0, Math.min(grid.width - 1, asked.column)),
+    row: Math.max(0, Math.min(grid.height - 1, asked.row)),
+  };
+  const clamped = rawGoal.column !== asked.column || rawGoal.row !== asked.row;
   const goalTile = nearestPassable(grid, rawGoal.column, rawGoal.row, 4);
 
   if (goalTile === null) return null;
@@ -177,7 +184,10 @@ export function findPath(
 
     const cell = current.cell;
     if (cell === goalCell) {
-      const exact = rawGoal.column === goalTile.column && rawGoal.row === goalTile.row;
+      // The exact click point survives as the final waypoint only when it is
+      // really on this tile — a clamped click's point is off the map.
+      const exact =
+        !clamped && rawGoal.column === goalTile.column && rawGoal.row === goalTile.row;
       return reconstruct(grid, from, startCell, goalCell, start, exact ? goal : null);
     }
 

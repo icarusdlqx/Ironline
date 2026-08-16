@@ -90,6 +90,12 @@ export function issueMove(
     ...(options.engage === true ? { engage: true } : {}),
   };
   entity.stallStrikes = 0;
+  // A plain move order is "disengage and go": it releases the standing
+  // attack order, or the mech marches to the spot and then wanders back to
+  // chase its old target. The guns still pick opportunistic targets on the
+  // way; attack-move keeps the engagement, since fighting through is its
+  // entire point.
+  if (options.engage !== true) entity.orders.attack = null;
   entity.orders.queue = options.queued === true ? entity.orders.queue : [];
   entity.path = path;
   entity.pathIndex = 0;

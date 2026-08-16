@@ -58,12 +58,20 @@ describe('issueMove', () => {
     expect(mech.motion).toBe('run');
   });
 
-  it('refuses an order to a destination with no route', () => {
+  it('retargets an order past the map edge to ground inside it', () => {
     const walled = playerWorld('walled');
     const target = unitOf(walled, 'sentinel_brawler');
+    // The void beside the battlefield is clickable from any camera near the
+    // border; the order means the border, not nothing.
     const ok = issueMove(walled, target, { x: 1_000_000, y: 1_000_000 }, false);
-    expect(ok).toBe(false);
-    expect(target.orders.move).toBeNull();
+    expect(ok).toBe(true);
+    const to = target.orders.move?.to;
+    expect(to).toBeDefined();
+    if (to !== undefined) {
+      const size = walled.terrain.tileSize;
+      expect(to.x).toBeLessThanOrEqual(walled.terrain.width * size);
+      expect(to.y).toBeLessThanOrEqual(walled.terrain.height * size);
+    }
   });
 
   it('clears the order once the mech arrives', () => {
@@ -236,17 +244,25 @@ describe('short move orders', () => {
     ).toBeLessThanOrEqual(world.rules.movement.arrivalRadius);
   });
 
-  it('drops an order to somewhere genuinely unreachable', () => {
+  it('walks an order aimed off the map to the near border and completes', () => {
     const world = playerWorld('unreachable');
     const mech = unitOf(world, 'sentinel_brawler');
     mech.controller = 'orders';
     mech.autopilot = false;
 
-    // Off the map entirely: findPath has nothing to return.
+    // Off the map entirely: the order retargets to the border and finishes
+    // there — an order that silently does nothing reads as a broken control.
     const goal = { x: -500, y: -500 };
     issueMove(world, mech, goal, false);
-    for (let tick = 0; tick < 120; tick += 1) stepWorld(world, 100_000);
-
+    const anchored = mech.orders.move?.to;
+    expect(anchored).toBeDefined();
+    if (anchored !== undefined) {
+      expect(anchored.x).toBeGreaterThanOrEqual(0);
+      expect(anchored.y).toBeGreaterThanOrEqual(0);
+    }
+    for (let tick = 0; tick < 2_000 && mech.orders.move !== null; tick += 1) {
+      stepWorld(world, 100_000);
+    }
     expect(mech.orders.move).toBeNull();
   });
 });
