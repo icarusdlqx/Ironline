@@ -154,6 +154,7 @@ export class UnitViews {
       mounts,
       new Set(LOCATIONS.filter((location) => entity.locations[location].destroyed)),
       chassis?.hardpoints,
+      chassis?.id ?? null,
     );
 
     const radius = radiusFor(entity.tonnage);

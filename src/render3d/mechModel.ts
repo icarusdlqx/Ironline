@@ -118,9 +118,11 @@ export function buildMechModel(
   lost: ReadonlySet<MechLocation> = new Set(),
   /** What each location is wired for, which shapes the structure built there. */
   fit: HardpointMap = {},
+  /** Render-only construction key; combat continues to care about the chassis id elsewhere. */
+  identity: string | null = null,
 ): MechModel {
   const scale = radiusFor(tonnage);
-  const plan = chassisBlueprint(shape, traits, fit);
+  const plan = chassisBlueprint(shape, traits, fit, identity);
   const tones = palette(team, destroyed);
   const burnt = palette(team, true);
 
