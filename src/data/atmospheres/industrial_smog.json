@@ -1,0 +1,19 @@
+{
+  "id": "industrial_smog",
+  "name": "Industrial Smog",
+  "sky": "#18180f",
+  "exposure": 1.02,
+  "fog": { "kind": "exponential", "colour": "#45472c", "density": 0.00072 },
+  "sun": {
+    "colour": "#ffb65a",
+    "intensity": 1.45,
+    "direction": { "azimuthDegrees": 310, "elevationDegrees": 38, "distance": 1250 }
+  },
+  "fill": {
+    "colour": "#a5b47a",
+    "intensity": 0.65,
+    "direction": { "azimuthDegrees": 130, "elevationDegrees": 30, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#bbb772", "ground": "#41482d", "intensity": 1.15 },
+  "terrainTint": { "colour": "#6d7139", "strength": 0.13 }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "rain",
+  "name": "Rain",
+  "sky": "#10171c",
+  "exposure": 0.88,
+  "fog": { "kind": "linear", "colour": "#2b363c", "near": 700, "far": 2100 },
+  "sun": {
+    "colour": "#dbe4e7",
+    "intensity": 0.45,
+    "direction": { "azimuthDegrees": 210, "elevationDegrees": 68, "distance": 1200 },
+    "shadows": false
+  },
+  "fill": {
+    "colour": "#8197a2",
+    "intensity": 0.45,
+    "direction": { "azimuthDegrees": 30, "elevationDegrees": 34, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#afbdc3", "ground": "#354247", "intensity": 1.45 },
+  "terrainTint": { "colour": "#5e7180", "strength": 0.12 }
+}

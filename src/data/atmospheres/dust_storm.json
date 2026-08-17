@@ -1,0 +1,20 @@
+{
+  "id": "dust_storm",
+  "name": "Dust Storm",
+  "sky": "#2c2116",
+  "exposure": 1.08,
+  "fog": { "kind": "linear", "colour": "#6f5a3a", "near": 480, "far": 1350 },
+  "sun": {
+    "colour": "#ffd6a3",
+    "intensity": 0.28,
+    "direction": { "azimuthDegrees": 240, "elevationDegrees": 42, "distance": 1250 },
+    "shadows": false
+  },
+  "fill": {
+    "colour": "#c4b5a0",
+    "intensity": 0.65,
+    "direction": { "azimuthDegrees": 45, "elevationDegrees": 34, "distance": 1000 }
+  },
+  "hemisphere": { "sky": "#d5b785", "ground": "#b9824e", "intensity": 1.6 },
+  "terrainTint": { "colour": "#80613a", "strength": 0.18 }
+}
