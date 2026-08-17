@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { IdSchema, NameSchema } from './common';
 
+export const PropThemeSchema = z.enum(['alpine', 'causeway', 'industrial', 'shale']);
+export type PropTheme = z.infer<typeof PropThemeSchema>;
+
 export const TerrainMapSchema = z
   .strictObject({
     id: IdSchema,
@@ -13,6 +16,7 @@ export const TerrainMapSchema = z
     elevation: z.array(z.string()).optional(),
     /** The air and light over this ground. The default restates the old rig. */
     atmosphereId: IdSchema.default('overcast_day'),
+    propTheme: PropThemeSchema.optional(),
   })
   .superRefine((map, ctx) => {
     if (map.tiles.length !== map.height) {

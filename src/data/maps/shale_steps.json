@@ -5,6 +5,7 @@
   "width": 40,
   "height": 40,
   "atmosphereId": "hard_noon",
+  "propTheme": "shale",
   "legend": {
     ".": "open",
     "r": "rough",
