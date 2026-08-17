@@ -119,7 +119,7 @@ export interface MarketResult {
 export function buyMech(catalog: Catalog, state: CampaignState, listingId: string): MarketResult {
   const listing = marketListings(catalog, state).find((entry) => entry.id === listingId);
   if (listing === undefined) return { ok: false, reason: 'that machine is no longer on the lot' };
-  if (state.cbills < listing.price) return { ok: false, reason: 'not enough C-bills' };
+  if (state.cbills < listing.price) return { ok: false, reason: 'not enough credits' };
 
   state.cbills -= listing.price;
   state.marketBought.push(listing.id);

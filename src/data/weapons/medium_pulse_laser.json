@@ -1,6 +1,6 @@
 {
   "id": "medium_pulse_laser",
-  "name": "Medium Pulse Laser",
+  "name": "Medium Burst Laser",
   "type": "energy",
   "tonnage": 2,
   "slots": 2,

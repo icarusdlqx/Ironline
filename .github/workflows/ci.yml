@@ -32,8 +32,10 @@ jobs:
       - run: npx eslint .
 
       # Balance and browser suites are left out: they are slow, and they gate
-      # design decisions rather than whether the game builds and runs.
-      - run: npx vitest run --exclude "**/balance/**" --exclude "**/e2e/**"
+      # design decisions rather than whether the game builds and runs. The
+      # balance gate (src/sim/balance.test.ts, ~13 minutes of mirror matches)
+      # is run locally by whoever changes /sim or sim-affecting data.
+      - run: npx vitest run --exclude "**/balance.test.ts" --exclude "**/e2e/**"
 
       - run: npm run build
       - run: npm run build:single

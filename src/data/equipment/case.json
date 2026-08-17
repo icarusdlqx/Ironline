@@ -1,10 +1,12 @@
 {
   "id": "case",
-  "name": "CASE",
+  "name": "Blowout Cell",
   "category": "defensive",
   "tonnage": 0.5,
   "slots": 1,
   "cost": 50000,
-  "stats": { "ammo_blast_containment": 1 },
+  "stats": {
+    "ammo_blast_containment": 1
+  },
   "tags": []
 }

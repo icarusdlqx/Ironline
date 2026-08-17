@@ -1,6 +1,6 @@
 # IRONLINE — Design & Build Specification
 
-A real-time-with-pause tactical mech combat game with campaign progression, salvage economy, and deep loadout customisation. Spiritual successor to MechCommander 2.
+A real-time-with-pause tactical mech combat game with campaign progression, salvage economy, and deep loadout customisation. A spiritual successor to the classic real-time mech-commander games.
 
 **Target platform:** macOS (Mac mini), browser-hosted, local dev server.
 **Intended executor:** Claude Code, working phase by phase.
@@ -77,7 +77,7 @@ This separation is what makes the headless balance harness possible. Protect it.
 
 ### 3.1 Mech anatomy
 
-Eight damage locations, BattleTech-standard:
+Eight damage locations:
 
 `head, centre_torso, left_torso, right_torso, left_arm, right_arm, left_leg, right_leg`
 
@@ -97,7 +97,7 @@ Destruction consequences:
 |---|---|
 | Head | Pilot killed or ejects. Mech disabled. |
 | Centre torso | Mech destroyed (reactor breach). |
-| Side torso | Weapons in it destroyed; carried ammo detonates unless CASE fitted. |
+| Side torso | Weapons in it destroyed; carried ammo detonates unless a Blowout Cell is fitted. |
 | Arm | Weapons in it destroyed. |
 | One leg | Speed reduced 50%, and a lurch that may put the mech on the ground. |
 | Both legs | Immobilised. Can still fire. **Prime salvage state.** |
@@ -203,7 +203,7 @@ Jump jets: 1 ton each, grants a jump of `30m × jetCount`, ignores terrain, gene
 ```json
 {
   "id": "ac20",
-  "name": "AC/20",
+  "name": "Siege Autocannon",
   "type": "ballistic",
   "tonnage": 14,
   "slots": 10,
@@ -221,12 +221,12 @@ Jump jets: 1 ton each, grants a jump of `30m × jetCount`, ignores terrain, gene
 
 Required weapon families for launch content:
 
-- **Energy** — Small / Medium / Large Laser; ER variants; Pulse variants (higher accuracy, higher heat); PPC; ER PPC; Flamer. No ammo, high heat.
-- **Ballistic** — Machine Gun; AC/2, AC/5, AC/10, AC/20; LB-X Autocannon (spread, anti-armour); Gauss Rifle (huge damage, low heat, explodes when destroyed). Ammo-dependent, low heat.
-- **Missile** — SRM 2/4/6 (short, high damage, spreads); LRM 5/10/15/20 (indirect fire with spotter, minimum range); Streak SRM (no miss, higher cost); MRM.
-- **Equipment** — Heat Sink, Double Heat Sink, Jump Jet, ECM Suite, Active Probe, TAG, NARC, AMS, CASE, Targeting Computer.
+- **Energy** — Small / Medium / Large Laser; Focused variants (longer range); Burst variants (higher accuracy, higher heat); Arc Projector; Extended Arc Projector; Flamer. No ammo, high heat.
+- **Ballistic** — Machine Gun; Light / Field / Heavy / Siege Autocannon; Canister Cannon (spread, anti-armour); Gauss Rifle (huge damage, low heat, explodes when destroyed). Ammo-dependent, low heat.
+- **Missile** — Shortbow 2/4/6 (short, high damage, spreads); Longshot 5/10/15/20 (indirect fire with spotter, minimum range); Seeker racks (fire only on lock, higher cost); Volley racks (unguided saturation).
+- **Equipment** — Heat Sink, Compound Heat Sink, Jump Jet, ECM Suite, Deep Scanner, Target Designator, Limpet Beacon, AMS, Blowout Cell, Targeting Computer.
 
-Design intent: **no strictly dominant weapon.** The Gauss Rifle is superb but heavy, expensive, and volatile. The AC/20 hits like a truck at knife range only. Large Lasers are ammo-free but will cook you. Force trade-offs.
+Design intent: **no strictly dominant weapon.** The Gauss Rifle is superb but heavy, expensive, and volatile. The Siege Autocannon hits like a truck at knife range only. Large Lasers are ammo-free but will cook you. Force trade-offs.
 
 ### 3.5 To-hit resolution
 
@@ -242,8 +242,8 @@ p_hit = clamp(
   * heightFactor(shooter, target)   // 1.08 per level of advantage, capped at two
   * proneFactor(target)             // target knocked down 1.5
   * staggerFactor(shooter)          // shooter fighting to stay upright 0.85
-  * sensorFactor                    // ECM on target 0.85; TAG/NARC on target 1.15
-  * weaponAccuracy                  // pulse 1.15, LB-X 1.1, standard 1.0
+  * sensorFactor                    // ECM on target 0.85; designator/beacon on target 1.15
+  * weaponAccuracy                  // burst 1.15, canister 1.1, standard 1.0
   , 0.05, 0.95)
 ```
 
@@ -305,7 +305,7 @@ Weapons on surviving locations are recovered independently at 60–90%. A mech y
 
 **Contract salvage rights** (0–100%) determine what share of recovered material you keep. Negotiating high salvage against low payout is a strategic choice at contract acceptance.
 
-Repair costs C-bills **and days**. A cored chassis might sit in the bay for three weeks. Attrition is the difficulty curve.
+Repair costs credits **and days**. A cored chassis might sit in the bay for three weeks. Attrition is the difficulty curve.
 
 
 **Choosing what comes home.** The crews cut loose more than the dropship will carry: a win offers up to five recovered items and the hold takes two. The debrief is where that decision is made, which is the difference between a screen the player skims and a screen they think about.
@@ -314,7 +314,7 @@ Repair costs C-bills **and days**. A cored chassis might sit in the bay for thre
 
 ## 5. Resource Points (in-mission economy)
 
-MechCommander 2's signature system. Retain it.
+The signature system of the classic mech-commander games. Retain it.
 
 **Earning RP:** capturing comm towers, holding objective zones, destroying priority targets, mission time bonuses.
 
@@ -359,7 +359,7 @@ XP awarded for damage dealt, kills, objectives captured, and mission survival. S
 - *Evasive* — target motion factor improved when running
 - *Multi-Trac* — fire at two targets simultaneously without penalty
 - *Juggernaut* — melee and death-from-above damage +50%
-- *Scout* — sensor range +40%, spotting for indirect LRM fire
+- *Scout* — sensor range +40%, spotting for indirect missile fire
 
 **Injury and death.** Cockpit hits and mech destruction risk pilot injury (out for N days) or death. Optional ironman toggle at campaign start. Losing a 4/4/3 veteran on mission nine should hurt.
 
@@ -418,7 +418,7 @@ npm run sim -- --mission=m07 --lance=./builds/heavy_brawl.json \
                --iterations=500 --seed=1337 --out=./reports/m07.json
 ```
 
-Outputs: win rate, average mission duration, damage taken/dealt per mech, salvage yield distribution, pilot casualty rate, weapon-by-weapon damage efficiency (damage per ton, per heat, per C-bill).
+Outputs: win rate, average mission duration, damage taken/dealt per mech, salvage yield distribution, pilot casualty rate, weapon-by-weapon damage efficiency (damage per ton, per heat, per credit).
 
 Use this after every balance change. A weapon whose damage-per-ton-per-heat is 30% above its peers is a bug.
 
@@ -477,7 +477,7 @@ Loadout editor with drag-to-hardpoint, live validation of tonnage / slots / hard
 
 ### Phase 4 — Campaign Shell
 
-Campaign map, mission select, contract negotiation (payout vs salvage), C-bill economy, salvage resolution after missions, pilot roster and XP, repair queue with day advancement, save/load.
+Campaign map, mission select, contract negotiation (payout vs salvage), credit economy, salvage resolution after missions, pilot roster and XP, repair queue with day advancement, save/load.
 
 **Accept:** A three-mission campaign can be completed, with salvage from mission one usable in mission three. Save and reload preserves exact state.
 
@@ -509,9 +509,9 @@ Place this at repo root. See [`CLAUDE.md`](CLAUDE.md).
 
 ## 13. Intellectual Property Note
 
-MechWarrior, BattleTech, and their chassis names, designs, and artwork are owned by Microsoft, Piranha Games, and Catalyst Game Labs. The *mechanics* described here — tonnage-constrained loadouts, hit locations, heat management — are game design ideas and not protectable. Specific names and visual designs are.
+Other mech franchises' names, weapon designations, chassis designs, and artwork belong to their owners. The *mechanics* described here — tonnage-constrained loadouts, hit locations, heat management — are game design ideas and not protectable. Specific names and visual designs are.
 
-Use original chassis names and original silhouettes. "Sentinel SNL-2" rather than a Timber Wolf. This costs nothing and keeps the project shareable if you ever open-source it.
+Use original names for everything a player can read — chassis, weapons, equipment, factions — and original silhouettes for everything they can see. Nothing in the catalogue may borrow a designation or a shape from another game. This costs nothing and keeps the project shareable.
 
 ---
 

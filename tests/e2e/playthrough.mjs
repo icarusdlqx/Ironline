@@ -324,9 +324,11 @@ async function main() {
     const canvasBox = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
     // Report rather than hang: a disabled button times the click out after
     // thirty seconds and kills the run, which says nothing about why.
+    // The truck costs 500, so the mission pool has to cover it — the check
+    // follows the authored value rather than pinning a number that will drift.
     check(
       'the mission resource points reached the HUD',
-      rpBefore >= 1000,
+      rpBefore === mission.rp && mission.rp >= 500,
       `${rpBefore} RP in the palette, ${mission.rp} in the world`,
     );
 

@@ -187,7 +187,7 @@ export function acceptContract(
 
   log(
     state,
-    `Signed with ${node.employer} for ${node.name}: ${option.payout} C-bills, ` +
+    `Signed with ${node.employer} for ${node.name}: ${option.payout} credits, ` +
       `${Math.round(option.salvageShare * 100)}% salvage, due day ${state.contract.deadlineDay}.`,
   );
   return { ok: true, reason: null };
@@ -501,7 +501,7 @@ export function resolveMission(
   log(
     state,
     won
-      ? `Contract complete: ${contract.payout} C-bills, ${salvage.items.length} item(s) and ` +
+      ? `Contract complete: ${contract.payout} credits, ${salvage.items.length} item(s) and ` +
           `${salvage.chassisRecovered.length} chassis salvaged.`
       : 'Contract failed. No payout.',
   );

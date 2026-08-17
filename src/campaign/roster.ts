@@ -260,7 +260,7 @@ export function hirePilot(
   state.pilots.push(record);
   state.log.unshift({
     day: state.day,
-    text: `Signed ${template.name} for ${cost.toLocaleString()} C-bills.`,
+    text: `Signed ${template.name} for ${cost.toLocaleString()} credits.`,
   });
   return { ok: true, reason: null, pilot: record };
 }

@@ -152,7 +152,7 @@ export function rebuildHulk(
     return { ok: false, reason: 'this chassis is not a wreck', location: null };
   }
   if (mech.rebuildCost > state.cbills) {
-    return { ok: false, reason: `rebuild costs ${mech.rebuildCost} C-bills`, location: null };
+    return { ok: false, reason: `rebuild costs ${mech.rebuildCost} credits`, location: null };
   }
 
   state.cbills -= mech.rebuildCost;

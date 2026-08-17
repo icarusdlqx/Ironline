@@ -185,6 +185,15 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         <button type="button" onClick={onExit} data-testid="camp-exit">
           Skirmish
         </button>
+        <a
+          className="pause feedback-link"
+          href="https://github.com/icarusdlqx/Ironline/issues"
+          target="_blank"
+          rel="noreferrer"
+          title="Something broken, unfair, or missing? Tell the builders."
+        >
+          Feedback
+        </a>
       </header>
 
       {!manualOpen ? null : (

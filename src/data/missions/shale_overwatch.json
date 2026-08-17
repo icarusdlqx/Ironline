@@ -5,7 +5,7 @@
   "mapId": "shale_steps",
   "briefing": "Kestrel's survey post sits on the top terrace and the Combine wants it gone. They have to come up the steps or the switchback — both under your guns. Hold the post until the column gives up. Height is worth more than armour here; do not give it away.",
   "maxDurationSeconds": 420,
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 500,
   "lances": [
     {
       "team": 0,

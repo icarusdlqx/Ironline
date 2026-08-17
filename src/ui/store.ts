@@ -114,12 +114,16 @@ export interface HitPreviewView {
   factors: { id: string; label: string; value: number }[];
 }
 
-/** The AI strength the player picked, kept across sessions. */
+/**
+ * The AI strength the player picked, kept across sessions. First launches
+ * start on green: a stranger's opening battle decides whether there is a
+ * second one, and the picker is right there for anyone who wants more.
+ */
 export function readDifficulty(): string {
   try {
-    return localStorage.getItem('ironline.difficulty') ?? 'regular';
+    return localStorage.getItem('ironline.difficulty') ?? 'green';
   } catch {
-    return 'regular';
+    return 'green';
   }
 }
 

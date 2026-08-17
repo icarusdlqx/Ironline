@@ -10,7 +10,7 @@ import type { Silhouette } from './shape';
  * Each body plan is authored on its own rather than being one shape with the
  * numbers turned up or down. Two machines that differ only in scale read as
  * the same machine twice, however carefully the proportions are tuned, so a
- * Colossus is built as a hunched siege hull with a face and a Timberwolf as a
+ * Colossus is built as a hunched siege hull with a face and a Halberd as a
  * forward-slung pod carrier on reversed legs, and neither shares a line of
  * construction with the other.
  */

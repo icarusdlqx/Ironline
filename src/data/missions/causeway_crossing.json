@@ -5,7 +5,7 @@
   "mapId": "causeway",
   "briefing": "One raised road across a drowned valley, and Halloran wants the far bank. The causeway is fast and murderous; the fords are slow and cold. Take the hardstand at mid-span, then break what is left of the garrison.",
   "maxDurationSeconds": 420,
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 500,
   "lances": [
     {
       "team": 0,

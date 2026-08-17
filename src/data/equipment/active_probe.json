@@ -1,10 +1,12 @@
 {
   "id": "active_probe",
-  "name": "Active Probe",
+  "name": "Deep Scanner",
   "category": "electronics",
   "tonnage": 1.5,
   "slots": 2,
   "cost": 200000,
-  "stats": { "sensor_range_factor": 1.45 },
+  "stats": {
+    "sensor_range_factor": 1.45
+  },
   "tags": []
 }

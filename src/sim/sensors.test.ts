@@ -171,7 +171,7 @@ describe('signature', () => {
   });
 
   it('stamps a smaller signature on a mech built to hide', () => {
-    // The Wisp carries narrow_profile; the Bulwark is a wall with legs.
+    // The Vesper carries narrow_profile; the Bulwark is a wall with legs.
     const wisp = world.entities.find((entity) => entity.chassisId === 'wisp_wsp1');
     const bulwark = world.entities.find((entity) => entity.chassisId === 'bulwark_bwk3');
     if (wisp === undefined || bulwark === undefined) return;

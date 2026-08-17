@@ -115,7 +115,7 @@ export function startRepair(
     return { ok: false, reason: 'this mech is already in the bay', estimate };
   }
   if (estimate.cost > state.cbills) {
-    return { ok: false, reason: `repair costs ${estimate.cost} C-bills`, estimate };
+    return { ok: false, reason: `repair costs ${estimate.cost} credits`, estimate };
   }
 
   state.cbills -= estimate.cost;

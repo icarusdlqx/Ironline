@@ -5,7 +5,7 @@
   "mapId": "ridge_pass",
   "briefing": "A shakedown walk on safe ground. Two machines, a wreck of a militia scout somewhere on the far slope, and a range officer on the radio. Nothing here should be able to kill you — pay attention anyway.",
   "maxDurationSeconds": 600,
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 200,
   "lances": [
     {
       "team": 0,

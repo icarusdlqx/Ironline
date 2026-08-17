@@ -2,7 +2,7 @@
   "id": "frames",
   "entries": {
     "mech": {
-      "label": "BattleMech",
+      "label": "Mech",
       "mobile": true,
       "knockable": true,
       "twistFactor": 1,

@@ -403,6 +403,16 @@ export function Battle() {
             </option>
           ))}
         </select>
+        <a
+          className="pause feedback-link"
+          href="https://github.com/icarusdlqx/Ironline/issues"
+          target="_blank"
+          rel="noreferrer"
+          title="Something broken, unfair, or missing? Tell the builders."
+          data-testid="feedback-link"
+        >
+          Feedback
+        </a>
         <span className="hint">
           Space pauses · , . change speed · P perf graph · click an enemy to attack ·
           right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms

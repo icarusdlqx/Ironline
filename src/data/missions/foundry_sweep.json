@@ -5,7 +5,7 @@
   "mapId": "foundry_district",
   "briefing": "A Combine detachment has pushed into Sarn's outer works and gone quiet among the blocks. Sweep the district. Sightlines are streets; every corner belongs to whoever turned it first. Long guns count for less in here than nerve.",
   "maxDurationSeconds": 420,
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 600,
   "lances": [
     {
       "team": 0,

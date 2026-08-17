@@ -138,7 +138,7 @@ describe('the yard', () => {
 
     const result = buyMech(catalog, state, listing.id);
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/C-bills/);
+    expect(result.reason).toMatch(/credits/);
     expect(state.mechs).toHaveLength(bays);
     expect(state.cbills).toBe(listing.price - 1);
   });

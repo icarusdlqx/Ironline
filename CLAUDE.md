@@ -31,3 +31,10 @@
 - Work one build phase at a time. Do not start a phase until the previous
   phase's acceptance test passes.
 - When a phase is complete, state the acceptance test result explicitly.
+
+## Sharing the repository
+
+- `AGENTS.md` holds the shared workflow for every coding agent in this
+  repository (Codex works here too): branch naming, the CI gate, and the
+  fact that merging to `main` deploys the live site. Follow it, and keep it
+  aligned with this file.

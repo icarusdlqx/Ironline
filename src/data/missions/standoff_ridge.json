@@ -49,7 +49,7 @@
     },
     {
       "team": 1,
-      "name": "Steel Legion",
+      "name": "Slag Legion",
       "units": [
         {
           "designId": "bulwark_assault",
@@ -73,7 +73,7 @@
     }
   ],
   "briefing": "Outnumbered and nowhere to fall back to. They will come in two pushes — hold the pass for five minutes. Killing them all is optional.",
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 700,
   "objectives": [
     {
       "id": "hold_the_line",

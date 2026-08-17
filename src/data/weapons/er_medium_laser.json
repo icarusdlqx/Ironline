@@ -1,6 +1,6 @@
 {
   "id": "er_medium_laser",
-  "name": "ER Medium Laser",
+  "name": "Focused Medium Laser",
   "type": "energy",
   "tonnage": 1,
   "slots": 1,

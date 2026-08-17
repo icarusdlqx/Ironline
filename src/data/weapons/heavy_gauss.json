@@ -1,6 +1,6 @@
 {
   "id": "heavy_gauss",
-  "name": "Heavy Gauss",
+  "name": "Gauss Howitzer",
   "type": "ballistic",
   "tonnage": 18,
   "slots": 9,

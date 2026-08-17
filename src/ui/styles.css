@@ -109,6 +109,13 @@ button {
   color: var(--warn);
 }
 
+/* An anchor wearing button clothes, so the feedback link sits among buttons. */
+.feedback-link {
+  text-decoration: none;
+  color: inherit;
+  display: inline-block;
+}
+
 .hint {
   margin-left: auto;
   color: var(--muted);

@@ -1,6 +1,6 @@
 {
   "id": "rotary_ac2",
-  "name": "Rotary AC/2",
+  "name": "Rotary Cannon",
   "type": "ballistic",
   "tonnage": 8,
   "slots": 4,
@@ -26,5 +26,5 @@
     "width": 1.6,
     "arc": 0
   },
-  "summary": "Rotary-breech AC/2 firing twice a second. Eats a tonne of ammunition in ninety seconds of sustained fire."
+  "summary": "Rotary-breech light autocannon firing twice a second. Eats a tonne of ammunition in ninety seconds of sustained fire."
 }

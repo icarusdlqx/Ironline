@@ -202,7 +202,7 @@ describe('salvage', () => {
 });
 
 describe('repair queue', () => {
-  it('costs C-bills and days, then returns the mech to ready', () => {
+  it('costs credits and days, then returns the mech to ready', () => {
     fightNode(state, 'militia_raid');
 
     const mech = state.mechs.find((entry) => estimateRepair(catalog, entry).days > 0);

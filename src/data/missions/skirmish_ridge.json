@@ -49,7 +49,7 @@
     },
     {
       "team": 1,
-      "name": "Wolfhound Detachment",
+      "name": "Watchdog Detachment",
       "units": [
         {
           "designId": "falchion_duellist",
@@ -91,7 +91,7 @@
     }
   ],
   "briefing": "A regular lance holds the crossing at Ridge Pass. Clear it.",
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 400,
   "objectives": [
     {
       "id": "wipe_them_out",

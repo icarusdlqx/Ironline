@@ -1,6 +1,6 @@
 {
   "id": "large_pulse_laser",
-  "name": "Large Pulse Laser",
+  "name": "Large Burst Laser",
   "type": "energy",
   "tonnage": 7,
   "slots": 3,

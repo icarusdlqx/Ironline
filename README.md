@@ -55,7 +55,7 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   locomotion with facing and turn rates, line of sight with obstruction and
   elevation, weapon cooldowns, to-hit and hit location, damage with transfer and
   location destruction, heat with shutdown, ammo tracking and explosions with
-  CASE, and an advance-and-engage placeholder AI. `npm run sim` runs complete
+  Blowout Cells, and an advance-and-engage placeholder AI. `npm run sim` runs complete
   4v4 battles and prints a results table.
 - **Phase 2 — Tactical renderer: complete.** PixiJS tilemap with elevation
   relief, chassis-silhouette mechs with facing and component-loss damage state,
@@ -72,7 +72,7 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   legal builds.
 - **Phase 4 — Campaign shell: complete.** Node-based operational map with
   branching prerequisites, contract negotiation trading payout against salvage
-  rights, C-bill economy with pilot salaries, salvage resolution keyed to how
+  rights, credit economy with pilot salaries, salvage resolution keyed to how
   each enemy was taken out, refit from stores, repair queue with day
   advancement, pilot XP and injuries, and save/load that round-trips exactly
   including the campaign random stream.
@@ -105,7 +105,7 @@ Both criteria are asserted in `src/sim/balance.test.ts`:
 - **Weapon balance.** `damagePerTonPerHeat = dps / (tonnage + heatPerSecond /
   dissipationPerSink)` — a mount costs its own tonnage plus the heat sinks
   needed to keep it firing, and accuracy is folded into the numerator so pulse
-  and Streak launchers pay for their aim. Cooldown cancels out, leaving rate of
+  and Seeker launchers pay for their aim. Cooldown cancels out, leaving rate of
   fire free for feel. All 28 weapons land within 5% of their class median
   against a ±20% band.
 - **AI strength.** `mirror_ridge` fields identical lances on mirrored spawns;

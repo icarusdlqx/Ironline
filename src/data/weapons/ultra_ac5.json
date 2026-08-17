@@ -1,6 +1,6 @@
 {
   "id": "ultra_ac5",
-  "name": "Ultra AC/5",
+  "name": "Rapid Autocannon",
   "type": "ballistic",
   "tonnage": 9,
   "slots": 5,
@@ -26,5 +26,5 @@
     "width": 2.2,
     "arc": 0
   },
-  "summary": "Double-cycled AC/5. Twice the rate of fire, twice the ammunition burn, same unglamorous reliability."
+  "summary": "Double-cycled field autocannon. Twice the rate of fire, twice the ammunition burn, same unglamorous reliability."
 }

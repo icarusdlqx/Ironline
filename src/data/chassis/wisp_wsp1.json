@@ -1,6 +1,6 @@
 {
   "id": "wisp_wsp1",
-  "name": "Wisp WSP-1",
+  "name": "Vesper VES-1",
   "class": "light",
   "tonnage": 25,
   "baseCost": 1800000,
@@ -94,7 +94,7 @@
     "stance": 0.95
   },
   "summary": "Depot-recovered scout frame. Fast, blind-spot small, and made of promises.",
-  "lore": "The WSP hulls came out of the Kell Reach depot stacked four deep, which is how everyone knows the Compact considered them expendable. Sarn rebuilds them on a stretched leg assembly that trades every gram of plate for stride length. A Wisp does not fight; it finds, it counts, and it is somewhere else before the counting is noticed. Pilots who treat it as a light brawler are a recognised category in the Barrow Reach mortality tables.",
+  "lore": "The VES hulls came out of the Karst Reach depot stacked four deep, which is how everyone knows the Compact considered them expendable. Sarn rebuilds them on a stretched leg assembly that trades every gram of plate for stride length. A Vesper does not fight; it finds, it counts, and it is somewhere else before the counting is noticed. Pilots who treat it as a light brawler are a recognised category in the Barrow Reach mortality tables.",
   "traits": [
     "long_stride",
     "sensor_mast",

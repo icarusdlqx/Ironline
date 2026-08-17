@@ -6,7 +6,7 @@
   "mapId": "causeway",
   "briefing": "The same drowned valley, eight hours later. Halloran will not wait for daylight and neither will the garrison. Nothing out there sees further than its own sensors reach, and neither do you — put something on the hardstand before the moon goes.",
   "maxDurationSeconds": 420,
-  "startingResourcePoints": 1000,
+  "startingResourcePoints": 600,
   "lances": [
     {
       "team": 0,

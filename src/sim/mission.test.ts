@@ -76,8 +76,8 @@ describe('mission set-up', () => {
   });
 
   it('starts both sides with the mission resource pool', () => {
-    expect(world.resources.get(0)).toBe(1000);
-    expect(world.resources.get(1)).toBe(1000);
+    expect(world.resources.get(0)).toBe(900);
+    expect(world.resources.get(1)).toBe(900);
   });
 
   it('starts every zone under the garrison', () => {

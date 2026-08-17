@@ -1,6 +1,6 @@
 {
   "id": "small_pulse_laser",
-  "name": "Small Pulse Laser",
+  "name": "Small Burst Laser",
   "type": "energy",
   "tonnage": 1,
   "slots": 1,

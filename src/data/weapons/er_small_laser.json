@@ -1,6 +1,6 @@
 {
   "id": "er_small_laser",
-  "name": "ER Small Laser",
+  "name": "Focused Small Laser",
   "type": "energy",
   "tonnage": 0.5,
   "slots": 1,

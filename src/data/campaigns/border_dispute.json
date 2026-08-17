@@ -36,7 +36,7 @@
       "Vasi Reclamation",
       "the Ferrous Guild",
       "Kestrel Freight",
-      "the Warden Compact",
+      "the Harrow Compact",
       "Ostrow Holdings"
     ]
   },
@@ -95,7 +95,7 @@
       "name": "Ridge Hold",
       "missionId": "standoff_ridge",
       "employer": "Kestrel Combine",
-      "brief": "The Steel Legion has moved a reinforced company onto the ridge. This is the one that decides the border.",
+      "brief": "The Slag Legion has moved a reinforced company onto the ridge. This is the one that decides the border.",
       "requires": [
         "pass_skirmish"
       ],
