@@ -762,6 +762,10 @@ const AMBIENT_PROFILES: Record<string, AmbientProfile> = {
   moonlit_night: { windHz: 300, gustHz: 0.04, droneHz: null, level: 0.75 },
   ash_dusk: { windHz: 420, gustHz: 0.08, droneHz: 46, level: 1.1 },
   cold_rime: { windHz: 1200, gustHz: 0.1, droneHz: null, level: 0.9 },
+  dust_storm: { windHz: 950, gustHz: 0.14, droneHz: null, level: 1.3 },
+  rain: { windHz: 2000, gustHz: 0.03, droneHz: null, level: 0.8 },
+  dawn: { windHz: 260, gustHz: 0.035, droneHz: null, level: 0.65 },
+  industrial_smog: { windHz: 340, gustHz: 0.03, droneHz: 82, level: 0.9 },
 };
 
 function positionOf(world: World, id: number): Vec2 | null {
