@@ -772,6 +772,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   const renderer = new Renderer(host, world, mapData, atmosphere);
   const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
   renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
+  engine.audio.setTerrain(mapData);
   engine.audio.setAmbient(atmosphereId);
   engine.perf = new PerfOverlay(host);
   engine.onDestroy(() => engine.perf?.destroy());
