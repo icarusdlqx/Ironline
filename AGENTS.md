@@ -12,6 +12,10 @@ A browser real-time-with-pause tactical mech game. TypeScript (strict, with
 The design document is `IRONLINE_DESIGN.md`; the setting bible and all game
 content live under `src/data`.
 
+`CODEX_BRIEF.md` is the standing work board for graphics, environment, sound,
+and content tasks, including how to screenshot your own work. Start there
+unless you were given a specific task.
+
 ## Architecture — not negotiable
 
 - `/src/sim` is pure and deterministic. It must never import from `/render3d`,
