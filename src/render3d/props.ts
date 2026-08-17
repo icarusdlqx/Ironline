@@ -1,22 +1,18 @@
 import {
-  BoxGeometry,
   Color,
-  ConeGeometry,
-  CylinderGeometry,
   DynamicDrawUsage,
   Group,
-  IcosahedronGeometry,
   InstancedMesh,
   Matrix4,
   MeshLambertMaterial,
   Quaternion,
   Vector3,
-  type BufferGeometry,
 } from 'three';
 import type { TerrainMapData } from '../schema/map';
 import type { TeamVision } from '../sim/sensors';
 import type { TerrainGrid } from '../sim/terrain';
 import { shade } from '../render/palette';
+import { createPropGeometry, type PropKind } from './propGeometry';
 
 /**
  * Ceilings per prop kind, so a map that is wall-to-wall forest cannot ask a
@@ -24,9 +20,16 @@ import { shade } from '../render/palette';
  * placements are thinned evenly rather than truncated, so the far corner of
  * the map does not go mysteriously bald.
  */
-const CAPS = { canopy: 2_200, trunk: 2_200, boulder: 800, crag: 600, block: 900 } as const;
-
-type Kind = keyof typeof CAPS;
+const CAPS = {
+  tree: 2_200,
+  snag: 800,
+  boulder: 800,
+  shale: 800,
+  crag: 600,
+  block: 900,
+  causeway: 180,
+  wreckage: 300,
+} as const satisfies Record<PropKind, number>;
 
 /** Deterministic per-tile jitter; the same map always grows the same woods. */
 function hash(column: number, row: number, salt: number): number {
@@ -36,6 +39,17 @@ function hash(column: number, row: number, salt: number): number {
 
 function terrainIdAt(data: TerrainMapData, column: number, row: number): string {
   return data.legend[data.tiles[row]?.[column] ?? ''] ?? 'open';
+}
+
+function waterEdge(
+  data: TerrainMapData,
+  column: number,
+  row: number,
+): readonly [number, number] | null {
+  for (const [dc, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+    if (terrainIdAt(data, column + dc, row + dr) === 'water') return [dc, dr];
+  }
+  return null;
 }
 
 interface Placement {
@@ -53,12 +67,11 @@ interface Batch {
 const HIDDEN = new Matrix4().makeScale(0, 0, 0);
 
 /**
- * Set dressing grown from the same tile data the simulation fights over:
- * conifers on forest, boulders on rough going, crags where nothing walks, and
- * blocks where the map says building. One instanced draw per prop kind, so the
- * whole layer costs five draw calls however dense the map is. Props on ground
- * the lance has never seen are scaled away — the shroud skin hugs the terrain,
- * and a lit smokestack poking out of black fog would hand out intel for free.
+ * Set dressing grown from the same tile data the simulation fights over. Each
+ * map spends no more prop batches than the old trees, rocks and blocks did;
+ * detail sits inside merged geometry rather than buying another draw. Props on
+ * ground the lance has never seen are scaled away — the shroud skin hugs the
+ * terrain, and a lit smokestack poking out of black fog would hand out intel.
  */
 export class PropLayer {
   readonly group = new Group();
@@ -85,12 +98,16 @@ export class PropLayer {
   ) {
     this.group.name = 'props';
     const size = grid.tileSize;
-    const pending: Record<Kind, Placement[]> = {
-      canopy: [],
-      trunk: [],
+    const theme = data.propTheme ?? 'alpine';
+    const pending: Record<PropKind, Placement[]> = {
+      tree: [],
+      snag: [],
       boulder: [],
+      shale: [],
       crag: [],
       block: [],
+      causeway: [],
+      wreckage: [],
     };
 
     const position = new Vector3();
@@ -100,7 +117,7 @@ export class PropLayer {
     const lean = new Vector3(1, 0, 0);
 
     const place = (
-      kind: Kind,
+      kind: PropKind,
       tile: number,
       x: number,
       y: number,
@@ -138,19 +155,48 @@ export class PropLayer {
             const y = (row + 0.15 + 0.7 * h(17 + i * 7)) * size;
             const height = 8 + h(19 + i * 7) * 6;
             const radius = height * 0.32;
-            const green = shade(0x2a4a30, 0.8 + h(23 + i * 7) * 0.4);
-            place('canopy', tile, x, y, radius, height * 0.82, radius, green, h(29 + i));
-            place('trunk', tile, x, y, 1, height * 0.3, 1, 0x4a3a28, h(29 + i));
+            const snagChance = theme === 'shale' ? 0.32 : theme === 'alpine' ? 0.16 : 0;
+            const dead = h(107 + i * 7) < snagChance;
+            const tone = shade(0xffffff, 0.82 + h(23 + i * 7) * 0.18);
+            place(
+              dead ? 'snag' : 'tree', tile, x, y,
+              dead ? radius * 0.46 : radius,
+              dead ? height * 0.78 : height,
+              dead ? radius * 0.46 : radius,
+              tone, h(29 + i),
+              theme === 'causeway' ? (h(109 + i * 7) - 0.5) * 0.12 : 0,
+            );
           }
-        } else if (id === 'rough' && h(5) < 0.3) {
-          const girth = 1.3 + h(31) * 2.1;
-          place(
-            'boulder', tile,
-            (column + 0.2 + 0.6 * h(37)) * size,
-            (row + 0.2 + 0.6 * h(41)) * size,
-            girth, 0.9 + h(43) * 1.4, girth * (0.8 + h(47) * 0.4),
-            shade(0x6a6154, 0.8 + h(53) * 0.4), h(59),
-          );
+        } else if (id === 'rough') {
+          if (theme === 'industrial' && h(5) < 0.2) {
+            const width = 5 + h(31) * 3.5;
+            place(
+              'wreckage', tile,
+              (column + 0.18 + 0.64 * h(37)) * size,
+              (row + 0.18 + 0.64 * h(41)) * size,
+              width, 4 + h(43) * 3, width * (0.75 + h(47) * 0.3),
+              shade(0xffffff, 0.78 + h(53) * 0.2), h(59),
+            );
+          } else if (theme === 'shale' && h(5) < 0.42) {
+            const girth = 2.2 + h(31) * 2.5;
+            place(
+              'shale', tile,
+              (column + 0.18 + 0.64 * h(37)) * size,
+              (row + 0.18 + 0.64 * h(41)) * size,
+              girth, 4.5 + h(43) * 5.5, girth * (0.7 + h(47) * 0.35),
+              shade(0xffffff, 0.8 + h(53) * 0.18), h(59),
+              (h(61) - 0.5) * 0.18,
+            );
+          } else if (theme !== 'industrial' && theme !== 'shale' && h(5) < 0.3) {
+            const girth = 1.8 + h(31) * 2.3;
+            place(
+              'boulder', tile,
+              (column + 0.2 + 0.6 * h(37)) * size,
+              (row + 0.2 + 0.6 * h(41)) * size,
+              girth, 1.5 + h(43) * 2, girth * (0.8 + h(47) * 0.4),
+              shade(0xffffff, 0.8 + h(53) * 0.18), h(59),
+            );
+          }
         } else if (id === 'impassable') {
           for (let i = 0; i < 2; i += 1) {
             const girth = 2.2 + h(61 + i * 5) * 2.4;
@@ -159,7 +205,7 @@ export class PropLayer {
               (column + 0.2 + 0.6 * h(67 + i * 5)) * size,
               (row + 0.2 + 0.6 * h(71 + i * 5)) * size,
               girth, 7 + h(73 + i * 5) * 9, girth,
-              shade(0x363a42, 0.8 + h(79 + i * 5) * 0.4),
+              shade(0xffffff, 0.8 + h(79 + i * 5) * 0.18),
               h(83 + i), (h(89 + i) - 0.5) * 0.24,
             );
           }
@@ -169,21 +215,26 @@ export class PropLayer {
             (column + 0.5) * size,
             (row + 0.5) * size,
             size * (0.62 + h(91) * 0.24), 9 + h(97) * 20, size * (0.62 + h(101) * 0.24),
-            shade(0x6e6960, 0.78 + h(103) * 0.44), 0,
+            shade(0xffffff, 0.8 + h(103) * 0.18),
+            theme === 'industrial' && h(107) < 0.5 ? 0.25 : 0,
+          );
+        } else if (id === 'road' && theme === 'causeway') {
+          const edge = waterEdge(data, column, row);
+          if (edge === null) continue;
+          const [dc, dr] = edge;
+          const tangentJitter = (h(113) - 0.5) * 0.08;
+          place(
+            'causeway', tile,
+            (column + 0.5 + dc * 0.42 - dr * tangentJitter) * size,
+            (row + 0.5 + dr * 0.42 + dc * tangentJitter) * size,
+            size * 0.88, 8 + h(127) * 2.5, size * 0.34,
+            shade(0xffffff, 0.84 + h(131) * 0.14), dc === 0 ? 0 : 0.25,
           );
         }
       }
     }
 
-    const geometries: Record<Kind, BufferGeometry> = {
-      canopy: new ConeGeometry(1, 1, 6).translate(0, 0.5, 0),
-      trunk: new CylinderGeometry(0.16, 0.24, 1, 5).translate(0, 0.5, 0),
-      boulder: new IcosahedronGeometry(1, 0),
-      crag: new ConeGeometry(1, 1, 5).translate(0, 0.5, 0),
-      block: new BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
-    };
-
-    for (const kind of Object.keys(pending) as Kind[]) {
+    for (const kind of Object.keys(pending) as PropKind[]) {
       let placements = pending[kind];
       if (placements.length === 0) continue;
       if (placements.length > CAPS[kind]) {
@@ -195,8 +246,8 @@ export class PropLayer {
       }
 
       const mesh = new InstancedMesh(
-        geometries[kind],
-        new MeshLambertMaterial({ flatShading: true }),
+        createPropGeometry(kind, theme),
+        new MeshLambertMaterial({ flatShading: true, vertexColors: true }),
         placements.length,
       );
       for (let i = 0; i < placements.length; i += 1) {
@@ -205,8 +256,8 @@ export class PropLayer {
         mesh.setMatrixAt(i, entry.matrix);
         mesh.setColorAt(i, entry.colour);
       }
-      mesh.castShadow = kind !== 'trunk';
-      mesh.receiveShadow = kind === 'block';
+      mesh.castShadow = kind !== 'snag' && kind !== 'causeway';
+      mesh.receiveShadow = kind === 'block' || kind === 'wreckage';
       // The base geometry's bounding sphere says nothing about where the
       // instances are, so culling by it blanks the layer at some camera angles.
       mesh.frustumCulled = false;
