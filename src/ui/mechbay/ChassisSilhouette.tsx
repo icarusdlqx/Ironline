@@ -204,7 +204,7 @@ interface Props {
  * which is the quickest way to see that a build is all in one arm.
  */
 export function ChassisSilhouette({ chassis, design, active = null }: Props) {
-  const plan = chassisBlueprint(chassis.silhouette, chassis.traits, chassis.hardpoints);
+  const plan = chassisBlueprint(chassis.silhouette, chassis.traits, chassis.hardpoints, chassis.id);
 
   // Leg and hip parts are already measured from the ground; everything above
   // the waist is measured from the torso pivot.

@@ -1,0 +1,19 @@
+{
+  "id": "dawn",
+  "name": "Dawn",
+  "sky": "#0d1726",
+  "exposure": 1.18,
+  "fog": { "kind": "linear", "colour": "#253143", "near": 900, "far": 2900 },
+  "sun": {
+    "colour": "#ffb36b",
+    "intensity": 2.8,
+    "direction": { "azimuthDegrees": 90, "elevationDegrees": 8, "distance": 1400 }
+  },
+  "fill": {
+    "colour": "#7194cc",
+    "intensity": 1,
+    "direction": { "azimuthDegrees": 270, "elevationDegrees": 28, "distance": 1050 }
+  },
+  "hemisphere": { "sky": "#93a9c8", "ground": "#2b3546", "intensity": 1.2 },
+  "terrainTint": { "colour": "#31455f", "strength": 0.06 }
+}
