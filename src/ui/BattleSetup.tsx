@@ -139,7 +139,7 @@ export function SetupToolbar({
             <button
               type="button"
               className="pause"
-              onClick={onChooseMission}
+              onClick={() => onChooseMission()}
               title="Abandon this run and return to battle setup."
               data-testid="choose-mission"
             >
