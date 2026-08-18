@@ -7,6 +7,7 @@ import { jumpHeight } from '../sim/movement';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../sim/types';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
 import type { TacticalCamera, Viewport } from './camera';
+import { ContactShadowLayer } from './contactShadows';
 
 export interface Interpolated {
   x: number;
@@ -45,17 +46,35 @@ export class UnitViews {
   private readonly views = new Map<EntityId, EntityView>();
   private readonly samples = new Map<EntityId, MotionSample>();
   private readonly interpolated = new Map<EntityId, Interpolated>();
+  private readonly shadows: ContactShadowLayer;
 
   constructor(
     private readonly scene: Scene,
     private readonly heightAt: (x: number, y: number) => number,
-  ) {}
+  ) {
+    this.shadows = new ContactShadowLayer(heightAt);
+    scene.add(this.shadows.mesh);
+  }
 
   dispose(): void {
     for (const view of this.views.values()) {
       disposeModel(view.model.root);
       this.disposeRings(view);
     }
+    this.scene.remove(this.shadows.mesh);
+    this.shadows.dispose();
+  }
+
+  beginFrame(): void {
+    this.shadows.begin();
+  }
+
+  placeShadow(entity: MechEntity, at: Interpolated, lift: number): void {
+    this.shadows.place(at, radiusFor(entity.tonnage), at.facing, lift);
+  }
+
+  finishFrame(): void {
+    this.shadows.commit();
   }
 
   snapshot(world: World): void {

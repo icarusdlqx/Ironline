@@ -11,6 +11,18 @@ function camera(): TacticalCamera {
 }
 
 describe('tactical camera', () => {
+  it('does not animate the establishing shot when reduced motion is requested', () => {
+    const settled = new TacticalCamera(true);
+    settled.setBounds(960, 960);
+    settled.centreOn({ x: 480, y: 480 });
+    settled.beginDropIn();
+    settled.update(VIEWPORT);
+
+    const baseline = camera();
+    baseline.update(VIEWPORT);
+    expect(settled.camera.position.distanceTo(baseline.camera.position)).toBeCloseTo(0, 6);
+  });
+
   it('round-trips a ground point through the screen', () => {
     // Every control that turns a click into an order depends on this holding.
     const view = camera();
