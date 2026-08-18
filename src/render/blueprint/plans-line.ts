@@ -1,6 +1,7 @@
 import { PROFILES } from './profiles';
 import {
   aerials,
+  armoured,
   fittingFor,
   hangingArm,
   hips,
@@ -16,17 +17,23 @@ import type { BlueprintPart, Plan } from './types';
 export const humanoidPlan: Plan = (b, has, fit, identity) => {
   const sentinel = identity === 'sentinel_snl2';
   const parts: BlueprintPart[] = [];
-  for (const side of [-1, 1]) walkerLeg(parts, b, side, sentinel ? 0.58 : 0.5);
+  for (const side of [-1, 1]) walkerLeg(parts, b, side, sentinel ? 0.66 : 0.5);
   hips(parts, b);
 
-  parts.push(shaped('centre_torso', PROFILES.hull, [0, 0, 0],
-    [b.long, b.tall, b.wide], 'plate', b.pitch));
+  parts.push(sentinel
+    ? armoured('centre_torso', PROFILES.keel, [-b.long * 0.04, 0, 0],
+      [b.long * 0.9, b.tall, b.wide], 'plate',
+      { front: 0.72, rear: 0.94, top: 0.78, edge: 0.08 }, b.pitch)
+    : shaped('centre_torso', PROFILES.hull, [0, 0, 0],
+      [b.long, b.tall, b.wide], 'plate', b.pitch));
   if (sentinel) {
-    for (const side of [-1, 1]) {
-      parts.push(part('centre_torso', 'box',
-        [b.long * 0.3, 0, side * b.wide * 0.34],
-        [b.long * 0.28, b.tall * 0.72, 0.12], 'deep', b.pitch));
-    }
+    parts.push(
+      shaped('centre_torso', PROFILES.keel, [b.long * 0.38, b.tall * 0.02, 0],
+        [b.long * 0.24, b.tall * 0.78, b.wide * 0.72], 'deep', b.pitch),
+      armoured('centre_torso', PROFILES.pauldron, [-b.long * 0.02, b.tall * 0.45, 0],
+        [b.long * 0.7, b.tall * 0.2, b.wide * 1.42], 'plate',
+        { front: 0.82, rear: 0.92, top: 0.78, edge: 0.06 }, b.pitch),
+    );
   } else {
     parts.push(
       part('centre_torso', 'box', [b.long * 0.3, b.tall * 0.28, 0],
@@ -37,10 +44,16 @@ export const humanoidPlan: Plan = (b, has, fit, identity) => {
   }
   for (const side of [-1, 1]) {
     const location = side < 0 ? 'left_torso' : 'right_torso';
-    parts.push(shaped(location, PROFILES.block,
-      [-b.long * 0.08, b.tall * 0.04, side * b.wide * 0.56],
-      [b.long * 0.8, b.tall * 0.76, b.wide * 0.3], 'deep', b.pitch));
-    shoulderMount(parts, b, side, fittingFor(fit[location]), 0.82);
+    parts.push(sentinel
+      ? armoured(location, PROFILES.pauldron,
+        [-b.long * 0.08, b.tall * 0.14, side * b.wide * 0.62],
+        [b.long * 0.7, b.tall * 0.64, b.wide * 0.38], 'deep',
+        { front: 0.7, rear: 0.9, top: 0.74, edge: 0.08 }, b.pitch)
+      : shaped(location, PROFILES.block,
+        [-b.long * 0.08, b.tall * 0.04, side * b.wide * 0.56],
+        [b.long * 0.8, b.tall * 0.76, b.wide * 0.3], 'deep', b.pitch));
+    shoulderMount(parts, b, side, fittingFor(fit[location]), sentinel ? 0.9 : 0.82,
+      sentinel ? 0.86 : 0.78, sentinel ? 0.5 : 0.42);
   }
   if (has('hardened_mantlet')) {
     parts.push(shaped('centre_torso', PROFILES.pauldron, [b.long * 0.5, b.tall * 0.04, 0],
@@ -53,9 +66,11 @@ export const humanoidPlan: Plan = (b, has, fit, identity) => {
   if (sentinel) {
     parts.push(
       part('head', 'cylinder', [headX - 0.08, headY - 0.22, 0], [0.22, 0.22, 0.22], 'deep'),
-      part('head', 'box', [headX, headY, 0], [0.48, 0.42, 0.56], 'deep'),
-      part('head', 'box', [headX + 0.22, headY, 0], [0.1, 0.16, 0.42], 'glass'),
-      part('head', 'box', [headX - 0.02, headY + 0.24, 0], [0.38, 0.1, 0.54], 'plate'),
+      armoured('head', PROFILES.cab, [headX, headY + 0.04, 0], [0.46, 0.46, 0.58],
+        'deep', { front: 0.68, rear: 0.9, top: 0.76, edge: 0.08 }),
+      part('head', 'box', [headX + 0.21, headY + 0.02, 0], [0.1, 0.17, 0.44], 'glass'),
+      shaped('head', PROFILES.pauldron, [headX - 0.02, headY + 0.3, 0],
+        [0.46, 0.12, 0.62], 'plate'),
     );
   } else {
     parts.push(
@@ -82,7 +97,7 @@ export const humanoidPlan: Plan = (b, has, fit, identity) => {
       centre_torso: [b.long * 0.44, b.tall * 0.3, 0],
       head: [headX, headY + 0.26, 0],
     },
-    crown: b.tall * 0.9,
+    crown: b.tall * (sentinel ? 1.08 : 0.9),
   };
 };
 
@@ -201,27 +216,48 @@ export const squatPlan: Plan = (b, has, fit, identity) => {
   for (const side of [-1, 1]) walkerLeg(parts, b, side, bulwark ? 0.78 : cairn ? 0.68 : 0.62);
   hips(parts, b, bulwark ? 1.38 : 1.25);
 
+  const centreHull = bulwark
+    ? armoured('centre_torso', PROFILES.bunker, [0, -b.tall * 0.08, 0],
+      [b.long * 1.06, b.tall * 0.86, b.wide * 1.08], 'plate',
+      { front: 0.7, rear: 0.94, top: 0.68, edge: 0.08 }, b.pitch)
+    : cairn
+      ? armoured('centre_torso', PROFILES.carriage,
+        [-b.long * 0.08, -b.tall * 0.16, 0],
+        [b.long * 0.82, b.tall * 0.58, b.wide * 0.66], 'plate',
+        { front: 0.76, rear: 0.92, top: 0.76, edge: 0.08 }, b.pitch)
+      : shaped('centre_torso', PROFILES.hull, [0, 0, 0],
+        [b.long, b.tall, b.wide], 'plate', b.pitch);
   parts.push(
-    shaped('centre_torso', PROFILES.hull, [0, cairn ? -b.tall * 0.08 : 0, 0],
-      [b.long, b.tall * (cairn ? 0.84 : 1), b.wide], 'plate', b.pitch),
-    part('centre_torso', 'box', [b.long * 0.26, cairn ? -b.tall * 0.08 : 0, 0],
-      [b.long * 0.3, b.tall * (cairn ? 0.58 : 0.7), b.wide * 0.5], 'deep', b.pitch),
+    centreHull,
+    shaped('centre_torso', bulwark ? PROFILES.wedge : cairn ? PROFILES.carriage : PROFILES.block,
+      [b.long * (bulwark ? 0.36 : 0.26), b.tall * (bulwark ? -0.12 : cairn ? -0.14 : 0), 0],
+      [b.long * (bulwark ? 0.34 : 0.3), b.tall * (bulwark ? 0.6 : cairn ? 0.42 : 0.7),
+        b.wide * (bulwark ? 0.86 : cairn ? 0.38 : 0.5)], 'deep', b.pitch),
   );
   for (const side of [-1, 1]) {
     const location = side < 0 ? 'left_torso' : 'right_torso';
-    parts.push(shaped(location, PROFILES.block,
-      [-b.long * 0.06, 0, side * b.wide * 0.6],
-      [b.long * 0.84, b.tall * 0.74, b.wide * 0.32], 'deep', b.pitch));
+    parts.push(bulwark
+      ? armoured(location, PROFILES.pauldron,
+        [-b.long * 0.06, b.tall * 0.08, side * b.wide * 0.66],
+        [b.long * 0.9, b.tall * 0.82, b.wide * 0.42], 'deep',
+        { front: 0.68, rear: 0.9, top: 0.7, edge: 0.08 }, b.pitch)
+      : shaped(location, cairn ? PROFILES.carriage : PROFILES.block,
+        [-b.long * (cairn ? 0.12 : 0.06), b.tall * (cairn ? -0.16 : 0),
+          side * b.wide * (cairn ? 0.54 : 0.6)],
+        [b.long * (cairn ? 0.62 : 0.84), b.tall * (cairn ? 0.34 : 0.74),
+          b.wide * (cairn ? 0.2 : 0.32)], 'deep', b.pitch));
     if (cairn) {
-      const z = side * b.wide * 0.78;
+      const z = side * b.wide * 0.92;
       parts.push(
-        shaped(location, PROFILES.pod, [b.long * 0.02, b.tall * 0.48, z],
-          [b.long * 0.68, b.tall * 1.42, b.wide * 0.46], 'plate', b.pitch),
-        part(location, 'box', [b.long * 0.38, b.tall * 0.48, z],
-          [0.08, b.tall * 1.08, b.wide * 0.34], 'deep', b.pitch),
+        armoured(location, PROFILES.magazine, [-b.long * 0.02, b.tall * 0.52, z],
+          [b.long * 0.64, b.tall * 1.55, b.wide * 0.42], 'plate',
+          { front: 0.74, rear: 0.94, top: 0.72, edge: 0.08 }, b.pitch),
+        shaped(location, PROFILES.magazine, [b.long * 0.34, b.tall * 0.52, z],
+          [0.1, b.tall * 1.16, b.wide * 0.32], 'deep', b.pitch),
       );
     } else {
-      shoulderMount(parts, b, side, fittingFor(fit[location]), 0.86);
+      shoulderMount(parts, b, side, fittingFor(fit[location]), bulwark ? 0.96 : 0.86,
+        bulwark ? 0.88 : 0.78, bulwark ? 0.44 : 0.42);
     }
   }
   if (has('hardened_mantlet')) {
@@ -234,9 +270,21 @@ export const squatPlan: Plan = (b, has, fit, identity) => {
   const headY = b.tall * 0.6;
   if (cairn) {
     parts.push(
-      part('head', 'box', [headX, headY, 0], [0.42, 0.28, 0.58], 'deep'),
-      part('head', 'box', [headX + 0.19, headY, 0], [0.1, 0.12, 0.44], 'glass'),
-      part('head', 'box', [headX - 0.02, headY + 0.18, 0], [0.34, 0.08, 0.56], 'plate'),
+      armoured('head', PROFILES.cab, [headX, b.tall * 0.16, 0], [0.38, 0.24, 0.42],
+        'deep', { front: 0.66, rear: 0.9, top: 0.74, edge: 0.07 }),
+      part('head', 'box', [headX + 0.18, b.tall * 0.16, 0], [0.1, 0.12, 0.34], 'glass'),
+      shaped('head', PROFILES.pauldron, [headX - 0.02, b.tall * 0.34, 0],
+        [0.36, 0.08, 0.5], 'plate'),
+    );
+  } else if (bulwark) {
+    parts.push(
+      armoured('head', PROFILES.bunker, [b.long * 0.38, b.tall * 0.2, 0],
+        [0.3, b.tall * 0.24, b.wide * 0.64], 'deep',
+        { front: 0.64, rear: 0.9, top: 0.72, edge: 0.07 }, b.pitch),
+      part('head', 'box', [b.long * 0.51, b.tall * 0.2, 0],
+        [0.08, b.tall * 0.1, b.wide * 0.52], 'glass', b.pitch),
+      shaped('head', PROFILES.pauldron, [b.long * 0.3, b.tall * 0.38, 0],
+        [0.42, 0.09, b.wide * 0.78], 'plate', b.pitch),
     );
   } else {
     parts.push(
@@ -250,13 +298,18 @@ export const squatPlan: Plan = (b, has, fit, identity) => {
   for (const side of [-1, 1]) {
     const location = side < 0 ? 'left_arm' : 'right_arm';
     hangingArm(parts, b, side, fittingFor(fit[location]),
-      b.tall * (cairn ? 1.02 : 1.1), cairn ? 0.18 : 0.26);
+      b.tall * (bulwark ? 0.96 : cairn ? 0.9 : 1.1), bulwark ? 0.3 : cairn ? 0.17 : 0.26,
+      bulwark ? 1.1 : 1);
   }
   if (!cairn) {
-    parts.push(shaped('left_arm', PROFILES.pauldron,
-      [b.long * 0.16, -b.tall * 0.24, -b.shoulder * (bulwark ? 1.38 : 1.24)],
-      [b.long * (bulwark ? 0.84 : 0.72), b.tall * (bulwark ? 1.28 : 1.1), bulwark ? 0.2 : 0.16],
-      'trim', b.pitch));
+    parts.push(bulwark
+      ? armoured('left_arm', PROFILES.shield,
+        [b.long * 0.16, -b.tall * 0.24, -b.shoulder * 1.38],
+        [b.long * 0.96, b.tall * 1.5, 0.3], 'trim',
+        { front: 0.62, rear: 0.9, top: 0.76, edge: 0.07 }, b.pitch)
+      : shaped('left_arm', PROFILES.pauldron,
+        [b.long * 0.16, -b.tall * 0.24, -b.shoulder * 1.24],
+        [b.long * 0.72, b.tall * 1.1, 0.16], 'trim', b.pitch));
   }
 
   return {
@@ -269,6 +322,6 @@ export const squatPlan: Plan = (b, has, fit, identity) => {
       centre_torso: [b.long * 0.46, b.tall * 0.16, 0],
       head: [headX, b.tall * 0.6 + 0.24, 0],
     },
-    crown: b.tall * (cairn ? 1.2 : 0.86),
+    crown: b.tall * (bulwark ? 0.8 : cairn ? 1.38 : 0.86),
   };
 };
