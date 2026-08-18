@@ -5,6 +5,7 @@ import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
+import { BattleResults } from './BattleResults';
 import { createEngine, type Engine } from './engine';
 import {
   berthDesign,
@@ -173,8 +174,11 @@ export function Battle() {
     setResolved(false);
   };
 
-  const chooseMission = (): void => {
-    setup.chooseMission();
+  const chooseMission = (nextMissionId = setup.engine.missionId): void => {
+    if (setup.engine.missionId === TRAINING_MISSION_ID && nextMissionId !== TRAINING_MISSION_ID) {
+      skipTraining();
+    }
+    setup.chooseMission(nextMissionId);
     setResolved(false);
   };
 
@@ -328,6 +332,7 @@ export function Battle() {
     () => buildSupportOptions(catalog.rules.support, state.reservesLeft),
     [catalog.rules.support, state.reservesLeft],
   );
+  const battleResult = state.finished ? (engineRef.current?.result() ?? null) : null;
 
   return (
     <div className="app">
@@ -508,45 +513,31 @@ export function Battle() {
         </div>
       ) : null}
 
-      {state.finished ? (
-        <div className="outcome" data-testid="outcome">
-          <span>
-            {state.missionStatus === 'success'
-              ? 'Mission accomplished'
-              : state.missionStatus === 'failure'
-                ? `Mission failed — ${state.missionReason ?? ''}`
-                : state.winner === state.playerTeam
-                  ? 'Mission accomplished'
-                  : 'Lance destroyed'}
-          </span>
-          {state.campaignPending ? (
-            <button type="button" onClick={onReturnToCampaign} data-testid="return-to-campaign">
-              {resolved ? 'Back to campaign' : 'Resolve contract'}
-            </button>
-          ) : (
-            <span className="outcome-actions">
-              {missionId === TRAINING_MISSION_ID && state.missionStatus === 'success' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    completeTraining();
-                    state.patch({ screen: 'campaign' });
-                  }}
-                  data-testid="training-continue"
-                >
-                  Continue to campaign
-                </button>
-              ) : null}
-              <button type="button" onClick={restartBattle} data-testid="retry-battle">
-                Retry
-              </button>
-              <button type="button" onClick={chooseMission} data-testid="choose-mission-outcome">
-                Choose mission
-              </button>
-            </span>
-          )}
-        </div>
-      ) : null}
+      {battleResult === null ? null : (
+        <BattleResults
+          result={battleResult}
+          playerTeam={state.playerTeam}
+          missionName={state.missionName}
+          campaignPending={state.campaignPending}
+          campaignResolved={resolved}
+          missions={[...catalog.missions.values()].map((mission) => ({
+            id: mission.id,
+            name: mission.name,
+          }))}
+          selectedMissionId={missionId}
+          onReplay={restartBattle}
+          onChooseMission={chooseMission}
+          onReturnToCampaign={onReturnToCampaign}
+          {...(missionId === TRAINING_MISSION_ID && state.missionStatus === 'success'
+            ? {
+                onContinueToCampaign: () => {
+                  completeTraining();
+                  state.patch({ screen: 'campaign' });
+                },
+              }
+            : {})}
+        />
+      )}
 
       {state.error !== null ? (
         <div className="error" data-testid="error">

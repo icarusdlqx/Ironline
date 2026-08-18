@@ -1,0 +1,221 @@
+.battle-results-backdrop {
+  position: fixed;
+  inset: 52px 0 0;
+  z-index: 44;
+  display: grid;
+  place-items: center;
+  padding: 12px 20px 20px;
+  background: rgba(3, 6, 8, 0.76);
+}
+
+.battle-results {
+  width: min(820px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: rgba(11, 15, 19, 0.97);
+  box-shadow: 0 16px 70px rgba(0, 0, 0, 0.58);
+  color: var(--text);
+}
+
+.battle-results.defeat,
+.battle-results.timeout {
+  border-color: var(--warn);
+}
+
+.battle-results-heading span,
+.battle-results-summary span,
+.battle-results-lance h3,
+.battle-results-labels {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.battle-results-heading h2 {
+  margin: 4px 0;
+  color: var(--accent);
+  font-size: 30px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.battle-results.defeat .battle-results-heading h2,
+.battle-results.timeout .battle-results-heading h2 {
+  color: var(--warn);
+}
+
+.battle-results-heading p {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.battle-results-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.battle-results-summary > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.battle-results-summary strong,
+.battle-results-summary small {
+  display: block;
+  margin-top: 4px;
+}
+
+.battle-results-summary strong {
+  color: var(--text);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle-results-summary small,
+.battle-results-row small,
+.battle-results-actions small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.battle-results-lance h3 {
+  margin: 0 0 7px;
+}
+
+.battle-results-table {
+  border-top: 1px solid var(--edge);
+}
+
+.battle-results-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1.2fr) minmax(88px, 0.8fr) minmax(160px, 1.2fr) minmax(120px, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 42px;
+  border-bottom: 1px solid rgba(140, 224, 255, 0.1);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle-results-row > span,
+.battle-results-row > strong {
+  min-width: 0;
+}
+
+.battle-results-row small {
+  display: block;
+}
+
+.unit-result {
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.unit-result.lost,
+.unit-result.ejected {
+  color: var(--danger);
+}
+
+.unit-result.withdrew {
+  color: var(--warn);
+}
+
+.battle-results-actions {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.battle-results-actions button,
+.battle-results-actions select {
+  min-height: 34px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(140, 224, 255, 0.08);
+  color: var(--accent);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.battle-results-actions .secondary {
+  border-color: var(--edge);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.battle-results-actions label {
+  display: grid;
+  gap: 3px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.battle-results-actions.campaign {
+  flex-wrap: wrap;
+}
+
+.battle-results-actions.campaign small {
+  flex: 1;
+  min-width: 220px;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+  .battle-results-backdrop {
+    align-items: start;
+    inset: calc(46px + env(safe-area-inset-top, 0px)) 0 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .battle-results {
+    padding: 14px;
+  }
+
+  .battle-results-heading h2 {
+    font-size: 23px;
+  }
+
+  .battle-results-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 12px 0;
+  }
+
+  .battle-results-labels {
+    display: none;
+  }
+
+  .battle-results-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 5px 12px;
+    padding: 7px 0;
+  }
+
+  .battle-results-actions {
+    flex-wrap: wrap;
+  }
+
+  .battle-results-actions label {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .battle-results-actions select {
+    width: 100%;
+  }
+}

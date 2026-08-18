@@ -24,7 +24,7 @@ interface SetupLifecycle {
   selectDifficulty: (difficultyId: string) => void;
   lockDraft: () => void;
   restart: () => void;
-  chooseMission: () => void;
+  chooseMission: (missionId?: string) => void;
 }
 
 export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
@@ -57,10 +57,10 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
     setRevision((current) => current + 1);
   };
 
-  const chooseMission = (): void => {
+  const chooseMission = (missionId = engine.missionId): void => {
     nextStart.current = 'briefing';
     storeDifficulty(engine.difficulty);
-    options.patch({ skirmishMissionId: engine.missionId, difficulty: engine.difficulty });
+    options.patch({ skirmishMissionId: missionId, difficulty: engine.difficulty });
     setDeployed(null);
     setRevision((current) => current + 1);
   };

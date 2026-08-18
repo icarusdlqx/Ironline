@@ -342,13 +342,24 @@ async function main() {
 
     check('battle reaches a conclusion', outcome.finished === true, JSON.stringify(outcome));
     await page.waitForSelector('[data-testid="outcome"]', { timeout: 5000 }).catch(() => {});
-    check('outcome banner is shown', (await page.locator('[data-testid="outcome"]').count()) === 1);
+    check('battle debrief is shown', (await page.locator('.battle-results').count()) === 1);
+    check(
+      'the debrief reports battle and lance statistics',
+      (await page.locator('.battle-results-summary > div').count()) === 4 &&
+        (await page.locator('.battle-results-row').count()) === 5,
+    );
+    check(
+      'skirmish debrief offers replay or another briefing',
+      (await page.locator('[data-testid="replay-mission"]').count()) === 1 &&
+        (await page.locator('[data-testid="choose-mission"]').count()) === 1,
+    );
     check('battle log recorded destructions', (await page.locator('[data-testid="event-log"] li').count()) > 0);
     await page.screenshot({ path: `${SHOTS}/04-outcome.png` });
     await page.evaluate(() => localStorage.clear());
 
     process.stdout.write('\nobjectives and support\n');
-    await page.locator('[data-testid="mission-picker"]').selectOption('base_capture_ridge');
+    await page.locator('[data-testid="result-mission-picker"]').selectOption('base_capture_ridge');
+    await page.locator('[data-testid="choose-mission"]').click();
     await page.waitForSelector('[data-testid="briefing"]');
     check(
       'switching mission shows its briefing',
