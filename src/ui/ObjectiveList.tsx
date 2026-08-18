@@ -7,6 +7,12 @@ interface ObjectiveListProps {
   zones: readonly ZoneView[];
 }
 
+export function objectiveProgress(objective: ObjectiveView): string {
+  if (objective.status === 'failed') return 'failed';
+  if (objective.sustained === true && objective.status === 'active') return 'holding';
+  return `${String(Math.round(objective.progress * 100))}%`;
+}
+
 function ObjectiveBody({ objectives, zones }: ObjectiveListProps) {
   return (
     <div className="objective-body">
@@ -21,7 +27,7 @@ function ObjectiveBody({ objectives, zones }: ObjectiveListProps) {
               {objective.label}
               {objective.required ? '' : ' (optional)'}
             </span>
-            <span className="objective-progress">{Math.round(objective.progress * 100)}%</span>
+            <span className="objective-progress">{objectiveProgress(objective)}</span>
           </li>
         ))}
       </ul>

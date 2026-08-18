@@ -518,6 +518,7 @@ export class Engine {
         required: objective.required,
         status: objective.status,
         progress: objective.progress,
+        sustained: objective.type === 'protect_zones' || objective.type === 'survive',
       })),
       zones: this.world.zones.map((zone) => ({
         id: zone.id,

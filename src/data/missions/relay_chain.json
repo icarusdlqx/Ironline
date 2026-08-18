@@ -1,0 +1,238 @@
+{
+  "id": "relay_chain",
+  "name": "Recon — Relay Chain",
+  "type": "recon",
+  "mapId": "ridge_pass",
+  "briefing": "Three field relays are carrying convoy schedules. Put a machine inside each fence and hold until the key turns. Once all three read ours, keep the chain intact for twenty-five seconds while the schedule copies. The patrol can take a relay back; killing it is optional.",
+  "maxDurationSeconds": 360,
+  "startingResourcePoints": 400,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Relay Detail",
+      "units": [
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 444,
+            "y": 924
+          },
+          "facingDegrees": -90
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 492,
+            "y": 900
+          },
+          "facingDegrees": -90
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "willem_torrance",
+          "spawn": {
+            "x": 540,
+            "y": 924
+          },
+          "facingDegrees": -90
+        },
+        {
+          "designId": "warden_lancer",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 492,
+            "y": 852
+          },
+          "facingDegrees": -90
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Relay Patrol",
+      "units": [
+        {
+          "designId": "wisp_scout",
+          "pilotId": "roz_havel",
+          "spawn": {
+            "x": 492,
+            "y": 708
+          },
+          "facingDegrees": 90
+        },
+        {
+          "designId": "courser_patrol",
+          "pilotId": "juno_reyes",
+          "spawn": {
+            "x": 156,
+            "y": 492
+          },
+          "facingDegrees": 0
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "teodor_krysa",
+          "spawn": {
+            "x": 492,
+            "y": 228
+          },
+          "facingDegrees": 90
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "bo_ferrant",
+          "spawn": {
+            "x": 756,
+            "y": 444
+          },
+          "facingDegrees": 180
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "south_relay",
+      "name": "South Relay",
+      "x": 492,
+      "y": 732,
+      "radius": 58,
+      "owner": 1,
+      "captureSeconds": 6,
+      "resourcePoints": 75
+    },
+    {
+      "id": "west_relay",
+      "name": "West Relay",
+      "x": 252,
+      "y": 492,
+      "radius": 58,
+      "owner": 1,
+      "captureSeconds": 6,
+      "resourcePoints": 75
+    },
+    {
+      "id": "north_relay",
+      "name": "North Relay",
+      "x": 492,
+      "y": 156,
+      "radius": 58,
+      "owner": 1,
+      "captureSeconds": 6,
+      "resourcePoints": 75
+    }
+  ],
+  "objectives": [
+    {
+      "id": "key_relays",
+      "label": "Key all three relays",
+      "type": "capture_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "south_relay",
+        "west_relay",
+        "north_relay"
+      ],
+      "resourcePoints": 175
+    },
+    {
+      "id": "copy_schedule",
+      "label": "Hold all three relays for 25 seconds",
+      "type": "hold_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "south_relay",
+        "west_relay",
+        "north_relay"
+      ],
+      "holdSeconds": 25
+    },
+    {
+      "id": "detail_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "relay_orders",
+      "when": {
+        "type": "elapsed",
+        "seconds": 3
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Three relays, three keys. The patrol only has to take one back to break the chain."
+        }
+      ]
+    },
+    {
+      "id": "south_keyed",
+      "when": {
+        "type": "zone_captured",
+        "zoneId": "south_relay",
+        "team": 0
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "South relay keyed. Convoy traffic is resolving."
+        }
+      ]
+    },
+    {
+      "id": "west_keyed",
+      "when": {
+        "type": "zone_captured",
+        "zoneId": "west_relay",
+        "team": 0
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "West relay keyed. Freight identifiers are coming through."
+        }
+      ]
+    },
+    {
+      "id": "north_keyed",
+      "when": {
+        "type": "zone_captured",
+        "zoneId": "north_relay",
+        "team": 0
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "North relay keyed. Keep the other two while this one settles."
+        }
+      ]
+    },
+    {
+      "id": "chain_green",
+      "when": {
+        "type": "objective_complete",
+        "objectiveId": "key_relays"
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Chain green. Hold all three keys for twenty-five seconds while the schedule copies."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 165
+}

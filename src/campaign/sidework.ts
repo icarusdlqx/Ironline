@@ -42,6 +42,18 @@ export function oppositionTonnage(catalog: Catalog, missionId: string): number {
       total += chassis?.tonnage ?? 0;
     }
   }
+
+  // A wave that is not on the posting is still metal the lance has to face.
+  for (const trigger of mission.triggers) {
+    for (const effect of trigger.effects) {
+      if (effect.type !== 'spawn' || effect.team === PLAYER_TEAM) continue;
+      for (const unit of effect.units) {
+        const design = catalog.designs.get(unit.designId);
+        const chassis = design === undefined ? undefined : catalog.chassis.get(design.chassisId);
+        total += chassis?.tonnage ?? 0;
+      }
+    }
+  }
   return total;
 }
 
