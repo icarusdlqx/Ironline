@@ -3,7 +3,7 @@
   "name": "Training — First Walk",
   "type": "skirmish",
   "mapId": "ridge_pass",
-  "briefing": "A shakedown walk on safe ground. Two machines, a wreck of a militia scout somewhere on the far slope, and a range officer on the radio. Nothing here should be able to kill you — pay attention anyway.",
+  "briefing": "A shakedown walk on safe ground. Take the two machines through the marked gate, acquire the range contacts, and clear them. Range control will keep the next instruction on screen until you have done it.",
   "maxDurationSeconds": 600,
   "startingResourcePoints": 200,
   "lances": [
@@ -43,14 +43,54 @@
             "y": 132
           },
           "facingDegrees": 135
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "bo_ferrant",
+          "spawn": {
+            "x": 804,
+            "y": 204
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "yusra_demir",
+          "spawn": {
+            "x": 876,
+            "y": 252
+          },
+          "facingDegrees": 135
         }
       ]
     }
   ],
+  "zones": [
+    {
+      "id": "range_gate",
+      "name": "Range Gate",
+      "x": 492,
+      "y": 708,
+      "radius": 60,
+      "owner": null,
+      "captureSeconds": 3,
+      "resourcePoints": 0
+    }
+  ],
   "objectives": [
     {
+      "id": "cross_range_gate",
+      "label": "Move a mech into the range gate",
+      "type": "capture_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "range_gate"
+      ]
+    },
+    {
       "id": "clear_the_range",
-      "label": "Destroy the range targets",
+      "label": "Destroy all three range targets",
       "type": "destroy_all",
       "team": 0,
       "required": true
@@ -65,61 +105,23 @@
   ],
   "triggers": [
     {
-      "id": "welcome",
+      "id": "range_open",
       "when": {
-        "type": "elapsed",
-        "seconds": 2
+        "type": "zone_captured",
+        "zoneId": "range_gate",
+        "team": 0
       },
       "effects": [
         {
           "type": "message",
-          "text": "Range control: drag the ground to look around, pinch or scroll to zoom. The map in the corner jumps anywhere."
-        }
-      ]
-    },
-    {
-      "id": "teach_select",
-      "when": {
-        "type": "elapsed",
-        "seconds": 10
-      },
-      "effects": [
-        {
-          "type": "message",
-          "text": "Select a mech — tap or click it — then tap open ground to walk there. Space pauses; orders still work while paused."
-        }
-      ]
-    },
-    {
-      "id": "teach_target",
-      "when": {
-        "type": "elapsed",
-        "seconds": 24
-      },
-      "effects": [
-        {
-          "type": "message",
-          "text": "A contact shows in the bar up top. Tap the contact, tap the machine, or press Q — all of them are an attack order."
+          "text": "Range control: gate crossed. Three targets are live on the north slope."
         },
         {
           "type": "reveal",
           "x": 852,
-          "y": 132,
-          "radius": 160,
+          "y": 204,
+          "radius": 260,
           "seconds": 240
-        }
-      ]
-    },
-    {
-      "id": "teach_heat",
-      "when": {
-        "type": "elapsed",
-        "seconds": 44
-      },
-      "effects": [
-        {
-          "type": "message",
-          "text": "Watch the heat bar when you fire. The reactor alarm means ease off — a shutdown on the line gets people killed."
         }
       ]
     },
@@ -133,36 +135,12 @@
       "effects": [
         {
           "type": "message",
-          "text": "Kill confirmed. Two more walking in from the north — attack-move (A) advances and fights whatever shows itself."
-        },
-        {
-          "type": "spawn",
-          "team": 1,
-          "units": [
-            {
-              "designId": "wisp_scout",
-              "pilotId": "bo_ferrant",
-              "spawn": {
-                "x": 804,
-                "y": 204
-              },
-              "facingDegrees": 135
-            },
-            {
-              "designId": "hornet_spotter",
-              "pilotId": "yusra_demir",
-              "spawn": {
-                "x": 876,
-                "y": 252
-              },
-              "facingDegrees": 135
-            }
-          ]
+          "text": "Range control: target down. Two remain on the slope."
         }
       ]
     },
     {
-      "id": "second_wave_down",
+      "id": "range_clear",
       "when": {
         "type": "team_losses",
         "team": 1,
@@ -171,7 +149,7 @@
       "effects": [
         {
           "type": "message",
-          "text": "Range clear. That is the whole of it: move, look, shoot, watch the heat. The campaign screen has real work."
+          "text": "Range clear. Move, look, shoot, watch the heat. The campaign board has real work."
         }
       ]
     }

@@ -32,6 +32,12 @@ import {
 import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
 import { selectedUnit, storeDifficulty, useGame } from './store';
+import { TrainingCoach } from './TrainingCoach';
+import {
+  completeTraining,
+  skipTraining,
+  TRAINING_MISSION_ID,
+} from './trainingProgress';
 
 const SUPPORT_HINTS: Record<string, string> = {
   sensor_probe: 'Reveals a map region',
@@ -394,14 +400,23 @@ export function Battle() {
           className="pause"
           value={missionId}
           disabled={state.campaignPending}
-          onChange={(event) => state.patch({ skirmishMissionId: event.target.value })}
+          onChange={(event) => {
+            if (missionId === TRAINING_MISSION_ID && event.target.value !== TRAINING_MISSION_ID) {
+              skipTraining();
+            }
+            state.patch({ skirmishMissionId: event.target.value });
+          }}
           data-testid="mission-picker"
         >
-          {[...getCatalog().missions.values()].map((mission) => (
-            <option key={mission.id} value={mission.id}>
-              {mission.name}
-            </option>
-          ))}
+          {[...getCatalog().missions.values()]
+            .sort((left, right) =>
+              left.id === TRAINING_MISSION_ID ? -1 : right.id === TRAINING_MISSION_ID ? 1 : 0,
+            )
+            .map((mission) => (
+              <option key={mission.id} value={mission.id}>
+                {mission.name}
+              </option>
+            ))}
         </select>
         <a
           className="pause feedback-link"
@@ -446,6 +461,7 @@ export function Battle() {
       )}
 
       <ObjectiveList objectives={state.objectives} zones={state.zones} />
+      {missionId === TRAINING_MISSION_ID && !state.campaignPending ? <TrainingCoach /> : null}
 
       {state.paused && !state.finished ? (
         <div className="paused-banner" data-testid="paused-banner">
@@ -467,6 +483,17 @@ export function Battle() {
           {state.campaignPending ? (
             <button type="button" onClick={onReturnToCampaign} data-testid="return-to-campaign">
               {resolved ? 'Back to campaign' : 'Resolve contract'}
+            </button>
+          ) : missionId === TRAINING_MISSION_ID && state.missionStatus === 'success' ? (
+            <button
+              type="button"
+              onClick={() => {
+                completeTraining();
+                state.patch({ screen: 'campaign' });
+              }}
+              data-testid="training-continue"
+            >
+              Continue to campaign
             </button>
           ) : null}
         </div>

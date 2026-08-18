@@ -254,7 +254,9 @@ export function ObjectiveList({
                     ? 'held'
                     : zone.contender === 0
                       ? `${Math.round((zone.progress / zone.captureSeconds) * 100)}%`
-                      : 'enemy'}
+                      : zone.owner === null
+                        ? 'neutral'
+                        : 'enemy'}
               </span>
             </li>
           ))}

@@ -96,6 +96,17 @@ async function main() {
     await page.waitForFunction(() => globalThis.__ironline !== undefined, { timeout: 30_000 });
     await page.waitForSelector('[data-testid="lance-bar"]');
 
+    check(
+      'a fresh profile opens on training',
+      (await page.evaluate(() => globalThis.__ironline.world.mission.id)) === 'training_ground',
+    );
+    await page.screenshot({ path: `${SHOTS}/00-training-briefing.png` });
+    await page.locator('[data-testid="briefing-deploy"]').click();
+    await page.waitForSelector('[data-testid="training-coach"]');
+    await page.screenshot({ path: `${SHOTS}/00-training-coach.png` });
+    await page.locator('[data-testid="mission-picker"]').selectOption('skirmish_ridge');
+    await page.waitForFunction(() => globalThis.__ironline.world.mission.id === 'skirmish_ridge');
+
     process.stdout.write('\nboot\n');
     const canvas = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
     check('canvas is mounted at full size', (canvas?.width ?? 0) > 1000 && (canvas?.height ?? 0) > 700);
@@ -345,6 +356,10 @@ async function main() {
     });
     check('calling the truck spends resource points', afterCall.rp === mission.rp - truckCost, `${mission.rp} → ${afterCall.rp}`);
     check('the call is queued with a delay', afterCall.pending === 1);
+    await page.waitForFunction(
+      (before) => Number(document.querySelector('[data-testid="resource-points"]')?.textContent?.replace(/[^0-9]/g, '')) < before,
+      rpBefore,
+    );
     check('the HUD reflects the spend', (await rpText()) < rpBefore);
     await page.screenshot({ path: `${SHOTS}/09-support.png` });
 
