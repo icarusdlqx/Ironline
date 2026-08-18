@@ -4,6 +4,7 @@ import { storeDifficulty } from './store';
 import {
   engineSetupFor,
   isBattleSetupLocked,
+  setupForNewField,
   type BattleSetupKey,
 } from './battleSetupState';
 
@@ -22,8 +23,9 @@ interface SetupLifecycle {
   nextStart: MutableRefObject<'briefing' | 'deploy'>;
   selectMission: (missionId: string) => void;
   selectDifficulty: (difficultyId: string) => void;
-  lockDraft: () => void;
+  deploy: (setup: BattleSetupKey) => void;
   restart: () => void;
+  newField: (battleCode: string) => void;
   chooseMission: (missionId?: string) => void;
 }
 
@@ -57,6 +59,14 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
     setRevision((current) => current + 1);
   };
 
+  const newField = (battleCode: string): void => {
+    nextStart.current = 'deploy';
+    const next = setupForNewField(engine, battleCode);
+    options.patch({ battleCode });
+    setDeployed(next);
+    setRevision((current) => current + 1);
+  };
+
   const chooseMission = (missionId = engine.missionId): void => {
     nextStart.current = 'briefing';
     storeDifficulty(engine.difficulty);
@@ -72,8 +82,13 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
     nextStart,
     selectMission,
     selectDifficulty,
-    lockDraft: () => setDeployed(options.draft),
+    deploy: (next) => {
+      nextStart.current = 'deploy';
+      setDeployed(next);
+      setRevision((current) => current + 1);
+    },
     restart,
+    newField,
     chooseMission,
   };
 }

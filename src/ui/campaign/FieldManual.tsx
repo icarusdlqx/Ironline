@@ -208,6 +208,14 @@ export function FieldManual({
             <h5>Support calls</h5>
             <BindingList entries={SUPPORT_NOTES} />
           </section>
+          <section className="manual-support" data-testid="manual-battle-codes">
+            <h5>Battle codes</h5>
+            <p className="manual-summary">
+              The same skirmish mission, difficulty, lance, and Battle code reproduce the opening
+              field and its random rolls. Orders still decide what follows. Campaign run codes are
+              separate and reproduce the company board as well as its contracts.
+            </p>
+          </section>
         </article>
 
         {[...lore]

@@ -217,6 +217,17 @@ describe('refit', () => {
 });
 
 describe('deployment', () => {
+  it('keeps a contract seed exact across a save round trip', () => {
+    const accepted = acceptContract(catalog, state, 'militia_raid', 'fee_first');
+    expect(accepted.ok, accepted.reason ?? '').toBe(true);
+    const before = prepareDeployment(catalog, state);
+    const restored = deserialiseCampaign(serialiseCampaign(state)).state;
+    if (restored === null) throw new Error('campaign save did not reload');
+
+    expect(before.seed).toBe(`${state.seed}:militia_raid:${state.day}`);
+    expect(prepareDeployment(catalog, restored).seed).toBe(before.seed);
+  });
+
   it('seats a spare pilot in a mech nobody is assigned to', () => {
     const orphan = state.pilots[0];
     const wreck = state.mechs[0];

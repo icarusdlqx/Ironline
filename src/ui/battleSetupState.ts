@@ -4,6 +4,7 @@ export interface BattleSetupKey {
   missionId: string;
   difficulty: string;
   lanceKey: string;
+  battleCode: string;
 }
 
 export interface DifficultyChoice {
@@ -17,6 +18,10 @@ export function engineSetupFor(
   deployed: BattleSetupKey | null,
 ): BattleSetupKey {
   return deployed ?? draft;
+}
+
+export function setupForNewField(setup: BattleSetupKey, battleCode: string): BattleSetupKey {
+  return { ...setup, battleCode };
 }
 
 export function isBattleSetupLocked(

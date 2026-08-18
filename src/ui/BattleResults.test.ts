@@ -29,18 +29,23 @@ const COMMON = {
     { id: 'training_ground', name: 'Training Ground' },
   ],
   selectedMissionId: 'skirmish_ridge',
-  onReplay: () => undefined,
+  onSameField: () => undefined,
+  onNewField: () => undefined,
   onChooseMission: () => undefined,
   onReturnToCampaign: () => undefined,
 };
 
 describe('battle results screen', () => {
-  it('offers replay and a mission briefing after a skirmish', () => {
+  it('offers same and new fields plus a mission briefing after a skirmish', () => {
     const markup = renderToStaticMarkup(
       createElement(BattleResults, { ...COMMON, campaignPending: false }),
     );
 
     expect(markup).toContain('data-testid="replay-mission"');
+    expect(markup).toContain('Same field');
+    expect(markup).toContain('data-testid="new-field"');
+    expect(markup).toContain('data-testid="battle-result-code"');
+    expect(markup).toContain('Battle code <code>screen</code>');
     expect(markup).toContain('data-testid="result-mission-picker"');
     expect(markup).toContain('data-testid="choose-mission"');
     expect(markup).not.toContain('data-testid="return-to-campaign"');
@@ -54,6 +59,8 @@ describe('battle results screen', () => {
     expect(markup).toContain('data-testid="return-to-campaign"');
     expect(markup).toContain('Resolve contract');
     expect(markup).not.toContain('data-testid="replay-mission"');
+    expect(markup).not.toContain('data-testid="new-field"');
+    expect(markup).not.toContain('data-testid="battle-result-code"');
     expect(markup).not.toContain('data-testid="choose-mission"');
   });
 

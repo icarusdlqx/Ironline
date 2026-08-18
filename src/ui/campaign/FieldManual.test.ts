@@ -40,6 +40,8 @@ describe('field manual controls', () => {
     expect(markup).toContain('Press at the aim point and drag the run-in before releasing.');
     expect(markup).toContain('Reinforcement');
     expect(markup).toContain('Drops one unused mission reserve.');
+    expect(markup).toContain('mission, difficulty, lance, and Battle code');
+    expect(markup).toContain('Campaign run codes are separate');
     expect(markup).not.toContain('Artillery Strike');
     expect(markup).not.toContain('Minelayer');
     expect(markup).toContain('aria-modal="true"');

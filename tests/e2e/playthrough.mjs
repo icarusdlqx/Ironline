@@ -138,10 +138,22 @@ async function main() {
     check('the sim is held while briefing', (await sim(page)).tick === beforeBriefing);
     await page.screenshot({ path: `${SHOTS}/01-boot.png` });
 
+    const battleCode = page.locator('[data-testid="briefing-battle-code"]');
+    await battleCode.fill('x');
+    check(
+      'an invalid Battle code blocks deployment',
+      await page.locator('[data-testid="briefing-deploy"]').isDisabled(),
+    );
+    await battleCode.fill('Ridge Touch 0000002A');
     await page.locator('[data-testid="briefing-deploy"]').click();
     await sleep(1200);
     const running = await sim(page);
     check('deploying starts the clock', running.tick > beforeBriefing, `${beforeBriefing} → ${running.tick}`);
+    check(
+      'typing then tapping deploy locks the normalized Battle code',
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().battleCode)) ===
+        'ridge-touch-0000002a',
+    );
 
     process.stdout.write('\nselection\n');
     await page.locator('[data-testid="lance-bar"] button').first().click();

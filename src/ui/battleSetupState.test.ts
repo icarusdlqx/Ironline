@@ -4,6 +4,7 @@ import {
   difficultyChoices,
   engineSetupFor,
   isBattleSetupLocked,
+  setupForNewField,
   type BattleSetupKey,
 } from './battleSetupState';
 
@@ -12,16 +13,26 @@ describe('battle setup lifecycle', () => {
     missionId: 'base_capture_ridge',
     difficulty: 'elite',
     lanceKey: 'new-lance',
+    battleCode: 'new-field',
   };
   const deployed: BattleSetupKey = {
     missionId: 'skirmish_ridge',
     difficulty: 'green',
     lanceKey: 'fielded-lance',
+    battleCode: 'held-field',
   };
 
   it('keeps the deployed inputs when the setup draft changes', () => {
     expect(engineSetupFor(draft, deployed)).toBe(deployed);
     expect(engineSetupFor(draft, null)).toBe(draft);
+  });
+
+  it('changes only the code for a new field', () => {
+    expect(setupForNewField(deployed, 'fresh-field')).toEqual({
+      ...deployed,
+      battleCode: 'fresh-field',
+    });
+    expect(engineSetupFor(draft, deployed).battleCode).toBe('held-field');
   });
 
   it('locks a live battle and an unresolved campaign result', () => {
