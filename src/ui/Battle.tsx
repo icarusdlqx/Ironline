@@ -3,7 +3,6 @@ import { dropTonnageFor, prepareDeployment, resolveMission } from '../campaign/c
 import { loadCampaign, saveCampaign } from '../campaign/save';
 import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
-import { PLAYER_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
@@ -27,20 +26,11 @@ import {
   SupportPalette,
   WeaponGroups,
   type BriefingLance,
-  type SupportOption,
 } from './Panels';
 import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
 import { selectedUnit, storeDifficulty, useGame } from './store';
-
-const SUPPORT_HINTS: Record<string, string> = {
-  sensor_probe: 'Reveals a map region',
-  artillery_strike: 'Delayed area damage',
-  air_strike: 'Fast linear strafe',
-  repair_truck: 'Repairs armour nearby',
-  minelayer: 'Lays a defensive minefield',
-  reinforcement: 'Drops a reserve mech',
-};
+import { buildSupportOptions } from './supportOptions';
 
 function formatClock(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -278,15 +268,10 @@ export function Battle() {
           },
         };
 
-  const supportOptions: SupportOption[] = PLAYER_CALLS.map((id) => ({
-    id,
-    label: id
-      .split('_')
-      .map((word) => `${(word[0] ?? '').toUpperCase()}${word.slice(1)}`)
-      .join(' '),
-    cost: getCatalog().rules.support[id].cost,
-    hint: SUPPORT_HINTS[id] ?? '',
-  }));
+  const supportOptions = useMemo(
+    () => buildSupportOptions(catalog.rules.support, state.reservesLeft),
+    [catalog.rules.support, state.reservesLeft],
+  );
 
   return (
     <div className="app">

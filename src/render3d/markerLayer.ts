@@ -14,6 +14,8 @@ import { isOperational, type EntityId, type MechEntity, type Vec2, type World } 
 export interface MarkerViewState {
   selection: ReadonlySet<EntityId>;
   orderMode: 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
+  supportRadius: { at: Vec2; radius: number } | null;
+  supportRun: { at: Vec2; heading: number; length: number; width: number } | null;
 }
 
 const REACHES: number[] = [];
@@ -34,12 +36,24 @@ export class MarkerLayer {
     transparent: true,
     opacity: 0.7,
   });
+  private readonly supportLaneMaterial = new LineBasicMaterial({
+    color: UI.attackMarker,
+    transparent: true,
+    opacity: 0.9,
+  });
+  private readonly supportLane: Line;
 
   constructor(
     private readonly heightAt: (x: number, y: number) => number,
     private readonly positionOf: (id: EntityId) => Vec2 | null,
   ) {
     this.group.name = 'markers';
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new BufferAttribute(new Float32Array(5 * 3), 3));
+    this.supportLane = new Line(geometry, this.supportLaneMaterial);
+    this.supportLane.frustumCulled = false;
+    this.supportLane.visible = false;
+    this.group.add(this.supportLane);
   }
 
   dispose(): void {
@@ -47,6 +61,8 @@ export class MarkerLayer {
     for (const material of this.markerMaterials.values()) material.dispose();
     for (const line of this.pathPool) line.geometry.dispose();
     this.pathMaterial.dispose();
+    this.supportLane.geometry.dispose();
+    this.supportLaneMaterial.dispose();
   }
 
   draw(world: World, view: MarkerViewState): void {
@@ -66,6 +82,12 @@ export class MarkerLayer {
     for (const pending of world.support.pending) {
       this.groundRing(pending.target, 26, UI.attackMarker, 0.85);
     }
+
+    if (view.supportRadius !== null) {
+      this.groundRing(view.supportRadius.at, view.supportRadius.radius, UI.selection, 0.7);
+    }
+    this.supportLane.visible = false;
+    if (view.supportRun !== null) this.drawSupportLane(view.supportRun);
 
     for (const entity of world.entities) {
       if (!view.selection.has(entity.id) || !isOperational(entity)) continue;
@@ -125,6 +147,32 @@ export class MarkerLayer {
     ring.material = this.markerMaterial(colour, opacity);
     ring.position.set(at.x, this.heightAt(at.x, at.y) + 1, at.y);
     ring.visible = true;
+  }
+
+  private drawSupportLane(run: { at: Vec2; heading: number; length: number; width: number }): void {
+    const alongX = Math.cos(run.heading) * (run.length / 2);
+    const alongY = Math.sin(run.heading) * (run.length / 2);
+    const acrossX = -Math.sin(run.heading) * (run.width / 2);
+    const acrossY = Math.cos(run.heading) * (run.width / 2);
+    const positions = this.supportLane.geometry.getAttribute('position') as BufferAttribute;
+    const nearLeftX = run.at.x - alongX - acrossX;
+    const nearLeftY = run.at.y - alongY - acrossY;
+    this.setSupportPoint(positions, 0, nearLeftX, nearLeftY);
+    this.setSupportPoint(positions, 1, run.at.x + alongX - acrossX, run.at.y + alongY - acrossY);
+    this.setSupportPoint(positions, 2, run.at.x + alongX + acrossX, run.at.y + alongY + acrossY);
+    this.setSupportPoint(positions, 3, run.at.x - alongX + acrossX, run.at.y - alongY + acrossY);
+    this.setSupportPoint(positions, 4, nearLeftX, nearLeftY);
+    positions.needsUpdate = true;
+    this.supportLane.visible = true;
+  }
+
+  private setSupportPoint(
+    positions: BufferAttribute,
+    index: number,
+    x: number,
+    y: number,
+  ): void {
+    positions.setXYZ(index, x, this.heightAt(x, y) + 1.4, y);
   }
 
   private ringGeometry(radius: number): RingGeometry {

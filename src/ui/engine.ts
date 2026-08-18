@@ -32,6 +32,7 @@ import { FramePacer } from './framePacer';
 import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
 import { useGame, type HitPreviewView, type OrderMode } from './store';
+import { supportRadius } from './supportOptions';
 
 const HUD_INTERVAL_SECONDS = 0.1;
 const SMOKE_INTERVAL_SECONDS = 0.7;
@@ -203,7 +204,8 @@ export class Engine {
       cursor: this.cursorWorld,
       orderMode: state.orderMode,
       selectionBox: this.selectionBox,
-      supportRun: this.supportRun(),
+      supportRadius: this.supportArea(state.supportMode),
+      supportRun: this.supportRun(state.supportMode),
     });
 
     this.perf?.record({
@@ -272,21 +274,28 @@ export class Engine {
   supportAim: { call: SupportCallId; at: Vec2; to: Vec2 } | null = null;
 
   /** The footprint to draw for the run-in being dragged, or null when none is. */
-  private supportRun(): {
+  private supportRun(call: SupportCallId | null): {
     at: Vec2;
     heading: number;
     length: number;
     width: number;
   } | null {
     const aim = this.supportAim;
-    if (aim === null || aim.call !== 'air_strike') return null;
+    const at = aim?.at ?? this.cursorWorld;
+    if ((aim?.call ?? call) !== 'air_strike' || at === null) return null;
     const config = this.world.rules.support.air_strike;
     return {
-      at: aim.at,
-      heading: this.headingFor(aim.at, aim.to),
+      at,
+      heading: this.headingFor(at, aim?.to ?? at),
       length: config.length,
       width: config.width,
     };
+  }
+
+  private supportArea(call: SupportCallId | null): { at: Vec2; radius: number } | null {
+    if (this.cursorWorld === null) return null;
+    const radius = supportRadius(this.world.rules.support, call);
+    return radius === null ? null : { at: this.cursorWorld, radius };
   }
 
   /**

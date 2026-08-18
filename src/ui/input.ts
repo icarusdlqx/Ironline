@@ -172,7 +172,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       over !== null && over.team !== state.playerTeam && engine.selectedEntities().length > 0;
     // Only written on change: assigning the same cursor string every frame
     // still costs the browser a style pass.
-    const style = attackable ? 'crosshair' : 'default';
+    const style = state.supportMode !== null || attackable ? 'crosshair' : 'default';
     if (style !== lastCursorStyle) {
       lastCursorStyle = style;
       canvas.style.cursor = style;
@@ -688,6 +688,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     panning = false;
     lastPan = null;
     engine.selectionBox = null;
+    engine.supportAim = null;
     useGame.getState().patch({ marquee: null });
   };
 
