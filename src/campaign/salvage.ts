@@ -1,5 +1,6 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
+import type { SalvageRules } from '../schema/rules';
 import type { Rng } from '../sim/rng';
 import type { BattleResult, UnitResult } from '../sim/world';
 import {
@@ -41,6 +42,7 @@ export const SALVAGE_OFFERED = 5;
  * mech on the losing side has surrendered — the best outcome short of an ejection.
  */
 export function outcomeFor(unit: UnitResult, lostTheBattle: boolean): SalvageOutcome | null {
+  if (unit.withdrew) return null;
   if (unit.alive) {
     if (lostTheBattle && unit.legged) return 'legged';
     return null;
@@ -49,6 +51,25 @@ export function outcomeFor(unit: UnitResult, lostTheBattle: boolean): SalvageOut
   if (unit.killMethod === 'head') return 'head';
   if (unit.killMethod === 'ammo_explosion') return 'ammo_explosion';
   return 'centre_torso';
+}
+
+/** Shared so contracts and field exercises cannot disagree about who lost the ground. */
+export function salvageLosingTeams(
+  result: BattleResult,
+  playerTeam: number,
+): ReadonlySet<number> {
+  const enemyTeams = new Set(
+    result.units.filter((unit) => unit.team !== playerTeam).map((unit) => unit.team),
+  );
+  return new Set([...enemyTeams].filter((team) => team !== result.winner));
+}
+
+/** Contract shares narrow these field odds later; this is the hull's condition alone. */
+export function baseHullRecoveryChance(
+  rules: SalvageRules,
+  outcome: SalvageOutcome,
+): number {
+  return rules.chassisRecoveryByOutcome[outcome];
 }
 
 function itemsFrom(
@@ -126,12 +147,7 @@ export function resolveSalvage(
   const items: StoreItem[] = [];
   const provenance: SalvageProvenance[] = [];
 
-  const enemyTeams = new Set(
-    result.units.filter((unit) => unit.team !== playerTeam).map((unit) => unit.team),
-  );
-  const lostTeams = new Set(
-    [...enemyTeams].filter((team) => team !== result.winner),
-  );
+  const lostTeams = salvageLosingTeams(result, playerTeam);
 
   for (const unit of result.units) {
     if (unit.team === playerTeam) continue;
@@ -145,7 +161,7 @@ export function resolveSalvage(
     const design = catalog.designs.get(unit.designId);
     const towable = catalog.chassis.get(design?.chassisId ?? '')?.frame === 'mech';
 
-    const chassisChance = towable ? rules.chassisRecoveryByOutcome[outcome] * salvageShare : 0;
+    const chassisChance = towable ? baseHullRecoveryChance(rules, outcome) * salvageShare : 0;
     const recovered = chassisChance > 0 && rng.chance(chassisChance);
     candidates.push({
       designId: unit.designId,

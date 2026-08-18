@@ -178,6 +178,7 @@ describe('salvage', () => {
       'ammo_explosion',
     );
     expect(outcomeFor({ ...base, alive: true, legged: true } as never, true)).toBe('legged');
+    expect(outcomeFor({ ...base, withdrew: true } as never, true)).toBeNull();
   });
 
   it('leaves a surviving winner unsalvageable', () => {

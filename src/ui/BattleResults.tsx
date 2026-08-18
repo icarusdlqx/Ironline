@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { BattleResult } from '../sim/world';
 import { viewBattleResult } from './battleResultView';
+import { SalvageDrillResults } from './SalvageDrillResults';
 import './battleResults.css';
 
 export interface ResultMissionOption {
@@ -82,6 +83,10 @@ export function BattleResults({
             </small>
           </div>
         </div>
+
+        {campaignPending ? null : (
+          <SalvageDrillResults result={result} playerTeam={playerTeam} />
+        )}
 
         <section className="battle-results-lance" aria-labelledby="lance-report-title">
           <h3 id="lance-report-title">Lance report</h3>
