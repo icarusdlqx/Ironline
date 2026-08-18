@@ -516,6 +516,38 @@ async function main() {
     );
     check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
 
+    await page.locator('[data-testid="camp-manual-toggle"]').click();
+    await page.waitForSelector('[data-testid="manual-controls"]');
+    check(
+      'the field manual takes keyboard focus',
+      await page.locator('[data-testid="camp-manual-close"]').evaluate(
+        (element) => element === document.activeElement,
+      ),
+    );
+    const manualText = await page.locator('[data-testid="camp-manual"]').textContent();
+    check(
+      'the field manual carries desktop, touch and support controls',
+      manualText.includes('Mouse and keyboard') &&
+        manualText.includes('Touch') &&
+        manualText.includes('Support calls'),
+    );
+    check(
+      'the manual names only the current camera grammar',
+      manualText.includes('Arrow keys') && !manualText.includes('WASD'),
+    );
+    await page.screenshot({ path: `${SHOTS}/08-field-manual.png` });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${SHOTS}/08-field-manual-touch.png` });
+    await page.keyboard.press('Escape');
+    check(
+      'Escape closes the manual and returns focus',
+      (await page.locator('[data-testid="camp-manual"]').count()) === 0 &&
+        (await page.locator('[data-testid="camp-manual-toggle"]').evaluate(
+          (element) => element === document.activeElement,
+        )),
+    );
+    await page.setViewportSize({ width: 1440, height: 900 });
+
     const offerAt = async (value) => {
       await page.locator('[data-testid="camp-terms"]').fill(String(value));
       return page.locator('[data-testid="camp-offer"]').innerText();
