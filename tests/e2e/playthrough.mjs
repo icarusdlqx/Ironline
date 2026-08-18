@@ -221,6 +221,48 @@ async function main() {
     check('the ordered mech actually moves', travelled > 5, `travelled ${travelled.toFixed(1)}m`);
     check('resuming restarts the clock', moved.tick > pausedTick);
 
+    process.stdout.write('\nformation move\n');
+    await page.keyboard.press('Space');
+    const formation = await page.evaluate(() => {
+      const { engine, world, useGame } = globalThis.__ironline;
+      const ids = world.entities.filter((entity) => entity.team === 0 && !entity.destroyed).map((entity) => entity.id);
+      const centre = ids.reduce((sum, id) => {
+        const entity = world.entities.find((candidate) => candidate.id === id);
+        return { x: sum.x + entity.pos.x / ids.length, y: sum.y + entity.pos.y / ids.length };
+      }, { x: 0, y: 0 });
+      let destination = { x: 500, y: 500 };
+      let best = Number.POSITIVE_INFINITY;
+      for (let row = 3; row < world.terrain.height - 3; row += 1) {
+        for (let column = 3; column < world.terrain.width - 3; column += 1) {
+          let open = true;
+          for (let y = -3; y <= 3 && open; y += 1) {
+            for (let x = -3; x <= 3; x += 1) {
+              if (!world.terrain.passable(column + x, row + y)) open = false;
+            }
+          }
+          if (!open) continue;
+          const candidate = world.terrain.tileCentre(column, row);
+          const range = Math.hypot(candidate.x - centre.x, candidate.y - centre.y);
+          const score = Math.abs(range - 120);
+          if (score < best) {
+            best = score;
+            destination = candidate;
+          }
+        }
+      }
+      useGame.getState().setSelection(ids);
+      engine.orderMove(destination, false);
+      return ids.map((id) => world.entities.find((entity) => entity.id === id)?.orders.move?.to);
+    });
+    check(
+      'a group move gives every mech a distinct destination',
+      new Set(formation.map((point) => `${point?.x.toFixed(1)}:${point?.y.toFixed(1)}`)).size === formation.length,
+      JSON.stringify(formation),
+    );
+    await page.screenshot({ path: `${SHOTS}/03-formation-order.png` });
+    await page.evaluate((id) => globalThis.__ironline.useGame.getState().setSelection([id]), selectedId);
+    await page.keyboard.press('Space');
+
     process.stdout.write('\nweapon groups and hold fire\n');
     await page.locator('[data-testid="group-2"]').click();
     const toggled = await sim(page);

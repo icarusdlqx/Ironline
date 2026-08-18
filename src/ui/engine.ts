@@ -30,6 +30,7 @@ import { AudioDirector } from './audio';
 import { hitPreview } from '../sim/preview';
 import { useAbility } from '../sim/abilities';
 import { FramePacer } from './framePacer';
+import { formationDestinations } from './formation';
 import { crossedMissionClockWarnings } from './missionClock';
 import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
@@ -551,19 +552,19 @@ export class Engine {
   ): void {
     this.hudDirty = true;
     let moved = 0;
-    let asked = 0;
-    for (const id of this.selectedEntities()) {
-      const entity = findEntity(this.world, id);
-      if (entity === null || entity.autopilot) continue;
-      asked += 1;
+    const entities = this.selectedEntities()
+      .map((id) => findEntity(this.world, id))
+      .filter((entity): entity is MechEntity => entity !== null && !entity.autopilot);
+    const destinations = formationDestinations(this.world, entities, to);
+    for (const entity of entities) {
       // A queued leg keeps the pace of the order it extends.
       const pace = options.queued === true ? (entity.orders.move?.run ?? run) : run;
-      if (issueMove(this.world, entity, to, pace, options)) moved += 1;
+      if (issueMove(this.world, entity, destinations.get(entity.id) ?? to, pace, options)) moved += 1;
     }
     if (moved > 0) this.audio.order();
     // An order that silently does nothing reads as a broken control — and an
     // order given with nothing selected was the commonest way to see one.
-    else if (asked > 0) useGame.getState().pushLog('No route to that point.');
+    else if (entities.length > 0) useGame.getState().pushLog('No route to that point.');
     else useGame.getState().pushLog('No mech selected to give that order to.');
   }
 
