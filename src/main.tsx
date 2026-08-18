@@ -4,6 +4,7 @@ import './ui/styles.css';
 import './ui/tacticalReadout.css';
 import './ui/mobileLayout.css';
 import './ui/mobileBattle.css';
+import './ui/damageReadouts.css';
 
 const host = document.getElementById('root');
 if (host === null) throw new Error('missing #root');
