@@ -1,7 +1,9 @@
-interface CampaignHeaderProps {
-  campaignName: string;
+export interface CampaignHeaderProps {
+  title: string;
   day: number;
   balance: string;
+  seed: string;
+  manualOpen: boolean;
   onAdvance: () => void;
   onSave: () => void;
   onLoad: () => void;
@@ -13,9 +15,11 @@ interface CampaignHeaderProps {
 }
 
 export function CampaignHeader({
-  campaignName,
+  title,
   day,
   balance,
+  seed,
+  manualOpen,
   onAdvance,
   onSave,
   onLoad,
@@ -27,7 +31,16 @@ export function CampaignHeader({
 }: CampaignHeaderProps) {
   return (
     <header className="camp-top">
-      <h2>{campaignName}</h2>
+      <div className="camp-title">
+        <h2>{title}</h2>
+        <span
+          className="camp-seed"
+          data-testid="camp-seed"
+          title="This code reproduces the campaign board and battles."
+        >
+          Run {seed}
+        </span>
+      </div>
       <span data-testid="camp-day">Day {day}</span>
       <span data-testid="camp-cbills">{balance}</span>
       <button type="button" onClick={onAdvance} data-testid="camp-advance">
@@ -50,7 +63,8 @@ export function CampaignHeader({
           data-testid="camp-import"
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file !== undefined) void file.text().then(onImport);
+            if (file === undefined) return;
+            void file.text().then(onImport);
           }}
         />
       </label>
@@ -58,7 +72,7 @@ export function CampaignHeader({
         Restart
       </button>
       <button type="button" onClick={onToggleManual} data-testid="camp-manual-toggle">
-        Field Manual
+        {manualOpen ? 'Close Manual' : 'Field Manual'}
       </button>
       <button type="button" onClick={onExit} data-testid="camp-exit">
         Skirmish

@@ -7,11 +7,9 @@ import {
   campaignOf,
   deployableLance,
   negotiationOptions,
-  startCampaign,
 } from '../../campaign/campaign';
 import {
   campaignBlob,
-  clearSavedCampaign,
   deserialiseCampaign,
   loadCampaign,
   saveCampaign,
@@ -21,6 +19,7 @@ import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
+import { startFreshCampaign } from '../../campaign/freshness';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
@@ -34,6 +33,7 @@ import {
   revealLatestDebrief,
 } from './Debrief';
 import { Hangar } from './Hangar';
+import { HiringHall } from './HiringHall';
 import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, cbills, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
 import { commitCampaignChange } from './campaignSession';
@@ -47,7 +47,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     const saved = loadCampaign();
     if (saved.state !== null) return saved.state;
     resetDebriefed();
-    return startCampaign(catalog, CAMPAIGN_ID, 'border');
+    return startFreshCampaign(catalog, CAMPAIGN_ID);
   });
   const [manualOpen, setManualOpen] = useState(false);
   /**
@@ -142,9 +142,11 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   return (
     <div className="camp" data-testid="campaign">
       <CampaignHeader
-        campaignName={campaign.name}
+        title={campaign.name}
         day={state.day}
         balance={cbills(state.cbills)}
+        seed={state.seed}
+        manualOpen={manualOpen}
         onAdvance={advanceDay}
         onSave={() => { saveCampaign(state); setStatus('Campaign saved.'); }}
         onLoad={() => {
@@ -159,11 +161,15 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           else restore(loaded.state, 'Save imported.');
         }}
         onRestart={() => {
-          clearSavedCampaign();
           resetDebriefed();
           setDebriefed(0);
-          setState(startCampaign(catalog, CAMPAIGN_ID, 'border'));
-          setStatus('New campaign.');
+          const fresh = startFreshCampaign(catalog, CAMPAIGN_ID);
+          setPrep(null);
+          setRefitting(null);
+          setSelectedNode(null);
+          setSelectedTerms('standard');
+          setState(fresh);
+          setStatus(`New campaign. Run ${fresh.seed}.`);
         }}
         onToggleManual={() => setManualOpen((open) => !open)}
         onExit={() => { saveCampaign(state); onExit(); }}
@@ -214,28 +220,14 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       {/* The map draws the war. Side work is posted on a board, so it gets a
           list — and it is marked as side work, because taking it is a decision
           about the calendar rather than about the campaign. */}
-      {posted.length === 0 || state.contract !== null ? null : (
-        <section className="camp-hall" data-testid="camp-hall">
-          <h3>Hiring hall</h3>
-          <ul>
-            {posted.map((offer) => (
-              <li key={offer.id} className={offer.id === node?.id ? 'chosen' : ''}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedNode(offer.id)}
-                  data-testid={`camp-side-${offer.id}`}
-                >
-                  <span className="hall-name">{offer.name}</span>
-                  <span className="hall-employer">{offer.employer}</span>
-                  <span className="hall-terms">
-                    {cbills(offer.basePayout)} · {offer.deadlineDays}d
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="hall-note">Posted work. It pays less than the war and it always renews.</p>
-        </section>
+      {state.contract !== null ? null : (
+        <HiringHall
+          catalog={catalog}
+          day={state.day}
+          offers={posted}
+          selectedId={node?.id ?? null}
+          onSelect={setSelectedNode}
+        />
       )}
 
       <MechBayPanel state={state} mutate={mutate} />
