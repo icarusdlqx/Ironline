@@ -1,4 +1,6 @@
 import type { DifficultyChoice } from './battleSetupState';
+import { BattleCodeField } from './BattleCodeField';
+import './battleSetup.css';
 
 export interface MissionChoice {
   id: string;
@@ -15,7 +17,12 @@ interface SharedSetupProps {
   onDifficulty: (difficultyId: string) => void;
 }
 
-export function BriefingSetup(props: SharedSetupProps) {
+interface BriefingSetupProps extends SharedSetupProps {
+  battleCode: string;
+  onBattleCode: (battleCode: string) => void;
+}
+
+export function BriefingSetup(props: BriefingSetupProps) {
   const difficulty = props.difficulties.find((choice) => choice.id === props.difficultyId);
 
   return (
@@ -60,6 +67,9 @@ export function BriefingSetup(props: SharedSetupProps) {
             {difficulty?.description ?? 'Enemy behaviour follows the selected tier.'}
           </small>
         </label>
+        {props.campaignMissionName === null ? (
+          <BattleCodeField code={props.battleCode} onCode={props.onBattleCode} />
+        ) : null}
       </div>
     </section>
   );

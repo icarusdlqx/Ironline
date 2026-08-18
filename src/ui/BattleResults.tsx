@@ -17,7 +17,8 @@ interface BattleResultsProps {
   campaignResolved: boolean;
   missions: readonly ResultMissionOption[];
   selectedMissionId: string;
-  onReplay: () => void;
+  onSameField: () => void;
+  onNewField: () => void;
   onChooseMission: (missionId: string) => void;
   onReturnToCampaign: () => void;
   onContinueToCampaign?: () => void;
@@ -35,7 +36,8 @@ export function BattleResults({
   campaignResolved,
   missions,
   selectedMissionId,
-  onReplay,
+  onSameField,
+  onNewField,
   onChooseMission,
   onReturnToCampaign,
   onContinueToCampaign,
@@ -55,6 +57,11 @@ export function BattleResults({
           <span>{missionName}</span>
           <h2 id="battle-results-title">{report.headline}</h2>
           <p>{report.reason}</p>
+          {campaignPending ? null : (
+            <small className="battle-result-code" data-testid="battle-result-code">
+              Battle code <code>{result.seed}</code>
+            </small>
+          )}
         </header>
 
         <div className="battle-results-summary" aria-label="Battle summary">
@@ -146,8 +153,21 @@ export function BattleResults({
                 Continue to campaign
               </button>
             )}
-            <button type="button" onClick={onReplay} data-testid="replay-mission">
-              Replay mission
+            <button
+              type="button"
+              onClick={onSameField}
+              title="Restart with this mission, difficulty, lance, and Battle code."
+              data-testid="replay-mission"
+            >
+              Same field
+            </button>
+            <button
+              type="button"
+              onClick={onNewField}
+              title="Keep the mission, difficulty, and lance, but draw a new Battle code."
+              data-testid="new-field"
+            >
+              New field
             </button>
             <label>
               <span>Next mission</span>

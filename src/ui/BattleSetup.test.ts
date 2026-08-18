@@ -10,18 +10,24 @@ const common = {
   difficulties: [
     { id: 'green', label: 'Green', description: 'Enemy pilots advance cautiously.' },
   ],
+  battleCode: 'copper-relay-0000002a',
   onMission: vi.fn(),
   onDifficulty: vi.fn(),
+  onBattleCode: vi.fn(),
 };
 
 describe('briefing setup', () => {
-  it('puts both skirmish choices inside the briefing', () => {
+  it('puts the skirmish choices and editable code inside the briefing', () => {
     const html = renderToStaticMarkup(
       createElement(BriefingSetup, { ...common, campaignMissionName: null }),
     );
 
     expect(html).toContain('data-testid="briefing-mission-picker"');
     expect(html).toContain('data-testid="briefing-difficulty-picker"');
+    expect(html).toContain('data-testid="briefing-battle-code"');
+    expect(html).toContain('value="copper-relay-0000002a"');
+    expect(html).toMatch(/autocapitalize="none"/i);
+    expect(html).toContain('reproduces the opening field and battle rolls');
     expect(html).toContain('Enemy pilots advance cautiously.');
   });
 
@@ -33,6 +39,7 @@ describe('briefing setup', () => {
     expect(html).toContain('data-testid="briefing-mission-fixed"');
     expect(html).toContain('Fixed by contract');
     expect(html).not.toContain('data-testid="briefing-mission-picker"');
+    expect(html).not.toContain('data-testid="briefing-battle-code"');
   });
 });
 

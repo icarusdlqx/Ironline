@@ -138,6 +138,21 @@
   margin-top: 18px;
 }
 
+.battle-result-code {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.battle-result-code code {
+  color: var(--accent);
+  font-family: inherit;
+  text-transform: lowercase;
+}
+
 .battle-results-actions button,
 .battle-results-actions select {
   min-height: 34px;
@@ -217,5 +232,13 @@
 
   .battle-results-actions select {
     width: 100%;
+  }
+
+  .battle-results-actions > button {
+    flex: 1 1 132px;
+  }
+
+  .battle-results-actions .secondary {
+    order: 4;
   }
 }

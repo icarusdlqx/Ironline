@@ -1,26 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { dropTonnageFor, prepareDeployment, resolveMission } from '../campaign/campaign';
+import { prepareDeployment, resolveMission } from '../campaign/campaign';
 import { loadCampaign, saveCampaign } from '../campaign/save';
 import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
 import { BattleHud } from './BattleHud';
 import { BattleResults } from './BattleResults';
 import { BattleTopbar } from './BattleTopbar';
+import { Briefing } from './Briefing';
+import { briefingLanceFor } from './briefingLance';
 import { createEngine, type Engine } from './engine';
 import {
   berthDesign,
   lanceEntries,
-  lanceTonnage,
   loadLance,
   storeLance,
   type SkirmishBerth,
 } from './lance';
-import { listStoredDesigns, loadFromStorage } from './mechbay/editor';
 import { Mechbay, type BayCommission } from './mechbay/Mechbay';
-import {
-  Briefing,
-  type BriefingLance,
-} from './Panels';
 import { ObjectiveList } from './ObjectiveList';
 import { BriefingSetup } from './BattleSetup';
 import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
@@ -33,22 +29,24 @@ import {
   TRAINING_MISSION_ID,
 } from './trainingProgress';
 import { useBattleSetup } from './useBattleSetup';
+import { checkBattleCode, createNewBattleCode, resultWithBattleCode } from './battleCode';
 
 export function Battle() {
   const hostRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const state = useGame();
+  const battleSeedRef = useRef(state.battleCode);
 
   const [resolved, setResolved] = useState(false);
   const [muted, setMuted] = useState(false);
   const [lowFx, setLowFx] = useState(false);
   const missionId = useGame((game) => game.skirmishMissionId);
   const difficulty = useGame((game) => game.difficulty);
+  const [battleCodeDraft, setBattleCodeDraft] = useState(state.battleCode);
+  const battleCodeCheck = checkBattleCode(battleCodeDraft);
 
-  // The skirmish lance, edited at the briefing. Kept per mission so switching
-  // missions never carries the wrong machines across, persisted so a loadout
-  // survives a reload. Campaign drops ignore this: their lance is the
-  // dropship manifest's decision.
+  useEffect(() => setBattleCodeDraft(state.battleCode), [state.battleCode]);
+
   const [lanceEdits, setLanceEdits] = useState<Record<string, SkirmishBerth[]>>({});
   const catalog = getCatalog();
   const missions = useMemo(
@@ -69,11 +67,10 @@ export function Battle() {
     setLanceEdits((edits) => ({ ...edits, [missionId]: next }));
     storeLance(missionId, next);
   };
-  // The engine rebuilds when the lance actually changes, not on every render.
   const lanceKey = useMemo(() => JSON.stringify(lance), [lance]);
   const draftSetup = useMemo<BattleSetupKey>(
-    () => ({ missionId, difficulty, lanceKey }),
-    [missionId, difficulty, lanceKey],
+    () => ({ missionId, difficulty, lanceKey, battleCode: state.battleCode }),
+    [missionId, difficulty, lanceKey, state.battleCode],
   );
   const setup = useBattleSetup({
     draft: draftSetup,
@@ -82,7 +79,6 @@ export function Battle() {
     campaignPending: state.campaignPending,
     patch: state.patch,
   });
-  // Which berth is open in the bay, if any.
   const [outfitting, setOutfitting] = useState<number | null>(null);
 
   useEffect(() => {
@@ -94,6 +90,7 @@ export function Battle() {
     let options: Record<string, unknown> = {
       missionId: setup.engine.missionId,
       difficulty: setup.engine.difficulty,
+      seed: setup.engine.battleCode,
     };
     const entries = lanceEntries(
       getCatalog(),
@@ -124,6 +121,7 @@ export function Battle() {
         }
       }
     }
+    battleSeedRef.current = String(options.seed ?? setup.engine.battleCode);
 
     let cancelled = false;
     createEngine(host, options)
@@ -147,10 +145,15 @@ export function Battle() {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [setup.engine.missionId, setup.engine.difficulty, setup.engine.lanceKey, setup.revision]);
+  }, [setup.engine.missionId, setup.engine.difficulty, setup.engine.lanceKey, setup.engine.battleCode, setup.revision]);
 
   const restartBattle = (): void => {
     setup.restart();
+    setResolved(false);
+  };
+
+  const newField = (): void => {
+    setup.newField(createNewBattleCode(setup.engine.battleCode));
     setResolved(false);
   };
 
@@ -176,7 +179,12 @@ export function Battle() {
       const saved = loadCampaign().state;
       if (saved !== null) {
         const deployment = prepareDeployment(catalog, saved);
-        resolveMission(catalog, saved, engine.result(), deployment.lance);
+        resolveMission(
+          catalog,
+          saved,
+          resultWithBattleCode(engine.result(), battleSeedRef.current),
+          deployment.lance,
+        );
         saveCampaign(saved);
       }
       setResolved(true);
@@ -190,68 +198,11 @@ export function Battle() {
     setLowFx(engineRef.current?.renderer.lowFx ?? false);
   }, [state.ready]);
 
-  // Leaving the battle screen destroys the engine. Setup is the deliberate
-  // way back while a lance is in the field, whether money is riding on it or not.
   const deployed = setup.locked;
 
-  // The briefing's lance panel: skirmish only. A campaign drop already made
-  // these decisions on the dropship manifest.
-  const briefingLance: BriefingLance | null = state.campaignPending
+  const briefingLance = state.campaignPending
     ? null
-    : {
-        berths: lance.map((berth, index) => ({
-          index,
-          designValue: berth.empty === true ? 'empty' : (berth.designId ?? 'custom'),
-          customLabel: berth.designId === null ? (berth.design?.name ?? 'Custom build') : null,
-          pilotId: berth.pilotId,
-          tonnage: catalog.chassis.get(berthDesign(catalog, berth)?.chassisId ?? '')?.tonnage ?? 0,
-          pilot: catalog.pilots.get(berth.pilotId) ?? null,
-        })),
-        // Mechs only. Vehicles and emplacements are what the other side
-        // fields; a berth on the dropship is for something that walks.
-        designs: [...catalog.designs.values()]
-          .filter((design) => catalog.chassis.get(design.chassisId)?.frame === 'mech')
-          .map((design) => ({
-            value: design.id,
-            label: design.name,
-            tonnage: catalog.chassis.get(design.chassisId)?.tonnage ?? 0,
-          })),
-        saved: listStoredDesigns().map((id) => ({ value: `saved:${id}`, label: id })),
-        pilots: [...catalog.pilots.values()].map((pilot) => ({ id: pilot.id, name: pilot.name })),
-        total: lanceTonnage(catalog, lance),
-        allowance: dropTonnageFor(catalog, missionId),
-        onDesign: (index, value) => {
-          const next = lance.map((berth) => ({ ...berth }));
-          const target = next[index];
-          if (target === undefined) return;
-          if (value === 'empty') {
-            target.empty = true;
-            target.designId = null;
-            delete target.design;
-          } else if (value.startsWith('saved:')) {
-            // A saved build is the player's own: frozen into the berth, so
-            // later edits to the saved copy do not silently rewrite the lance.
-            const result = loadFromStorage(value.slice('saved:'.length));
-            if (result.design === null) return;
-            delete target.empty;
-            target.designId = null;
-            target.design = result.design;
-          } else if (value !== 'custom') {
-            delete target.empty;
-            target.designId = value;
-            delete target.design;
-          }
-          setLance(next);
-        },
-        onPilot: (index, pilotId) => {
-          const next = lance.map((berth) => ({ ...berth }));
-          const target = next[index];
-          if (target === undefined) return;
-          target.pilotId = pilotId;
-          setLance(next);
-        },
-        onCustomise: setOutfitting,
-      };
+    : briefingLanceFor(catalog, missionId, lance, setLance, setOutfitting);
 
   // The berth open in the bay, as a commission whose commit rewrites it.
   const outfitBerth = outfitting === null ? null : (lance[outfitting] ?? null);
@@ -278,7 +229,10 @@ export function Battle() {
     () => buildSupportOptions(catalog.rules.support, state.reservesLeft),
     [catalog.rules.support, state.reservesLeft],
   );
-  const battleResult = state.finished ? (engineRef.current?.result() ?? null) : null;
+  const battleResult =
+    state.finished && engineRef.current !== null
+      ? resultWithBattleCode(engineRef.current.result(), battleSeedRef.current)
+      : null;
 
   return (
     <div className="app">
@@ -324,20 +278,27 @@ export function Battle() {
             <BriefingSetup
               missionId={setup.engine.missionId}
               difficultyId={setup.engine.difficulty}
+              battleCode={battleCodeDraft}
               missions={missions}
               difficulties={difficulties}
               campaignMissionName={state.campaignPending ? state.missionName : null}
               onMission={selectMission}
               onDifficulty={setup.selectDifficulty}
+              onBattleCode={setBattleCodeDraft}
             />
           }
           {...(briefingLance === null ? {} : { lance: briefingLance })}
+          deployDisabled={!state.campaignPending && !battleCodeCheck.ok}
+          deployReason={state.campaignPending ? null : battleCodeCheck.reason}
           onDeploy={() => {
-            // The establishing shot belongs to the moment the lance actually
-            // drops, not to when the renderer was built behind the briefing.
-            engineRef.current?.renderer.camera.beginDropIn();
-            setup.lockDraft();
-            state.patch({ briefingSeen: true, paused: false });
+            if (!state.campaignPending && !battleCodeCheck.ok) return;
+            const battleCode = state.campaignPending
+              ? setup.engine.battleCode
+              : battleCodeCheck.ok
+                ? battleCodeCheck.code
+                : setup.engine.battleCode;
+            if (!state.campaignPending) state.patch({ battleCode });
+            setup.deploy({ ...setup.engine, battleCode });
           }}
         />
       ) : null}
@@ -373,7 +334,8 @@ export function Battle() {
             name: mission.name,
           }))}
           selectedMissionId={missionId}
-          onReplay={restartBattle}
+          onSameField={restartBattle}
+          onNewField={newField}
           onChooseMission={chooseMission}
           onReturnToCampaign={onReturnToCampaign}
           {...(missionId === TRAINING_MISSION_ID && state.missionStatus === 'success'

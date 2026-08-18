@@ -3,6 +3,7 @@ import type { MechLocation } from '../schema/common';
 import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
 import type { FormationPreset } from './formationPreset';
+import { initialBattleCode } from './battleCode';
 import { initialSkirmishMission } from './trainingProgress';
 
 export type OrderMode = 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
@@ -199,6 +200,7 @@ export interface GameState {
   log: string[];
 
   skirmishMissionId: string;
+  battleCode: string;
   difficulty: string;
   missionName: string;
   briefing: string;
@@ -228,6 +230,7 @@ export interface GameActions {
 }
 
 const LOG_LIMIT = 60;
+const INITIAL_SKIRMISH_MISSION = initialSkirmishMission();
 
 export const useGame = create<GameState & GameActions>((set) => ({
   screen: 'battle',
@@ -253,7 +256,8 @@ export const useGame = create<GameState & GameActions>((set) => ({
   enemies: [],
   log: [],
 
-  skirmishMissionId: initialSkirmishMission(),
+  skirmishMissionId: INITIAL_SKIRMISH_MISSION,
+  battleCode: initialBattleCode(INITIAL_SKIRMISH_MISSION),
   difficulty: readDifficulty(),
   missionName: '',
   briefing: '',
