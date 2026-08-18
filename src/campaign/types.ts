@@ -61,6 +61,24 @@ export interface StoreItem {
   count: number;
 }
 
+export type SalvageOutcome = 'centre_torso' | 'head' | 'ammo_explosion' | 'legged' | 'ejected';
+
+export interface SalvageCandidate {
+  designId: string;
+  name: string;
+  outcome: SalvageOutcome;
+  chassisChance: number;
+  recovered: boolean;
+}
+
+export interface SalvageProvenance {
+  kind: StoreKind;
+  itemId: string;
+  sourceDesignId: string;
+  sourceMechName: string;
+  location: MechLocation;
+}
+
 export interface CampaignLogEntry {
   day: number;
   text: string;
@@ -92,6 +110,10 @@ export interface MissionOutcome {
   salvagedItems: StoreItem[];
   /** Everything the crews cut loose, of which `salvagedItems` was taken. */
   salvageOffered: StoreItem[];
+  /** Every hull roll, including misses, at the odds the signed package bought. */
+  salvageCandidates: SalvageCandidate[];
+  /** One source record per physical part represented by `salvageOffered`. */
+  salvageProvenance: SalvageProvenance[];
   pilotCasualties: string[];
   mechsLost: string[];
   /**

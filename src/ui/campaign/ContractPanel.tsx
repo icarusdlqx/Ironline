@@ -1,6 +1,7 @@
 import { termsName, type NegotiationOption } from '../../campaign/contractTerms';
 import type { Contract, ContractTermsId } from '../../campaign/types';
 import type { CampaignNode } from '../../schema/campaign';
+import type { SalvageRules } from '../../schema/rules';
 import { SalvageTerms } from './SalvageTerms';
 
 function cbills(value: number): string {
@@ -16,6 +17,7 @@ interface ContractPanelProps {
   node: CampaignNode | null;
   options: NegotiationOption[];
   selectedTerms: ContractTermsId;
+  salvageRules: SalvageRules;
   readyMechs: number;
   finished: boolean;
   won: boolean;
@@ -30,6 +32,7 @@ export function ContractPanel({
   node,
   options,
   selectedTerms,
+  salvageRules,
   readyMechs,
   finished,
   won,
@@ -99,7 +102,12 @@ export function ContractPanel({
           </fieldset>
           {selected === null ? null : (
             <>
-              <SalvageTerms option={selected} step={selectedIndex} steps={options.length} />
+              <SalvageTerms
+                option={selected}
+                step={selectedIndex}
+                steps={options.length}
+                rules={salvageRules}
+              />
               <p className="contract-exposure">{repairTerms()}</p>
             </>
           )}

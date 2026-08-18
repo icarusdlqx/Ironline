@@ -2,25 +2,24 @@ import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
 import type { Rng } from '../sim/rng';
 import type { BattleResult, UnitResult } from '../sim/world';
-import { addToStore, takeFromStore, type StoreItem } from './types';
+import {
+  addToStore,
+  takeFromStore,
+  type SalvageCandidate,
+  type SalvageOutcome,
+  type SalvageProvenance,
+  type StoreItem,
+} from './types';
 import type { CampaignState } from './types';
 
-export type SalvageOutcome = 'centre_torso' | 'head' | 'ammo_explosion' | 'legged' | 'ejected';
-
-export interface SalvageCandidate {
-  designId: string;
-  name: string;
-  outcome: SalvageOutcome;
-  chassisChance: number;
-}
+export type { SalvageCandidate, SalvageOutcome, SalvageProvenance } from './types';
 
 export interface SalvageReport {
   candidates: SalvageCandidate[];
   chassisRecovered: string[];
-  /** What the crews actually got off the field: the shortlist to choose from. */
   offered: StoreItem[];
-  /** What was taken. A subset of `offered`, sized by the salvage rules. */
   items: StoreItem[];
+  provenance: SalvageProvenance[];
 }
 
 /**
@@ -58,12 +57,13 @@ function itemsFrom(
   unit: UnitResult,
   designId: string,
   salvageShare: number,
-): StoreItem[] {
+): { items: StoreItem[]; provenance: SalvageProvenance[] } {
   const design = catalog.designs.get(designId);
-  if (design === undefined) return [];
+  if (design === undefined) return { items: [], provenance: [] };
 
   const rules = catalog.rules.salvage;
   const recovered: StoreItem[] = [];
+  const provenance: SalvageProvenance[] = [];
 
   const chanceFor = (location: MechLocation, base: number): number => {
     const destroyed = unit.condition[location]?.destroyed ?? false;
@@ -74,16 +74,30 @@ function itemsFrom(
     const base = rng.range(rules.weaponRecoveryMin, rules.weaponRecoveryMax);
     if (rng.chance(chanceFor(mount.location, base))) {
       recovered.push({ kind: 'weapon', itemId: mount.weaponId, count: 1 });
+      provenance.push({
+        kind: 'weapon',
+        itemId: mount.weaponId,
+        sourceDesignId: designId,
+        sourceMechName: unit.name,
+        location: mount.location,
+      });
     }
   }
 
   for (const fit of design.equipment) {
     if (rng.chance(chanceFor(fit.location, rules.equipmentRecovery))) {
       recovered.push({ kind: 'equipment', itemId: fit.equipmentId, count: 1 });
+      provenance.push({
+        kind: 'equipment',
+        itemId: fit.equipmentId,
+        sourceDesignId: designId,
+        sourceMechName: unit.name,
+        location: fit.location,
+      });
     }
   }
 
-  return recovered;
+  return { items: recovered, provenance };
 }
 
 function merge(items: readonly StoreItem[]): StoreItem[] {
@@ -110,6 +124,7 @@ export function resolveSalvage(
   const candidates: SalvageCandidate[] = [];
   const chassisRecovered: string[] = [];
   const items: StoreItem[] = [];
+  const provenance: SalvageProvenance[] = [];
 
   const enemyTeams = new Set(
     result.units.filter((unit) => unit.team !== playerTeam).map((unit) => unit.team),
@@ -131,24 +146,30 @@ export function resolveSalvage(
     const towable = catalog.chassis.get(design?.chassisId ?? '')?.frame === 'mech';
 
     const chassisChance = towable ? rules.chassisRecoveryByOutcome[outcome] * salvageShare : 0;
+    const recovered = chassisChance > 0 && rng.chance(chassisChance);
     candidates.push({
       designId: unit.designId,
       name: unit.name,
       outcome,
       chassisChance,
+      recovered,
     });
 
-    if (chassisChance > 0 && rng.chance(chassisChance)) chassisRecovered.push(unit.designId);
-    items.push(...itemsFrom(catalog, rng, unit, unit.designId, salvageShare));
+    if (recovered) chassisRecovered.push(unit.designId);
+    const fieldItems = itemsFrom(catalog, rng, unit, unit.designId, salvageShare);
+    items.push(...fieldItems.items);
+    provenance.push(...fieldItems.provenance);
   }
 
   // Everything cut loose is offered; the hold takes what the commander picks.
   const offered = merge(items).slice(0, SALVAGE_OFFERED);
+  const offeredKeys = new Set(offered.map((item) => `${item.kind}:${item.itemId}`));
   return {
     candidates,
     chassisRecovered,
     offered,
     items: offered.slice(0, SALVAGE_PICKS),
+    provenance: provenance.filter((item) => offeredKeys.has(`${item.kind}:${item.itemId}`)),
   };
 }
 

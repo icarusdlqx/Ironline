@@ -196,6 +196,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         node={node}
         options={options}
         selectedTerms={selectedTerms}
+        salvageRules={catalog.rules.salvage}
         readyMechs={lance.length}
         finished={state.finished}
         won={state.won}
@@ -258,10 +259,11 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
               // The report the debrief is choosing from lives on the record, so
               // re-picking is a swap against what was already taken aboard.
               const report = {
-                candidates: [],
+                candidates: record.salvageCandidates ?? [],
                 chassisRecovered: record.salvagedChassis,
                 offered: record.salvageOffered ?? [],
                 items: record.salvagedItems,
+                provenance: record.salvageProvenance ?? [],
               };
               rechooseSalvage(draft, report, picks);
               record.salvagedItems = report.items;

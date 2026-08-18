@@ -3,8 +3,16 @@ import { useState } from 'react';
 import { termsName } from '../../campaign/contractTerms';
 import { storeItemValueOf } from '../../campaign/market';
 import { SALVAGE_PICKS } from '../../campaign/salvage';
-import type { CampaignState, MissionOutcome, StoreItem } from '../../campaign/types';
+import type {
+  CampaignState,
+  MissionOutcome,
+  SalvageCandidate,
+  SalvageOutcome,
+  SalvageProvenance,
+  StoreItem,
+} from '../../campaign/types';
 import { salvageItemFacts } from './salvageFacts';
+import './salvage.css';
 
 const DEBRIEFED_KEY = 'ironline.campaign.debriefed';
 
@@ -34,6 +42,42 @@ function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
 }
 
+const OUTCOME_NAMES: Record<SalvageOutcome, string> = {
+  centre_torso: 'Centre torso destroyed',
+  head: 'Head destroyed',
+  ammo_explosion: 'Ammo explosion',
+  legged: 'Both legs destroyed; side defeated',
+  ejected: 'Pilot ejected',
+};
+
+const LOCATION_NAMES: Record<SalvageProvenance['location'], string> = {
+  head: 'head',
+  centre_torso: 'centre torso',
+  left_torso: 'left torso',
+  right_torso: 'right torso',
+  left_arm: 'left arm',
+  right_arm: 'right arm',
+  left_leg: 'left leg',
+  right_leg: 'right leg',
+};
+
+function chance(value: number): string {
+  return `${Number((value * 100).toFixed(1))}%`;
+}
+
+function sourceName(catalog: Catalog, source: SalvageProvenance): string {
+  const designName = catalog.designs.get(source.sourceDesignId)?.name;
+  const mech =
+    designName === undefined || designName === source.sourceMechName
+      ? source.sourceMechName
+      : `${source.sourceMechName} / ${designName}`;
+  return `${mech}, ${LOCATION_NAMES[source.location]}`;
+}
+
+function candidateName(catalog: Catalog, candidate: SalvageCandidate): string {
+  return candidate.name || catalog.designs.get(candidate.designId)?.name || candidate.designId;
+}
+
 /**
  * The debrief. A pilot's whole career happened in a scrolling log before this:
  * they gained experience, they were promoted, and the only trace was a line
@@ -55,6 +99,8 @@ export function Debrief({
 }) {
   const mission = catalog.missions.get(outcome.missionId);
   const offered = outcome.salvageOffered ?? [];
+  const candidates = outcome.salvageCandidates ?? [];
+  const provenance = outcome.salvageProvenance ?? [];
   const [picks, setPicks] = useState<string[]>(() =>
     outcome.salvagedItems.map((item) => `${item.kind}:${item.itemId}`),
   );
@@ -90,6 +136,34 @@ export function Debrief({
           </p>
         </header>
 
+        {candidates.length === 0 ? null : (
+          <div className="debrief-recovery" data-testid="debrief-recovery">
+            <h4>Field recovery ledger</h4>
+            <p>
+              Eligible hull odds include the signed package. Ineligible hulls remain on the record without a roll.
+            </p>
+            <ul>
+              {candidates.map((candidate, index) => (
+                <li
+                  key={`${candidate.designId}-${candidate.name}-${index}`}
+                  data-testid={`debrief-recovery-${index}`}
+                >
+                  <span className="recovery-name">{candidateName(catalog, candidate)}</span>
+                  <span className="recovery-outcome">{OUTCOME_NAMES[candidate.outcome]}</span>
+                  <span className="recovery-chance">{chance(candidate.chassisChance)}</span>
+                  <span className={candidate.recovered ? 'recovery-result recovered' : 'recovery-result'}>
+                    {candidate.recovered
+                      ? 'hull recovered'
+                      : candidate.chassisChance > 0
+                        ? 'not recovered'
+                        : 'not eligible'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {offered.length === 0 ? null : (
           <div className="debrief-salvage" data-testid="debrief-salvage">
             <h4>
@@ -108,6 +182,9 @@ export function Debrief({
                     (held) => held.kind === item.kind && held.itemId === item.itemId,
                   )?.count ?? 0;
                 const facts = salvageItemFacts(catalog, state, item, takenCount);
+                const sources = provenance.filter(
+                  (source) => source.kind === item.kind && source.itemId === item.itemId,
+                );
                 return (
                   <li key={key}>
                     <button
@@ -125,6 +202,11 @@ export function Debrief({
                       <span className="salvage-spec">{facts.specification}</span>
                       <span className="salvage-fit">{facts.fit}</span>
                       <span className="salvage-owned">Owned before this haul: {facts.ownedBefore}</span>
+                      {sources.length === 0 ? null : (
+                        <span className="salvage-source">
+                          Field source: {sources.map((source) => sourceName(catalog, source)).join('; ')}
+                        </span>
+                      )}
                       <span className="salvage-value">
                         {cbills(facts.buildValue)} build · {cbills(facts.saleBasis)} mounted sale basis
                       </span>

@@ -15,7 +15,12 @@ import {
 import { storeItemSaleBasis, storeItemValueOf } from './market';
 import { fitFromStore, planFit } from './refit';
 import { estimateRepair, startRepair } from './repair';
-import { isPilotAvailable, storeCount, type CampaignState } from './types';
+import {
+  isPilotAvailable,
+  storeCount,
+  type CampaignState,
+  type MissionOutcome,
+} from './types';
 
 const CAMPAIGN_ID = 'border_dispute';
 
@@ -80,6 +85,33 @@ function repairAll(state: CampaignState): void {
   if (longest > 0) advanceDays(catalog, state, longest);
 }
 
+function expectRecoveryLedger(record: MissionOutcome): void {
+  expect(record.salvageCandidates.length).toBeGreaterThan(0);
+  expect(record.salvageCandidates.every((entry) => entry.chassisChance >= 0)).toBe(true);
+  expect(record.salvageCandidates.every((entry) => entry.chassisChance <= 1)).toBe(true);
+  expect(record.salvageCandidates.filter((entry) => entry.recovered).map((entry) => entry.designId))
+    .toEqual(record.salvagedChassis);
+
+  for (const item of record.salvageOffered) {
+    const sources = record.salvageProvenance.filter(
+      (source) => source.kind === item.kind && source.itemId === item.itemId,
+    );
+    expect(sources, `${item.itemId} lost its field source`).toHaveLength(item.count);
+    for (const source of sources) {
+      const design = catalog.designs.get(source.sourceDesignId);
+      const fitted =
+        source.kind === 'weapon'
+          ? design?.mounts.some(
+              (mount) => mount.weaponId === source.itemId && mount.location === source.location,
+            )
+          : design?.equipment.some(
+              (fit) => fit.equipmentId === source.itemId && fit.location === source.location,
+            );
+      expect(fitted, `${item.itemId} source is not fitted at ${source.location}`).toBe(true);
+    }
+  }
+}
+
 describe('campaign contracts', () => {
   // The generous timeout is headroom for a loaded CI worker, not a target: the
   // seed scan takes ~15s alone but shares the machine with every other file.
@@ -100,6 +132,7 @@ describe('campaign contracts', () => {
 
       const crate = candidate.store.filter((item) => item.kind === 'weapon');
       if (crate.length === 0) continue;
+      expectRecoveryLedger(candidate.history[0]);
       for (const item of candidate.history[0]?.salvageOffered ?? []) {
         expect(storeItemValueOf(catalog, item), `${item.itemId} has no build value`).toBeGreaterThan(0);
         expect(storeItemSaleBasis(catalog, item), `${item.itemId} has no mounted sale basis`).toBeGreaterThan(0);
