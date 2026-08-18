@@ -1,4 +1,5 @@
 import { Color, PointLight, Scene, Vector3 } from 'three';
+import type { Weapon } from '../schema/weapon';
 import type { SimEvent } from '../sim/events';
 import type { EntityId, Vec2, World } from '../sim/types';
 import type { TacticalCamera } from './camera';
@@ -10,6 +11,13 @@ interface MuzzleFlash {
   ttl: number;
 }
 
+const DEFAULT_SHOT: Weapon['visual'] = {
+  style: 'beam',
+  colour: '#ffffff',
+  width: 2,
+  arc: 0,
+};
+
 /** Combat effects and camera recoil share one clock and one fixed budget. */
 export class BattleEffects {
   private readonly tracers = new TracerLayer();
@@ -20,6 +28,7 @@ export class BattleEffects {
   private shakeAmplitude = 0;
   private shakeTime = 0;
   private elapsed = 0;
+  private readonly muzzle = new Vector3();
 
   constructor(
     private readonly scene: Scene,
@@ -27,6 +36,7 @@ export class BattleEffects {
     private readonly camera: TacticalCamera,
     private readonly heightAt: (x: number, y: number) => number,
     private readonly positionOf: (id: EntityId) => Vec2 | null,
+    private readonly muzzleOf: (id: EntityId, weaponId: string, out: Vector3) => boolean,
   ) {
     this.smoke = new SmokeLayer(fogColour);
     scene.add(this.tracers.group, this.jets.group, this.smoke.mesh, this.scars.mesh);
@@ -103,17 +113,23 @@ export class BattleEffects {
 
       const shooter = this.positionOf(event.shooterId);
       const target = this.positionOf(event.targetId);
-      if (shooter === null || target === null) continue;
+      if (target === null) continue;
+
+      if (!this.muzzleOf(event.shooterId, event.weaponId, this.muzzle)) {
+        if (shooter === null) continue;
+        this.muzzle.set(shooter.x, this.heightAt(shooter.x, shooter.y) + 14, shooter.y);
+      }
 
       this.tracers.fire(
-        shooter,
+        this.muzzle,
         target,
-        weapon?.type ?? 'energy',
+        weapon?.visual ?? DEFAULT_SHOT,
         weapon?.projectiles ?? 1,
+        weapon?.velocity ?? null,
         colour,
         this.heightAt,
       );
-      this.muzzleLight(shooter, colour, weapon?.damage ?? 5);
+      this.muzzleLight(this.muzzle, colour, weapon?.damage ?? 5);
     }
   }
 
@@ -140,14 +156,14 @@ export class BattleEffects {
     this.shakeAmplitude = Math.min(9, this.shakeAmplitude + magnitude);
   }
 
-  private muzzleLight(at: Vec2, colour: number, damage: number): void {
+  private muzzleLight(at: Vector3, colour: number, damage: number): void {
     const idle = this.flashes.find((flash) => flash.ttl <= 0);
     const flash = idle ?? this.newFlash();
     if (flash === null) return;
     flash.ttl = 0.09;
     flash.light.color.setHex(colour);
     flash.light.intensity = 300 + damage * 40;
-    flash.light.position.set(at.x, this.heightAt(at.x, at.y) + 16, at.y);
+    flash.light.position.copy(at);
     flash.light.visible = true;
   }
 

@@ -2,6 +2,7 @@ import {
   BufferGeometry,
   CylinderGeometry,
   Group,
+  Material,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -9,19 +10,13 @@ import {
 } from 'three';
 import { armourShell, chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
-import type { WeaponType } from '../schema/weapon';
 import { chassisBlueprint, type BlueprintPart, type HardpointMap } from '../render/blueprint';
 import type { Silhouette } from '../render/shape';
 import { radiusFor } from '../render/shape';
 import { createMechMaterials, createWeaponMaterial } from './mechMaterials';
+import { buildWeaponModel, type MountArt, type WeaponRig } from './weaponModels';
 
-export interface MountArt {
-  location: MechLocation;
-  type: WeaponType;
-  tonnage: number;
-  /** Missile racks are boxes of tubes; the rest are barrels. */
-  projectiles: number;
-}
+export type { MountArt } from './weaponModels';
 
 /** One articulated leg: the hip swings the whole leg, the knee bends the shin. */
 export interface LegRig {
@@ -41,6 +36,8 @@ export interface MechModel {
   torsoRestY: number;
   /** One full stride, in world metres, for pacing the walk cycle. */
   strideLength: number;
+  /** Authored mounts keep their own muzzle and recoil travel after construction. */
+  weapons: WeaponRig[];
 }
 
 /**
@@ -110,6 +107,14 @@ export function buildMechModel(
 
   const root = new Group();
   const torso = new Group();
+  const weapons: WeaponRig[] = [];
+  const ownedMaterials: Material[] = [...Object.values(tones), ...Object.values(burnt)];
+  const boreMaterial = new MeshStandardMaterial({
+    color: 0x1d2226,
+    roughness: 0.5,
+    metalness: 0.7,
+  });
+  ownedMaterials.push(boreMaterial);
 
   // Each leg hangs from a hip pivot, with the shin and foot on a knee pivot
   // inside it, so the walk cycle can swing and bend them like a machine
@@ -170,22 +175,27 @@ export function buildMechModel(
     stacked.set(mount.location, index + 1);
 
     const material = createWeaponMaterial(mount.type);
+    ownedMaterials.push(material);
     const heft = 0.5 + Math.min(1, mount.tonnage / 14);
-    const piece = weaponPiece(mount, heft, scale, material);
-    piece.traverse((child) => {
+    const weapon = buildWeaponModel(mount, heft, scale, material, boreMaterial);
+    weapon.root.traverse((child) => {
       if (child instanceof Mesh) child.castShadow = castsShadow(child);
     });
 
-    piece.position.set(
+    const hardpoint = new Group();
+    hardpoint.position.set(
       anchor[0] * scale,
       (anchor[1] + index * 0.22) * scale,
       anchor[2] * scale,
     );
-    torso.add(piece);
+    hardpoint.add(weapon.root);
+    torso.add(hardpoint);
+    weapons.push(weapon.rig);
   }
 
   torso.position.y = plan.torsoY * scale;
   root.add(torso);
+  root.userData.ownedMaterials = ownedMaterials;
 
   return {
     root,
@@ -195,6 +205,7 @@ export function buildMechModel(
     torsoRestY: plan.torsoY * scale,
     // A stride is roughly what the legs can reach: comfortable, not maximal.
     strideLength: plan.legs.hipHeight * scale * 1.15,
+    weapons,
   };
 }
 
@@ -206,75 +217,20 @@ function jointWorld(joint: Group, rig: LegRig): import('three').Vector3 {
   return rig.hip.position.clone();
 }
 
-/** A gun that looks like its kind: a barrel, a heavy tube, or a rack of cells. */
-function weaponPiece(
-  mount: MountArt,
-  heft: number,
-  scale: number,
-  material: MeshStandardMaterial,
-): Group {
-  const piece = new Group();
-
-  if (mount.type === 'missile') {
-    // A launcher is a box of tubes, and a bigger rack is a bigger box. The
-    // tube faces are drilled in so it reads as a launcher and not a crate.
-    const cells = Math.max(2, Math.min(5, Math.round(Math.sqrt(mount.projectiles))));
-    const height = 0.13 * cells * scale;
-    const width = 0.15 * cells * scale;
-    const body = new Mesh(chamferedBox(0.34 * heft * scale, height, width), material);
-    piece.add(body);
-
-    const bore = Math.min(height, width) / (cells * 2.4);
-    for (let row = 0; row < cells; row += 1) {
-      for (let column = 0; column < cells; column += 1) {
-        const tube = new Mesh(new CylinderGeometry(bore, bore, 0.08 * scale, 6), MUZZLE_MATERIAL);
-        tube.rotation.z = -Math.PI / 2;
-        tube.position.set(
-          0.18 * heft * scale,
-          (row / (cells - 1 || 1) - 0.5) * height * 0.66,
-          (column / (cells - 1 || 1) - 0.5) * width * 0.66,
-        );
-        piece.add(tube);
-      }
-    }
-    return piece;
-  }
-
-  const bore = (mount.type === 'ballistic' ? 0.085 : 0.055) * heft * scale;
-  const length = (mount.type === 'ballistic' ? 0.95 : 0.8) * heft * scale;
-
-  // Housing at the breech, barrel out of it, and a muzzle ring at the end —
-  // enough shape that a gun is not a floating stick.
-  const housing = new Mesh(chamferedBox(length * 0.42, bore * 3.4, bore * 3.4), material);
-  housing.position.x = -length * 0.22;
-  piece.add(housing);
-
-  const barrel = new Mesh(new CylinderGeometry(bore * 0.82, bore, length, 12), material);
-  barrel.rotation.z = -Math.PI / 2;
-  barrel.position.x = length * 0.2;
-  piece.add(barrel);
-
-  const muzzle = new Mesh(new CylinderGeometry(bore * 1.25, bore * 1.25, bore * 1.2, 12), MUZZLE_MATERIAL);
-  muzzle.rotation.z = -Math.PI / 2;
-  muzzle.position.x = length * 0.68;
-  piece.add(muzzle);
-
-  return piece;
-}
-
-/** Shared dark metal for bores and muzzle rings; never tinted by team. */
-const MUZZLE_MATERIAL = new MeshStandardMaterial({
-  color: 0x1d2226,
-  roughness: 0.5,
-  metalness: 0.7,
-});
-
 /** Frees the geometry and materials a model owns. */
 export function disposeModel(root: Object3D): void {
+  const geometries = new Set<BufferGeometry>();
+  const materials = new Set<Material>();
   root.traverse((child) => {
     if (!(child instanceof Mesh)) return;
-    child.geometry.dispose();
-    if (Array.isArray(child.material)) child.material.forEach((entry) => entry.dispose());
-    else child.material.dispose();
+    geometries.add(child.geometry);
+    if (Array.isArray(child.material)) child.material.forEach((entry) => materials.add(entry));
+    else materials.add(child.material);
   });
+  const owned = root.userData.ownedMaterials;
+  if (Array.isArray(owned)) {
+    for (const entry of owned) if (entry instanceof Material) materials.add(entry);
+  }
+  geometries.forEach((geometry) => geometry.dispose());
+  materials.forEach((material) => material.dispose());
 }
