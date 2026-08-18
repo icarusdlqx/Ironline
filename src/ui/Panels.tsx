@@ -1,7 +1,8 @@
+import type { ReactNode } from 'react';
 import { getCatalog } from '../schema/load';
-import type { SupportCallId } from '../sim/support';
 import { PilotStats, type RateablePilot } from './PilotStats';
 import type { HitPreviewView, ObjectiveView, UnitSnapshot, WeaponSnapshot, ZoneView } from './store';
+import type { SupportOption } from './supportOptions';
 
 export function HeatBar({
   heat,
@@ -254,7 +255,9 @@ export function ObjectiveList({
                     ? 'held'
                     : zone.contender === 0
                       ? `${Math.round((zone.progress / zone.captureSeconds) * 100)}%`
-                      : 'enemy'}
+                      : zone.owner === null
+                        ? 'neutral'
+                        : 'enemy'}
               </span>
             </li>
           ))}
@@ -262,13 +265,6 @@ export function ObjectiveList({
       )}
     </div>
   );
-}
-
-export interface SupportOption {
-  id: SupportCallId;
-  label: string;
-  cost: number;
-  hint: string;
 }
 
 export function SupportPalette({
@@ -280,9 +276,9 @@ export function SupportPalette({
 }: {
   options: readonly SupportOption[];
   resourcePoints: number;
-  active: SupportCallId | null;
+  active: SupportOption['id'] | null;
   reservesLeft: number;
-  onPick: (call: SupportCallId) => void;
+  onPick: (call: SupportOption['id']) => void;
 }) {
   return (
     <div className="support" data-testid="support-palette">
@@ -292,18 +288,29 @@ export function SupportPalette({
       {options.map((option) => {
         const unaffordable = resourcePoints < option.cost;
         const noReserves = option.id === 'reinforcement' && reservesLeft === 0;
+        const status = noReserves
+          ? 'No mission reserve remains.'
+          : unaffordable
+            ? `${option.cost - resourcePoints} RP short.`
+            : active === option.id
+              ? `Armed · ${option.placement}`
+              : option.placement;
         return (
           <button
             key={option.id}
             type="button"
             className={`support-call ${active === option.id ? 'active' : ''}`}
             disabled={unaffordable || noReserves}
-            title={noReserves ? 'The dropship has no reserves left' : `${option.hint} — ${option.cost} RP`}
+            title={status}
             onClick={() => onPick(option.id)}
             data-testid={`support-${option.id}`}
           >
-            <span className="support-label">{option.label}</span>
-            <span className="support-cost">{option.cost}</span>
+            <span className="support-call-head">
+              <span className="support-label">{option.label}</span>
+              <span className="support-cost">{option.cost} RP</span>
+            </span>
+            <span className="support-effect">{option.effect}</span>
+            <span className="support-placement">{status}</span>
           </button>
         );
       })}
@@ -341,6 +348,7 @@ export function Briefing({
   text,
   objectives,
   resourcePoints,
+  setup,
   lance,
   onDeploy,
 }: {
@@ -348,6 +356,7 @@ export function Briefing({
   text: string;
   objectives: readonly ObjectiveView[];
   resourcePoints: number;
+  setup?: ReactNode;
   /** Absent for campaign drops, whose lance the dropship manifest decided. */
   lance?: BriefingLance;
   onDeploy: () => void;
@@ -369,6 +378,8 @@ export function Briefing({
           </li>
         ))}
       </ul>
+
+      {setup}
 
       {lance === undefined ? null : (
         <div className="briefing-lance" data-testid="briefing-lance">

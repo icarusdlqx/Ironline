@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { MechLocation } from '../schema/common';
 import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
+import { initialSkirmishMission } from './trainingProgress';
 
 export type OrderMode = 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
 
@@ -35,6 +36,35 @@ export interface WeaponSnapshot {
   longRange: number;
   /** Where the weapon is bolted, so a lost arm explains a silent gun. */
   location: MechLocation;
+}
+
+export interface TimedActionSnapshot {
+  label: string;
+  note: string;
+  ready: boolean;
+  activeRemaining: number;
+  cooldownRemaining: number;
+}
+
+export interface StabilitySnapshot {
+  value: number;
+  staggerAt: number;
+  knockdownAt: number;
+  footingRemaining: number;
+}
+
+export type HeatBandTone = 'ok' | 'warn' | 'danger' | 'critical';
+
+export interface ReactorSnapshot {
+  /** Heat carried if every live gun bears throughout the next available alpha window. */
+  alphaHeat: number;
+  projectedFraction: number;
+  projectedBand: string;
+  projectedTone: HeatBandTone;
+  governorHoldAt: number;
+  governorResumeAt: number;
+  /** Groups the pilot asked for but the governor has taken out of the firing plan. */
+  shedGroups: number[];
 }
 
 export interface LocationSnapshot {
@@ -79,6 +109,10 @@ export interface UnitSnapshot {
   groupEnabled: boolean[];
   holdingFire: boolean;
   heatSafety: boolean;
+  ability: TimedActionSnapshot;
+  alpha: TimedActionSnapshot;
+  stability: StabilitySnapshot;
+  reactor: ReactorSnapshot;
   hasMoveOrder: boolean;
   /** How far the jets can throw this mech; 0 when it has none. */
   jumpRange: number;
@@ -145,6 +179,7 @@ export interface GameState {
   speed: number;
   tick: number;
   elapsedSeconds: number;
+  missionDurationSeconds: number;
   finished: boolean;
   winner: number | null;
   playerTeam: number;
@@ -197,6 +232,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   speed: 1,
   tick: 0,
   elapsedSeconds: 0,
+  missionDurationSeconds: 0,
   finished: false,
   winner: null,
   playerTeam: 0,
@@ -209,7 +245,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   enemies: [],
   log: [],
 
-  skirmishMissionId: 'skirmish_ridge',
+  skirmishMissionId: initialSkirmishMission(),
   difficulty: readDifficulty(),
   missionName: '',
   briefing: '',

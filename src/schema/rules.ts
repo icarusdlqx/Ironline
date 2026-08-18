@@ -566,7 +566,11 @@ export const EconomyRulesSchema = z.strictObject({
   negotiation: z.strictObject({
     payoutFloorFactor: z.number().positive().max(1),
     payoutCeilingFactor: z.number().min(1).max(4),
-    steps: z.number().int().min(2).max(20),
+    steps: z.literal(3),
+  }),
+  contractFailure: z.strictObject({
+    recoveryDays: z.number().int().positive().max(30),
+    recoveryCostFactor: z.number().positive().max(1),
   }),
   repair: z.strictObject({
     armourCostPerPoint: z.number().nonnegative(),

@@ -40,10 +40,13 @@ export interface PilotRecord {
   mechId: string | null;
 }
 
+export type ContractTermsId = 'fee_first' | 'standard' | 'salvage_first';
+
 export interface Contract {
   nodeId: string;
   missionId: string;
   employer: string;
+  termsId: ContractTermsId;
   payout: number;
   salvageShare: number;
   acceptedOnDay: number;
@@ -71,7 +74,9 @@ export interface PilotReport {
   kills: number;
   damage: number;
   xp: number;
-  /** Skills raised on the strength of this drop, as "gunnery 3". */
+  /** Unspent total after this award; old reports did not record it. */
+  xpBanked: number | null;
+  /** Skills raised by old automatic debriefs, retained for their saved reports. */
   promotions: string[];
   fate: 'returned' | 'injured' | 'killed';
 }
@@ -79,6 +84,7 @@ export interface PilotReport {
 export interface MissionOutcome {
   nodeId: string;
   missionId: string;
+  termsId: ContractTermsId;
   won: boolean;
   day: number;
   payout: number;

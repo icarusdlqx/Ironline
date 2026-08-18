@@ -31,7 +31,6 @@ export interface ViewState extends MarkerViewState {
   hovered: EntityId | null;
   cursor: Vec2 | null;
   selectionBox: { a: Vec2; b: Vec2 } | null;
-  supportRun: { at: Vec2; heading: number; length: number; width: number } | null;
 }
 
 function readLowFx(): boolean {

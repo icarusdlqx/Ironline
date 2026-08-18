@@ -10,6 +10,20 @@ export function offerPeriod(catalog: Catalog, day: number): number {
   return Math.floor(day / catalog.rules.economy.sideContracts.refreshDays);
 }
 
+/** The first day on which this board is no longer the board. */
+export function nextOfferDay(catalog: Catalog, day: number): number {
+  const refreshDays = catalog.rules.economy.sideContracts.refreshDays;
+  return (offerPeriod(catalog, day) + 1) * refreshDays;
+}
+
+export interface SideContractProfile {
+  operation: string;
+  battlefield: string;
+  dropTonnage: number;
+  oppositionTonnage: number;
+  objectives: string[];
+}
+
 /**
  * Everything on the other side of a mission, by weight. This is the difficulty
  * index a side contract is priced off: it needs no new authored numbers and it
@@ -118,6 +132,26 @@ function dropAllowance(catalog: Catalog, missionId: string): number {
     const chassis = design === undefined ? undefined : catalog.chassis.get(design.chassisId);
     return total + (chassis?.tonnage ?? 0);
   }, 0);
+}
+
+/** Authored mission facts keep a posting specific without promising a generated condition. */
+export function sideContractProfile(
+  catalog: Catalog,
+  missionId: string,
+): SideContractProfile | null {
+  const mission = catalog.missions.get(missionId);
+  if (mission === undefined) return null;
+
+  const map = catalog.maps.get(mission.mapId);
+  return {
+    operation: mission.type.replaceAll('_', ' '),
+    battlefield: map?.name ?? mission.mapId,
+    dropTonnage: dropAllowance(catalog, missionId),
+    oppositionTonnage: oppositionTonnage(catalog, missionId),
+    objectives: mission.objectives
+      .filter((objective) => objective.team === PLAYER_TEAM && objective.required)
+      .map((objective) => objective.label),
+  };
 }
 
 /** True for an id this module minted, as opposed to an authored campaign node. */

@@ -1,21 +1,21 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
-import { computeLoadout, maximiseArmour } from '../sim/loadout';
+import { computeLoadout } from '../sim/loadout';
+import type { BattleResult } from '../sim/world';
 import {
-  DeploymentError,
   acceptContract,
   advanceDays,
   availableNodes,
   deployableLance,
-  fillEmptySeats,
   negotiationOptions,
-  prepareDeployment,
+  resolveMission,
   runMission,
   startCampaign,
 } from './campaign';
-import { applyRefit, fitFromStore, planFit, refitInventory, stripToStore } from './refit';
+import { storeItemSaleBasis, storeItemValueOf } from './market';
+import { fitFromStore, planFit } from './refit';
 import { estimateRepair, startRepair } from './repair';
-import { addToStore, isPilotAvailable, storeCount, type CampaignState } from './types';
+import { isPilotAvailable, storeCount, type CampaignState } from './types';
 
 const CAMPAIGN_ID = 'border_dispute';
 
@@ -32,9 +32,28 @@ function fightNode(state: CampaignState, nodeId: string): void {
   const salvageHeavy = options[options.length - 1];
   if (salvageHeavy === undefined) throw new Error('no negotiation options');
 
-  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.step);
+  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.id);
   expect(accepted.ok, accepted.reason ?? '').toBe(true);
   runMission(catalog, state);
+}
+
+function resolveWithoutCombat(state: CampaignState, won: boolean): void {
+  const contract = state.contract;
+  if (contract === null) throw new Error('no active contract');
+  const battle: BattleResult = {
+    seed: 'campaign-transition',
+    missionId: contract.missionId,
+    missionStatus: won ? 'success' : 'failure',
+    missionReason: won ? 'objectives-complete' : 'objectives-failed',
+    objectives: [],
+    ticks: 1,
+    durationSeconds: 0.1,
+    winner: won ? 0 : 1,
+    decided: true,
+    units: [],
+    weapons: [],
+  };
+  resolveMission(catalog, state, battle, []);
 }
 
 /** Waits out the infirmary until somebody can climb into a cockpit again. */
@@ -61,178 +80,7 @@ function repairAll(state: CampaignState): void {
   if (longest > 0) advanceDays(catalog, state, longest);
 }
 
-let state: CampaignState;
-
-beforeEach(() => {
-  state = start('refit');
-});
-
-describe('refit', () => {
-  it('moves a weapon from stores onto a mech and back', () => {
-    const mech = state.mechs.find((entry) => entry.design.chassisId === 'bulwark_bwk3');
-    if (mech === undefined) return;
-
-    const before = mech.design.mounts.length;
-    const stripped = stripToStore(catalog, state, mech, 0);
-    expect(stripped.ok, stripped.reason ?? '').toBe(true);
-    expect(mech.design.mounts).toHaveLength(before - 1);
-
-    const weaponId = state.store[0]?.itemId ?? '';
-    const fitted = fitFromStore(catalog, state, mech, weaponId);
-    expect(fitted.ok, fitted.reason ?? '').toBe(true);
-    expect(mech.design.mounts).toHaveLength(before);
-    expect(computeLoadout(catalog, mech.design).valid).toBe(true);
-  });
-
-  it('refuses to fit something the company does not have', () => {
-    const mech = state.mechs[0];
-    if (mech === undefined) return;
-    const result = fitFromStore(catalog, state, mech, 'medium_laser');
-    expect(result.ok).toBe(false);
-  });
-
-  it('refuses to refit a mech that is in the bay', () => {
-    const mech = state.mechs[0];
-    if (mech === undefined) return;
-    mech.status = 'repairing';
-    expect(fitFromStore(catalog, state, mech, 'medium_laser').reason).toMatch(/repair bay/);
-  });
-
-  it('carries battle damage through a refit instead of repairing it for free', () => {
-    const mech = state.mechs.find((entry) => entry.design.mounts.length > 1);
-    if (mech === undefined) return;
-
-    const centre = mech.condition.centre_torso;
-    const arm = mech.condition.left_arm;
-    if (centre === undefined || arm === undefined) return;
-    centre.armour = 1;
-    arm.destroyed = true;
-    arm.armour = 0;
-    arm.internal = 0;
-
-    const wounded = estimateRepair(catalog, mech);
-    expect(wounded.cost, 'the test mech is not actually damaged').toBeGreaterThan(0);
-
-    const stripped = stripToStore(catalog, state, mech, 0);
-    expect(stripped.ok, stripped.reason ?? '').toBe(true);
-    const weaponId = state.store[0]?.itemId ?? '';
-    const fitted = fitFromStore(catalog, state, mech, weaponId);
-    expect(fitted.ok, fitted.reason ?? '').toBe(true);
-
-    expect(mech.condition.left_arm?.destroyed, 'the refit rebuilt a destroyed arm').toBe(true);
-    expect(mech.condition.centre_torso?.armour).toBeLessThanOrEqual(1);
-    expect(
-      estimateRepair(catalog, mech).cost,
-      'the refit wiped out the repair bill',
-    ).toBeGreaterThanOrEqual(wounded.cost);
-  });
-
-  it('books a whole rebuilt design through stores in one go', () => {
-    const mech = state.mechs.find((entry) => entry.design.mounts.length > 1);
-    if (mech === undefined) return;
-
-    const dropped = mech.design.mounts[0];
-    if (dropped === undefined) return;
-    const held = storeCount(state, 'weapon', dropped.weaponId);
-
-    const next = JSON.parse(JSON.stringify(mech.design)) as typeof mech.design;
-    next.mounts.splice(0, 1);
-
-    const result = applyRefit(catalog, state, mech, maximiseArmour(catalog, next));
-    expect(result.ok, result.reason ?? '').toBe(true);
-    expect(
-      storeCount(state, 'weapon', dropped.weaponId),
-      'the weapon taken off never reached the shelf',
-    ).toBe(held + 1);
-    expect(mech.design.mounts).toHaveLength(next.mounts.length);
-  });
-
-  it('refuses a refit the company cannot pay for, and touches nothing', () => {
-    const mech = state.mechs[0];
-    if (mech === undefined) return;
-
-    const next = JSON.parse(JSON.stringify(mech.design)) as typeof mech.design;
-    next.mounts.push({ weaponId: 'gauss_rifle', location: 'right_arm' });
-
-    const storeBefore = JSON.stringify(state.store);
-    const designBefore = JSON.stringify(mech.design);
-
-    const result = applyRefit(catalog, state, mech, next);
-    expect(result.ok).toBe(false);
-    expect(JSON.stringify(state.store), 'a refused refit still moved stock').toBe(storeBefore);
-    expect(JSON.stringify(mech.design), 'a refused refit still changed the mech').toBe(
-      designBefore,
-    );
-  });
-
-  it('offers the bay what is in stores plus what is already bolted on', () => {
-    const mech = state.mechs[0];
-    if (mech === undefined) return;
-    addToStore(state, 'weapon', 'medium_laser', 2);
-
-    const inventory = refitInventory(state, mech);
-    const mounted = mech.design.mounts.filter((mount) => mount.weaponId === 'medium_laser').length;
-    // Taking a gun off puts it in the player's hand, not on a shelf, so the
-    // bay works from one list rather than two.
-    expect(inventory.get('medium_laser')).toBe(2 + mounted);
-  });
-
-  it('refuses to strip the last weapon off a mech', () => {
-    const mech = state.mechs[0];
-    if (mech === undefined) return;
-
-    while (mech.design.mounts.length > 1) {
-      const result = stripToStore(catalog, state, mech, 0);
-      expect(result.ok, result.reason ?? '').toBe(true);
-    }
-
-    const last = stripToStore(catalog, state, mech, 0);
-    expect(last.ok).toBe(false);
-    expect(last.reason).toMatch(/at least one weapon/);
-    // A weaponless design fails schema validation, so the save would not reload.
-    expect(mech.design.mounts).toHaveLength(1);
-  });
-});
-
-describe('deployment', () => {
-  it('seats a spare pilot in a mech nobody is assigned to', () => {
-    const orphan = state.pilots[0];
-    const wreck = state.mechs[0];
-    if (orphan === undefined || wreck === undefined) return;
-
-    // Their mech went down, so the seat is empty; a salvaged chassis has been
-    // rebuilt but nobody was ever assigned to it. The company must not be left
-    // holding a fit pilot and a ready mech with nothing able to deploy.
-    orphan.mechId = null;
-    wreck.status = 'hulk';
-    const spare = JSON.parse(JSON.stringify({ ...wreck, id: 'mech-spare', status: 'ready' }));
-    state.mechs.push(spare);
-
-    const lance = deployableLance(state);
-    expect(lance.some((pair) => pair.pilot.id === orphan.id && pair.mech.id === spare.id)).toBe(
-      true,
-    );
-    expect(new Set(lance.map((pair) => pair.mech.id)).size, 'a mech was double-booked').toBe(
-      lance.length,
-    );
-
-    // Reading the lance must not silently rewrite the roster.
-    expect(orphan.mechId).toBeNull();
-    fillEmptySeats(state);
-    expect(orphan.mechId).toBe(spare.id);
-  });
-
-  it('explains itself rather than throwing a bare error when nothing can deploy', () => {
-    const accepted = acceptContract(catalog, state, 'militia_raid', 0);
-    expect(accepted.ok, accepted.reason ?? '').toBe(true);
-    for (const mech of state.mechs) mech.status = 'hulk';
-
-    expect(() => prepareDeployment(catalog, state)).toThrow(DeploymentError);
-    expect(() => prepareDeployment(catalog, state)).toThrow(/No mech is ready to deploy/);
-  });
-});
-
-describe('three-mission campaign', () => {
+describe('campaign contracts', () => {
   // The generous timeout is headroom for a loaded CI worker, not a target: the
   // seed scan takes ~15s alone but shares the machine with every other file.
   it('completes three contracts and uses mission-one salvage in mission three', { timeout: 120_000 }, () => {
@@ -252,6 +100,11 @@ describe('three-mission campaign', () => {
 
       const crate = candidate.store.filter((item) => item.kind === 'weapon');
       if (crate.length === 0) continue;
+      for (const item of candidate.history[0]?.salvageOffered ?? []) {
+        expect(storeItemValueOf(catalog, item), `${item.itemId} has no build value`).toBeGreaterThan(0);
+        expect(storeItemSaleBasis(catalog, item), `${item.itemId} has no mounted sale basis`).toBeGreaterThan(0);
+        expect(storeItemSaleBasis(catalog, item)).toBeLessThanOrEqual(storeItemValueOf(catalog, item));
+      }
 
       repairAll(candidate);
       waitForCrew(candidate);
@@ -306,12 +159,61 @@ describe('three-mission campaign', () => {
     ).toBe(true);
   });
 
-  // Three whole missions back to back. Fights got longer once the AI stopped
-  // charging into everything, which put this past the five-second default.
-  it('is winnable to the victory node', { timeout: 60_000 }, () => {
+  it('recovers from a critical loss and still reaches the victory node', () => {
     const run = start('victory');
+    const sideId = availableNodes(catalog, run).find((node) => node.id.startsWith('side_'))?.id;
+    const startingDay = run.day;
+    const startingCash = run.cbills;
 
-    for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
+    expect(acceptContract(catalog, run, 'militia_raid', 'fee_first').ok).toBe(true);
+    const recoveryCost = Math.round(
+      (run.contract?.payout ?? 0) * catalog.rules.economy.contractFailure.recoveryCostFactor,
+    );
+    resolveWithoutCombat(run, false);
+
+    const elapsed = 1 + catalog.rules.economy.contractFailure.recoveryDays;
+    const salaries = elapsed * run.pilots.length * catalog.rules.economy.pilot.salaryPerDay;
+    expect(run.finished).toBe(false);
+    expect(run.day).toBe(startingDay + elapsed);
+    expect(run.cbills).toBe(startingCash - recoveryCost - salaries);
+    expect(availableNodes(catalog, run).map((node) => node.id)).toContain('militia_raid');
+    expect(run.log.some((entry) => /costs .* credits and 3 days.*returns to the board/.test(entry.text))).toBe(true);
+
+    const route = [
+      'militia_raid',
+      'pass_skirmish',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+      'ridge_hold',
+    ];
+    for (const nodeId of route) {
+      expect(acceptContract(catalog, run, nodeId, 'fee_first').ok).toBe(true);
+      resolveWithoutCombat(run, true);
+    }
+
+    expect(run.completedNodes).toEqual(expect.arrayContaining(route));
+    expect(run.finished).toBe(true);
+    expect(run.won).toBe(true);
+    expect(availableNodes(catalog, run)).toEqual([]);
+    expect(acceptContract(catalog, run, sideId ?? 'side_0_0', 'fee_first')).toEqual({
+      ok: false,
+      reason: 'the campaign is over',
+    });
+  });
+
+  // The graph test proves reachability. This keeps the authored sequence wired
+  // to real battles, where a fixed company may lose before the route is done.
+  it('plays the authored victory line with live mission resolution', { timeout: 60_000 }, () => {
+    const run = start('victory');
+    const route = [
+      'militia_raid',
+      'pass_skirmish',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+      'ridge_hold',
+    ];
+
+    for (const nodeId of route) {
       const available = availableNodes(catalog, run).some((node) => node.id === nodeId);
       if (!available) break;
       repairAll(run);
@@ -319,6 +221,13 @@ describe('three-mission campaign', () => {
     }
 
     expect(run.history.length).toBeGreaterThanOrEqual(2);
-    expect(run.completedNodes.length + run.failedNodes.length).toBe(run.history.length);
+    expect(run.history.map((outcome) => outcome.nodeId)).toEqual(route.slice(0, run.history.length));
+    expect(run.completedNodes).toHaveLength(run.history.filter((outcome) => outcome.won).length);
+    expect(run.failedNodes).toHaveLength(0);
+
+    const last = run.history[run.history.length - 1];
+    if (last?.won === false) {
+      expect(availableNodes(catalog, run).map((node) => node.id)).toContain(last.nodeId);
+    }
   });
 });

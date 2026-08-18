@@ -9,7 +9,7 @@ import {
   hirePilot,
   offeredTraits,
   pendingTraitPicks,
-  promote,
+  raiseSkill,
   skillCost,
   skillTotal,
 } from './roster';
@@ -105,42 +105,23 @@ describe('the pilot register', () => {
     expect(busy.xp, 'a pilot who fought learned no more than one who hid').toBeGreaterThan(idle.xp);
   });
 
-  it('promotes a pilot who came home with enough to spend', () => {
+  it('banks a drop award until the commander chooses a skill', () => {
     const state = campaign();
     const pilot = record(state);
-    const before = pilot.gunnery + pilot.piloting + pilot.sensors;
+    const before = { gunnery: pilot.gunnery, piloting: pilot.piloting, sensors: pilot.sensors };
 
-    pilot.xp = skillCost(catalog, 1) * 40;
-    const steps = promote(catalog, pilot);
+    const earned = awardXp(catalog, {
+      pilot,
+      unit: drop({ shotsHit: 100, damageDealt: 2_000, kills: 10 }),
+    }, true);
 
-    expect(steps.length, 'a pilot with experience to spend learned nothing').toBeGreaterThan(0);
-    expect(pilot.gunnery + pilot.piloting + pilot.sensors).toBeGreaterThan(before);
-    // And it spent what it claimed to spend.
-    expect(availableXp(pilot)).toBeLessThan(pilot.xp);
-  });
+    expect(earned).toBeGreaterThan(skillCost(catalog, pilot.sensors));
+    expect({ gunnery: pilot.gunnery, piloting: pilot.piloting, sensors: pilot.sensors }).toEqual(before);
+    expect(pilot.spentXp).toBe(0);
 
-  it('puts experience into what a pilot is already good at', () => {
-    const state = campaign();
-    const pilot = record(state);
-    pilot.traits = ['spotter'];
-    pilot.gunnery = 3;
-    pilot.piloting = 3;
-    pilot.sensors = 3;
-    pilot.xp = skillCost(catalog, 3);
-    pilot.spentXp = 0;
-
-    const [first] = promote(catalog, pilot);
-    expect(first?.skill).toBe('sensors');
-  });
-
-  it('stops at the ceiling rather than spending for ever', () => {
-    const state = campaign();
-    const pilot = record(state);
-    pilot.xp = 10_000_000;
-    promote(catalog, pilot);
-    expect(pilot.gunnery).toBeLessThanOrEqual(5);
-    expect(pilot.piloting).toBeLessThanOrEqual(5);
-    expect(pilot.sensors).toBeLessThanOrEqual(5);
+    expect(raiseSkill(catalog, pilot, 'sensors').ok).toBe(true);
+    expect(pilot.sensors).toBe(before.sensors + 1);
+    expect(availableXp(pilot)).toBeLessThan(earned);
   });
 
   it('offers the pilots you have not got, and signs one for money', () => {
@@ -286,16 +267,5 @@ describe('specialities', () => {
     pilot.sensors = 5;
     pilot.dead = true;
     expect(pendingTraitPicks(catalog, pilot)).toBe(0);
-  });
-
-  it('points a pilot’s own experience at their speciality', () => {
-    const state = campaign();
-    const pilot = bare(state);
-    pilot.gunnery = 2;
-    pilot.traits = ['marksman'];
-    pilot.xp = 100_000;
-
-    const gained = promote(catalog, pilot);
-    expect(gained[0]?.skill).toBe('gunnery');
   });
 });

@@ -3,7 +3,11 @@
   "negotiation": {
     "payoutFloorFactor": 0.55,
     "payoutCeilingFactor": 1.45,
-    "steps": 8
+    "steps": 3
+  },
+  "contractFailure": {
+    "recoveryDays": 3,
+    "recoveryCostFactor": 0.1
   },
   "repair": {
     "armourCostPerPoint": 250,

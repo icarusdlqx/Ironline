@@ -2,7 +2,7 @@ import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import { createRng } from '../sim/rng';
 import { pristineCondition } from './repair';
-import type { CampaignState, MechRecord } from './types';
+import type { CampaignState, MechRecord, StoreItem } from './types';
 
 /** Which week of stock the yard is showing. */
 export function marketPeriod(catalog: Catalog, day: number): number {
@@ -23,6 +23,23 @@ export function valueOf(catalog: Catalog, design: Design): number {
   for (const fit of design.equipment) value += catalog.equipment.get(fit.equipmentId)?.cost ?? 0;
 
   return Math.round(value);
+}
+
+/** The same authored part cost used when that part contributes to a complete build. */
+export function storeItemValueOf(catalog: Catalog, item: StoreItem): number {
+  const unit =
+    item.kind === 'weapon'
+      ? catalog.weapons.get(item.itemId)?.cost
+      : catalog.equipment.get(item.itemId)?.cost;
+  return Math.round((unit ?? 0) * item.count);
+}
+
+/**
+ * Loose crates are not saleable. This is only the part of a mech's yard offer
+ * attributable to the crate after it has been fitted.
+ */
+export function storeItemSaleBasis(catalog: Catalog, item: StoreItem): number {
+  return Math.round(storeItemValueOf(catalog, item) * catalog.rules.economy.market.sellFraction);
 }
 
 /**

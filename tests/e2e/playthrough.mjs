@@ -96,6 +96,19 @@ async function main() {
     await page.waitForFunction(() => globalThis.__ironline !== undefined, { timeout: 30_000 });
     await page.waitForSelector('[data-testid="lance-bar"]');
 
+    check(
+      'a fresh profile opens on training',
+      (await page.evaluate(() => globalThis.__ironline.world.mission.id)) === 'training_ground',
+    );
+    await page.screenshot({ path: `${SHOTS}/00-training-briefing.png` });
+    await page.locator('[data-testid="briefing-deploy"]').click();
+    await page.waitForSelector('[data-testid="training-coach"]');
+    await page.screenshot({ path: `${SHOTS}/00-training-coach.png` });
+    await page.locator('[data-testid="choose-mission"]').click();
+    await page.waitForSelector('[data-testid="briefing"]');
+    await page.locator('[data-testid="mission-picker"]').selectOption('skirmish_ridge');
+    await page.waitForFunction(() => globalThis.__ironline.world.mission.id === 'skirmish_ridge');
+
     process.stdout.write('\nboot\n');
     const canvas = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
     check('canvas is mounted at full size', (canvas?.width ?? 0) > 1000 && (canvas?.height ?? 0) > 700);
@@ -138,6 +151,18 @@ async function main() {
     check(
       'weapon groups render with cooldown rings',
       (await page.locator('.cooldown-ring').count()) > 0,
+    );
+    check(
+      'tactical readouts expose ability, stability, alpha heat and governor state',
+        (await page.locator('[data-testid="tactical-readout"]').count()) === 1 &&
+        (await page.locator('[data-testid="stability-readout"]').innerText()).includes('/') &&
+        (await page.locator('[data-testid="alpha-readout"]').innerText()).includes('%') &&
+        (await page.locator('[data-testid="governor-readout"]').count()) === 1,
+    );
+    check(
+      'ability and alpha commands show live readiness',
+      (await page.locator('[data-testid="command-ability"]').innerText()).includes('READY') &&
+        (await page.locator('[data-testid="command-alpha_strike"]').innerText()).includes('READY'),
     );
     await page.screenshot({ path: `${SHOTS}/02-selected.png` });
 
@@ -210,6 +235,48 @@ async function main() {
     check('the ordered mech actually moves', travelled > 5, `travelled ${travelled.toFixed(1)}m`);
     check('resuming restarts the clock', moved.tick > pausedTick);
 
+    process.stdout.write('\nformation move\n');
+    await page.keyboard.press('Space');
+    const formation = await page.evaluate(() => {
+      const { engine, world, useGame } = globalThis.__ironline;
+      const ids = world.entities.filter((entity) => entity.team === 0 && !entity.destroyed).map((entity) => entity.id);
+      const centre = ids.reduce((sum, id) => {
+        const entity = world.entities.find((candidate) => candidate.id === id);
+        return { x: sum.x + entity.pos.x / ids.length, y: sum.y + entity.pos.y / ids.length };
+      }, { x: 0, y: 0 });
+      let destination = { x: 500, y: 500 };
+      let best = Number.POSITIVE_INFINITY;
+      for (let row = 3; row < world.terrain.height - 3; row += 1) {
+        for (let column = 3; column < world.terrain.width - 3; column += 1) {
+          let open = true;
+          for (let y = -3; y <= 3 && open; y += 1) {
+            for (let x = -3; x <= 3; x += 1) {
+              if (!world.terrain.passable(column + x, row + y)) open = false;
+            }
+          }
+          if (!open) continue;
+          const candidate = world.terrain.tileCentre(column, row);
+          const range = Math.hypot(candidate.x - centre.x, candidate.y - centre.y);
+          const score = Math.abs(range - 120);
+          if (score < best) {
+            best = score;
+            destination = candidate;
+          }
+        }
+      }
+      useGame.getState().setSelection(ids);
+      engine.orderMove(destination, false);
+      return ids.map((id) => world.entities.find((entity) => entity.id === id)?.orders.move?.to);
+    });
+    check(
+      'a group move gives every mech a distinct destination',
+      new Set(formation.map((point) => `${point?.x.toFixed(1)}:${point?.y.toFixed(1)}`)).size === formation.length,
+      JSON.stringify(formation),
+    );
+    await page.screenshot({ path: `${SHOTS}/03-formation-order.png` });
+    await page.evaluate((id) => globalThis.__ironline.useGame.getState().setSelection([id]), selectedId);
+    await page.keyboard.press('Space');
+
     process.stdout.write('\nweapon groups and hold fire\n');
     await page.locator('[data-testid="group-2"]').click();
     const toggled = await sim(page);
@@ -277,13 +344,24 @@ async function main() {
 
     check('battle reaches a conclusion', outcome.finished === true, JSON.stringify(outcome));
     await page.waitForSelector('[data-testid="outcome"]', { timeout: 5000 }).catch(() => {});
-    check('outcome banner is shown', (await page.locator('[data-testid="outcome"]').count()) === 1);
+    check('battle debrief is shown', (await page.locator('.battle-results').count()) === 1);
+    check(
+      'the debrief reports battle and lance statistics',
+      (await page.locator('.battle-results-summary > div').count()) === 4 &&
+        (await page.locator('.battle-results-row').count()) === 5,
+    );
+    check(
+      'skirmish debrief offers replay or another briefing',
+      (await page.locator('[data-testid="replay-mission"]').count()) === 1 &&
+        (await page.locator('[data-testid="choose-mission"]').count()) === 1,
+    );
     check('battle log recorded destructions', (await page.locator('[data-testid="event-log"] li').count()) > 0);
     await page.screenshot({ path: `${SHOTS}/04-outcome.png` });
     await page.evaluate(() => localStorage.clear());
 
     process.stdout.write('\nobjectives and support\n');
-    await page.locator('[data-testid="mission-picker"]').selectOption('base_capture_ridge');
+    await page.locator('[data-testid="result-mission-picker"]').selectOption('base_capture_ridge');
+    await page.locator('[data-testid="choose-mission"]').click();
     await page.waitForSelector('[data-testid="briefing"]');
     check(
       'switching mission shows its briefing',
@@ -301,20 +379,52 @@ async function main() {
         triggers: world.triggers.length,
         rp: world.resources.get(0),
         reserves: world.reserves.length,
+        reserveCost: world.rules.support.reinforcement.cost,
       };
     });
     check('the base capture mission is loaded', mission.id === 'base_capture_ridge', mission.id);
+    check(
+      'deployed setup is locked until the run is left explicitly',
+      (await page.locator('[data-testid="setup-locked"]').count()) === 1 &&
+        (await page.locator('[data-testid="mission-picker"]').isDisabled()) &&
+        (await page.locator('[data-testid="difficulty-picker"]').isDisabled()),
+    );
+    await page.evaluate(() => {
+      globalThis.__setupEngine = globalThis.__ironline.engine;
+    });
+    await page.locator('[data-testid="restart-battle"]').click();
+    await page.waitForFunction(
+      () =>
+        globalThis.__ironline.engine !== globalThis.__setupEngine &&
+        globalThis.__ironline.engine.world.mission.id === 'base_capture_ridge',
+    );
+    const restarted = await page.evaluate(() => {
+      delete globalThis.__setupEngine;
+      const state = globalThis.__ironline.useGame.getState();
+      return { briefingSeen: state.briefingSeen, paused: state.paused };
+    });
+    check(
+      'restart redeploys the same setup immediately',
+      restarted.briefingSeen && !restarted.paused,
+    );
     check('it has two comm posts and three objectives', mission.zones === 2 && mission.objectives === 3);
     check('the objective tracker is on screen', (await page.locator('[data-testid="objective-list"] li').count()) >= 3);
     check('the zone tracker lists both posts', (await page.locator('[data-testid="zone-list"] li').count()) === 2);
     check('resource points are shown', (await page.locator('[data-testid="resource-points"]').innerText()).includes('RP'));
-    // The palette is deliberately short: one eye, one hammer, one wrench.
+    // A mission reserve replaces the probe rather than growing a fourth button.
     check('exactly three support calls are offered', (await page.locator('.support-call').count()) === 3);
     check(
-      'the palette offers probe, air strike and repair truck',
-      (await page.locator('[data-testid="support-sensor_probe"]').count()) === 1 &&
+      'the authored reserve reaches the support palette',
+      (await page.locator('[data-testid="support-reinforcement"]').count()) === 1 &&
         (await page.locator('[data-testid="support-air_strike"]').count()) === 1 &&
-        (await page.locator('[data-testid="support-repair_truck"]').count()) === 1,
+        (await page.locator('[data-testid="support-repair_truck"]').count()) === 1 &&
+        (await page.locator('[data-testid="support-sensor_probe"]').count()) === 0,
+    );
+    const reserveCopy = await page.locator('[data-testid="support-reinforcement"]').innerText();
+    check(
+      'support cost and effect are visible without a tooltip',
+      reserveCopy.includes(`${mission.reserveCost} RP`) && reserveCopy.includes('Drop one mission reserve'),
+      reserveCopy,
     );
 
     const rpText = async () =>
@@ -332,10 +442,21 @@ async function main() {
       `${rpBefore} RP in the palette, ${mission.rp} in the world`,
     );
 
+    await page.locator('[data-testid="support-air_strike"]').click();
+    await page.mouse.move(canvasBox.x + canvasBox.width * 0.62, canvasBox.y + canvasBox.height * 0.36);
+    await page.screenshot({ path: `${SHOTS}/09-support-lane.png` });
+    await page.evaluate(() => globalThis.__ironline.useGame.getState().setSupportMode(null));
+
     // The repair truck fires on the press; the air strike wants a drag for
     // its run-in, so the truck is the one the pointer test drives.
     await page.locator('[data-testid="support-repair_truck"]').click({ timeout: 5_000 });
     check('picking a support call arms it', (await state(page)).supportMode === 'repair_truck');
+    check(
+      'the armed call explains placement in the palette',
+      (await page.locator('[data-testid="support-repair_truck"]').innerText()).includes('Armed'),
+    );
+    await page.mouse.move(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
+    await page.screenshot({ path: `${SHOTS}/09-support-radius.png` });
     await page.mouse.click(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
 
     const truckCost = 500;
@@ -345,6 +466,10 @@ async function main() {
     });
     check('calling the truck spends resource points', afterCall.rp === mission.rp - truckCost, `${mission.rp} → ${afterCall.rp}`);
     check('the call is queued with a delay', afterCall.pending === 1);
+    await page.waitForFunction(
+      (before) => Number(document.querySelector('[data-testid="resource-points"]')?.textContent?.replace(/[^0-9]/g, '')) < before,
+      rpBefore,
+    );
     check('the HUD reflects the spend', (await rpText()) < rpBefore);
     await page.screenshot({ path: `${SHOTS}/09-support.png` });
 
@@ -358,7 +483,7 @@ async function main() {
     const supportOutcome = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
       const world = engine.world;
-      const calls = ['sensor_probe', 'air_strike', 'repair_truck'];
+      const calls = ['air_strike', 'repair_truck', 'reinforcement'];
       const mod = await import('/src/sim/support.ts');
       world.resources.set(0, 20000);
       const results = {};
@@ -373,7 +498,7 @@ async function main() {
       return { results, pending: world.support.pending.length };
     });
     check(
-      'probe, air strike and repair truck were all accepted',
+      'air strike, repair truck and reinforcement were all accepted',
       Object.values(supportOutcome.results).every(Boolean),
       JSON.stringify(supportOutcome.results),
     );
@@ -412,6 +537,8 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/10-objectives.png` });
 
     process.stdout.write('\nmechbay\n');
+    await page.locator('[data-testid="choose-mission"]').click();
+    await page.waitForSelector('[data-testid="briefing"]');
     await page.locator('[data-testid="open-mechbay"]').click();
     await page.waitForSelector('[data-testid="mechbay"]');
 
@@ -516,22 +643,87 @@ async function main() {
     );
     check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
 
-    const offerAt = async (value) => {
-      await page.locator('[data-testid="camp-terms"]').fill(String(value));
+    const firstRunCode = await page.locator('[data-testid="camp-seed"]').innerText();
+    check(
+      'a new campaign exposes a readable run code',
+      /^Run [a-z]+-[a-z]+-[0-9a-f]{8}$/.test(firstRunCode),
+      firstRunCode,
+    );
+    await page.locator('[data-testid="camp-restart"]').click();
+    const restartedCode = await page.locator('[data-testid="camp-seed"]').innerText();
+    const persistedRun = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('ironline.campaign')).state.seed,
+    );
+    check('restart rolls a fresh run code', restartedCode !== firstRunCode, restartedCode);
+    check('the fresh run is saved immediately', restartedCode === `Run ${persistedRun}`);
+
+    await page.locator('[data-testid="camp-manual-toggle"]').click();
+    await page.waitForSelector('[data-testid="manual-controls"]');
+    check(
+      'the field manual takes keyboard focus',
+      await page.locator('[data-testid="camp-manual-close"]').evaluate(
+        (element) => element === document.activeElement,
+      ),
+    );
+    const manualText = await page.locator('[data-testid="camp-manual"]').textContent();
+    check(
+      'the field manual carries desktop, touch and support controls',
+      manualText.includes('Mouse and keyboard') &&
+        manualText.includes('Touch') &&
+        manualText.includes('Support calls'),
+    );
+    check(
+      'the manual names only the current camera grammar',
+      manualText.includes('Arrow keys') && !manualText.includes('WASD'),
+    );
+    await page.screenshot({ path: `${SHOTS}/08-field-manual.png` });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${SHOTS}/08-field-manual-touch.png` });
+    await page.keyboard.press('Escape');
+    check(
+      'Escape closes the manual and returns focus',
+      (await page.locator('[data-testid="camp-manual"]').count()) === 0 &&
+        (await page.locator('[data-testid="camp-manual-toggle"]').evaluate(
+          (element) => element === document.activeElement,
+        )),
+    );
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const offerFor = async (termsId) => {
+      await page.locator(`[data-testid="camp-terms-${termsId}"]`).click();
       return page.locator('[data-testid="camp-offer"]').innerText();
     };
-    const payoutHeavy = await offerAt(0);
-    const salvageHeavy = await offerAt(7);
+    const payoutHeavy = await offerFor('fee_first');
+    const salvageHeavy = await offerFor('salvage_first');
+    const selectedTermsText = await page.locator('[data-testid="camp-contract"]').innerText();
     check(
-      'negotiation trades payout against salvage',
+      'named packages trade payout against salvage',
       payoutHeavy !== salvageHeavy &&
         payoutHeavy.includes('0% salvage') &&
         !salvageHeavy.includes('0% salvage'),
       `${payoutHeavy} vs ${salvageHeavy}`,
     );
+    check(
+      'contract terms name success pay and repair exposure',
+      selectedTermsText.includes('on success') && selectedTermsText.includes('Repair cover: none'),
+      selectedTermsText,
+    );
+    await page.screenshot({ path: `${SHOTS}/08-contract-terms.png` });
 
     const posted = await page.locator('[data-testid="camp-hall"] li').count();
     check('the hiring hall is posting work', posted > 0, `${posted} postings`);
+    const postingFacts = await page.locator('[data-testid="camp-hall"] button').first().innerText();
+    check(
+      'a posting states its battlefield and rated opposition',
+      postingFacts.includes('drop /') && postingFacts.includes('rated opposition'),
+      postingFacts,
+    );
+    check(
+      'the board states when it renews',
+      (await page.locator('[data-testid="camp-hall"] .hall-note').innerText()).includes(
+        'New work arrives on day',
+      ),
+    );
 
     // Selecting a posting has to drive the same contract panel the map does,
     // or side work would be visible and unsignable.
@@ -553,9 +745,13 @@ async function main() {
     // whose payout, salvage and unlocks the later checks are written against.
     await page.locator('[data-testid="camp-node-militia_raid"]').click();
 
-    await page.locator('[data-testid="camp-terms"]').fill('7');
+    await page.locator('[data-testid="camp-terms-salvage_first"]').click();
     await page.locator('[data-testid="camp-accept"]').click();
     check('signing shows the active contract', (await page.locator('[data-testid="camp-deploy"]').count()) === 1);
+    check(
+      'the active contract preserves its named package',
+      (await page.locator('[data-testid="camp-active-terms"]').textContent()) === 'Salvage first',
+    );
 
     await page.locator('[data-testid="camp-save"]').click();
     const savedCampaign = await page.evaluate(() => localStorage.getItem('ironline.campaign'));
@@ -667,11 +863,12 @@ async function main() {
       'the debrief accounts for every pilot who dropped',
       (await page.locator('[data-testid^="debrief-fate-"]').count()) > 0,
     );
+    const debriefText = await page.locator('[data-testid="debrief"]').innerText();
+    check('the debrief reports experience earned', debriefText.includes('+') && debriefText.includes('XP'));
+    check('the debrief records banked experience', debriefText.includes('banked'));
     check(
-      'the debrief reports experience earned',
-      (await page.locator('[data-testid="debrief"] .manifest-skills').first().innerText()).includes(
-        'XP',
-      ),
+      'the debrief names the signed package',
+      (await page.locator('[data-testid="debrief"] header').innerText()).includes('Salvage first'),
     );
     await page.locator('[data-testid="debrief-close"]').click();
 
@@ -681,8 +878,14 @@ async function main() {
     check('the contract resolved into history', resolvedState.history.length === 1);
     check('the contract slot is clear again', resolvedState.contract === null);
     check(
-      'the outcome was recorded either way',
-      resolvedState.completedNodes.length + resolvedState.failedNodes.length === 1,
+      'drop experience waits for a training choice',
+      resolvedState.pilots.some((pilot) => pilot.xp > 0) &&
+        resolvedState.pilots.every((pilot) => pilot.spentXp === 0),
+    );
+    const rosterText = await page.locator('[data-testid="camp-roster"]').innerText();
+    check(
+      'the barracks states experience and daily payroll',
+      rosterText.includes('XP banked') && rosterText.includes('/day'),
     );
 
     if (resolvedState.history[0].won) {
@@ -693,7 +896,12 @@ async function main() {
         (await page.locator('.camp-node.available').count()) >= 1,
       );
     } else {
-      check('a loss is recorded as a failed node', resolvedState.failedNodes.length === 1);
+      check('a critical loss leaves the victory route open', resolvedState.failedNodes.length === 0);
+      check('the failed contract returns to the board', resolvedState.finished === false);
+      check(
+        'recovery terms are explained',
+        resolvedState.log.some((entry) => entry.text.includes('returns to the board')),
+      );
     }
 
     check('battle damage came home', (await page.locator('[data-testid="camp-bay"] li').count()) >= 4);

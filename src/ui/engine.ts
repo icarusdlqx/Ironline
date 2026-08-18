@@ -1,5 +1,6 @@
 import type { MechLocation } from '../schema/common';
 import { loadCatalog } from '../schema/load';
+import { missionTickBudget } from '../schema/missionClock';
 import { Renderer } from '../render3d/scene';
 import { restoreIntent } from '../sim/governor';
 import {
@@ -29,9 +30,12 @@ import { AudioDirector } from './audio';
 import { hitPreview } from '../sim/preview';
 import { useAbility } from '../sim/abilities';
 import { FramePacer } from './framePacer';
+import { formationDestinations } from './formation';
+import { crossedMissionClockWarnings } from './missionClock';
 import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
 import { useGame, type HitPreviewView, type OrderMode } from './store';
+import { supportRadius } from './supportOptions';
 
 const HUD_INTERVAL_SECONDS = 0.1;
 const SMOKE_INTERVAL_SECONDS = 0.7;
@@ -61,12 +65,14 @@ export class Engine {
   private lastFrame = 0;
   private hudTimer = 0;
   private smokeTimer = 0;
+  private clockSeconds: number;
   private detachInput: (() => void) | null = null;
 
   constructor(world: World, renderer: Renderer, maxTicks: number) {
     this.world = world;
     this.renderer = renderer;
     this.maxTicks = maxTicks;
+    this.clockSeconds = maxTicks * world.dt;
   }
 
   get paused(): boolean {
@@ -203,7 +209,8 @@ export class Engine {
       cursor: this.cursorWorld,
       orderMode: state.orderMode,
       selectionBox: this.selectionBox,
-      supportRun: this.supportRun(),
+      supportRadius: this.supportArea(state.supportMode),
+      supportRun: this.supportRun(state.supportMode),
     });
 
     this.perf?.record({
@@ -272,21 +279,28 @@ export class Engine {
   supportAim: { call: SupportCallId; at: Vec2; to: Vec2 } | null = null;
 
   /** The footprint to draw for the run-in being dragged, or null when none is. */
-  private supportRun(): {
+  private supportRun(call: SupportCallId | null): {
     at: Vec2;
     heading: number;
     length: number;
     width: number;
   } | null {
     const aim = this.supportAim;
-    if (aim === null || aim.call !== 'air_strike') return null;
+    const at = aim?.at ?? this.cursorWorld;
+    if ((aim?.call ?? call) !== 'air_strike' || at === null) return null;
     const config = this.world.rules.support.air_strike;
     return {
-      at: aim.at,
-      heading: this.headingFor(aim.at, aim.to),
+      at,
+      heading: this.headingFor(at, aim?.to ?? at),
       length: config.length,
       width: config.width,
     };
+  }
+
+  private supportArea(call: SupportCallId | null): { at: Vec2; radius: number } | null {
+    if (this.cursorWorld === null) return null;
+    const radius = supportRadius(this.world.rules.support, call);
+    return radius === null ? null : { at: this.cursorWorld, radius };
   }
 
   /**
@@ -314,13 +328,20 @@ export class Engine {
 
   forceStep(): void {
     if (this.world.finished) return;
+    const before = this.clockSeconds;
     stepWorld(this.world, this.maxTicks);
+    this.clockSeconds = Math.max(0, (this.maxTicks - this.world.tick) * this.world.dt);
     this.renderer.snapshot(this.world);
     const events = this.world.events.splice(0, this.world.events.length);
     this.renderer.consumeEvents(this.world, events);
     this.audio.listenAt = this.renderer.camera.target;
     this.audio.consume(this.world, events);
     this.logEvents(events);
+    if (!this.world.finished) {
+      for (const warning of crossedMissionClockWarnings(before, this.clockSeconds)) {
+        useGame.getState().pushLog(warning);
+      }
+    }
   }
 
   private emitDamageSmoke(): void {
@@ -531,19 +552,19 @@ export class Engine {
   ): void {
     this.hudDirty = true;
     let moved = 0;
-    let asked = 0;
-    for (const id of this.selectedEntities()) {
-      const entity = findEntity(this.world, id);
-      if (entity === null || entity.autopilot) continue;
-      asked += 1;
+    const entities = this.selectedEntities()
+      .map((id) => findEntity(this.world, id))
+      .filter((entity): entity is MechEntity => entity !== null && !entity.autopilot);
+    const destinations = formationDestinations(this.world, entities, to);
+    for (const entity of entities) {
       // A queued leg keeps the pace of the order it extends.
       const pace = options.queued === true ? (entity.orders.move?.run ?? run) : run;
-      if (issueMove(this.world, entity, to, pace, options)) moved += 1;
+      if (issueMove(this.world, entity, destinations.get(entity.id) ?? to, pace, options)) moved += 1;
     }
     if (moved > 0) this.audio.order();
     // An order that silently does nothing reads as a broken control — and an
     // order given with nothing selected was the commonest way to see one.
-    else if (asked > 0) useGame.getState().pushLog('No route to that point.');
+    else if (entities.length > 0) useGame.getState().pushLog('No route to that point.');
     else useGame.getState().pushLog('No mech selected to give that order to.');
   }
 
@@ -760,7 +781,8 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   });
 
   const mission = catalog.missions.get(missionId);
-  const mapData = catalog.maps.get(mission?.mapId ?? '');
+  if (mission === undefined) throw new Error(`unknown mission "${missionId}"`);
+  const mapData = catalog.maps.get(mission.mapId);
   if (mapData === undefined) throw new Error(`mission "${missionId}" has no map`);
 
   // The mission's own choice first, then the map's, then the default rig — so a
@@ -770,7 +792,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   if (atmosphere === undefined) throw new Error(`unknown atmosphere "${atmosphereId}"`);
 
   const renderer = new Renderer(host, world, mapData, atmosphere);
-  const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
+  const engine = new Engine(world, renderer, missionTickBudget(catalog, missionId));
   renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
   engine.audio.setTerrain(mapData);
   engine.audio.setAmbient(atmosphereId);
@@ -791,9 +813,11 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   useGame.getState().patch({
     ready: true,
     playerTeam,
-    missionName: mission?.name ?? missionId,
-    briefing: mission?.briefing ?? '',
+    missionName: mission.name,
+    briefing: mission.briefing,
     briefingSeen: false,
+    elapsedSeconds: 0,
+    missionDurationSeconds: mission.maxDurationSeconds,
     paused: true,
     speed: 1,
     hitPreview: null,
