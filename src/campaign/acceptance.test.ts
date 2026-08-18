@@ -232,7 +232,7 @@ describe('deployment', () => {
   });
 });
 
-describe('three-mission campaign', () => {
+describe('campaign contracts', () => {
   // The generous timeout is headroom for a loaded CI worker, not a target: the
   // seed scan takes ~15s alone but shares the machine with every other file.
   it('completes three contracts and uses mission-one salvage in mission three', { timeout: 120_000 }, () => {
@@ -306,12 +306,19 @@ describe('three-mission campaign', () => {
     ).toBe(true);
   });
 
-  // Three whole missions back to back. Fights got longer once the AI stopped
-  // charging into everything, which put this past the five-second default.
-  it('is winnable to the victory node', { timeout: 60_000 }, () => {
+  // The graph test proves reachability. This keeps the authored sequence wired
+  // to real battles, where a fixed company may lose before the route is done.
+  it('plays the authored victory line with live mission resolution', { timeout: 60_000 }, () => {
     const run = start('victory');
+    const route = [
+      'militia_raid',
+      'pass_skirmish',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+      'ridge_hold',
+    ];
 
-    for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
+    for (const nodeId of route) {
       const available = availableNodes(catalog, run).some((node) => node.id === nodeId);
       if (!available) break;
       repairAll(run);
@@ -319,6 +326,7 @@ describe('three-mission campaign', () => {
     }
 
     expect(run.history.length).toBeGreaterThanOrEqual(2);
+    expect(run.history.map((outcome) => outcome.nodeId)).toEqual(route.slice(0, run.history.length));
     expect(run.completedNodes.length + run.failedNodes.length).toBe(run.history.length);
   });
 });
