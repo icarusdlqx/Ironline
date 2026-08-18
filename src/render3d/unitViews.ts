@@ -5,9 +5,11 @@ import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
 import { angleDifference, normaliseAngle } from '../sim/math';
 import { jumpHeight } from '../sim/movement';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../sim/types';
+import type { Weapon } from '../schema/weapon';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
 import type { TacticalCamera, Viewport } from './camera';
 import { ContactShadowLayer } from './contactShadows';
+import { advanceWeaponRecoil, triggerWeaponRecoil } from './weaponModels';
 
 export interface Interpolated {
   x: number;
@@ -29,6 +31,12 @@ export interface EntityView {
 }
 
 const PICK_DELTA = new Vector3();
+const DEFAULT_VISUAL: Weapon['visual'] = {
+  style: 'beam',
+  colour: '#ffffff',
+  width: 2,
+  arc: 0,
+};
 
 function damageSignature(entity: MechEntity): number {
   let bits = entity.destroyed ? 1 : 0;
@@ -38,7 +46,10 @@ function damageSignature(entity: MechEntity): number {
       bits |= 1 << (index + 1);
     }
   }
-  return bits * 8 + entity.team;
+  for (let index = 0; index < entity.weapons.length; index += 1) {
+    if (entity.weapons[index]?.destroyed === true) bits = Math.imul(bits ^ (index + 17), 16777619);
+  }
+  return (bits >>> 0) * 8 + entity.team;
 }
 
 /** Owns model rebuilds and the two sim samples used for smooth rendering. */
@@ -46,6 +57,8 @@ export class UnitViews {
   private readonly views = new Map<EntityId, EntityView>();
   private readonly samples = new Map<EntityId, MotionSample>();
   private readonly interpolated = new Map<EntityId, Interpolated>();
+  private readonly mountCycles = new Map<string, number>();
+  private readonly placed = new Set<EntityId>();
   private readonly shadows: ContactShadowLayer;
 
   constructor(
@@ -60,13 +73,22 @@ export class UnitViews {
     for (const view of this.views.values()) {
       disposeModel(view.model.root);
       this.disposeRings(view);
+      this.scene.remove(view.model.root, view.ring, view.hoverRing);
     }
     this.scene.remove(this.shadows.mesh);
     this.shadows.dispose();
   }
 
-  beginFrame(): void {
+  beginFrame(deltaSeconds = 0): void {
     this.shadows.begin();
+    this.placed.clear();
+    for (const view of this.views.values()) {
+      for (const weapon of view.model.weapons) advanceWeaponRecoil(weapon, deltaSeconds);
+    }
+  }
+
+  markPlaced(id: EntityId): void {
+    this.placed.add(id);
   }
 
   placeShadow(entity: MechEntity, at: Interpolated, lift: number): void {
@@ -140,6 +162,32 @@ export class UnitViews {
     return this.interpolated.get(id) ?? this.samples.get(id)?.cur ?? null;
   }
 
+  /** Chooses the physical copy that fired when a design carries duplicate weapon ids. */
+  fireMount(id: EntityId, weaponId: string, muzzle: Vector3): boolean {
+    const view = this.views.get(id);
+    if (view === undefined || !view.model.root.visible || !this.placed.has(id)) return false;
+
+    let count = 0;
+    for (const rig of view.model.weapons) if (rig.weaponId === weaponId) count += 1;
+    if (count === 0) return false;
+
+    const key = `${id}:${weaponId}`;
+    const wanted = (this.mountCycles.get(key) ?? 0) % count;
+    let seen = 0;
+    for (const rig of view.model.weapons) {
+      if (rig.weaponId !== weaponId) continue;
+      if (seen !== wanted) {
+        seen += 1;
+        continue;
+      }
+      rig.muzzle.getWorldPosition(muzzle);
+      triggerWeaponRecoil(rig);
+      this.mountCycles.set(key, (wanted + 1) % count);
+      return true;
+    }
+    return false;
+  }
+
   viewFor(world: World, entity: MechEntity): EntityView {
     const signature = damageSignature(entity);
     const existing = this.views.get(entity.id);
@@ -157,10 +205,13 @@ export class UnitViews {
       .map((mount) => {
         const weapon = world.catalog.weapons.get(mount.weaponId);
         return {
+          weaponId: mount.weaponId,
           location: mount.location,
           type: weapon?.type ?? ('energy' as const),
           tonnage: weapon?.tonnage ?? 1,
           projectiles: weapon?.projectiles ?? 1,
+          recoil: weapon?.recoil ?? 0,
+          visual: weapon?.visual ?? DEFAULT_VISUAL,
         };
       });
 

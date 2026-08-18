@@ -108,6 +108,7 @@ export class Renderer {
       this.camera,
       this.terrain.heightAt,
       (id) => this.units.positionOf(id),
+      (id, weaponId, out) => this.units.fireMount(id, weaponId, out),
     );
     this.locomotion = new Locomotion(
       this.terrain.heightAt,
@@ -199,7 +200,7 @@ export class Renderer {
 
   draw(world: World, alpha: number, deltaSeconds: number, view: ViewState): void {
     this.units.interpolate(world, alpha);
-    this.units.beginFrame();
+    this.units.beginFrame(deltaSeconds);
     this.effects.beginFrame(deltaSeconds);
 
     for (const entity of world.entities) {
@@ -221,6 +222,7 @@ export class Renderer {
       const ground = this.terrain.heightAt(at.x, at.y);
       const lift = jumpHeight(entity) * radiusFor(entity.tonnage) * 2.2;
       this.locomotion.place(entity, shown.model, at, lift, deltaSeconds);
+      this.units.markPlaced(entity.id);
       this.units.placeShadow(entity, at, lift);
 
       shown.ring.position.set(at.x, ground + 1.2, at.y);
