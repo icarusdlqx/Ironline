@@ -109,6 +109,41 @@ button {
   color: var(--warn);
 }
 
+.pause:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.setup-locked {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 192, 97, 0.38);
+  border-radius: 4px;
+  color: var(--warn);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.setup-contract {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup-run-actions {
+  position: absolute;
+  top: 90px;
+  right: 288px;
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  background: var(--panel);
+}
+
 /* An anchor wearing button clothes, so the feedback link sits among buttons. */
 .feedback-link {
   text-decoration: none;
@@ -139,10 +174,28 @@ button {
 
 .outcome {
   top: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   font-size: 22px;
   padding: 14px 34px;
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.outcome-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.outcome button {
+  padding: 6px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
 }
 
 .error {
@@ -1609,7 +1662,7 @@ button {
 
 .briefing {
   position: absolute;
-  inset: 12% 28%;
+  inset: 5% 28%;
   z-index: 10;
   padding: 22px 26px;
   background: rgba(9, 12, 16, 0.97);
@@ -1642,6 +1695,53 @@ button {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
+}
+
+.briefing-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.setup-field select,
+.setup-fixed {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.setup-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.setup-fixed small,
+.setup-description {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .briefing-rp {
@@ -1911,6 +2011,24 @@ button {
       calc(8px + var(--safe-left));
     flex-wrap: nowrap;
     overflow-x: auto;
+  }
+
+  .setup-run-actions {
+    position: static;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    flex: none;
+  }
+
+  .briefing {
+    inset: calc(48px + var(--safe-top)) calc(8px + var(--safe-right))
+      calc(8px + var(--safe-bottom)) calc(8px + var(--safe-left));
+    padding: 16px;
+  }
+
+  .briefing-setup-grid {
+    grid-template-columns: 1fr;
   }
 
   .mission {

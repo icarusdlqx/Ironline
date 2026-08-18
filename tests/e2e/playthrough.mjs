@@ -304,6 +304,30 @@ async function main() {
       };
     });
     check('the base capture mission is loaded', mission.id === 'base_capture_ridge', mission.id);
+    check(
+      'deployed setup is locked until the run is left explicitly',
+      (await page.locator('[data-testid="setup-locked"]').count()) === 1 &&
+        (await page.locator('[data-testid="mission-picker"]').isDisabled()) &&
+        (await page.locator('[data-testid="difficulty-picker"]').isDisabled()),
+    );
+    await page.evaluate(() => {
+      globalThis.__setupEngine = globalThis.__ironline.engine;
+    });
+    await page.locator('[data-testid="restart-battle"]').click();
+    await page.waitForFunction(
+      () =>
+        globalThis.__ironline.engine !== globalThis.__setupEngine &&
+        globalThis.__ironline.engine.world.mission.id === 'base_capture_ridge',
+    );
+    const restarted = await page.evaluate(() => {
+      delete globalThis.__setupEngine;
+      const state = globalThis.__ironline.useGame.getState();
+      return { briefingSeen: state.briefingSeen, paused: state.paused };
+    });
+    check(
+      'restart redeploys the same setup immediately',
+      restarted.briefingSeen && !restarted.paused,
+    );
     check('it has two comm posts and three objectives', mission.zones === 2 && mission.objectives === 3);
     check('the objective tracker is on screen', (await page.locator('[data-testid="objective-list"] li').count()) >= 3);
     check('the zone tracker lists both posts', (await page.locator('[data-testid="zone-list"] li').count()) === 2);
@@ -412,6 +436,8 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/10-objectives.png` });
 
     process.stdout.write('\nmechbay\n');
+    await page.locator('[data-testid="choose-mission"]').click();
+    await page.waitForSelector('[data-testid="briefing"]');
     await page.locator('[data-testid="open-mechbay"]').click();
     await page.waitForSelector('[data-testid="mechbay"]');
 

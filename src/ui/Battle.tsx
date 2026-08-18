@@ -31,7 +31,10 @@ import {
 } from './Panels';
 import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
-import { selectedUnit, storeDifficulty, useGame } from './store';
+import { BriefingSetup, SetupToolbar } from './BattleSetup';
+import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
+import { selectedUnit, useGame } from './store';
+import { useBattleSetup } from './useBattleSetup';
 
 const SUPPORT_HINTS: Record<string, string> = {
   sensor_probe: 'Reveals a map region',
@@ -73,6 +76,11 @@ export function Battle() {
   // dropship manifest's decision.
   const [lanceEdits, setLanceEdits] = useState<Record<string, SkirmishBerth[]>>({});
   const catalog = getCatalog();
+  const missions = useMemo(
+    () => [...catalog.missions.values()].map((mission) => ({ id: mission.id, name: mission.name })),
+    [catalog],
+  );
+  const difficulties = useMemo(() => difficultyChoices(catalog.rules.difficulty), [catalog]);
   const lance = useMemo(
     () => lanceEdits[missionId] ?? loadLance(catalog, missionId),
     [lanceEdits, catalog, missionId],
@@ -83,6 +91,17 @@ export function Battle() {
   };
   // The engine rebuilds when the lance actually changes, not on every render.
   const lanceKey = useMemo(() => JSON.stringify(lance), [lance]);
+  const draftSetup = useMemo<BattleSetupKey>(
+    () => ({ missionId, difficulty, lanceKey }),
+    [missionId, difficulty, lanceKey],
+  );
+  const setup = useBattleSetup({
+    draft: draftSetup,
+    briefingSeen: state.briefingSeen,
+    finished: state.finished,
+    campaignPending: state.campaignPending,
+    patch: state.patch,
+  });
   // Which berth is open in the bay, if any.
   const [outfitting, setOutfitting] = useState<number | null>(null);
 
@@ -90,8 +109,16 @@ export function Battle() {
     const host = hostRef.current;
     if (host === null) return;
 
-    let options: Record<string, unknown> = { missionId, difficulty };
-    const entries = lanceEntries(getCatalog(), JSON.parse(lanceKey) as SkirmishBerth[]);
+    const deployOnReady = setup.nextStart.current === 'deploy';
+    setup.nextStart.current = 'briefing';
+    let options: Record<string, unknown> = {
+      missionId: setup.engine.missionId,
+      difficulty: setup.engine.difficulty,
+    };
+    const entries = lanceEntries(
+      getCatalog(),
+      JSON.parse(setup.engine.lanceKey) as SkirmishBerth[],
+    );
     if (entries !== null && entries.length > 0) options = { ...options, playerLance: entries };
     if (useGame.getState().campaignPending) {
       const saved = loadCampaign().state;
@@ -103,7 +130,7 @@ export function Battle() {
             seed: deployment.seed,
             playerTeam: deployment.playerTeam,
             playerLance: deployment.entries,
-            difficulty,
+            difficulty: setup.engine.difficulty,
           };
         } catch (error: unknown) {
           // Nothing fit to field. Say so and go back rather than tearing down
@@ -126,6 +153,10 @@ export function Battle() {
           return;
         }
         engineRef.current = engine;
+        if (deployOnReady) {
+          engine.renderer.camera.beginDropIn();
+          useGame.getState().patch({ briefingSeen: true, paused: false });
+        }
       })
       .catch((error: unknown) => {
         useGame.getState().patch({ error: error instanceof Error ? error.message : String(error) });
@@ -136,7 +167,17 @@ export function Battle() {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [missionId, difficulty, lanceKey]);
+  }, [setup.engine.missionId, setup.engine.difficulty, setup.engine.lanceKey, setup.revision]);
+
+  const restartBattle = (): void => {
+    setup.restart();
+    setResolved(false);
+  };
+
+  const chooseMission = (): void => {
+    setup.chooseMission();
+    setResolved(false);
+  };
 
   const onReturnToCampaign = (): void => {
     const engine = engineRef.current;
@@ -193,10 +234,9 @@ export function Battle() {
 
   const playerControlled = unit !== null && unit.team === state.playerTeam && unit.alive;
 
-  // Leaving the battle screen unmounts it, which destroys the engine — the
-  // contract would silently restart from the top with the lance already paid
-  // for. There is nowhere useful to go mid-contract anyway.
-  const deployed = state.campaignPending && !state.finished;
+  // Leaving the battle screen destroys the engine. Setup is the deliberate
+  // way back while a lance is in the field, whether money is riding on it or not.
+  const deployed = setup.locked;
 
   // The briefing's lance panel: skirmish only. A campaign drop already made
   // these decisions on the dropship manifest.
@@ -358,7 +398,13 @@ export function Battle() {
           type="button"
           className="pause"
           disabled={deployed}
-          title={deployed ? 'The lance is in the field — resolve the contract first.' : ''}
+          title={
+            deployed
+              ? state.campaignPending
+                ? 'The lance is in the field — resolve the contract first.'
+                : 'The lance is in the field — choose a mission to leave this run.'
+              : ''
+          }
           onClick={() => state.patch({ screen: 'mechbay' })}
           data-testid="open-mechbay"
         >
@@ -368,41 +414,31 @@ export function Battle() {
           type="button"
           className="pause"
           disabled={deployed}
-          title={deployed ? 'The lance is in the field — resolve the contract first.' : ''}
+          title={
+            deployed
+              ? state.campaignPending
+                ? 'The lance is in the field — resolve the contract first.'
+                : 'The lance is in the field — choose a mission to leave this run.'
+              : ''
+          }
           onClick={() => state.patch({ screen: 'campaign' })}
           data-testid="open-campaign"
         >
           Campaign
         </button>
-        <select
-          className="pause"
-          value={difficulty}
-          onChange={(event) => {
-            storeDifficulty(event.target.value);
-            state.patch({ difficulty: event.target.value });
-          }}
-          title="How hard the enemy fights. Takes effect when the next battle starts."
-          data-testid="difficulty-picker"
-        >
-          {Object.keys(getCatalog().rules.difficulty.tiers).map((tier) => (
-            <option key={tier} value={tier}>
-              {tier[0]?.toUpperCase()}{tier.slice(1)}
-            </option>
-          ))}
-        </select>
-        <select
-          className="pause"
-          value={missionId}
-          disabled={state.campaignPending}
-          onChange={(event) => state.patch({ skirmishMissionId: event.target.value })}
-          data-testid="mission-picker"
-        >
-          {[...getCatalog().missions.values()].map((mission) => (
-            <option key={mission.id} value={mission.id}>
-              {mission.name}
-            </option>
-          ))}
-        </select>
+        <SetupToolbar
+          missionId={setup.engine.missionId}
+          difficultyId={setup.engine.difficulty}
+          missions={missions}
+          difficulties={difficulties}
+          campaignMissionName={state.campaignPending ? state.missionName : null}
+          locked={setup.locked}
+          showActions={setup.locked && !state.finished}
+          onMission={setup.selectMission}
+          onDifficulty={setup.selectDifficulty}
+          onRestart={restartBattle}
+          onChooseMission={chooseMission}
+        />
         <a
           className="pause feedback-link"
           href="https://github.com/icarusdlqx/Ironline/issues"
@@ -425,11 +461,23 @@ export function Battle() {
           text={state.briefing}
           objectives={state.objectives}
           resourcePoints={state.resourcePoints}
+          setup={
+            <BriefingSetup
+              missionId={setup.engine.missionId}
+              difficultyId={setup.engine.difficulty}
+              missions={missions}
+              difficulties={difficulties}
+              campaignMissionName={state.campaignPending ? state.missionName : null}
+              onMission={setup.selectMission}
+              onDifficulty={setup.selectDifficulty}
+            />
+          }
           {...(briefingLance === null ? {} : { lance: briefingLance })}
           onDeploy={() => {
             // The establishing shot belongs to the moment the lance actually
             // drops, not to when the renderer was built behind the briefing.
             engineRef.current?.renderer.camera.beginDropIn();
+            setup.lockDraft();
             state.patch({ briefingSeen: true, paused: false });
           }}
         />
@@ -468,7 +516,16 @@ export function Battle() {
             <button type="button" onClick={onReturnToCampaign} data-testid="return-to-campaign">
               {resolved ? 'Back to campaign' : 'Resolve contract'}
             </button>
-          ) : null}
+          ) : (
+            <span className="outcome-actions">
+              <button type="button" onClick={restartBattle} data-testid="retry-battle">
+                Retry
+              </button>
+              <button type="button" onClick={chooseMission} data-testid="choose-mission-outcome">
+                Choose mission
+              </button>
+            </span>
+          )}
         </div>
       ) : null}
 
