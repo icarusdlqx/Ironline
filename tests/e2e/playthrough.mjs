@@ -104,6 +104,8 @@ async function main() {
     await page.locator('[data-testid="briefing-deploy"]').click();
     await page.waitForSelector('[data-testid="training-coach"]');
     await page.screenshot({ path: `${SHOTS}/00-training-coach.png` });
+    await page.locator('[data-testid="choose-mission"]').click();
+    await page.waitForSelector('[data-testid="briefing"]');
     await page.locator('[data-testid="mission-picker"]').selectOption('skirmish_ridge');
     await page.waitForFunction(() => globalThis.__ironline.world.mission.id === 'skirmish_ridge');
 
@@ -693,6 +695,7 @@ async function main() {
     };
     const payoutHeavy = await offerFor('fee_first');
     const salvageHeavy = await offerFor('salvage_first');
+    const selectedTermsText = await page.locator('[data-testid="camp-contract"]').innerText();
     check(
       'named packages trade payout against salvage',
       payoutHeavy !== salvageHeavy &&
@@ -702,8 +705,8 @@ async function main() {
     );
     check(
       'contract terms name success pay and repair exposure',
-      salvageHeavy.includes('on success') && salvageHeavy.includes('Repair cover: none'),
-      salvageHeavy,
+      selectedTermsText.includes('on success') && selectedTermsText.includes('Repair cover: none'),
+      selectedTermsText,
     );
     await page.screenshot({ path: `${SHOTS}/08-contract-terms.png` });
 

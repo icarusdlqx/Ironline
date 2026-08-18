@@ -79,9 +79,10 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
 - **Phase 5 — Objectives & support: complete.** Mission scripting from JSON —
   capture zones, five objective types, and triggers on elapsed time, zone
   capture, objective completion or losses, firing spawns, resource awards,
-  messages and reveals. Resource Points earned from zones and objectives and
-  spent on all six support calls. Mission success and failure conditions, a
-  briefing screen and an in-battle objective tracker.
+  messages and reveals. Resource Points earned from zones and objectives pay
+  for sensor probes, air strikes, repair trucks, or an authored mission reserve.
+  Mission success and failure conditions, a briefing screen and an in-battle
+  objective tracker.
 - **Phase 6 — AI depth & balance: complete.** Utility-scoring target selection,
   lance focus fire, cover and elevation seeking, flanking, graduated heat
   discipline that sheds the least efficient weapon group rather than going dark,

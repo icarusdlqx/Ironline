@@ -3,9 +3,9 @@ import { dropTonnageFor, prepareDeployment, resolveMission } from '../campaign/c
 import { loadCampaign, saveCampaign } from '../campaign/save';
 import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
-import type { MechLocation } from '../schema/common';
-import { CommandPalette, type Command } from './CommandPalette';
+import { BattleHud } from './BattleHud';
 import { BattleResults } from './BattleResults';
+import { BattleTopbar } from './BattleTopbar';
 import { createEngine, type Engine } from './engine';
 import {
   berthDesign,
@@ -19,23 +19,13 @@ import { listStoredDesigns, loadFromStorage } from './mechbay/editor';
 import { Mechbay, type BayCommission } from './mechbay/Mechbay';
 import {
   Briefing,
-  EventLog,
-  HeatBar,
-  HostileBar,
-  LanceBar,
   ObjectiveList,
-  SupportPalette,
-  WeaponGroups,
   type BriefingLance,
 } from './Panels';
-import { Minimap } from './Minimap';
-import { PaperDoll } from './PaperDoll';
-import { BriefingSetup, SetupToolbar } from './BattleSetup';
+import { BriefingSetup } from './BattleSetup';
 import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
-import { formatMissionClock, missionClockUrgency } from './missionClock';
-import { selectedUnit, useGame } from './store';
+import { useGame } from './store';
 import { buildSupportOptions } from './supportOptions';
-import { TacticalReadout } from './TacticalReadout';
 import { TrainingCoach } from './TrainingCoach';
 import {
   completeTraining,
@@ -48,22 +38,12 @@ export function Battle() {
   const hostRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const state = useGame();
-  const unit = selectedUnit(state);
-  // The readout is only trusted when it is priced for the mech on screen: the
-  // HUD refreshes at 10Hz, and a stale reading for the last selection is worse
-  // than none.
-  const preview =
-    unit !== null && state.hitPreview !== null && state.hitPreview.shooterId === unit.id
-      ? state.hitPreview
-      : null;
 
   const [resolved, setResolved] = useState(false);
   const [muted, setMuted] = useState(false);
   const [lowFx, setLowFx] = useState(false);
   const missionId = useGame((game) => game.skirmishMissionId);
   const difficulty = useGame((game) => game.difficulty);
-  const remainingSeconds = Math.max(0, state.missionDurationSeconds - state.elapsedSeconds);
-  const clockUrgency = missionClockUrgency(remainingSeconds);
 
   // The skirmish lance, edited at the briefing. Kept per mission so switching
   // missions never carries the wrong machines across, persisted so a loadout
@@ -205,44 +185,10 @@ export function Battle() {
     state.patch({ campaignPending: false, screen: 'campaign' });
   };
 
-  const onCommand = (command: Command): void => {
-    const engine = engineRef.current;
-    if (engine === null) return;
-
-    if (command.id === 'hold_fire') {
-      engine.toggleHoldFire();
-      return;
-    }
-    if (command.id === 'hold_position') {
-      engine.setPosture(command.id);
-      return;
-    }
-    if (command.id === 'ability') {
-      engine.useAbilities();
-      return;
-    }
-    if (command.id === 'alpha_strike') {
-      engine.alphaStrike();
-      return;
-    }
-    if (command.id === 'heat_safety') {
-      engine.toggleHeatSafety();
-      return;
-    }
-    state.setOrderMode(command.mode);
-  };
-
-  const onSelectLocation = (location: MechLocation): void => {
-    state.setCalledShotLocation(location);
-    state.setOrderMode('called_shot');
-  };
-
   useEffect(() => {
     setMuted(engineRef.current?.audio.muted ?? false);
     setLowFx(engineRef.current?.renderer.lowFx ?? false);
   }, [state.ready]);
-
-  const playerControlled = unit !== null && unit.team === state.playerTeam && unit.alive;
 
   // Leaving the battle screen destroys the engine. Setup is the deliberate
   // way back while a lance is in the field, whether money is riding on it or not.
@@ -351,120 +297,22 @@ export function Battle() {
         />
       )}
 
-      <header className="topbar" data-testid="topbar">
-        <span className="mission">{state.missionName}</span>
-        <span
-          className={`clock clock-${clockUrgency}`}
-          data-testid="clock"
-          title="Mission time remaining"
-          aria-label={`Mission time remaining ${formatMissionClock(remainingSeconds)}`}
-        >
-          TIME {formatMissionClock(remainingSeconds)}
-        </span>
-        <button
-          type="button"
-          className={`pause ${state.paused ? 'active' : ''}`}
-          onClick={() => engineRef.current?.togglePause()}
-          data-testid="pause-button"
-        >
-          {state.paused ? '▶ Resume' : '❚❚ Pause'}
-        </button>
-        <span className="speed-controls" data-testid="speed-controls">
-          {[1, 2, 4].map((speed) => (
-            <button
-              key={speed}
-              type="button"
-              className={`pause ${!state.paused && state.speed === speed ? 'active' : ''}`}
-              onClick={() => engineRef.current?.setSpeed(speed)}
-              title={`Run the battle at ${speed}× (, and . step speed)`}
-              data-testid={`speed-${speed}`}
-            >
-              {speed}×
-            </button>
-          ))}
-        </span>
-        <button
-          type="button"
-          className="pause"
-          onClick={() => setMuted(engineRef.current?.audio.toggleMuted() ?? false)}
-          title={muted ? 'Sound is off' : 'Sound is on'}
-          data-testid="mute-button"
-        >
-          {muted ? '\u{1F507}' : '\u{1F50A}'}
-        </button>
-        <button
-          type="button"
-          className={`pause ${lowFx ? 'active' : ''}`}
-          onClick={() => setLowFx(engineRef.current?.toggleLowFx() ?? false)}
-          title={
-            lowFx
-              ? 'Low graphics: shadows off, resolution down. Click for full.'
-              : 'Full graphics. Click to drop shadows and resolution if the game stutters.'
-          }
-          data-testid="fx-toggle"
-        >
-          {lowFx ? 'FX low' : 'FX full'}
-        </button>
-        <button
-          type="button"
-          className="pause"
-          disabled={deployed}
-          title={
-            deployed
-              ? state.campaignPending
-                ? 'The lance is in the field — resolve the contract first.'
-                : 'The lance is in the field — choose a mission to leave this run.'
-              : ''
-          }
-          onClick={() => state.patch({ screen: 'mechbay' })}
-          data-testid="open-mechbay"
-        >
-          Mechbay
-        </button>
-        <button
-          type="button"
-          className="pause"
-          disabled={deployed}
-          title={
-            deployed
-              ? state.campaignPending
-                ? 'The lance is in the field — resolve the contract first.'
-                : 'The lance is in the field — choose a mission to leave this run.'
-              : ''
-          }
-          onClick={() => state.patch({ screen: 'campaign' })}
-          data-testid="open-campaign"
-        >
-          Campaign
-        </button>
-        <SetupToolbar
-          missionId={setup.engine.missionId}
-          difficultyId={setup.engine.difficulty}
-          missions={missions}
-          difficulties={difficulties}
-          campaignMissionName={state.campaignPending ? state.missionName : null}
-          locked={setup.locked}
-          showActions={setup.locked && !state.finished}
-          onMission={selectMission}
-          onDifficulty={setup.selectDifficulty}
-          onRestart={restartBattle}
-          onChooseMission={chooseMission}
-        />
-        <a
-          className="pause feedback-link"
-          href="https://github.com/icarusdlqx/Ironline/issues"
-          target="_blank"
-          rel="noreferrer"
-          title="Something broken, unfair, or missing? Tell the builders."
-          data-testid="feedback-link"
-        >
-          Feedback
-        </a>
-        <span className="hint">
-          Space pauses · , . change speed · P perf graph · click an enemy to attack ·
-          right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms
-        </span>
-      </header>
+      <BattleTopbar
+        engine={engineRef.current}
+        muted={muted}
+        lowFx={lowFx}
+        setupMissionId={setup.engine.missionId}
+        setupDifficultyId={setup.engine.difficulty}
+        missions={missions}
+        difficulties={difficulties}
+        locked={deployed}
+        onMuted={setMuted}
+        onLowFx={setLowFx}
+        onMission={selectMission}
+        onDifficulty={setup.selectDifficulty}
+        onRestart={restartBattle}
+        onChooseMission={chooseMission}
+      />
 
       {!state.briefingSeen && state.briefing !== '' && !state.finished ? (
         <Briefing
@@ -545,108 +393,7 @@ export function Battle() {
         </div>
       ) : null}
 
-      <aside className="sidebar" data-testid="sidebar">
-        {unit === null ? (
-          <p className="empty">Select a mech — click it, or press Tab to cycle your lance.</p>
-        ) : (
-          <>
-            <h2>
-              {unit.pilotName}
-              <small>{unit.name}</small>
-            </h2>
-            <PaperDoll
-              locations={unit.locations}
-              {...(playerControlled ? { onSelectLocation } : {})}
-              activeLocation={state.orderMode === 'called_shot' ? state.calledShotLocation : null}
-            />
-            <HeatBar heat={unit.heat} capacity={unit.heatCapacity} thresholds={state.heatTiers} />
-            <TacticalReadout unit={unit} />
-            <div className="target-line">
-              {preview === null ? (
-                <>
-                  Target: <strong>{unit.targetName ?? 'none'}</strong>
-                </>
-              ) : (
-                <>
-                  {preview.hover ? 'Sizing up' : 'Target'}:{' '}
-                  <strong>{preview.targetName}</strong>
-                  <span className="target-range">{Math.round(preview.range)}m</span>
-                </>
-              )}
-            </div>
-            {preview === null || preview.factors.length === 0 ? null : (
-              <div className="hit-factors" data-testid="hit-factors">
-                {preview.factors.map((factor) => (
-                  <span
-                    key={factor.id}
-                    className={factor.value < 1 ? 'penalty' : 'bonus'}
-                    title={`×${factor.value.toFixed(2)}`}
-                  >
-                    {factor.label} {factor.value < 1 ? '−' : '+'}
-                    {Math.abs(Math.round((factor.value - 1) * 100))}%
-                  </span>
-                ))}
-              </div>
-            )}
-            <WeaponGroups
-              unit={unit}
-              onToggleGroup={(group) => engineRef.current?.toggleGroup(group)}
-              {...(preview === null ? {} : { preview })}
-            />
-          </>
-        )}
-        <EventLog lines={state.log} />
-      </aside>
-
-      <HostileBar
-        enemies={state.enemies}
-        targetIds={
-          new Set(
-            state.units
-              .filter((entry) => state.selection.includes(entry.id) && entry.targetName !== null)
-              .flatMap((entry) => {
-                const shot = state.enemies.find((foe) => foe.name === entry.targetName);
-                return shot === undefined ? [] : [shot.id];
-              }),
-          )
-        }
-        hasSelection={state.units.some(
-          (entry) => state.selection.includes(entry.id) && entry.alive,
-        )}
-        onTarget={(id) => engineRef.current?.orderAttack(id, null)}
-      />
-
-      <Minimap engine={engineRef.current} />
-
-      <footer className="bottombar">
-        <LanceBar
-          units={state.units}
-          selection={state.selection}
-          onSelect={(id) => state.setSelection([id])}
-        />
-        <CommandPalette
-          orderMode={state.orderMode}
-          enabled={playerControlled}
-          holdingFire={unit?.holdingFire ?? false}
-          heatSafety={unit?.heatSafety ?? false}
-          ability={unit?.ability ?? null}
-          alpha={unit?.alpha ?? null}
-          jump={
-            unit === null
-              ? null
-              : { ready: unit.canJump, range: unit.jumpRange, cooldown: unit.jumpCooldown }
-          }
-          posture={unit?.posture ?? 'free'}
-          onCommand={onCommand}
-        />
-        <SupportPalette
-          options={supportOptions}
-          resourcePoints={state.resourcePoints}
-          active={state.supportMode}
-          reservesLeft={state.reservesLeft}
-          onPick={(call) => state.setSupportMode(state.supportMode === call ? null : call)}
-        />
-      </footer>
+      <BattleHud engine={engineRef.current} supportOptions={supportOptions} />
     </div>
   );
 }

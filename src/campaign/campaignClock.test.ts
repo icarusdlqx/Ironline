@@ -11,7 +11,12 @@ describe('campaign mission clock', () => {
     missions.set(mission.id, { ...mission, maxDurationSeconds: 5 });
     const shortCatalog = { ...catalog, missions };
     const state = startCampaign(shortCatalog, 'border_dispute', 'short-clock');
-    state.completedNodes.push('militia_raid', 'pass_skirmish');
+    state.completedNodes.push(
+      'militia_raid',
+      'pass_skirmish',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+    );
     expect(acceptContract(shortCatalog, state, 'ridge_hold', 'fee_first').ok).toBe(true);
 
     const run = runMission(shortCatalog, state);
