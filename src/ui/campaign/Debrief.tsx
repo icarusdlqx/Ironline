@@ -17,6 +17,17 @@ export function markDebriefed(count: number): void {
   globalThis.localStorage?.setItem(DEBRIEFED_KEY, String(count));
 }
 
+export function resetDebriefed(): void {
+  globalThis.localStorage?.removeItem(DEBRIEFED_KEY);
+}
+
+/** Restored campaigns show their latest report once, never an earlier run's place. */
+export function revealLatestDebrief(historyLength: number): number {
+  const count = Math.max(0, historyLength - 1);
+  markDebriefed(count);
+  return count;
+}
+
 function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
 }

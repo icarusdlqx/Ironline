@@ -22,11 +22,19 @@ import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
+import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
-import { Debrief, debriefedCount, markDebriefed } from './Debrief';
+import {
+  Debrief,
+  debriefedCount,
+  markDebriefed,
+  resetDebriefed,
+  revealLatestDebrief,
+} from './Debrief';
 import { Hangar } from './Hangar';
 import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
+import { commitCampaignChange } from './campaignSession';
 import { useGame } from '../store';
 
 const catalog = getCatalog();
@@ -39,7 +47,9 @@ function cbills(value: number): string {
 export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<CampaignState>(() => {
     const saved = loadCampaign();
-    return saved.state ?? startCampaign(catalog, CAMPAIGN_ID, 'border');
+    if (saved.state !== null) return saved.state;
+    resetDebriefed();
+    return startCampaign(catalog, CAMPAIGN_ID, 'border');
   });
   const [manualOpen, setManualOpen] = useState(false);
   /**
@@ -99,10 +109,16 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     change: (draft: CampaignState) => string | null | void,
     message?: string,
   ): void => {
-    const draft = JSON.parse(JSON.stringify(state)) as CampaignState;
-    const said = change(draft);
-    setState(draft);
-    setStatus(said ?? message ?? null);
+    const committed = commitCampaignChange(state, change);
+    setState(committed.state);
+    setStatus(committed.message ?? message ?? null);
+  };
+
+  const restore = (restored: CampaignState, message: string): void => {
+    saveCampaign(restored);
+    setDebriefed(revealLatestDebrief(restored.history.length));
+    setState(restored);
+    setStatus(message);
   };
 
   // Deploying walks the prep corridor rather than launching: the hangar for
@@ -127,74 +143,33 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="camp" data-testid="campaign">
-      <header className="camp-top">
-        <h2>{campaign.name}</h2>
-        <span data-testid="camp-day">Day {state.day}</span>
-        <span data-testid="camp-cbills">{cbills(state.cbills)}</span>
-        <button type="button" onClick={() => advanceDay()} data-testid="camp-advance">
-          Advance a day
-        </button>
-        <button type="button" onClick={() => { saveCampaign(state); setStatus('Campaign saved.'); }} data-testid="camp-save">
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const loaded = loadCampaign();
-            if (loaded.state === null) setStatus(loaded.error ?? 'no save');
-            else { setState(loaded.state); setStatus('Campaign loaded.'); }
-          }}
-          data-testid="camp-load"
-        >
-          Load
-        </button>
-        <button type="button" onClick={onExportSave} data-testid="camp-export">
-          Export
-        </button>
-        <label className="camp-import">
-          Import
-          <input
-            type="file"
-            accept="application/json"
-            data-testid="camp-import"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file === undefined) return;
-              void file.text().then((text) => {
-                const loaded = deserialiseCampaign(text);
-                if (loaded.state === null) setStatus(loaded.error ?? 'bad save');
-                else { setState(loaded.state); setStatus('Save imported.'); }
-              });
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => { clearSavedCampaign(); setState(startCampaign(catalog, CAMPAIGN_ID, 'border')); setStatus('New campaign.'); }}
-          data-testid="camp-restart"
-        >
-          Restart
-        </button>
-        <button
-          type="button"
-          onClick={() => setManualOpen((open) => !open)}
-          data-testid="camp-manual-toggle"
-        >
-          Field Manual
-        </button>
-        <button type="button" onClick={onExit} data-testid="camp-exit">
-          Skirmish
-        </button>
-        <a
-          className="pause feedback-link"
-          href="https://github.com/icarusdlqx/Ironline/issues"
-          target="_blank"
-          rel="noreferrer"
-          title="Something broken, unfair, or missing? Tell the builders."
-        >
-          Feedback
-        </a>
-      </header>
+      <CampaignHeader
+        campaignName={campaign.name}
+        day={state.day}
+        balance={cbills(state.cbills)}
+        onAdvance={advanceDay}
+        onSave={() => { saveCampaign(state); setStatus('Campaign saved.'); }}
+        onLoad={() => {
+          const loaded = loadCampaign();
+          if (loaded.state === null) setStatus(loaded.error ?? 'no save');
+          else restore(loaded.state, 'Campaign loaded.');
+        }}
+        onExport={onExportSave}
+        onImport={(text) => {
+          const loaded = deserialiseCampaign(text);
+          if (loaded.state === null) setStatus(loaded.error ?? 'bad save');
+          else restore(loaded.state, 'Save imported.');
+        }}
+        onRestart={() => {
+          clearSavedCampaign();
+          resetDebriefed();
+          setDebriefed(0);
+          setState(startCampaign(catalog, CAMPAIGN_ID, 'border'));
+          setStatus('New campaign.');
+        }}
+        onToggleManual={() => setManualOpen((open) => !open)}
+        onExit={() => { saveCampaign(state); onExit(); }}
+      />
 
       {!manualOpen ? null : (
         <div className="camp-manual" data-testid="camp-manual">
