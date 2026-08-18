@@ -1,7 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { acceptContract, advanceDays, startCampaign } from './campaign';
-import { buyMech, marketListings, marketPeriod, saleValueOf, sellMech, valueOf } from './market';
+import {
+  buyMech,
+  marketListings,
+  marketPeriod,
+  saleValueOf,
+  sellMech,
+  storeItemSaleBasis,
+  storeItemValueOf,
+  valueOf,
+} from './market';
 import { availableNodes } from './campaign';
 import type { CampaignState } from './types';
 
@@ -28,6 +37,22 @@ describe('the yard', () => {
     const stripped = { ...design, mounts: [], equipment: [] };
     expect(valueOf(catalog, stripped)).toBeLessThan(valueOf(catalog, design));
     expect(valueOf(catalog, stripped)).toBe(catalog.chassis.get(design.chassisId)?.baseCost);
+  });
+
+  it('values a salvage crate on the same basis as a fitted part', () => {
+    const crate = { kind: 'weapon' as const, itemId: 'medium_laser', count: 2 };
+    const authored = catalog.weapons.get(crate.itemId)?.cost ?? 0;
+
+    expect(storeItemValueOf(catalog, crate)).toBe(authored * crate.count);
+    expect(storeItemSaleBasis(catalog, crate)).toBe(
+      Math.round(authored * crate.count * catalog.rules.economy.market.sellFraction),
+    );
+  });
+
+  it('does not assign value to an unknown crate from a damaged save', () => {
+    const crate = { kind: 'equipment' as const, itemId: 'missing_part', count: 1 };
+    expect(storeItemValueOf(catalog, crate)).toBe(0);
+    expect(storeItemSaleBasis(catalog, crate)).toBe(0);
   });
 
   it('rebuilds the identical lot on every call', () => {

@@ -23,18 +23,16 @@ import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
+import { CampaignLoreManual } from './CampaignLoreManual';
 import { Debrief, debriefedCount, markDebriefed } from './Debrief';
 import { Hangar } from './Hangar';
 import { LanceManifest } from './LanceManifest';
-import { BarracksPanel, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
+import { BarracksPanel, cbills, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
+import { SalvageTerms } from './SalvageTerms';
 import { useGame } from '../store';
 
 const catalog = getCatalog();
 const CAMPAIGN_ID = 'border_dispute';
-
-function cbills(value: number): string {
-  return `${Math.round(value).toLocaleString('en-GB')} C`;
-}
 
 export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<CampaignState>(() => {
@@ -196,29 +194,11 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         </a>
       </header>
 
-      {!manualOpen ? null : (
-        <div className="camp-manual" data-testid="camp-manual">
-          <div className="manual-sheet">
-            <header>
-              <h3>Field Manual</h3>
-              <button type="button" onClick={() => setManualOpen(false)} data-testid="camp-manual-close">
-                Close
-              </button>
-            </header>
-            {[...catalog.lore.values()]
-              .sort((a, b) => a.order - b.order)
-              .map((entry) => (
-                <article key={entry.id}>
-                  <h4>{entry.title}</h4>
-                  <p className="manual-summary">{entry.summary}</p>
-                  {entry.body.map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
-                </article>
-              ))}
-          </div>
-        </div>
-      )}
+      <CampaignLoreManual
+        catalog={catalog}
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
+      />
 
       <CampaignMap
         campaign={campaign}
@@ -238,7 +218,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
             <h3>Active contract</h3>
             <p>
               {state.contract.employer} — {cbills(state.contract.payout)},{' '}
-              {Math.round(state.contract.salvageShare * 100)}% salvage, due day{' '}
+              {Math.round(state.contract.salvageShare * 100)}% salvage claim, due day{' '}
               {state.contract.deadlineDay}.
             </p>
             <div className="camp-buttons">
@@ -271,10 +251,11 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
                 data-testid="camp-terms"
               />
             </label>
-            <p data-testid="camp-offer">
-              {cbills(options[Math.min(step, options.length - 1)]?.payout ?? 0)} ·{' '}
-              {Math.round((options[Math.min(step, options.length - 1)]?.salvageShare ?? 0) * 100)}% salvage
-            </p>
+            <SalvageTerms
+              option={options[Math.min(step, options.length - 1)]}
+              step={Math.min(step, options.length - 1)}
+              steps={options.length}
+            />
             <button
               type="button"
               onClick={() =>
@@ -339,6 +320,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       {state.history.length <= debriefed || pendingDebrief === undefined ? null : (
         <Debrief
           catalog={catalog}
+          state={state}
           outcome={pendingDebrief}
           onChooseSalvage={(picks) => {
             mutate((draft) => {
