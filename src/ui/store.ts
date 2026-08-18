@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { MechLocation } from '../schema/common';
 import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
+import type { FormationPreset } from './formationPreset';
 import { initialSkirmishMission } from './trainingProgress';
 
 export type OrderMode = 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
@@ -191,6 +192,7 @@ export interface GameState {
   orderMode: OrderMode;
   /** A phone has no Shift key, so route-building persists across successive taps. */
   queueOrders: boolean;
+  formationPreset: FormationPreset;
   calledShotLocation: MechLocation | null;
   units: UnitSnapshot[];
   enemies: UnitSnapshot[];
@@ -218,6 +220,7 @@ export interface GameActions {
   setSelection: (ids: EntityId[]) => void;
   assignControlGroup: (slot: number, ids: EntityId[]) => void;
   setOrderMode: (mode: OrderMode) => void;
+  setFormationPreset: (preset: FormationPreset) => void;
   setSupportMode: (call: SupportCallId | null) => void;
   setCalledShotLocation: (location: MechLocation | null) => void;
   patch: (partial: Partial<GameState>) => void;
@@ -244,6 +247,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   controlGroups: {},
   orderMode: null,
   queueOrders: false,
+  formationPreset: 'auto',
   calledShotLocation: null,
   units: [],
   enemies: [],
@@ -268,6 +272,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   assignControlGroup: (slot, ids) =>
     set((state) => ({ controlGroups: { ...state.controlGroups, [slot]: ids } })),
   setOrderMode: (mode) => set({ orderMode: mode, supportMode: null }),
+  setFormationPreset: (formationPreset) => set({ formationPreset }),
   setSupportMode: (call) => set({ supportMode: call, orderMode: null }),
   setCalledShotLocation: (location) => set({ calledShotLocation: location }),
   patch: (partial) => set(partial),

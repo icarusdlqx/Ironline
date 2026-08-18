@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { actionStatus } from './combatTelemetry';
 import type { OrderMode, TimedActionSnapshot } from './store';
 
@@ -71,6 +72,7 @@ interface Props {
   jump: { ready: boolean; range: number; cooldown: number } | null;
   /** The standing order the selected mech is following. */
   posture: string;
+  leading?: ReactNode;
   onCommand: (command: Command) => void;
 }
 
@@ -90,10 +92,12 @@ export function CommandPalette({
   alpha,
   jump,
   posture,
+  leading,
   onCommand,
 }: Props) {
   return (
     <div className="palette" data-testid="command-palette">
+      {leading}
       {COMMANDS.map((command) => {
         const timed =
           command.id === 'ability' ? ability : command.id === 'alpha_strike' ? alpha : null;

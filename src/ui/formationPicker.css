@@ -1,0 +1,67 @@
+.formation-picker {
+  flex: none;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: auto minmax(76px, 1fr);
+  align-items: center;
+  gap: 2px 7px;
+  padding: 4px 7px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 10px;
+}
+
+.formation-picker-label {
+  color: var(--muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.formation-picker select {
+  min-width: 76px;
+  min-height: 24px;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  border-radius: 3px;
+  background: rgba(3, 8, 12, 0.88);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+}
+
+.formation-picker-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+  .mobile-tray .formation-picker {
+    width: 116px;
+    min-width: 116px;
+    min-height: var(--tap-size);
+    grid-row: 1 / -1;
+    grid-template-columns: 1fr;
+    align-content: center;
+    padding: 4px 6px;
+  }
+
+  .mobile-tray .formation-picker-label,
+  .mobile-tray .formation-picker-note {
+    text-align: center;
+  }
+
+  .mobile-tray .formation-picker-note {
+    grid-column: 1;
+    font-size: 8px;
+  }
+
+  .mobile-tray .formation-picker select {
+    width: 100%;
+    min-height: 28px;
+  }
+}

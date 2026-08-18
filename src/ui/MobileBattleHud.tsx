@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CommandPalette, type Command } from './CommandPalette';
 import type { Engine } from './engine';
+import { FormationPicker } from './FormationPicker';
 import { Minimap } from './Minimap';
 import { HostileBar, LanceBar, SupportPalette } from './Panels';
 import { selectedUnit, useGame } from './store';
@@ -120,6 +121,13 @@ export function MobileBattleHud({ engine, supportOptions, onCommand }: MobileBat
         <section className="mobile-tray" data-testid={`mobile-tray-${panel}`}>
           {panel === 'orders' ? (
             <CommandPalette
+              leading={
+                <FormationPicker
+                  value={state.formationPreset}
+                  compact
+                  onChange={state.setFormationPreset}
+                />
+              }
               orderMode={state.orderMode}
               enabled={playerControlled}
               holdingFire={unit?.holdingFire ?? false}

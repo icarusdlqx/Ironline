@@ -1,5 +1,6 @@
 import { CommandPalette, type Command } from './CommandPalette';
 import type { Engine } from './engine';
+import { FormationPicker } from './FormationPicker';
 import { Minimap } from './Minimap';
 import { MobileBattleHud } from './MobileBattleHud';
 import { HostileBar, LanceBar, SupportPalette } from './Panels';
@@ -77,6 +78,12 @@ export function BattleHud({ engine, supportOptions }: BattleHudProps) {
           onSelect={(id) => state.setSelection([id])}
         />
         <CommandPalette
+          leading={
+            <FormationPicker
+              value={state.formationPreset}
+              onChange={state.setFormationPreset}
+            />
+          }
           orderMode={state.orderMode}
           enabled={playerControlled}
           holdingFire={unit?.holdingFire ?? false}
