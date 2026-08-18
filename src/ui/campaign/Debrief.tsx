@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { termsName } from '../../campaign/contractTerms';
 import { storeItemValueOf } from '../../campaign/market';
 import { SALVAGE_PICKS } from '../../campaign/salvage';
+import { employerHistoryFor } from '../../campaign/employers';
 import type {
   CampaignState,
   MissionOutcome,
@@ -98,6 +99,17 @@ export function Debrief({
   onChooseSalvage?: (picks: StoreItem[]) => void;
 }) {
   const mission = catalog.missions.get(outcome.missionId);
+  const campaign = catalog.campaigns.get(state.campaignId);
+  const employer =
+    campaign === undefined
+      ? null
+      : employerHistoryFor(
+          campaign,
+          state.history,
+          outcome.employerId,
+          outcome.employerName,
+          state.employerFailures,
+        );
   const offered = outcome.salvageOffered ?? [];
   const candidates = outcome.salvageCandidates ?? [];
   const provenance = outcome.salvageProvenance ?? [];
@@ -134,6 +146,12 @@ export function Debrief({
               ? ` ${outcome.salvagedChassis.length} hull(s) and ${outcome.salvagedItems.length} crate(s) recovered.`
               : ''}
           </p>
+          {employer === null ? null : (
+            <p className="employer-facts" data-testid="debrief-employer">
+              <strong>{employer.name}</strong> · {employer.completed} completed ·{' '}
+              {employer.failed} failed · {cbills(employer.paid)} paid
+            </p>
+          )}
         </header>
 
         {candidates.length === 0 ? null : (

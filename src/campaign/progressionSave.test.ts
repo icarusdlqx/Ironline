@@ -11,6 +11,8 @@ describe('progression reports in old saves', () => {
     state.history.push({
       nodeId: 'militia_raid',
       missionId: 'raid_ridge',
+      employerId: 'kestrel_combine',
+      employerName: 'Kestrel Combine',
       termsId: 'standard',
       won: true,
       day: state.day,

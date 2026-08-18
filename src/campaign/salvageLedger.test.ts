@@ -72,6 +72,8 @@ function outcome(): MissionOutcome {
   return {
     nodeId: 'militia_raid',
     missionId: 'training_ground',
+    employerId: 'kestrel_combine',
+    employerName: 'Kestrel Combine',
     termsId: 'standard',
     won: true,
     day: 4,

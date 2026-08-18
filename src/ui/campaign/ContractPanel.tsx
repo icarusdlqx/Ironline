@@ -2,6 +2,8 @@ import { termsName, type NegotiationOption } from '../../campaign/contractTerms'
 import type { Contract, ContractTermsId } from '../../campaign/types';
 import type { CampaignNode } from '../../schema/campaign';
 import type { SalvageRules } from '../../schema/rules';
+import type { EmployerHistory } from '../../campaign/employers';
+import { EmployerLedger, employerHistoryText } from './EmployerLedger';
 import { SalvageTerms } from './SalvageTerms';
 
 function cbills(value: number): string {
@@ -21,6 +23,8 @@ interface ContractPanelProps {
   readyMechs: number;
   finished: boolean;
   won: boolean;
+  employer: EmployerHistory | null;
+  employers: EmployerHistory[];
   onSelectTerms: (termsId: ContractTermsId) => void;
   onAccept: (termsId: ContractTermsId) => void;
   onDeploy: () => void;
@@ -36,6 +40,8 @@ export function ContractPanel({
   readyMechs,
   finished,
   won,
+  employer,
+  employers,
   onSelectTerms,
   onAccept,
   onDeploy,
@@ -57,8 +63,13 @@ export function ContractPanel({
           <p className="contract-package" data-testid="camp-active-terms">
             {termsName(contract.termsId)}
           </p>
+          {employer === null ? null : (
+            <p className="employer-facts" data-testid="camp-employer-facts">
+              <strong>{employer.name}</strong> · {employerHistoryText(employer)}
+            </p>
+          )}
           <p>
-            {contract.employer} — {cbills(contract.payout)} on success,{' '}
+            {cbills(contract.payout)} on success,{' '}
             {Math.round(contract.salvageShare * 100)}% salvage claim, due day {contract.deadlineDay}.
           </p>
           <p className="contract-exposure">{repairTerms()}</p>
@@ -76,6 +87,11 @@ export function ContractPanel({
       ) : (
         <>
           <h3>{node.name}</h3>
+          {employer === null ? null : (
+            <p className="employer-facts" data-testid="camp-employer-facts">
+              <strong>{employer.name}</strong> · {employerHistoryText(employer)}
+            </p>
+          )}
           <p className="camp-brief">{node.brief}</p>
           <fieldset className="camp-negotiate" data-testid="camp-terms">
             <legend>Terms</legend>
@@ -123,6 +139,7 @@ export function ContractPanel({
           </button>
         </>
       )}
+      <EmployerLedger employers={employers} />
     </section>
   );
 }

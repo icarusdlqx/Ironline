@@ -12,6 +12,8 @@ describe('campaign debrief recovery ledger', () => {
     const outcome: MissionOutcome = {
       nodeId: 'militia_raid',
       missionId: 'training_ground',
+      employerId: 'kestrel_combine',
+      employerName: 'Kestrel Combine',
       termsId: 'salvage_first',
       won: true,
       day: 4,
@@ -62,6 +64,7 @@ describe('campaign debrief recovery ledger', () => {
       mechsLost: [],
       pilotReports: [],
     };
+    state.history.push(outcome);
 
     const html = renderToStaticMarkup(
       createElement(Debrief, {
@@ -80,5 +83,7 @@ describe('campaign debrief recovery ledger', () => {
     expect(html).toContain('not eligible');
     expect(html).toContain("Field source: Sentinel SNL-2 &#x27;Brawler&#x27;, left arm");
     expect(html).toContain("Sentinel SNL-2 &#x27;Brawler&#x27;, centre torso");
+    expect(html).toContain('Kestrel Combine');
+    expect(html).toContain('1 completed · 0 failed · 100 C paid');
   });
 });

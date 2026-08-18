@@ -11,6 +11,7 @@ import { availableXp, awardXp, resolveCasualty } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
 import { negotiationOptions } from './contractTerms';
 import { dailyPayroll } from './ledger';
+import { employerById, recordEmployerFailure } from './employers';
 import { fillEmptySeats, PLAYER_TEAM, prepareDeployment, type DeployablePair } from './deployment';
 import {
   findMech, findPilot, type CampaignState, type MechRecord, type MissionOutcome, type PilotReport,
@@ -55,6 +56,7 @@ export function startCampaign(catalog: Catalog, campaignId: string, seed: string
     marketBought: [],
     contract: null,
     history: [],
+    employerFailures: [],
     log: [],
     finished: false,
     won: false,
@@ -150,6 +152,7 @@ export function acceptContract(
 
   const option = negotiationOptions(catalog, node).find((terms) => terms.id === termsId);
   if (option === undefined) return { ok: false, reason: 'invalid contract terms' };
+  const employer = employerById(campaignOf(catalog, state), node.employerId);
 
   // A side posting is off the board the moment it is signed. The authored
   // campaign tracks completion instead, because those jobs have to stay
@@ -159,7 +162,8 @@ export function acceptContract(
   state.contract = {
     nodeId: node.id,
     missionId: node.missionId,
-    employer: node.employer,
+    employerId: employer.id,
+    employerName: employer.name,
     termsId: option.id,
     payout: option.payout,
     salvageShare: option.salvageShare,
@@ -169,7 +173,7 @@ export function acceptContract(
 
   log(
     state,
-    `Signed ${option.name.toLowerCase()} terms with ${node.employer} for ${node.name}: ` +
+    `Signed ${option.name.toLowerCase()} terms with ${employer.name} for ${node.name}: ` +
       `${option.payout} credits, ` +
       `${Math.round(option.salvageShare * 100)}% salvage, due day ${state.contract.deadlineDay}.`,
   );
@@ -180,8 +184,9 @@ export function abandonContract(catalog: Catalog, state: CampaignState): void {
   const contract = state.contract;
   if (contract === null) return;
   state.contract = null;
+  const employerName = recordEmployerFailure(catalog, state, contract, 'withdrawn');
   const failure = applyContractFailure(catalog, state, contract);
-  log(state, `Withdrew from the ${contract.employer} contract.${recoveryNotice(failure)}`);
+  log(state, `Withdrew from the ${employerName} contract.${recoveryNotice(failure)}`);
   advanceDays(catalog, state, failure.recoveryDays);
 }
 
@@ -299,6 +304,8 @@ export function resolveMission(
   const outcome: MissionOutcome = {
     nodeId: contract.nodeId,
     missionId: contract.missionId,
+    employerId: contract.employerId,
+    employerName: contract.employerName,
     termsId: contract.termsId,
     won,
     day: state.day,
@@ -357,8 +364,9 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
     if (state.contract !== null && state.day > state.contract.deadlineDay) {
       const contract = state.contract;
       state.contract = null;
+      const employerName = recordEmployerFailure(catalog, state, contract, 'expired');
       const failure = applyContractFailure(catalog, state, contract);
-      log(state, `The ${contract.employer} contract expired.${recoveryNotice(failure)}`);
+      log(state, `The ${employerName} contract expired.${recoveryNotice(failure)}`);
       remaining += failure.recoveryDays;
     }
   }

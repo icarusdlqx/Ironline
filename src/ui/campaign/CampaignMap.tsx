@@ -1,5 +1,6 @@
 import type { Campaign, CampaignNode } from '../../schema/campaign';
 import type { Catalog } from '../../schema/load';
+import { employerDisplayName } from '../../campaign/employers';
 
 export type NodeState = 'locked' | 'available' | 'complete' | 'failed';
 
@@ -118,6 +119,7 @@ export function CampaignMap({ campaign, catalog, stateOf, selectedId, onSelect }
         const state = stateOf(node);
         const { glyph, kind } = missionGlyph(catalog, node.missionId);
         const position = at(node);
+        const employer = employerDisplayName(campaign, node.employerId);
 
         return (
           <button
@@ -128,7 +130,7 @@ export function CampaignMap({ campaign, catalog, stateOf, selectedId, onSelect }
             disabled={state !== 'available'}
             onClick={() => onSelect(node.id)}
             data-testid={`camp-node-${node.id}`}
-            title={`${node.employer} · ${kind}`}
+            title={`${employer} · ${kind}`}
           >
             <span className="node-glyph" aria-hidden="true">
               {state === 'complete' ? '✓' : state === 'failed' ? '✕' : glyph}
@@ -136,7 +138,7 @@ export function CampaignMap({ campaign, catalog, stateOf, selectedId, onSelect }
             <span className="node-body">
               <span className="node-name">{node.name}</span>
               <span className="node-meta">
-                {kind} · {node.employer}
+                {kind} · {employer}
               </span>
               <span className="node-state">
                 {state === 'available'

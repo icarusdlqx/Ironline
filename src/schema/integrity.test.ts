@@ -2,8 +2,40 @@ import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { checkIntegrity } from './integrity';
 import type { Catalog, ContentIssue } from './load';
+import { CampaignSchema } from './campaign';
 
 describe('campaign content integrity', () => {
+  it('rejects employer references that are not in the campaign ledger', () => {
+    const campaign = catalog.campaigns.get('border_dispute');
+    expect(campaign).toBeDefined();
+    if (campaign === undefined) return;
+
+    const brokenNode = structuredClone(campaign);
+    if (brokenNode.nodes[0] !== undefined) brokenNode.nodes[0].employerId = 'missing_employer';
+    expect(CampaignSchema.safeParse(brokenNode).error?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ['nodes', 0, 'employerId'] }),
+      ]),
+    );
+
+    const brokenSideWork = structuredClone(campaign);
+    brokenSideWork.sideWork.employerIds.push('missing_employer');
+    expect(CampaignSchema.safeParse(brokenSideWork).error?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ['sideWork', 'employerIds', 6] }),
+      ]),
+    );
+
+    const duplicateName = structuredClone(campaign);
+    const second = duplicateName.employers[1];
+    if (second !== undefined) second.name = '  KESTREL   COMBINE ';
+    expect(CampaignSchema.safeParse(duplicateName).error?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ['employers'], message: 'employer names must be unique' }),
+      ]),
+    );
+  });
+
   it('rejects a missing mission in the side-work pool', () => {
     const campaign = catalog.campaigns.get('border_dispute');
     expect(campaign).toBeDefined();
