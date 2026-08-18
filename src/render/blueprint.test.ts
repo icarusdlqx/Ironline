@@ -41,6 +41,29 @@ describe('body plans', () => {
     }
   });
 
+  it('names every walking pivot and measures the full leg chain', () => {
+    for (const chassis of HULLS) {
+      const plan = chassisBlueprint(chassis.silhouette, chassis.traits, chassis.hardpoints, chassis.id);
+      const legs = plan.parts.filter(
+        (part) => part.location === 'left_leg' || part.location === 'right_leg',
+      );
+      if (chassis.frame !== 'mech') {
+        expect(legs.every((part) => part.joint === undefined), chassis.id).toBe(true);
+        continue;
+      }
+
+      expect(new Set(legs.map((part) => part.joint)), chassis.id)
+        .toEqual(new Set(['hip', 'knee', 'ankle']));
+      expect(plan.legs.hipHeight, chassis.id).toBeGreaterThan(plan.legs.kneeHeight);
+      expect(plan.legs.kneeHeight, chassis.id).toBeGreaterThan(plan.legs.ankleHeight);
+      expect(plan.legs.reach, chassis.id).toBeGreaterThan(plan.legs.hipHeight * 0.9);
+      expect(plan.legs.stanceReach, chassis.id).toBeCloseTo(Math.hypot(
+        plan.legs.ankleForward,
+        plan.legs.hipHeight - plan.legs.ankleHeight,
+      ));
+    }
+  });
+
   it('bolts a vehicle hull down so only the turret comes round', () => {
     // A ground vehicle traverses where a mech twists. If the glacis turned with
     // the guns the silhouette would read as a mech lying down.
@@ -127,5 +150,6 @@ describe('body plans', () => {
       (part) => part.location === 'centre_torso' && part.tone === 'deep' && part.size[2] > 0.7,
     )).toBe(true);
     expect(gadfly.legs.kneeForward).toBeGreaterThan(anonymous.legs.kneeForward * 1.25);
+    expect(gadfly.legs.reach).toBeGreaterThan(gadfly.legs.stanceReach * 1.15);
   });
 });

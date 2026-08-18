@@ -2,6 +2,8 @@ import type { MechLocation } from '../../schema/common';
 
 export type Tone = 'plate' | 'deep' | 'trim' | 'glass' | 'accent';
 
+export type LegJoint = 'hip' | 'knee' | 'ankle';
+
 /** Tapered segments carry weight more convincingly than straight prisms. */
 export type PartShape = 'box' | 'cylinder' | 'sphere' | 'limb';
 
@@ -29,6 +31,8 @@ export interface BlueprintPart {
   tilt?: number;
   /** Vehicle hull pieces stay put while the turret traverses. */
   fixed?: boolean;
+  /** Walking plates name their pivot so shape changes cannot silently move a joint. */
+  joint?: LegJoint;
   profile?: Profile;
   transverse?: TransverseTaper;
 }
@@ -50,6 +54,12 @@ export interface Blueprint {
     hipHeight: number;
     kneeHeight: number;
     kneeForward: number;
+    ankleHeight: number;
+    ankleForward: number;
+    /** Segment length is useful in flight; the straight chord owns a planted stride. */
+    reach: number;
+    stanceReach: number;
+    stanceWidth: number;
   };
   articulated: boolean;
 }
