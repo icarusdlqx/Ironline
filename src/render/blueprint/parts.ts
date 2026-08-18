@@ -8,6 +8,7 @@ import type {
   PartShape,
   Profile,
   Tone,
+  TransverseTaper,
 } from './types';
 
 export function part(
@@ -36,6 +37,18 @@ export function shaped(
   tilt?: number,
 ): BlueprintPart {
   return { ...part(location, 'box', at, size, tone, tilt), profile };
+}
+
+export function armoured(
+  location: MechLocation | null,
+  profile: Profile,
+  at: [number, number, number],
+  size: [number, number, number],
+  tone: Tone,
+  transverse: TransverseTaper,
+  tilt?: number,
+): BlueprintPart {
+  return { ...shaped(location, profile, at, size, tone, tilt), transverse };
 }
 
 export function fittingFor(counts: HardpointCount | undefined): Fitting {

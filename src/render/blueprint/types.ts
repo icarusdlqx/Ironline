@@ -8,6 +8,16 @@ export type PartShape = 'box' | 'cylinder' | 'sphere' | 'limb';
 /** A convex side profile in part-local coordinates, wound anticlockwise. */
 export type Profile = readonly (readonly [number, number])[];
 
+/** Unit factors keep the authored footprint stable while the outer plates lean. */
+export interface TransverseTaper {
+  front?: number;
+  rear?: number;
+  top?: number;
+  bottom?: number;
+  /** A small clipped rim catches light without spending triangles on a rounded bevel. */
+  edge?: number;
+}
+
 export interface BlueprintPart {
   /** Damage still owns the part even when its shape is decorative. */
   location: MechLocation | null;
@@ -20,6 +30,7 @@ export interface BlueprintPart {
   /** Vehicle hull pieces stay put while the turret traverses. */
   fixed?: boolean;
   profile?: Profile;
+  transverse?: TransverseTaper;
 }
 
 export interface HardpointCount {

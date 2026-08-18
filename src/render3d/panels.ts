@@ -1,4 +1,12 @@
-import { BufferGeometry, ExtrudeGeometry, LatheGeometry, Shape, Vector2 } from 'three';
+import {
+  BufferGeometry,
+  ExtrudeGeometry,
+  Float32BufferAttribute,
+  LatheGeometry,
+  Shape,
+  Vector2,
+} from 'three';
+import type { Profile, TransverseTaper } from '../render/blueprint/types';
 
 /**
  * A box with its edges taken off.
@@ -84,6 +92,141 @@ export function hullSlab(profile: readonly (readonly [number, number])[], depth:
     curveSegments: 1,
   });
   geometry.translate(0, 0, -usable / 2);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function span(profile: Profile): { minX: number; maxX: number; minY: number; maxY: number } {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of profile) {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+function factor(low: number, high: number, value: number): number {
+  return low + (high - low) * value;
+}
+
+function anticlockwise(profile: Profile): Profile {
+  let area = 0;
+  for (let index = 0; index < profile.length; index += 1) {
+    const point = profile[index];
+    const next = profile[(index + 1) % profile.length];
+    if (point !== undefined && next !== undefined) area += point[0] * next[1] - next[0] * point[1];
+  }
+  // Several older decorative profiles predate the winding contract. Normalise
+  // here so promoting one to armour cannot silently turn its faces inward.
+  return area < 0 ? [...profile].reverse() : profile;
+}
+
+/**
+ * A faceted armour shell whose width can change from tail to nose and keel to
+ * crown. The clipped rim replaces a rounded extrusion bevel: it survives at
+ * tactical zoom and keeps the triangle budget tied to the outline.
+ */
+export function armourShell(
+  profile: Profile,
+  depth: number,
+  transverse: TransverseTaper,
+): BufferGeometry {
+  if (profile.length < 3) throw new Error('armour needs at least three profile points');
+  const outline = anticlockwise(profile);
+  const bounds = span(outline);
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  if (width <= 0 || height <= 0 || depth <= 0) throw new Error('armour dimensions must be positive');
+
+  const front = transverse.front ?? 1;
+  const rear = transverse.rear ?? 1;
+  const top = transverse.top ?? 1;
+  const bottom = transverse.bottom ?? 1;
+  const edge = transverse.edge ?? 0.08;
+  if (Math.min(front, rear, top, bottom) <= 0 || edge < 0 || edge >= 0.5) {
+    throw new Error('armour taper must leave a positive shell');
+  }
+
+  const centreX = (bounds.minX + bounds.maxX) / 2;
+  const centreY = (bounds.minY + bounds.maxY) / 2;
+  const edgeSize = Math.min(width, height, depth) * edge;
+  const positions: number[] = [];
+  const rings: [number[], number[], number[], number[]] = [[], [], [], []];
+
+  for (const [ring, side, inset] of [
+    [0, -1, true],
+    [1, -1, false],
+    [2, 1, false],
+    [3, 1, true],
+  ] as const) {
+    for (const [x, y] of outline) {
+      const along = (x - bounds.minX) / width;
+      const rise = (y - bounds.minY) / height;
+      const halfDepth = depth * 0.5
+        * factor(rear, front, along)
+        * factor(bottom, top, rise);
+      const innerDepth = Math.max(halfDepth - edgeSize, halfDepth * 0.55);
+      const dx = centreX - x;
+      const dy = centreY - y;
+      const distance = Math.hypot(dx, dy);
+      const insetScale = inset && distance > 0 ? Math.min(edgeSize / distance, 0.24) : 0;
+      rings[ring].push(positions.length / 3);
+      positions.push(
+        x + dx * insetScale,
+        y + dy * insetScale,
+        side * (inset ? halfDepth : innerDepth),
+      );
+    }
+  }
+
+  const indices: number[] = [];
+  const count = outline.length;
+  for (let index = 0; index < count; index += 1) {
+    const next = (index + 1) % count;
+    const [negativeOuter, negativeInner, positiveInner, positiveOuter] = rings;
+    indices.push(
+      positiveInner[index]!, negativeInner[index]!, negativeInner[next]!,
+      positiveInner[index]!, negativeInner[next]!, positiveInner[next]!,
+      positiveInner[index]!, positiveInner[next]!, positiveOuter[next]!,
+      positiveInner[index]!, positiveOuter[next]!, positiveOuter[index]!,
+      negativeInner[index]!, negativeOuter[index]!, negativeOuter[next]!,
+      negativeInner[index]!, negativeOuter[next]!, negativeInner[next]!,
+    );
+  }
+
+  const addCap = (ring: number[], positive: boolean): void => {
+    const centre = positions.length / 3;
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    for (const vertex of ring) {
+      x += positions[vertex * 3] ?? 0;
+      y += positions[vertex * 3 + 1] ?? 0;
+      z += positions[vertex * 3 + 2] ?? 0;
+    }
+    positions.push(x / count, y / count, z / count);
+    for (let index = 0; index < count; index += 1) {
+      const next = (index + 1) % count;
+      indices.push(
+        centre,
+        positive ? ring[index]! : ring[next]!,
+        positive ? ring[next]! : ring[index]!,
+      );
+    }
+  };
+  addCap(rings[0]!, false);
+  addCap(rings[3]!, true);
+
+  const indexed = new BufferGeometry();
+  indexed.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  indexed.setIndex(indices);
+  const geometry = indexed.toNonIndexed();
+  indexed.dispose();
   geometry.computeVertexNormals();
   return geometry;
 }

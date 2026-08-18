@@ -7,7 +7,7 @@ import {
   Object3D,
   SphereGeometry,
 } from 'three';
-import { chamferedBox, hullSlab, taperedLimb } from './panels';
+import { armourShell, chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
 import type { WeaponType } from '../schema/weapon';
 import { chassisBlueprint, type BlueprintPart, type HardpointMap, type Tone } from '../render/blueprint';
@@ -86,6 +86,13 @@ function geometryFor(part: BlueprintPart, scale: number): BufferGeometry {
   const [w, h, d] = part.size;
   // A shaped plate is cut to its own outline. Everything else falls back to
   // the primitives, so a part only pays for a profile when it earns one.
+  if (part.profile !== undefined && part.transverse !== undefined) {
+    return armourShell(
+      part.profile.map(([x, y]) => [x * w * scale, y * h * scale] as [number, number]),
+      d * scale,
+      part.transverse,
+    );
+  }
   if (part.profile !== undefined) {
     return hullSlab(
       part.profile.map(([x, y]) => [x * w * scale, y * h * scale] as [number, number]),

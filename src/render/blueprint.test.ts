@@ -72,10 +72,30 @@ describe('body plans', () => {
     }
   });
 
+  it('reserves transverse armour for the opening silhouettes that earn it', () => {
+    const minimumShells = new Map([
+      ['sentinel_snl2', 5],
+      ['bulwark_bwk3', 5],
+      ['cairn_crn3', 4],
+      ['hornet_hnt2', 4],
+    ]);
+    for (const [id, minimum] of minimumShells) {
+      const baseline = planFor(id, null);
+      const identified = planFor(id);
+      expect(baseline.parts.every((part) => part.transverse === undefined), id).toBe(true);
+      expect(identified.parts.filter((part) => part.transverse !== undefined).length, id)
+        .toBeGreaterThanOrEqual(minimum);
+    }
+  });
+
   it('gives the Sentinel a square cab instead of the shared raked canopy', () => {
-    const head = planFor('sentinel_snl2').parts.filter((part) => part.location === 'head');
+    const sentinel = planFor('sentinel_snl2');
+    const head = sentinel.parts.filter((part) => part.location === 'head');
     expect(head.some((part) => part.shape === 'box' && part.tone === 'deep' && part.size[2] >= 0.55)).toBe(true);
     expect(head.some((part) => part.tone === 'glass' && part.size[2] >= 0.4)).toBe(true);
+    expect(sentinel.parts.some(
+      (part) => part.location === 'centre_torso' && part.size[2] > 1.1 && part.size[1] < 0.2,
+    )).toBe(true);
   });
 
   it('separates the Bulwark shield from the Cairn launcher towers', () => {
@@ -85,17 +105,27 @@ describe('body plans', () => {
       (part) => part.location === 'left_arm' && part.tone === 'trim' && part.size[1] > 0.85,
     );
     expect(shield).toBeDefined();
+    expect(shield?.size[0]).toBeGreaterThan(0.9);
+    expect(shield?.size[1]).toBeGreaterThan(1);
     expect(cairn.parts.some((part) => part.location === 'left_arm' && part.tone === 'trim')).toBe(false);
     for (const location of ['left_torso', 'right_torso'] as const) {
-      expect(cairn.parts.some(
-        (part) => part.location === location && part.tone === 'plate' && part.size[1] > 0.9,
-      )).toBe(true);
+      const tower = cairn.parts.find(
+        (part) => part.location === location && part.tone === 'plate' && part.size[1] > 1,
+      );
+      expect(tower).toBeDefined();
+      expect(Math.abs(tower?.at[2] ?? 0)).toBeGreaterThan(1.1);
     }
   });
 
-  it('throws the Gadfly knees far enough forward to read at tactical zoom', () => {
+  it('gives the Gadfly a long nose, wide engine deck and forward knees', () => {
     const anonymous = planFor('hornet_hnt2', null);
     const gadfly = planFor('hornet_hnt2');
+    expect(gadfly.parts.some(
+      (part) => part.location === 'head' && part.size[0] >= 0.75 && part.at[0] > 0.7,
+    )).toBe(true);
+    expect(gadfly.parts.some(
+      (part) => part.location === 'centre_torso' && part.tone === 'deep' && part.size[2] > 0.7,
+    )).toBe(true);
     expect(gadfly.legs.kneeForward).toBeGreaterThan(anonymous.legs.kneeForward * 1.25);
   });
 });
