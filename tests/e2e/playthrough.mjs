@@ -805,10 +805,6 @@ async function main() {
     );
     check('the contract resolved into history', resolvedState.history.length === 1);
     check('the contract slot is clear again', resolvedState.contract === null);
-    check(
-      'the outcome was recorded either way',
-      resolvedState.completedNodes.length + resolvedState.failedNodes.length === 1,
-    );
 
     if (resolvedState.history[0].won) {
       check('winning paid out', (await cash()) > cashBefore, `${cashBefore} → ${await cash()}`);
@@ -818,7 +814,12 @@ async function main() {
         (await page.locator('.camp-node.available').count()) >= 1,
       );
     } else {
-      check('a loss is recorded as a failed node', resolvedState.failedNodes.length === 1);
+      check('a critical loss leaves the victory route open', resolvedState.failedNodes.length === 0);
+      check('the failed contract returns to the board', resolvedState.finished === false);
+      check(
+        'recovery terms are explained',
+        resolvedState.log.some((entry) => entry.text.includes('returns to the board')),
+      );
     }
 
     check('battle damage came home', (await page.locator('[data-testid="camp-bay"] li').count()) >= 4);

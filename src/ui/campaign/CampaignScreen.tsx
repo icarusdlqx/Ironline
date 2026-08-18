@@ -222,7 +222,12 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
               </button>
               <button
                 type="button"
-                onClick={() => mutate((draft) => abandonContract(draft), 'Contract abandoned.')}
+                onClick={() =>
+                  mutate(
+                    (draft) => abandonContract(catalog, draft),
+                    'Contract withdrawn. Recovery terms applied.',
+                  )
+                }
                 data-testid="camp-abandon"
               >
                 Withdraw

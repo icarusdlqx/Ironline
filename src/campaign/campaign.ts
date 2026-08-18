@@ -6,6 +6,7 @@ import { isSideContract, pruneSideOffers, sideContracts } from './sidework';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
 import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
+import { applyContractFailure, recoveryNotice } from './recovery';
 import { asPilot, assign, awardXp, promote, resolveCasualty } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
 import {
@@ -126,6 +127,7 @@ export function campaignNodes(catalog: Catalog, state: CampaignState): CampaignN
  * job — before this, the calendar was the only alternative.
  */
 export function availableNodes(catalog: Catalog, state: CampaignState): CampaignNode[] {
+  if (state.finished) return [];
   return [...campaignNodes(catalog, state), ...sideContracts(catalog, state)];
 }
 
@@ -163,6 +165,7 @@ export function acceptContract(
   nodeId: string,
   step: number,
 ): ActionResult {
+  if (state.finished) return { ok: false, reason: 'the campaign is over' };
   if (state.contract !== null) return { ok: false, reason: 'a contract is already active' };
 
   const node = availableNodes(catalog, state).find((entry) => entry.id === nodeId);
@@ -194,11 +197,13 @@ export function acceptContract(
   return { ok: true, reason: null };
 }
 
-export function abandonContract(state: CampaignState): void {
-  if (state.contract === null) return;
-  state.failedNodes.push(state.contract.nodeId);
-  log(state, `Withdrew from the ${state.contract.employer} contract.`);
+export function abandonContract(catalog: Catalog, state: CampaignState): void {
+  const contract = state.contract;
+  if (contract === null) return;
   state.contract = null;
+  const failure = applyContractFailure(catalog, state, contract);
+  log(state, `Withdrew from the ${contract.employer} contract.${recoveryNotice(failure)}`);
+  advanceDays(catalog, state, failure.recoveryDays);
 }
 
 /** Thrown when the company cannot field anything, so the UI can say so rather than crash. */
@@ -457,6 +462,8 @@ export function resolveMission(
       )
     : { candidates: [], chassisRecovered: [], offered: [], items: [] };
 
+  const failure = won ? null : applyContractFailure(catalog, state, contract);
+
   if (won) {
     applySalvage(state, salvage);
     state.cbills += contract.payout;
@@ -477,10 +484,7 @@ export function resolveMission(
       });
       state.nextId += 1;
     }
-
     state.completedNodes.push(contract.nodeId);
-  } else {
-    state.failedNodes.push(contract.nodeId);
   }
 
   const outcome: MissionOutcome = {
@@ -505,7 +509,7 @@ export function resolveMission(
     won
       ? `Contract complete: ${contract.payout} credits, ${salvage.items.length} item(s) and ` +
           `${salvage.chassisRecovered.length} chassis salvaged.`
-      : 'Contract failed. No payout.',
+      : `Contract failed. No payout.${recoveryNotice(failure!)}`,
   );
 
   const campaign = campaignOf(catalog, state);
@@ -515,14 +519,16 @@ export function resolveMission(
     log(state, `${campaign.name} won.`);
   }
 
-  advanceDays(catalog, state, 1);
+  advanceDays(catalog, state, 1 + (failure?.recoveryDays ?? 0));
   return { outcome, battle, salvage };
 }
 
 export function advanceDays(catalog: Catalog, state: CampaignState, days: number): void {
   const salary = catalog.rules.economy.pilot.salaryPerDay;
+  let remaining = days;
 
-  for (let step = 0; step < days; step += 1) {
+  while (remaining > 0) {
+    remaining -= 1;
     state.day += 1;
 
     const living = state.pilots.filter((pilot) => !pilot.dead).length;
@@ -536,9 +542,11 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
     }
 
     if (state.contract !== null && state.day > state.contract.deadlineDay) {
-      log(state, `The ${state.contract.employer} contract expired.`);
-      state.failedNodes.push(state.contract.nodeId);
+      const contract = state.contract;
       state.contract = null;
+      const failure = applyContractFailure(catalog, state, contract);
+      log(state, `The ${contract.employer} contract expired.${recoveryNotice(failure)}`);
+      remaining += failure.recoveryDays;
     }
   }
 

@@ -5,6 +5,10 @@
     "payoutCeilingFactor": 1.45,
     "steps": 8
   },
+  "contractFailure": {
+    "recoveryDays": 3,
+    "recoveryCostFactor": 0.1
+  },
   "repair": {
     "armourCostPerPoint": 250,
     "internalCostPerPoint": 1200,

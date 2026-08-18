@@ -10,12 +10,14 @@ import {
   fillEmptySeats,
   negotiationOptions,
   prepareDeployment,
+  resolveMission,
   runMission,
   startCampaign,
 } from './campaign';
 import { applyRefit, fitFromStore, planFit, refitInventory, stripToStore } from './refit';
 import { estimateRepair, startRepair } from './repair';
 import { addToStore, isPilotAvailable, storeCount, type CampaignState } from './types';
+import type { BattleResult } from '../sim/world';
 
 const CAMPAIGN_ID = 'border_dispute';
 
@@ -35,6 +37,25 @@ function fightNode(state: CampaignState, nodeId: string): void {
   const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.step);
   expect(accepted.ok, accepted.reason ?? '').toBe(true);
   runMission(catalog, state);
+}
+
+function resolveWithoutCombat(state: CampaignState, won: boolean): void {
+  const contract = state.contract;
+  if (contract === null) throw new Error('no active contract');
+  const battle: BattleResult = {
+    seed: 'campaign-transition',
+    missionId: contract.missionId,
+    missionStatus: won ? 'success' : 'failure',
+    missionReason: won ? 'objectives-complete' : 'objectives-failed',
+    objectives: [],
+    ticks: 1,
+    durationSeconds: 0.1,
+    winner: won ? 0 : 1,
+    decided: true,
+    units: [],
+    weapons: [],
+  };
+  resolveMission(catalog, state, battle, []);
 }
 
 /** Waits out the infirmary until somebody can climb into a cockpit again. */
@@ -306,9 +327,44 @@ describe('three-mission campaign', () => {
     ).toBe(true);
   });
 
-  // Three whole missions back to back. Fights got longer once the AI stopped
-  // charging into everything, which put this past the five-second default.
-  it('is winnable to the victory node', { timeout: 60_000 }, () => {
+  it('recovers from a critical loss and still reaches the victory node', () => {
+    const run = start('victory');
+    const sideId = availableNodes(catalog, run).find((node) => node.id.startsWith('side_'))?.id;
+    const startingDay = run.day;
+    const startingCash = run.cbills;
+
+    expect(acceptContract(catalog, run, 'militia_raid', 0).ok).toBe(true);
+    const recoveryCost = Math.round(
+      (run.contract?.payout ?? 0) * catalog.rules.economy.contractFailure.recoveryCostFactor,
+    );
+    resolveWithoutCombat(run, false);
+
+    const elapsed = 1 + catalog.rules.economy.contractFailure.recoveryDays;
+    const salaries = elapsed * run.pilots.length * catalog.rules.economy.pilot.salaryPerDay;
+    expect(run.finished).toBe(false);
+    expect(run.day).toBe(startingDay + elapsed);
+    expect(run.cbills).toBe(startingCash - recoveryCost - salaries);
+    expect(availableNodes(catalog, run).map((node) => node.id)).toContain('militia_raid');
+    expect(run.log[0]?.text).toMatch(/costs .* credits and 3 days.*returns to the board/);
+
+    for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
+      expect(acceptContract(catalog, run, nodeId, 0).ok).toBe(true);
+      resolveWithoutCombat(run, true);
+    }
+
+    expect(run.completedNodes).toEqual(
+      expect.arrayContaining(['militia_raid', 'pass_skirmish', 'ridge_hold']),
+    );
+    expect(run.finished).toBe(true);
+    expect(run.won).toBe(true);
+    expect(availableNodes(catalog, run)).toEqual([]);
+    expect(acceptContract(catalog, run, sideId ?? 'side_0_0', 0)).toEqual({
+      ok: false,
+      reason: 'the campaign is over',
+    });
+  });
+
+  it('runs real battles along the three-contract victory route', { timeout: 60_000 }, () => {
     const run = start('victory');
 
     for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
@@ -319,6 +375,12 @@ describe('three-mission campaign', () => {
     }
 
     expect(run.history.length).toBeGreaterThanOrEqual(2);
-    expect(run.completedNodes.length + run.failedNodes.length).toBe(run.history.length);
+    expect(run.completedNodes).toHaveLength(run.history.filter((outcome) => outcome.won).length);
+    expect(run.failedNodes).toHaveLength(0);
+
+    const last = run.history[run.history.length - 1];
+    if (last?.won === false) {
+      expect(availableNodes(catalog, run).map((node) => node.id)).toContain(last.nodeId);
+    }
   });
 });
