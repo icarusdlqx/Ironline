@@ -1580,6 +1580,59 @@ button {
   border-radius: 4px;
 }
 
+.training-coach {
+  position: absolute;
+  top: 225px;
+  left: 12px;
+  z-index: 2;
+  width: 250px;
+  padding: 11px 12px;
+  background: rgba(9, 12, 16, 0.94);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  font-size: 11px;
+}
+
+.training-coach strong,
+.training-kicker {
+  display: block;
+}
+
+.training-kicker {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.training-coach strong {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.training-coach p {
+  margin: 5px 0 9px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.training-progress {
+  display: flex;
+  gap: 5px;
+}
+
+.training-progress i {
+  width: 24px;
+  height: 3px;
+  background: var(--edge);
+}
+
+.training-progress i.done {
+  background: var(--accent);
+}
+
 .support-call {
   background: var(--panel);
   border: 1px solid var(--edge);
@@ -1941,6 +1994,13 @@ button {
     left: calc(8px + var(--safe-left));
     max-width: 46vw;
     font-size: 10px;
+  }
+
+  .training-coach {
+    top: auto;
+    bottom: calc(150px + var(--safe-bottom));
+    left: calc(8px + var(--safe-left));
+    width: min(220px, 45vw);
   }
 
   .hostiles {

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { MechLocation } from '../schema/common';
 import type { SupportCallId } from '../sim/support';
 import type { EntityId } from '../sim/types';
+import { initialSkirmishMission } from './trainingProgress';
 
 export type OrderMode = 'move' | 'run' | 'attack' | 'attack_move' | 'called_shot' | 'jump' | null;
 
@@ -209,7 +210,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   enemies: [],
   log: [],
 
-  skirmishMissionId: 'skirmish_ridge',
+  skirmishMissionId: initialSkirmishMission(),
   difficulty: readDifficulty(),
   missionName: '',
   briefing: '',
