@@ -18,6 +18,7 @@ describe('contract panel', () => {
         node,
         options,
         selectedTerms: 'standard',
+        salvageRules: catalog.rules.salvage,
         readyMechs: 4,
         finished: false,
         won: false,
@@ -35,6 +36,8 @@ describe('contract panel', () => {
     expect(html).toContain('on success');
     expect(html).toContain('Repair cover: none');
     expect(html).toContain(`${Math.round((options[1]?.salvageShare ?? 0) * 100)}% salvage`);
+    expect(html).toContain('Enemy walking-hull recovery');
+    expect(html).toContain('Both legs destroyed; side defeated');
   });
 
   it('shows the stored package after signing', () => {
@@ -57,6 +60,7 @@ describe('contract panel', () => {
         node: null,
         options: [],
         selectedTerms: 'standard',
+        salvageRules: catalog.rules.salvage,
         readyMechs: 4,
         finished: false,
         won: false,

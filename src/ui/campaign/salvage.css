@@ -1,0 +1,218 @@
+.debrief-recovery,
+.debrief-salvage {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.6rem;
+}
+
+.debrief-recovery h4,
+.debrief-salvage h4 {
+  margin: 0 0 0.15rem;
+}
+
+.debrief-recovery p,
+.salvage-note {
+  color: #8fa3ab;
+  font-size: 0.78rem;
+  margin: 0 0 0.5rem;
+}
+
+.debrief-recovery ul {
+  display: grid;
+  gap: 0.3rem;
+  list-style: none;
+  margin: 0 0 0.65rem;
+  padding: 0;
+}
+
+.debrief-recovery li {
+  align-items: center;
+  background: rgba(14, 18, 22, 0.78);
+  border: 1px solid var(--edge);
+  display: grid;
+  font-size: 0.72rem;
+  gap: 0.35rem 0.65rem;
+  grid-template-columns: minmax(130px, 1fr) minmax(170px, 1.2fr) auto auto;
+  padding: 0.42rem 0.55rem;
+}
+
+.recovery-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.recovery-outcome,
+.recovery-chance {
+  color: #a9b8bd;
+}
+
+.recovery-chance {
+  font-variant-numeric: tabular-nums;
+}
+
+.recovery-result {
+  color: #8fa3ab;
+  text-transform: uppercase;
+}
+
+.recovery-result.recovered {
+  color: var(--accent);
+}
+
+.debrief .manifest-actions button {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 0.4rem 0.65rem;
+}
+
+.salvage-offer {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.salvage-offer button {
+  background: rgba(14, 18, 22, 0.96);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  color: var(--text);
+  display: grid;
+  gap: 0.2rem 0.5rem;
+  grid-template-areas:
+    'name kind mark'
+    'spec spec spec'
+    'fit fit fit'
+    'owned owned owned'
+    'source source source'
+    'value value value';
+  grid-template-columns: 1fr auto auto;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  width: 100%;
+}
+
+.salvage-offer button.taken {
+  background: rgba(140, 224, 255, 0.07);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.salvage-kind {
+  color: #7c8f97;
+  font-size: 0.7rem;
+  grid-area: kind;
+  text-transform: uppercase;
+}
+
+.salvage-name {
+  grid-area: name;
+}
+
+.salvage-mark {
+  color: #8fa3ab;
+  font-size: 0.7rem;
+  grid-area: mark;
+}
+
+.salvage-offer button.taken .salvage-mark {
+  color: var(--accent);
+}
+
+.salvage-spec,
+.salvage-fit,
+.salvage-owned,
+.salvage-source,
+.salvage-value {
+  color: #a9b8bd;
+  font-size: 0.7rem;
+}
+
+.salvage-spec { grid-area: spec; }
+.salvage-fit { grid-area: fit; }
+.salvage-owned { grid-area: owned; }
+.salvage-source { grid-area: source; }
+.salvage-value {
+  color: #d3c79e;
+  grid-area: value;
+}
+
+.camp-salvage-terms p {
+  margin: 0.35rem 0;
+}
+
+.salvage-stance {
+  border: 1px solid rgba(209, 180, 113, 0.45);
+  color: #d1b471;
+  font-size: 0.68rem;
+  margin-left: 0.55rem;
+  padding: 0.1rem 0.3rem;
+  text-transform: uppercase;
+}
+
+.camp-salvage-terms .salvage-rights,
+.camp-salvage-terms .salvage-part-odds,
+.camp-salvage-terms .salvage-capacity {
+  color: #8fa3ab;
+  font-size: 0.74rem;
+}
+
+.salvage-odds {
+  border-collapse: collapse;
+  color: #a9b8bd;
+  font-size: 0.7rem;
+  max-width: 620px;
+  width: 100%;
+}
+
+.salvage-odds caption {
+  color: var(--text);
+  font-weight: 700;
+  padding: 0.25rem 0;
+  text-align: left;
+}
+
+.salvage-odds th,
+.salvage-odds td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.22rem 0.35rem;
+  text-align: right;
+}
+
+.salvage-odds th:first-child {
+  text-align: left;
+}
+
+.salvage-odds tbody th {
+  color: #a9b8bd;
+  font-weight: 400;
+}
+
+.salvage-odds td {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .debrief-recovery li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .recovery-outcome,
+  .recovery-result {
+    grid-column: 1;
+  }
+
+  .recovery-chance {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .recovery-result {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+  }
+}

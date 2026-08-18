@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DesignSchema } from '../schema/design';
-import { IdSchema, perLocation } from '../schema/common';
+import { IdSchema, MechLocationSchema, perLocation } from '../schema/common';
 import type { CampaignState } from './types';
 
 const SAVE_VERSION = 1;
@@ -47,6 +47,30 @@ const StoreItemSchema = z.strictObject({
   count: z.number().int().positive(),
 });
 
+const SalvageOutcomeSchema = z.enum([
+  'centre_torso',
+  'head',
+  'ammo_explosion',
+  'legged',
+  'ejected',
+]);
+
+const SalvageCandidateSchema = z.strictObject({
+  designId: IdSchema,
+  name: z.string().min(1),
+  outcome: SalvageOutcomeSchema,
+  chassisChance: z.number().min(0).max(1),
+  recovered: z.boolean(),
+});
+
+const SalvageProvenanceSchema = z.strictObject({
+  kind: z.enum(['weapon', 'equipment']),
+  itemId: IdSchema,
+  sourceDesignId: IdSchema,
+  sourceMechName: z.string().min(1),
+  location: MechLocationSchema,
+});
+
 const ContractTermsSchema = z.enum(['fee_first', 'standard', 'salvage_first']);
 
 const ContractSchema = z.strictObject({
@@ -74,6 +98,9 @@ const MissionOutcomeSchema = z.strictObject({
   salvagedItems: z.array(StoreItemSchema),
   /** Older saves predate the salvage choice and simply offered nothing. */
   salvageOffered: z.array(StoreItemSchema).default([]),
+  // A missing ledger means the old debrief never recorded the field rolls.
+  salvageCandidates: z.array(SalvageCandidateSchema).default([]),
+  salvageProvenance: z.array(SalvageProvenanceSchema).default([]),
   pilotCasualties: z.array(z.string()),
   mechsLost: z.array(z.string()),
   // Saves written before debriefs were recorded load with none.
