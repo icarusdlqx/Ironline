@@ -40,10 +40,13 @@ export interface PilotRecord {
   mechId: string | null;
 }
 
+export type ContractTermsId = 'fee_first' | 'standard' | 'salvage_first';
+
 export interface Contract {
   nodeId: string;
   missionId: string;
   employer: string;
+  termsId: ContractTermsId;
   payout: number;
   salvageShare: number;
   acceptedOnDay: number;
@@ -79,6 +82,7 @@ export interface PilotReport {
 export interface MissionOutcome {
   nodeId: string;
   missionId: string;
+  termsId: ContractTermsId;
   won: boolean;
   day: number;
   payout: number;

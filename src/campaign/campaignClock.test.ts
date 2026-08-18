@@ -12,7 +12,7 @@ describe('campaign mission clock', () => {
     const shortCatalog = { ...catalog, missions };
     const state = startCampaign(shortCatalog, 'border_dispute', 'short-clock');
     state.completedNodes.push('militia_raid', 'pass_skirmish');
-    expect(acceptContract(shortCatalog, state, 'ridge_hold', 0).ok).toBe(true);
+    expect(acceptContract(shortCatalog, state, 'ridge_hold', 'fee_first').ok).toBe(true);
 
     const run = runMission(shortCatalog, state);
 

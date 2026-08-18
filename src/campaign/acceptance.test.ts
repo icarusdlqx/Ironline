@@ -34,7 +34,7 @@ function fightNode(state: CampaignState, nodeId: string): void {
   const salvageHeavy = options[options.length - 1];
   if (salvageHeavy === undefined) throw new Error('no negotiation options');
 
-  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.step);
+  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.id);
   expect(accepted.ok, accepted.reason ?? '').toBe(true);
   runMission(catalog, state);
 }
@@ -244,7 +244,7 @@ describe('deployment', () => {
   });
 
   it('explains itself rather than throwing a bare error when nothing can deploy', () => {
-    const accepted = acceptContract(catalog, state, 'militia_raid', 0);
+    const accepted = acceptContract(catalog, state, 'militia_raid', 'fee_first');
     expect(accepted.ok, accepted.reason ?? '').toBe(true);
     for (const mech of state.mechs) mech.status = 'hulk';
 
@@ -333,7 +333,7 @@ describe('campaign contracts', () => {
     const startingDay = run.day;
     const startingCash = run.cbills;
 
-    expect(acceptContract(catalog, run, 'militia_raid', 0).ok).toBe(true);
+    expect(acceptContract(catalog, run, 'militia_raid', 'fee_first').ok).toBe(true);
     const recoveryCost = Math.round(
       (run.contract?.payout ?? 0) * catalog.rules.economy.contractFailure.recoveryCostFactor,
     );
@@ -355,7 +355,7 @@ describe('campaign contracts', () => {
       'ridge_hold',
     ];
     for (const nodeId of route) {
-      expect(acceptContract(catalog, run, nodeId, 0).ok).toBe(true);
+      expect(acceptContract(catalog, run, nodeId, 'fee_first').ok).toBe(true);
       resolveWithoutCombat(run, true);
     }
 
@@ -363,7 +363,7 @@ describe('campaign contracts', () => {
     expect(run.finished).toBe(true);
     expect(run.won).toBe(true);
     expect(availableNodes(catalog, run)).toEqual([]);
-    expect(acceptContract(catalog, run, sideId ?? 'side_0_0', 0)).toEqual({
+    expect(acceptContract(catalog, run, sideId ?? 'side_0_0', 'fee_first')).toEqual({
       ok: false,
       reason: 'the campaign is over',
     });

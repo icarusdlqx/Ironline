@@ -16,7 +16,7 @@ import {
   loadCampaign,
   saveCampaign,
 } from '../../campaign/save';
-import type { CampaignState } from '../../campaign/types';
+import type { CampaignState, ContractTermsId } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
@@ -24,6 +24,7 @@ import { isSideContract } from '../../campaign/sidework';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
+import { ContractPanel } from './ContractPanel';
 import {
   Debrief,
   debriefedCount,
@@ -63,7 +64,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   // screen can be reopened without the debrief coming back each time.
   const [debriefed, setDebriefed] = useState(() => debriefedCount());
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [step, setStep] = useState(4);
+  const [selectedTerms, setSelectedTerms] = useState<ContractTermsId>('standard');
   const [status, setStatus] = useState<string | null>(null);
   const patch = useGame((game) => game.patch);
 
@@ -207,69 +208,29 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         }}
       />
 
-      <section className="camp-contract" data-testid="camp-contract">
-        {state.contract !== null ? (
-          <>
-            <h3>Active contract</h3>
-            <p>
-              {state.contract.employer} — {cbills(state.contract.payout)},{' '}
-              {Math.round(state.contract.salvageShare * 100)}% salvage, due day{' '}
-              {state.contract.deadlineDay}.
-            </p>
-            <div className="camp-buttons">
-              <button type="button" onClick={onDeploy} data-testid="camp-deploy">
-                Prepare drop ({lance.length} mech{lance.length === 1 ? '' : 's'} ready)
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  mutate(
-                    (draft) => abandonContract(catalog, draft),
-                    'Contract withdrawn. Recovery terms applied.',
-                  )
-                }
-                data-testid="camp-abandon"
-              >
-                Withdraw
-              </button>
-            </div>
-          </>
-        ) : node === null ? (
-          <p>No contracts on offer. {state.finished ? (state.won ? 'Campaign won.' : 'Campaign over.') : ''}</p>
-        ) : (
-          <>
-            <h3>{node.name}</h3>
-            <p className="camp-brief">{node.brief}</p>
-            <label className="camp-negotiate">
-              Terms
-              <input
-                type="range"
-                min={0}
-                max={options.length - 1}
-                value={Math.min(step, options.length - 1)}
-                onChange={(event) => setStep(Number(event.target.value))}
-                data-testid="camp-terms"
-              />
-            </label>
-            <p data-testid="camp-offer">
-              {cbills(options[Math.min(step, options.length - 1)]?.payout ?? 0)} ·{' '}
-              {Math.round((options[Math.min(step, options.length - 1)]?.salvageShare ?? 0) * 100)}% salvage
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                mutate((draft) => {
-                  const result = acceptContract(catalog, draft, node.id, Math.min(step, options.length - 1));
-                  if (!result.ok) setStatus(result.reason);
-                }, 'Contract signed.')
-              }
-              data-testid="camp-accept"
-            >
-              Sign
-            </button>
-          </>
-        )}
-      </section>
+      <ContractPanel
+        contract={state.contract}
+        node={node}
+        options={options}
+        selectedTerms={selectedTerms}
+        readyMechs={lance.length}
+        finished={state.finished}
+        won={state.won}
+        onSelectTerms={setSelectedTerms}
+        onAccept={(termsId) =>
+          mutate((draft) => {
+            const result = acceptContract(catalog, draft, node?.id ?? '', termsId);
+            return result.ok ? null : result.reason;
+          }, 'Contract signed.')
+        }
+        onDeploy={onDeploy}
+        onAbandon={() =>
+          mutate(
+            (draft) => abandonContract(catalog, draft),
+            'Contract withdrawn. Recovery terms applied.',
+          )
+        }
+      />
 
       {/* The map draws the war. Side work is posted on a board, so it gets a
           list — and it is marked as side work, because taking it is a decision

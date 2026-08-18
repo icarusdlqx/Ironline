@@ -34,7 +34,7 @@ function fightNode(state: CampaignState, nodeId: string): void {
   const salvageHeavy = options[options.length - 1];
   if (salvageHeavy === undefined) throw new Error('no negotiation options');
 
-  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.step);
+  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.id);
   expect(accepted.ok, accepted.reason ?? '').toBe(true);
   runMission(catalog, state);
 }
@@ -67,12 +67,17 @@ describe('campaign start', () => {
 describe('contract negotiation', () => {
   const node = catalog.campaigns.get(CAMPAIGN_ID)?.nodes[0];
 
-  it('trades payout against salvage across the range', () => {
+  it('offers three named packages that trade payout against salvage', () => {
     if (node === undefined) throw new Error('missing node');
     const options = negotiationOptions(catalog, node);
 
     const first = options[0];
     const last = options[options.length - 1];
+    expect(options.map((option) => option.id)).toEqual([
+      'fee_first',
+      'standard',
+      'salvage_first',
+    ]);
     expect(first?.salvageShare).toBe(0);
     expect(last?.salvageShare).toBeCloseTo(node.maxSalvageShare, 4);
     expect(first?.payout ?? 0).toBeGreaterThan(last?.payout ?? 0);
@@ -86,22 +91,22 @@ describe('contract negotiation', () => {
   });
 
   it('refuses a second contract while one is active', () => {
-    expect(acceptContract(catalog, state, 'militia_raid', 0).ok).toBe(true);
-    expect(acceptContract(catalog, state, 'militia_raid', 0).ok).toBe(false);
+    expect(acceptContract(catalog, state, 'militia_raid', 'fee_first').ok).toBe(true);
+    expect(acceptContract(catalog, state, 'militia_raid', 'fee_first').ok).toBe(false);
   });
 
   it('refuses a node whose prerequisites are unmet', () => {
-    const result = acceptContract(catalog, state, 'ridge_hold', 0);
+    const result = acceptContract(catalog, state, 'ridge_hold', 'fee_first');
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/not available/);
   });
 
-  it('refuses an out-of-range negotiation step', () => {
-    expect(acceptContract(catalog, state, 'militia_raid', 99).ok).toBe(false);
+  it('refuses unknown contract terms', () => {
+    expect(acceptContract(catalog, state, 'militia_raid', 'house_account').ok).toBe(false);
   });
 
   it('returns an expired campaign contract to the board after recovery', () => {
-    acceptContract(catalog, state, 'militia_raid', 0);
+    acceptContract(catalog, state, 'militia_raid', 'fee_first');
     const deadline = state.contract?.deadlineDay ?? 0;
     advanceDays(catalog, state, deadline - state.day + 1);
 
@@ -112,7 +117,7 @@ describe('contract negotiation', () => {
   });
 
   it('returns a withdrawn campaign contract to the board after recovery', () => {
-    acceptContract(catalog, state, 'militia_raid', 0);
+    acceptContract(catalog, state, 'militia_raid', 'fee_first');
     abandonContract(catalog, state);
     expect(state.contract).toBeNull();
     expect(state.failedNodes).not.toContain('militia_raid');
@@ -197,10 +202,11 @@ describe('salvage', () => {
 
   it('pays more and salvages nothing at the payout-heavy end', () => {
     const payoutRun = start('payout-run');
-    acceptContract(catalog, payoutRun, 'militia_raid', 0);
+    acceptContract(catalog, payoutRun, 'militia_raid', 'fee_first');
     runMission(catalog, payoutRun);
 
     expect(payoutRun.store).toHaveLength(0);
+    expect(payoutRun.history[0]?.termsId).toBe('fee_first');
     expect(payoutRun.history[0]?.salvagedChassis ?? []).toHaveLength(0);
   });
 });
@@ -310,11 +316,26 @@ describe('save and load', () => {
     fightNode(state, 'militia_raid');
     const mech = state.mechs.find((entry) => estimateRepair(catalog, entry).days > 0);
     if (mech !== undefined) startRepair(catalog, state, mech);
-    acceptContract(catalog, state, 'pass_skirmish', 3);
+    acceptContract(catalog, state, 'pass_skirmish', 'standard');
 
     const restored = deserialiseCampaign(serialiseCampaign(state));
     expect(restored.error).toBeNull();
     expect(restored.state).toEqual(state);
+    expect(restored.state?.contract?.termsId).toBe('standard');
+  });
+
+  it('loads an older active contract on the middle package without changing its proceeds', () => {
+    acceptContract(catalog, state, 'militia_raid', 'fee_first');
+    const saved = JSON.parse(serialiseCampaign(state)) as {
+      state: { contract: { termsId?: string; payout: number } | null };
+    };
+    const payout = saved.state.contract?.payout;
+    if (saved.state.contract !== null) delete saved.state.contract.termsId;
+
+    const restored = deserialiseCampaign(JSON.stringify(saved));
+    expect(restored.error).toBeNull();
+    expect(restored.state?.contract?.termsId).toBe('standard');
+    expect(restored.state?.contract?.payout).toBe(payout);
   });
 
   // Fights a whole mission twice over to compare the streams.
@@ -325,8 +346,8 @@ describe('save and load', () => {
     expect(reloaded).not.toBeNull();
     if (reloaded === null) return;
 
-    acceptContract(catalog, state, 'pass_skirmish', 4);
-    acceptContract(catalog, reloaded, 'pass_skirmish', 4);
+    acceptContract(catalog, state, 'pass_skirmish', 'standard');
+    acceptContract(catalog, reloaded, 'pass_skirmish', 'standard');
     runMission(catalog, state);
     runMission(catalog, reloaded);
 
