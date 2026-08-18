@@ -253,7 +253,7 @@ describe('deployment', () => {
   });
 });
 
-describe('three-mission campaign', () => {
+describe('campaign contracts', () => {
   // The generous timeout is headroom for a loaded CI worker, not a target: the
   // seed scan takes ~15s alone but shares the machine with every other file.
   it('completes three contracts and uses mission-one salvage in mission three', { timeout: 120_000 }, () => {
@@ -347,14 +347,19 @@ describe('three-mission campaign', () => {
     expect(availableNodes(catalog, run).map((node) => node.id)).toContain('militia_raid');
     expect(run.log[0]?.text).toMatch(/costs .* credits and 3 days.*returns to the board/);
 
-    for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
+    const route = [
+      'militia_raid',
+      'pass_skirmish',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+      'ridge_hold',
+    ];
+    for (const nodeId of route) {
       expect(acceptContract(catalog, run, nodeId, 0).ok).toBe(true);
       resolveWithoutCombat(run, true);
     }
 
-    expect(run.completedNodes).toEqual(
-      expect.arrayContaining(['militia_raid', 'pass_skirmish', 'ridge_hold']),
-    );
+    expect(run.completedNodes).toEqual(expect.arrayContaining(route));
     expect(run.finished).toBe(true);
     expect(run.won).toBe(true);
     expect(availableNodes(catalog, run)).toEqual([]);
@@ -364,10 +369,19 @@ describe('three-mission campaign', () => {
     });
   });
 
-  it('runs real battles along the three-contract victory route', { timeout: 60_000 }, () => {
+  // The graph test proves reachability. This keeps the authored sequence wired
+  // to real battles, where a fixed company may lose before the route is done.
+  it('plays the authored victory line with live mission resolution', { timeout: 60_000 }, () => {
     const run = start('victory');
+    const route = [
+      'militia_raid',
+      'pass_skirmish',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+      'ridge_hold',
+    ];
 
-    for (const nodeId of ['militia_raid', 'pass_skirmish', 'ridge_hold']) {
+    for (const nodeId of route) {
       const available = availableNodes(catalog, run).some((node) => node.id === nodeId);
       if (!available) break;
       repairAll(run);
@@ -375,6 +389,7 @@ describe('three-mission campaign', () => {
     }
 
     expect(run.history.length).toBeGreaterThanOrEqual(2);
+    expect(run.history.map((outcome) => outcome.nodeId)).toEqual(route.slice(0, run.history.length));
     expect(run.completedNodes).toHaveLength(run.history.filter((outcome) => outcome.won).length);
     expect(run.failedNodes).toHaveLength(0);
 

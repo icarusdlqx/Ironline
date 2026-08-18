@@ -97,7 +97,7 @@
       "employer": "Kestrel Combine",
       "brief": "The Slag Legion has moved a reinforced company onto the ridge. This is the one that decides the border.",
       "requires": [
-        "pass_skirmish"
+        "shale_overwatch_node"
       ],
       "basePayout": 2600000,
       "maxSalvageShare": 0.45,
