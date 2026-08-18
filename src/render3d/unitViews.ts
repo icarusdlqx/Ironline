@@ -9,6 +9,12 @@ import type { Weapon } from '../schema/weapon';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
 import type { TacticalCamera, Viewport } from './camera';
 import { ContactShadowLayer } from './contactShadows';
+import { damageWearTier } from './damageLedger';
+import {
+  collectLocationAnchors,
+  locationWorldAnchor,
+  type LocationAnchors,
+} from './locationAnchors';
 import { advanceWeaponRecoil, triggerWeaponRecoil } from './weaponModels';
 
 export interface Interpolated {
@@ -28,6 +34,7 @@ export interface EntityView {
   signature: number;
   ring: Mesh;
   hoverRing: Mesh;
+  anchors: LocationAnchors;
 }
 
 const PICK_DELTA = new Vector3();
@@ -39,17 +46,18 @@ const DEFAULT_VISUAL: Weapon['visual'] = {
 };
 
 function damageSignature(entity: MechEntity): number {
-  let bits = entity.destroyed ? 1 : 0;
+  let bits = (entity.destroyed ? 17 : 7) ^ (entity.team + 1);
   for (let index = 0; index < LOCATIONS.length; index += 1) {
     const location = LOCATIONS[index];
-    if (location !== undefined && entity.locations[location].destroyed) {
-      bits |= 1 << (index + 1);
-    }
+    if (location === undefined) continue;
+    const state = entity.locations[location];
+    const mark = damageWearTier(state) + (state.destroyed ? 4 : 0);
+    bits = Math.imul(bits ^ ((index + 1) * 11 + mark), 16777619);
   }
   for (let index = 0; index < entity.weapons.length; index += 1) {
     if (entity.weapons[index]?.destroyed === true) bits = Math.imul(bits ^ (index + 17), 16777619);
   }
-  return (bits >>> 0) * 8 + entity.team;
+  return bits >>> 0;
 }
 
 /** Owns model rebuilds and the two sim samples used for smooth rendering. */
@@ -59,6 +67,7 @@ export class UnitViews {
   private readonly interpolated = new Map<EntityId, Interpolated>();
   private readonly mountCycles = new Map<string, number>();
   private readonly placed = new Set<EntityId>();
+  private readonly placedAt = new Map<EntityId, Interpolated>();
   private readonly shadows: ContactShadowLayer;
 
   constructor(
@@ -87,8 +96,12 @@ export class UnitViews {
     }
   }
 
-  markPlaced(id: EntityId): void {
+  markPlaced(id: EntityId, at?: Interpolated): void {
     this.placed.add(id);
+    if (at === undefined) return;
+    const pose = this.placedAt.get(id);
+    if (pose === undefined) this.placedAt.set(id, { ...at });
+    else Object.assign(pose, at);
   }
 
   placeShadow(entity: MechEntity, at: Interpolated, lift: number): void {
@@ -162,6 +175,30 @@ export class UnitViews {
     return this.interpolated.get(id) ?? this.samples.get(id)?.cur ?? null;
   }
 
+  currentPositionOf(id: EntityId): Vec2 | null {
+    return this.samples.get(id)?.cur ?? this.interpolated.get(id) ?? null;
+  }
+
+  canLocate(id: EntityId): boolean {
+    const view = this.views.get(id);
+    return view !== undefined && view.model.root.visible && this.placed.has(id);
+  }
+
+  locationOf(id: EntityId, location: (typeof LOCATIONS)[number], out: Vector3): boolean {
+    const view = this.views.get(id);
+    if (view === undefined || !this.canLocate(id)) return false;
+    const placed = this.placedAt.get(id);
+    const current = this.samples.get(id)?.cur;
+    if (
+      placed !== undefined &&
+      current !== undefined &&
+      (Math.hypot(placed.x - current.x, placed.y - current.y) > 0.01 ||
+        Math.abs(angleDifference(placed.facing, current.facing)) > 0.002 ||
+        Math.abs(placed.torso - current.torso) > 0.002)
+    ) return false;
+    return locationWorldAnchor(view.anchors, location, out);
+  }
+
   /** Chooses the physical copy that fired when a design carries duplicate weapon ids. */
   fireMount(id: EntityId, weaponId: string, muzzle: Vector3): boolean {
     const view = this.views.get(id);
@@ -200,6 +237,8 @@ export class UnitViews {
     }
 
     const chassis = world.catalog.chassis.get(entity.chassisId);
+    const wear = {} as Partial<Record<(typeof LOCATIONS)[number], ReturnType<typeof damageWearTier>>>;
+    for (const location of LOCATIONS) wear[location] = damageWearTier(entity.locations[location]);
     const mounts = entity.weapons
       .filter((mount) => !mount.destroyed)
       .map((mount) => {
@@ -225,6 +264,7 @@ export class UnitViews {
       new Set(LOCATIONS.filter((location) => entity.locations[location].destroyed)),
       chassis?.hardpoints,
       chassis?.id ?? null,
+      wear,
     );
 
     const radius = radiusFor(entity.tonnage);
@@ -239,7 +279,7 @@ export class UnitViews {
 
     model.root.userData.entityId = entity.id;
     this.scene.add(model.root, ring, hoverRing);
-    const view = { model, signature, ring, hoverRing };
+    const view = { model, signature, ring, hoverRing, anchors: collectLocationAnchors(model.root) };
     this.views.set(entity.id, view);
     return view;
   }

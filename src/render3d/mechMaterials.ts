@@ -5,6 +5,8 @@ import { mix, shade } from '../render/palette';
 
 export type MechMaterials = Record<Tone, MeshStandardMaterial>;
 
+const TONES: readonly Tone[] = ['plate', 'deep', 'trim', 'glass', 'accent'];
+
 const DEFAULT_BODY_COLOUR = 0x626a6e;
 
 /** Neutral finishes let construction identify a chassis before team markings do. */
@@ -92,6 +94,25 @@ export function createMechMaterials(
     glass: material(0x8edfff, 0.14, 0.04, 0x17688f, 1.55),
     accent: material(mix(body, 0xb8b3a5, 0.34), 0.52, 0.28),
   };
+}
+
+/** Damage darkens existing plate batches; it does not add geometry or passes. */
+export function createDamageWearMaterials(
+  source: MechMaterials,
+  tier: 1 | 2,
+): MechMaterials {
+  const worn = {} as MechMaterials;
+  const shade = tier === 1 ? 0.72 : 0.42;
+  for (const tone of TONES) {
+    const copy = source[tone].clone();
+    copy.color.multiplyScalar(shade);
+    copy.emissive.multiplyScalar(tier === 1 ? 0.45 : 0.12);
+    copy.emissiveIntensity *= tier === 1 ? 0.55 : 0.18;
+    copy.roughness = Math.min(1, copy.roughness + (tier === 1 ? 0.12 : 0.24));
+    copy.metalness *= tier === 1 ? 0.82 : 0.58;
+    worn[tone] = copy;
+  }
+  return worn;
 }
 
 /** Weapon housings remain readable against painted armour under coloured light. */

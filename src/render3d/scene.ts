@@ -109,6 +109,12 @@ export class Renderer {
       this.terrain.heightAt,
       (id) => this.units.positionOf(id),
       (id, weaponId, out) => this.units.fireMount(id, weaponId, out),
+      {
+        anchorOf: (id, location, out) => this.units.locationOf(id, location, out),
+        canLocate: (id) => this.units.canLocate(id),
+        currentPositionOf: (id) => this.units.currentPositionOf(id),
+        readouts: { host, world, viewport: () => this.viewport },
+      },
     );
     this.locomotion = new Locomotion(
       this.terrain.heightAt,
@@ -184,6 +190,7 @@ export class Renderer {
   }
 
   destroy(): void {
+    this.effects.destroy();
     this.units.dispose();
     this.markers.dispose();
     this.renderer.dispose();
@@ -222,7 +229,7 @@ export class Renderer {
       const ground = this.terrain.heightAt(at.x, at.y);
       const lift = jumpHeight(entity) * radiusFor(entity.tonnage) * 2.2;
       this.locomotion.place(entity, shown.model, at, lift, deltaSeconds);
-      this.units.markPlaced(entity.id);
+      this.units.markPlaced(entity.id, at);
       this.units.placeShadow(entity, at, lift);
 
       shown.ring.position.set(at.x, ground + 1.2, at.y);

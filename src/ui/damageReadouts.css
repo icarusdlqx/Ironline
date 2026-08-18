@@ -1,0 +1,104 @@
+.damage-readouts {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint style;
+}
+
+.damage-readout {
+  position: absolute;
+  max-width: min(360px, 62vw);
+  padding: 3px 7px;
+  border: 1px solid rgba(222, 237, 245, 0.28);
+  border-radius: 3px;
+  background: rgba(7, 10, 13, 0.78);
+  color: #e8f4fa;
+  font-size: clamp(10px, 1.05vw, 13px);
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: 0.045em;
+  text-align: center;
+  text-shadow: 0 1px 2px #000;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+
+.damage-readout.armour {
+  border-color: rgba(140, 224, 255, 0.52);
+  color: #bcecff;
+}
+
+.damage-readout.structure {
+  border-color: rgba(255, 192, 97, 0.64);
+  color: #ffd89a;
+}
+
+.damage-readout.danger {
+  border-color: rgba(255, 104, 82, 0.72);
+  color: #ffb09e;
+}
+
+.damage-readout.miss {
+  border-color: rgba(195, 207, 215, 0.4);
+  color: #c3cfd7;
+}
+
+.damage-readout.is-active {
+  animation: damage-readout-rise 1.35s cubic-bezier(0.16, 0.78, 0.28, 1) both;
+}
+
+@keyframes damage-readout-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -35%) scale(0.94);
+  }
+  14% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.94;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -155%) scale(1);
+  }
+}
+
+@keyframes damage-readout-fade {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.94;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.damage-readouts.reduced-motion .damage-readout.is-active {
+  animation-name: damage-readout-fade;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .damage-readout.is-active {
+    animation-name: damage-readout-fade;
+  }
+}
+
+@media (max-width: 700px) {
+  .damage-readout {
+    max-width: 74vw;
+    padding: 3px 6px;
+    font-size: 11px;
+    letter-spacing: 0.025em;
+  }
+}

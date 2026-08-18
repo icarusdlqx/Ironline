@@ -1,14 +1,37 @@
 import { Color, PointLight, Scene, Vector3 } from 'three';
 import type { Weapon } from '../schema/weapon';
+import type { MechLocation } from '../schema/common';
 import type { SimEvent } from '../sim/events';
 import type { EntityId, Vec2, World } from '../sim/types';
 import type { TacticalCamera } from './camera';
+import type { Viewport } from './camera';
+import { canPresentEntity, CombatReadouts } from './combatReadouts';
 import { JetLayer, ScarLayer, SmokeLayer } from './effects';
+import { measureReadoutLayout } from './readoutSafeArea';
 import { TracerLayer } from './tracers';
 
 interface MuzzleFlash {
   light: PointLight;
   ttl: number;
+}
+
+type DestructiveEvent = Extract<SimEvent, { type: 'mech_destroyed' | 'ammo_explosion' }>;
+
+function destructiveLocation(event: DestructiveEvent): MechLocation {
+  if (event.type === 'ammo_explosion') return event.location;
+  if (event.method === 'head') return 'head';
+  return 'centre_torso';
+}
+
+export interface BattleFeedbackBindings {
+  anchorOf: (id: EntityId, location: MechLocation, out: Vector3) => boolean;
+  canLocate?: (id: EntityId) => boolean;
+  currentPositionOf?: (id: EntityId) => Vec2 | null;
+  readouts?: {
+    host: HTMLElement;
+    world: World;
+    viewport: () => Viewport;
+  };
 }
 
 const DEFAULT_SHOT: Weapon['visual'] = {
@@ -29,6 +52,12 @@ export class BattleEffects {
   private shakeTime = 0;
   private elapsed = 0;
   private readonly muzzle = new Vector3();
+  private readonly effectPoint = new Vector3();
+  private readonly effectAt: Vec2 = { x: 0, y: 0 };
+  private readonly anchorOf: BattleFeedbackBindings['anchorOf'] | null;
+  private readonly canLocate: BattleFeedbackBindings['canLocate'];
+  private readonly currentPositionOf: (id: EntityId) => Vec2 | null;
+  private readonly readouts: CombatReadouts | null;
 
   constructor(
     private readonly scene: Scene,
@@ -37,8 +66,28 @@ export class BattleEffects {
     private readonly heightAt: (x: number, y: number) => number,
     private readonly positionOf: (id: EntityId) => Vec2 | null,
     private readonly muzzleOf: (id: EntityId, weaponId: string, out: Vector3) => boolean,
+    feedback: BattleFeedbackBindings | null = null,
   ) {
     this.smoke = new SmokeLayer(fogColour);
+    this.anchorOf = feedback?.anchorOf ?? null;
+    this.canLocate = feedback?.canLocate;
+    this.currentPositionOf = feedback?.currentPositionOf ?? positionOf;
+    const readouts = feedback?.readouts;
+    this.readouts = readouts === undefined
+      ? null
+      : new CombatReadouts(
+          readouts.host,
+          readouts.world,
+          camera.reducedMotion,
+          (id, location, out) => this.locationOf(id, location, out),
+          (at) => camera.worldToScreen(
+            { x: at.x, y: at.z },
+            readouts.viewport(),
+            at.y,
+          ),
+          undefined,
+          () => measureReadoutLayout(readouts.host),
+        );
     scene.add(this.tracers.group, this.jets.group, this.smoke.mesh, this.scars.mesh);
   }
 
@@ -73,19 +122,27 @@ export class BattleEffects {
     this.jets.commit();
     this.tracers.update(deltaSeconds);
     this.smoke.update(deltaSeconds);
+    this.readouts?.advance(deltaSeconds);
   }
 
   consume(world: World, events: readonly SimEvent[]): void {
+    this.readouts?.consume(world, events);
     for (const event of events) {
       if (event.type === 'mech_destroyed' || event.type === 'ammo_explosion') {
-        const at = this.positionOf(event.entityId);
-        if (at !== null) this.addShake(6 * this.nearness(at));
-        if (at !== null && event.type === 'mech_destroyed') {
-          this.smoke.start(at, this.heightAt(at.x, at.y));
-          this.scars.mark(at, this.heightAt(at.x, at.y), 22, 0.55);
+        if (!canPresentEntity(world, event.entityId)) continue;
+        const location = destructiveLocation(event);
+        if (this.locationOf(event.entityId, location, this.effectPoint)) {
+          this.toGroundPoint(this.effectPoint);
+          this.addShake(6 * this.nearness(this.effectAt));
+          if (event.type === 'mech_destroyed') {
+            this.smoke.start(this.effectAt, this.effectPoint.y - 6);
+            this.scars.mark(this.effectAt, this.heightAt(this.effectAt.x, this.effectAt.y), 22, 0.55);
+          } else {
+            this.tracers.spawnSmoke(this.effectAt, this.effectPoint.y - 14);
+          }
         }
       } else if (event.type === 'projectile_hit' && event.damage >= 14) {
-        const at = this.positionOf(event.targetId);
+        const at = canPresentEntity(world, event.targetId) ? this.currentPositionOf(event.targetId) : null;
         if (at !== null) this.addShake(1.6 * this.nearness(at));
       } else if (event.type === 'jump_landed') {
         this.addShake(1.4 * this.nearness({ x: event.x, y: event.y }));
@@ -97,13 +154,14 @@ export class BattleEffects {
       const colour = weapon === undefined ? 0xffffff : parseInt(weapon.visual.colour.slice(1), 16);
 
       if (event.type === 'projectile_hit') {
-        const at = this.positionOf(event.targetId);
-        if (at !== null) {
-          this.tracers.impact(at, this.heightAt(at.x, at.y), colour);
+        if (!canPresentEntity(world, event.targetId)) continue;
+        if (this.locationOf(event.targetId, event.location, this.effectPoint)) {
+          this.toGroundPoint(this.effectPoint);
+          this.tracers.impact(this.effectAt, this.effectPoint.y - 14, colour);
           const damage = weapon?.damage ?? 5;
           this.scars.mark(
-            { x: at.x + (event.tick % 7) - 3, y: at.y + (event.tick % 5) - 2 },
-            this.heightAt(at.x, at.y),
+            this.effectAt,
+            this.heightAt(this.effectAt.x, this.effectAt.y),
             3 + Math.min(9, damage * 0.35),
             weapon?.type === 'energy' ? 1 : 0.25,
           );
@@ -144,6 +202,24 @@ export class BattleEffects {
 
   spawnSmoke(at: Vec2): void {
     this.tracers.spawnSmoke(at, this.heightAt(at.x, at.y));
+  }
+
+  destroy(): void {
+    this.readouts?.destroy();
+  }
+
+  private locationOf(id: EntityId, location: MechLocation, out: Vector3): boolean {
+    if (this.anchorOf?.(id, location, out) === true) return true;
+    if (this.anchorOf !== null && this.canLocate !== undefined && !this.canLocate(id)) return false;
+    const at = this.currentPositionOf(id);
+    if (at === null) return false;
+    out.set(at.x, this.heightAt(at.x, at.y) + 14, at.y);
+    return true;
+  }
+
+  private toGroundPoint(at: Vector3): void {
+    this.effectAt.x = at.x;
+    this.effectAt.y = at.z;
   }
 
   private nearness(at: Vec2): number {

@@ -13,7 +13,12 @@ import type { MechLocation } from '../schema/common';
 import { chassisBlueprint, type BlueprintPart, type HardpointMap } from '../render/blueprint';
 import type { Silhouette } from '../render/shape';
 import { radiusFor } from '../render/shape';
-import { createMechMaterials, createWeaponMaterial } from './mechMaterials';
+import type { DamageWearTier } from './damageLedger';
+import {
+  createDamageWearMaterials,
+  createMechMaterials,
+  createWeaponMaterial,
+} from './mechMaterials';
 import {
   motionProfileFor,
   OPEN_STRIDE_TERRAIN,
@@ -125,19 +130,31 @@ export function buildMechModel(
   fit: HardpointMap = {},
   /** Render-only construction key; combat continues to care about the chassis id elsewhere. */
   identity: string | null = null,
+  wear: Readonly<Partial<Record<MechLocation, DamageWearTier>>> = {},
 ): MechModel {
   const scale = radiusFor(tonnage);
   const plan = chassisBlueprint(shape, traits, fit, identity);
   const motion = motionProfileFor(shape.form, tonnage);
   const tones = createMechMaterials(identity, team, destroyed);
   const burnt = createMechMaterials(identity, team, true);
+  const worn = Object.values(wear).some((tier) => tier === 1)
+    ? createDamageWearMaterials(tones, 1)
+    : null;
+  const scorched = Object.values(wear).some((tier) => tier === 2)
+    ? createDamageWearMaterials(tones, 2)
+    : null;
 
   const root = new Group();
   const torso = new Group();
   root.rotation.order = 'YXZ';
   torso.rotation.order = 'YXZ';
   const weapons: WeaponRig[] = [];
-  const ownedMaterials: Material[] = [...Object.values(tones), ...Object.values(burnt)];
+  const ownedMaterials: Material[] = [
+    ...Object.values(tones),
+    ...Object.values(burnt),
+    ...(worn === null ? [] : Object.values(worn)),
+    ...(scorched === null ? [] : Object.values(scorched)),
+  ];
   const boreMaterial = new MeshStandardMaterial({
     color: 0x1d2226,
     roughness: 0.5,
@@ -182,7 +199,14 @@ export function buildMechModel(
     const shed = gone && (part.location === 'left_arm' || part.location === 'right_arm' || part.location === 'head');
     if (shed) continue;
 
-    const mesh = new Mesh(geometryFor(part, scale), gone ? burnt[part.tone] : tones[part.tone]);
+    const tier = part.location === null ? 0 : (wear[part.location] ?? 0);
+    const finish = tier === 2 && scorched !== null
+      ? scorched
+      : tier === 1 && worn !== null
+        ? worn
+        : tones;
+    const mesh = new Mesh(geometryFor(part, scale), gone ? burnt[part.tone] : finish[part.tone]);
+    mesh.userData.damageLocation = part.location;
     mesh.position.set(part.at[0] * scale, part.at[1] * scale, part.at[2] * scale);
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
     mesh.castShadow = castsShadow(mesh);

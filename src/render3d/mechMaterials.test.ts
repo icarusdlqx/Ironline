@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TEAM_COLOURS } from '../render/palette';
 import {
   chassisBodyColour,
+  createDamageWearMaterials,
   createMechMaterials,
   createWeaponMaterial,
 } from './mechMaterials';
@@ -57,5 +58,16 @@ describe('mech materials', () => {
 
     expect(weapon.metalness).toBeGreaterThan(armour.plate.metalness);
     expect(weapon.color.getHex()).not.toBe(armour.plate.color.getHex());
+  });
+
+  it('scorches existing finishes without changing their material shape', () => {
+    const clean = createMechMaterials('sentinel_snl2', TEAM_COLOURS[0] ?? 0, false);
+    const marked = createDamageWearMaterials(clean, 1);
+    const breached = createDamageWearMaterials(clean, 2);
+
+    expect(marked.plate.color.getHex()).not.toBe(clean.plate.color.getHex());
+    expect(breached.plate.color.getHex()).not.toBe(marked.plate.color.getHex());
+    expect(breached.plate.roughness).toBeGreaterThan(marked.plate.roughness);
+    expect(Object.keys(breached)).toEqual(Object.keys(clean));
   });
 });
