@@ -41,12 +41,17 @@ export class BattleEffects {
     this.shakeTime += deltaSeconds;
     this.shakeAmplitude *= Math.exp(-deltaSeconds * 7);
     if (this.shakeAmplitude < 0.02) this.shakeAmplitude = 0;
-    const t = this.shakeTime;
-    this.camera.shake.set(
-      Math.sin(t * 61) * this.shakeAmplitude,
-      Math.sin(t * 47 + 1.3) * this.shakeAmplitude * 0.6,
-      Math.cos(t * 53 + 0.7) * this.shakeAmplitude,
-    );
+    if (this.camera.reducedMotion) {
+      this.shakeAmplitude = 0;
+      this.camera.shake.set(0, 0, 0);
+    } else {
+      const t = this.shakeTime;
+      this.camera.shake.set(
+        Math.sin(t * 61) * this.shakeAmplitude,
+        Math.sin(t * 47 + 1.3) * this.shakeAmplitude * 0.6,
+        Math.cos(t * 53 + 0.7) * this.shakeAmplitude,
+      );
+    }
 
     for (const flash of this.flashes) {
       if (flash.ttl <= 0) continue;
@@ -131,6 +136,7 @@ export class BattleEffects {
   }
 
   private addShake(magnitude: number): void {
+    if (this.camera.reducedMotion) return;
     this.shakeAmplitude = Math.min(9, this.shakeAmplitude + magnitude);
   }
 

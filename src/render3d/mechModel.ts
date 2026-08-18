@@ -10,10 +10,10 @@ import {
 import { armourShell, chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
 import type { WeaponType } from '../schema/weapon';
-import { chassisBlueprint, type BlueprintPart, type HardpointMap, type Tone } from '../render/blueprint';
+import { chassisBlueprint, type BlueprintPart, type HardpointMap } from '../render/blueprint';
 import type { Silhouette } from '../render/shape';
 import { radiusFor } from '../render/shape';
-import { mix, shade } from '../render/palette';
+import { createMechMaterials, createWeaponMaterial } from './mechMaterials';
 
 export interface MountArt {
   location: MechLocation;
@@ -41,31 +41,6 @@ export interface MechModel {
   torsoRestY: number;
   /** One full stride, in world metres, for pacing the walk cycle. */
   strideLength: number;
-}
-
-const WEAPON_COLOURS: Record<WeaponType, number> = {
-  energy: 0x9fe6ff,
-  ballistic: 0xcfd6dc,
-  missile: 0xffb08a,
-};
-
-/**
- * Painted steel, not plastic. A little metalness with a lot of roughness gives
- * the plates a gradient across a curved edge instead of one flat tone, which is
- * what stops chamfered geometry from looking like a flat-shaded box anyway.
- */
-function palette(team: number, destroyed: boolean): Record<Tone, MeshStandardMaterial> {
-  const steel = destroyed ? 0x2b2b2d : mix(0x555f66, team, 0.5);
-  const make = (colour: number, roughness: number, metalness: number): MeshStandardMaterial =>
-    new MeshStandardMaterial({ color: colour, roughness, metalness });
-
-  return {
-    plate: make(steel, 0.62, 0.35),
-    deep: make(shade(steel, 0.62), 0.72, 0.3),
-    trim: make(destroyed ? 0x50494a : shade(team, 1.4), 0.5, 0.45),
-    glass: make(destroyed ? 0x2c3136 : 0x9fdcff, 0.15, 0.1),
-    accent: make(destroyed ? 0x3a3a3c : shade(steel, 1.5), 0.45, 0.6),
-  };
 }
 
 /**
@@ -130,8 +105,8 @@ export function buildMechModel(
 ): MechModel {
   const scale = radiusFor(tonnage);
   const plan = chassisBlueprint(shape, traits, fit, identity);
-  const tones = palette(team, destroyed);
-  const burnt = palette(team, true);
+  const tones = createMechMaterials(identity, team, destroyed);
+  const burnt = createMechMaterials(identity, team, true);
 
   const root = new Group();
   const torso = new Group();
@@ -194,11 +169,7 @@ export function buildMechModel(
     const index = stacked.get(mount.location) ?? 0;
     stacked.set(mount.location, index + 1);
 
-    const material = new MeshStandardMaterial({
-      color: WEAPON_COLOURS[mount.type],
-      roughness: 0.4,
-      metalness: 0.55,
-    });
+    const material = createWeaponMaterial(mount.type);
     const heft = 0.5 + Math.min(1, mount.tonnage / 14);
     const piece = weaponPiece(mount, heft, scale, material);
     piece.traverse((child) => {

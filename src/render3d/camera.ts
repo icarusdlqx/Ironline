@@ -17,6 +17,13 @@ export interface Viewport {
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
+export function prefersReducedMotion(): boolean {
+  return (
+    typeof globalThis.matchMedia === 'function' &&
+    globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
 /**
  * The battlefield is flat in the simulation, so the world is laid out on the
  * XZ plane with Y as height: a simulation point (x, y) is (x, ground, y) here.
@@ -38,6 +45,8 @@ export function toWorld(point: Vec2, height = 0): Vector3 {
  */
 export class TacticalCamera {
   readonly camera = new PerspectiveCamera(45, 1, 1, 6_000);
+
+  constructor(readonly reducedMotion = prefersReducedMotion()) {}
 
   /** The ground point the camera is looking at. */
   target: Vec2 = { x: 0, y: 0 };
@@ -84,6 +93,10 @@ export class TacticalCamera {
    * wait out a flourish to give an order.
    */
   beginDropIn(seconds = 2.2): void {
+    if (this.reducedMotion) {
+      this.skipDropIn();
+      return;
+    }
     this.intro = 1;
     this.introSeconds = Math.max(0.1, seconds);
   }

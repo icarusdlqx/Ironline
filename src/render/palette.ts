@@ -10,7 +10,9 @@ export const TERRAIN_COLOURS: Record<string, number> = {
   impassable: 0x24262a,
 };
 
-export const TEAM_COLOURS: readonly number[] = [0x4fa3d1, 0xd15a4f, 0xc8a94f, 0x6bbf59];
+// Hue identifies a team in colour; value keeps the same marks distinct in fog
+// and for players who cannot rely on the red-green axis.
+export const TEAM_COLOURS: readonly number[] = [0x78c9ff, 0xa83b2b, 0xf2d95c, 0x9377ca];
 
 export const UI = {
   background: 0x0d1013,
