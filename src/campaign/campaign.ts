@@ -3,23 +3,21 @@ import type { Catalog } from '../schema/load';
 import { pruneMarket } from './market';
 import { isSideContract, pruneSideOffers, sideContracts } from './sidework';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
-import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
+import { runBattle, type BattleResult } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
-import { asPilot, assign, awardXp, promote, resolveCasualty } from './roster';
+import { availableXp, awardXp, resolveCasualty } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
+import { dailyPayroll } from './ledger';
+import { fillEmptySeats, PLAYER_TEAM, prepareDeployment, type DeployablePair } from './deployment';
 import {
-  findMech,
-  findPilot,
-  isMechAvailable,
-  isPilotAvailable,
-  type CampaignState,
-  type MechRecord,
-  type MissionOutcome,
-  type PilotRecord,
-  type PilotReport,
+  findMech, findPilot, type CampaignState, type MechRecord, type MissionOutcome, type PilotReport,
 } from './types';
 
-export const PLAYER_TEAM = 0;
+export {
+  deployableLance, DeploymentError, DROP_BERTHS, dropTeam, dropTonnageFor,
+  fillEmptySeats, missionSlots, PLAYER_TEAM, prepareDeployment,
+} from './deployment';
+export type { DeployablePair, Deployment } from './deployment';
 
 function log(state: CampaignState, text: string): void {
   state.log.unshift({ day: state.day, text });
@@ -200,173 +198,10 @@ export function abandonContract(state: CampaignState): void {
   state.contract = null;
 }
 
-/** Thrown when the company cannot field anything, so the UI can say so rather than crash. */
-export class DeploymentError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'DeploymentError';
-  }
-}
-
-export interface DeployablePair {
-  mech: MechRecord;
-  pilot: PilotRecord;
-}
-
-function isFieldable(state: CampaignState, mech: MechRecord): boolean {
-  return mech.status !== 'hulk' && isMechAvailable(state, mech);
-}
-
-/**
- * Everyone who can walk out of the bay, paired with what they will walk out in.
- * Pilots keep their own mech; anybody left over is seated in a spare hull.
- *
- * That second pass matters: salvaged chassis arrive with nobody assigned, and a
- * killed pilot's mech is unbound, so a company could hold fit pilots and
- * battle-ready mechs and still field nothing — an unrecoverable state the game
- * never explained. This function only reads; `fillEmptySeats` writes the pairing
- * back so the barracks agrees with what deploys.
- */
-export function deployableLance(state: CampaignState): DeployablePair[] {
-  const pairs: DeployablePair[] = [];
-  const spoken = new Set<string>();
-
-  // A benched pilot keeps their seat on the roster: they are held back from
-  // this drop, not thrown off the mech.
-  const held = (id: string): boolean => state.benched.includes(id);
-
-  for (const pilot of state.pilots) {
-    if (pilot.mechId === null) continue;
-    spoken.add(pilot.mechId);
-    if (!isPilotAvailable(state, pilot) || held(pilot.id)) continue;
-    const mech = findMech(state, pilot.mechId);
-    if (mech === null || !isFieldable(state, mech)) continue;
-    pairs.push({ mech, pilot });
-  }
-
-  for (const pilot of state.pilots) {
-    if (pilot.mechId !== null || !isPilotAvailable(state, pilot) || held(pilot.id)) continue;
-    const free = state.mechs.find(
-      (mech) => !spoken.has(mech.id) && isFieldable(state, mech),
-    );
-    if (free === undefined) break;
-    spoken.add(free.id);
-    pairs.push({ mech: free, pilot });
-  }
-
-  return pairs;
-}
-
-/** Records the pairing `deployableLance` worked out, so the roster matches the field. */
-export function fillEmptySeats(state: CampaignState): void {
-  for (const pair of deployableLance(state)) {
-    if (pair.pilot.mechId !== pair.mech.id) assign(state, pair.pilot.id, pair.mech.id);
-  }
-}
-
-/**
- * The most machines any drop will carry, however light they are. The real
- * constraint on a drop is the tonnage allowance — three heavies instead of
- * four mediums is a legitimate answer to it — so berths are a wide sanity cap
- * rather than the authored lance size they used to be.
- */
-export const DROP_BERTHS = 6;
-
-export function missionSlots(catalog: Catalog, missionId: string): number {
-  const mission = catalog.missions.get(missionId);
-  const authored =
-    mission?.lances.find((lance) => lance.team === PLAYER_TEAM)?.units.length ?? 0;
-  return authored === 0 ? 0 : Math.max(authored, DROP_BERTHS);
-}
-
-/** Tonnage of a design's chassis, or zero if the design has gone missing. */
-function tonnageOf(catalog: Catalog, design: { chassisId: string }): number {
-  return catalog.chassis.get(design.chassisId)?.tonnage ?? 0;
-}
-
-/**
- * What the dropship will carry to this contract. Authored per mission; when a
- * mission does not say, the allowance is the lance it fields itself, so old
- * content keeps working and nobody is quietly locked out of their own mission.
- */
-export function dropTonnageFor(catalog: Catalog, missionId: string): number {
-  const mission = catalog.missions.get(missionId);
-  if (mission === undefined) return 0;
-  if (mission.dropTonnage !== null) return mission.dropTonnage;
-
-  const lance = mission.lances.find((entry) => entry.team === PLAYER_TEAM);
-  return (lance?.units ?? []).reduce((total, unit) => {
-    const design = catalog.designs.get(unit.designId);
-    return total + (design === undefined ? 0 : tonnageOf(catalog, design));
-  }, 0);
-}
-
-/**
- * The lance as it will actually drop: berths first, then weight. Cutting by
- * weight has to happen here rather than only in the UI, because a contract
- * resolved from the campaign screen never opens the manifest at all.
- */
-export function dropTeam(
-  catalog: Catalog,
-  state: CampaignState,
-  missionId: string,
-): DeployablePair[] {
-  const berths = missionSlots(catalog, missionId);
-  const allowance = dropTonnageFor(catalog, missionId);
-
-  const taken: DeployablePair[] = [];
-  let tons = 0;
-  for (const pair of deployableLance(state)) {
-    if (taken.length >= berths) break;
-    const weight = tonnageOf(catalog, pair.mech.design);
-    if (tons + weight > allowance) continue;
-    taken.push(pair);
-    tons += weight;
-  }
-  return taken;
-}
-
 export interface MissionRun {
   outcome: MissionOutcome;
   battle: BattleResult;
   salvage: SalvageReport;
-}
-
-export interface Deployment {
-  seed: string;
-  missionId: string;
-  playerTeam: number;
-  lance: DeployablePair[];
-  entries: LanceEntry[];
-}
-
-/** Builds the battle inputs for the active contract, shared by the harness and the UI. */
-export function prepareDeployment(catalog: Catalog, state: CampaignState): Deployment {
-  const contract = state.contract;
-  if (contract === null) throw new Error('no active contract');
-
-  fillEmptySeats(state);
-  const lance = dropTeam(catalog, state, contract.missionId);
-  if (lance.length === 0) {
-    const anyReady = deployableLance(state).length > 0;
-    throw new DeploymentError(
-      anyReady
-        ? `Nothing the company can field fits the ${dropTonnageFor(catalog, contract.missionId)}t drop allowance for this contract.`
-        : 'No mech is ready to deploy. Repair a mech, rebuild a hulk, or wait for a pilot to recover.',
-    );
-  }
-
-  return {
-    seed: `${state.seed}:${contract.nodeId}:${state.day}`,
-    missionId: contract.missionId,
-    playerTeam: PLAYER_TEAM,
-    lance,
-    entries: lance.map(({ mech, pilot }) => ({
-      design: mech.design,
-      pilot: asPilot(pilot),
-      damage: mech.condition,
-    })),
-  };
 }
 
 export function runMission(catalog: Catalog, state: CampaignState): MissionRun {
@@ -422,21 +257,13 @@ export function resolveMission(
         resolveCasualty(catalog, rng, pair.pilot, unit, state.day),
       );
 
-      // A pilot who came home spends what they learned on the way. After the
-      // casualty roll on purpose: the dead do not get better at anything.
-      const promotions: string[] = [];
-      if (!casualty.died) {
-        for (const step of promote(catalog, pair.pilot)) {
-          promotions.push(`${step.skill} ${step.level}`);
-          log(state, `${pair.pilot.name} reached ${step.skill} ${step.level}.`);
-        }
-      }
-
       if (casualty.died) casualties.push(`${pair.pilot.name} (killed)`);
       else if (casualty.injuredDays > 0) {
         casualties.push(`${pair.pilot.name} (out ${casualty.injuredDays} days)`);
       }
 
+      // Banking the award leaves the commander a real training decision; the
+      // old automatic spend made the barracks buttons decorative.
       pilotReports.push({
         pilotId: pair.pilot.id,
         name: pair.pilot.name,
@@ -444,7 +271,8 @@ export function resolveMission(
         kills: unit.kills,
         damage: Math.round(unit.damageDealt),
         xp,
-        promotions,
+        xpBanked: availableXp(pair.pilot),
+        promotions: [],
         fate: casualty.died ? 'killed' : casualty.injuredDays > 0 ? 'injured' : 'returned',
       });
     });
@@ -518,13 +346,14 @@ export function resolveMission(
 }
 
 export function advanceDays(catalog: Catalog, state: CampaignState, days: number): void {
-  const salary = catalog.rules.economy.pilot.salaryPerDay;
+  let payrollPaid = 0;
 
   for (let step = 0; step < days; step += 1) {
     state.day += 1;
 
-    const living = state.pilots.filter((pilot) => !pilot.dead).length;
-    state.cbills -= salary * living;
+    const payroll = dailyPayroll(catalog, state);
+    state.cbills -= payroll;
+    payrollPaid += payroll;
 
     for (const mech of state.mechs) {
       if (mech.status === 'repairing' && mech.readyOnDay <= state.day) {
@@ -539,6 +368,8 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
       state.contract = null;
     }
   }
+
+  if (payrollPaid > 0) log(state, `Payroll: ${payrollPaid} credits.`);
 
   // Casualties and finished repairs both leave hulls without a pilot; seat them
   // now so the barracks and the deploy button agree before the player looks.

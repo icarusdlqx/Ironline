@@ -4,25 +4,15 @@ import {
   stripToStore,
 } from '../../campaign/refit';
 import { buyMech, marketListings, saleValueOf, sellMech } from '../../campaign/market';
+import { dailyPayroll, payrollThrough } from '../../campaign/ledger';
 import { estimateRepair, startRepair } from '../../campaign/repair';
-import {
-  assign,
-  availableHires,
-  availableXp,
-  chooseTrait,
-  hireCost,
-  hirePilot,
-  offeredTraits,
-  pendingTraitPicks,
-  raiseSkill,
-  skillCost,
-  SKILLS,
-} from '../../campaign/roster';
-import { isMechAvailable, isPilotAvailable, type CampaignState } from '../../campaign/types';
+import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { computeLoadout } from '../../sim/loadout';
 
 const catalog = getCatalog();
+
+export { BarracksPanel } from './BarracksPanel';
 
 export function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
@@ -39,9 +29,13 @@ export interface PanelProps {
 }
 
 export function MechBayPanel({ state, mutate }: PanelProps) {
+  const payroll = dailyPayroll(catalog, state);
   return (
-      <section className="camp-bay" data-testid="camp-bay">
+      <section className="camp-bay progression-bay" data-testid="camp-bay">
         <h3>Mech bay</h3>
+        <p className="ledger-note">
+          Workshop bills are paid up front. The {cbills(payroll)} daily payroll continues while the bay works.
+        </p>
         <ul>
           {state.mechs.map((mech) => {
             const estimate = estimateRepair(catalog, mech);
@@ -51,12 +45,12 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
                 <span className="bay-mech-name">{mech.design.name}</span>
                 <span className="bay-mech-state">
                   {mech.status === 'hulk'
-                    ? `wreck — rebuild ${cbills(mech.rebuildCost)}`
+                    ? `wreck — ${cbills(mech.rebuildCost)} now · ${catalog.rules.salvage.hulkRebuildDays}d · ${cbills(payrollThrough(catalog, state, catalog.rules.salvage.hulkRebuildDays))} wages`
                     : ready
                       ? estimate.days === 0
                         ? 'ready'
-                        : `damaged — ${cbills(estimate.cost)}, ${estimate.days}d`
-                      : `in bay until day ${mech.readyOnDay}`}
+                        : `damaged — ${cbills(estimate.cost)} now · ${estimate.days}d · ${cbills(payrollThrough(catalog, state, estimate.days))} wages`
+                      : `in bay until day ${mech.readyOnDay} · ${cbills(payrollThrough(catalog, state, mech.readyOnDay - state.day))} wages left`}
                 </span>
                 {mech.status === 'hulk' ? (
                   <button
@@ -91,163 +85,6 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
               </li>
             );
           })}
-        </ul>
-      </section>
-  );
-}
-
-export function BarracksPanel({ state, mutate }: PanelProps) {
-  return (
-      <section className="camp-roster" data-testid="camp-roster">
-        <h3>Barracks</h3>
-        <ul>
-          {state.pilots.map((pilot) => (
-            <li key={pilot.id} data-testid={`camp-pilot-${pilot.id}`} title={pilot.bio}>
-              <span className="pilot-name">
-                {pilot.name}
-                {pilot.traits.length === 0 ? null : (
-                  <small className="pilot-traits">
-                    {pilot.traits
-                      .map((traitId) => catalog.rules.pilotTraits.entries[traitId]?.label ?? traitId)
-                      .join(' · ')}
-                  </small>
-                )}
-              </span>
-              <span className="pilot-skills">
-                {pilot.gunnery}/{pilot.piloting}/{pilot.sensors}
-              </span>
-              <span className="pilot-state">
-                {pilot.dead
-                  ? 'KIA'
-                  : isPilotAvailable(state, pilot)
-                    ? `${availableXp(pilot)} XP`
-                    : `injured to day ${pilot.injuredUntilDay}`}
-              </span>
-              {/* A speciality the pilot has earned. The commander picks it:
-                  what somebody becomes good at is the most characterful
-                  decision the roster has, and it was being made by a table. */}
-              {pendingTraitPicks(catalog, pilot) <= 0 ? null : (
-                <select
-                  className="pilot-pick"
-                  value=""
-                  onChange={(event) => {
-                    const traitId = event.target.value;
-                    if (traitId === '') return;
-                    mutate((draft) => {
-                      const target = draft.pilots.find((entry) => entry.id === pilot.id);
-                      if (target === undefined) return null;
-                      const result = chooseTrait(catalog, target, traitId);
-                      return result.ok
-                        ? `${target.name} trained ${catalog.rules.pilotTraits.entries[traitId]?.label ?? traitId}.`
-                        : result.reason;
-                    });
-                  }}
-                  data-testid={`camp-pick-${pilot.id}`}
-                  aria-label={`Speciality for ${pilot.name}`}
-                >
-                  <option value="">Train a speciality…</option>
-                  {offeredTraits(catalog, pilot).map((traitId) => {
-                    const trait = catalog.rules.pilotTraits.entries[traitId];
-                    return (
-                      <option key={traitId} value={traitId} title={trait?.note}>
-                        {trait?.label ?? traitId}
-                      </option>
-                    );
-                  })}
-                </select>
-              )}
-              {/* Seats are filled automatically after every battle, but a
-                  commander who wants their best gunner in the assault mech
-                  had no way to say so. Assigning an occupied mech evicts
-                  whoever is in it, so a swap is one pick, not two. */}
-              <select
-                className="pilot-mech"
-                disabled={pilot.dead}
-                value={pilot.mechId ?? ''}
-                onChange={(event) =>
-                  mutate((draft) => {
-                    assign(draft, pilot.id, event.target.value === '' ? null : event.target.value);
-                  }, `${pilot.name} reassigned.`)
-                }
-                data-testid={`camp-seat-${pilot.id}`}
-              >
-                <option value="">— no mech —</option>
-                {state.mechs.map((mech) => (
-                  <option key={mech.id} value={mech.id}>
-                    {mech.design.name}
-                    {mech.status === 'ready' ? '' : ` (${mech.status})`}
-                  </option>
-                ))}
-              </select>
-              <span className="pilot-buttons">
-                {SKILLS.map((skill) => (
-                  <button
-                    key={skill}
-                    type="button"
-                    disabled={pilot.dead || availableXp(pilot) < skillCost(catalog, pilot[skill])}
-                    title={`Raise ${skill} for ${skillCost(catalog, pilot[skill])} XP`}
-                    onClick={() =>
-                      mutate((draft) => {
-                        const target = draft.pilots.find((entry) => entry.id === pilot.id);
-                        if (target === undefined) return null;
-                        const result = raiseSkill(catalog, target, skill);
-                        return result.ok
-                          ? `${target.name} up to ${skill} ${target[skill]}.`
-                          : result.reason;
-                      })
-                    }
-                    data-testid={`camp-skill-${pilot.id}-${skill}`}
-                  >
-                    {skill.slice(0, 3).toUpperCase()}
-                  </button>
-                ))}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Who else is on the register. A company that loses a pilot and cannot
-            replace them is a company one bad drop from being over, and a
-            commander who wants a marksman should be able to go and buy one. */}
-        <h4>Hiring hall</h4>
-        <ul className="camp-hires">
-          {availableHires(catalog, state).slice(0, 6).map((hire) => {
-            const cost = hireCost(catalog, hire);
-            return (
-              <li key={hire.id} title={hire.bio} data-testid={`camp-hire-${hire.id}`}>
-                <span className="pilot-name">
-                  {hire.name}
-                  {hire.traits.length === 0 ? null : (
-                    <small className="pilot-traits">
-                      {hire.traits
-                        .map((traitId) => catalog.rules.pilotTraits.entries[traitId]?.label ?? traitId)
-                        .join(' · ')}
-                    </small>
-                  )}
-                </span>
-                <span className="pilot-skills">
-                  {hire.gunnery}/{hire.piloting}/{hire.sensors}
-                </span>
-                <span className="pilot-state">{cbills(cost)}</span>
-                <button
-                  type="button"
-                  disabled={state.cbills < cost}
-                  onClick={() =>
-                    mutate((draft) => {
-                      const result = hirePilot(catalog, draft, hire.id);
-                      return result.ok ? `${hire.name} signed.` : result.reason;
-                    })
-                  }
-                  data-testid={`camp-sign-${hire.id}`}
-                >
-                  Sign
-                </button>
-              </li>
-            );
-          })}
-          {availableHires(catalog, state).length === 0 ? (
-            <li className="camp-empty">Nobody left on the register.</li>
-          ) : null}
         </ul>
       </section>
   );

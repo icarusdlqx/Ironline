@@ -667,12 +667,9 @@ async function main() {
       'the debrief accounts for every pilot who dropped',
       (await page.locator('[data-testid^="debrief-fate-"]').count()) > 0,
     );
-    check(
-      'the debrief reports experience earned',
-      (await page.locator('[data-testid="debrief"] .manifest-skills').first().innerText()).includes(
-        'XP',
-      ),
-    );
+    const debriefText = await page.locator('[data-testid="debrief"]').innerText();
+    check('the debrief reports experience earned', debriefText.includes('+') && debriefText.includes('XP'));
+    check('the debrief records banked experience', debriefText.includes('banked'));
     await page.locator('[data-testid="debrief-close"]').click();
 
     const resolvedState = await page.evaluate(() =>
@@ -683,6 +680,16 @@ async function main() {
     check(
       'the outcome was recorded either way',
       resolvedState.completedNodes.length + resolvedState.failedNodes.length === 1,
+    );
+    check(
+      'drop experience waits for a training choice',
+      resolvedState.pilots.some((pilot) => pilot.xp > 0) &&
+        resolvedState.pilots.every((pilot) => pilot.spentXp === 0),
+    );
+    const rosterText = await page.locator('[data-testid="camp-roster"]').innerText();
+    check(
+      'the barracks states experience and daily payroll',
+      rosterText.includes('XP banked') && rosterText.includes('/day'),
     );
 
     if (resolvedState.history[0].won) {

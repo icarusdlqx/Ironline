@@ -79,6 +79,8 @@ const MissionOutcomeSchema = z.strictObject({
         kills: z.number().nonnegative(),
         damage: z.number().nonnegative(),
         xp: z.number(),
+        // Older debriefs did not snapshot the pilot's bank after a drop.
+        xpBanked: z.number().nonnegative().nullable().default(null),
         promotions: z.array(z.string()),
         fate: z.enum(['returned', 'injured', 'killed']),
       }),

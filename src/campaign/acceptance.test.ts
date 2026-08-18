@@ -15,6 +15,8 @@ import {
 } from './campaign';
 import { applyRefit, fitFromStore, planFit, refitInventory, stripToStore } from './refit';
 import { estimateRepair, startRepair } from './repair';
+import { availableXp, raiseSkill, skillCost, SKILLS } from './roster';
+import { deserialiseCampaign, serialiseCampaign } from './save';
 import { addToStore, isPilotAvailable, storeCount, type CampaignState } from './types';
 
 const CAMPAIGN_ID = 'border_dispute';
@@ -229,6 +231,43 @@ describe('deployment', () => {
 
     expect(() => prepareDeployment(catalog, state)).toThrow(DeploymentError);
     expect(() => prepareDeployment(catalog, state)).toThrow(/No mech is ready to deploy/);
+  });
+});
+
+describe('pilot progression', () => {
+  it('banks a real drop award, accepts one chosen skill, and saves it', () => {
+    fightNode(state, 'militia_raid');
+    expect(state.history[0]?.won).toBe(true);
+    repairAll(state);
+    waitForCrew(state);
+    fightNode(state, 'supply_line');
+
+    expect(state.pilots.every((pilot) => pilot.spentXp === 0)).toBe(true);
+    const trainee = state.pilots.find(
+      (pilot) =>
+        !pilot.dead &&
+        SKILLS.some((skill) => availableXp(pilot) >= skillCost(catalog, pilot[skill])),
+    );
+    expect(
+      trainee,
+      `nobody could train after the opening drop: ${state.pilots.map((pilot) => availableXp(pilot)).join(', ')}`,
+    ).toBeDefined();
+    if (trainee === undefined) return;
+
+    const report = [...state.history]
+      .reverse()
+      .flatMap((outcome) => outcome.pilotReports)
+      .find((entry) => entry.pilotId === trainee.id);
+    expect(report?.xpBanked).toBe(availableXp(trainee));
+    const chosen = SKILLS.find(
+      (skill) => availableXp(trainee) >= skillCost(catalog, trainee[skill]),
+    );
+    if (chosen === undefined) throw new Error('the trainable pilot has no affordable skill');
+    const before = trainee[chosen];
+
+    expect(raiseSkill(catalog, trainee, chosen).ok).toBe(true);
+    const restored = deserialiseCampaign(serialiseCampaign(state)).state;
+    expect(restored?.pilots.find((pilot) => pilot.id === trainee.id)?.[chosen]).toBe(before + 1);
   });
 });
 
