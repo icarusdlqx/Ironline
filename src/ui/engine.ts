@@ -1,5 +1,6 @@
 import type { MechLocation } from '../schema/common';
 import { loadCatalog } from '../schema/load';
+import { missionTickBudget } from '../schema/missionClock';
 import { Renderer } from '../render3d/scene';
 import { restoreIntent } from '../sim/governor';
 import {
@@ -29,6 +30,7 @@ import { AudioDirector } from './audio';
 import { hitPreview } from '../sim/preview';
 import { useAbility } from '../sim/abilities';
 import { FramePacer } from './framePacer';
+import { crossedMissionClockWarnings } from './missionClock';
 import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
 import { useGame, type HitPreviewView, type OrderMode } from './store';
@@ -61,12 +63,14 @@ export class Engine {
   private lastFrame = 0;
   private hudTimer = 0;
   private smokeTimer = 0;
+  private clockSeconds: number;
   private detachInput: (() => void) | null = null;
 
   constructor(world: World, renderer: Renderer, maxTicks: number) {
     this.world = world;
     this.renderer = renderer;
     this.maxTicks = maxTicks;
+    this.clockSeconds = maxTicks * world.dt;
   }
 
   get paused(): boolean {
@@ -314,13 +318,20 @@ export class Engine {
 
   forceStep(): void {
     if (this.world.finished) return;
+    const before = this.clockSeconds;
     stepWorld(this.world, this.maxTicks);
+    this.clockSeconds = Math.max(0, (this.maxTicks - this.world.tick) * this.world.dt);
     this.renderer.snapshot(this.world);
     const events = this.world.events.splice(0, this.world.events.length);
     this.renderer.consumeEvents(this.world, events);
     this.audio.listenAt = this.renderer.camera.target;
     this.audio.consume(this.world, events);
     this.logEvents(events);
+    if (!this.world.finished) {
+      for (const warning of crossedMissionClockWarnings(before, this.clockSeconds)) {
+        useGame.getState().pushLog(warning);
+      }
+    }
   }
 
   private emitDamageSmoke(): void {
@@ -760,7 +771,8 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   });
 
   const mission = catalog.missions.get(missionId);
-  const mapData = catalog.maps.get(mission?.mapId ?? '');
+  if (mission === undefined) throw new Error(`unknown mission "${missionId}"`);
+  const mapData = catalog.maps.get(mission.mapId);
   if (mapData === undefined) throw new Error(`mission "${missionId}" has no map`);
 
   // The mission's own choice first, then the map's, then the default rig — so a
@@ -770,7 +782,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   if (atmosphere === undefined) throw new Error(`unknown atmosphere "${atmosphereId}"`);
 
   const renderer = new Renderer(host, world, mapData, atmosphere);
-  const engine = new Engine(world, renderer, catalog.rules.simulation.maxBattleTicks);
+  const engine = new Engine(world, renderer, missionTickBudget(catalog, missionId));
   renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
   engine.audio.setTerrain(mapData);
   engine.audio.setAmbient(atmosphereId);
@@ -791,9 +803,11 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
   useGame.getState().patch({
     ready: true,
     playerTeam,
-    missionName: mission?.name ?? missionId,
-    briefing: mission?.briefing ?? '',
+    missionName: mission.name,
+    briefing: mission.briefing,
     briefingSeen: false,
+    elapsedSeconds: 0,
+    missionDurationSeconds: mission.maxDurationSeconds,
     paused: true,
     speed: 1,
     hitPreview: null,

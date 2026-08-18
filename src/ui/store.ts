@@ -145,6 +145,7 @@ export interface GameState {
   speed: number;
   tick: number;
   elapsedSeconds: number;
+  missionDurationSeconds: number;
   finished: boolean;
   winner: number | null;
   playerTeam: number;
@@ -197,6 +198,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   speed: 1,
   tick: 0,
   elapsedSeconds: 0,
+  missionDurationSeconds: 0,
   finished: false,
   winner: null,
   playerTeam: 0,

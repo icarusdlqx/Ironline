@@ -1,5 +1,6 @@
 import type { CampaignNode } from '../schema/campaign';
 import type { Catalog } from '../schema/load';
+import { missionTickBudget } from '../schema/missionClock';
 import { pruneMarket } from './market';
 import { isSideContract, pruneSideOffers, sideContracts } from './sidework';
 import { createRng, rngFromState, type Rng } from '../sim/rng';
@@ -376,6 +377,7 @@ export function runMission(catalog: Catalog, state: CampaignState): MissionRun {
     missionId: deployment.missionId,
     playerTeam: deployment.playerTeam,
     playerLance: deployment.entries,
+    maxTicks: missionTickBudget(catalog, deployment.missionId),
     // Auto-resolving a contract should play the lance properly, not park it.
     playerController: 'tactical',
   });

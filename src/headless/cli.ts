@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { loadCatalog } from '../schema/load';
+import { missionTickBudget } from '../schema/missionClock';
 import { runBattle, type BattleResult } from '../sim/world';
 import { aggregate, formatReport } from './report';
 
@@ -71,7 +72,7 @@ export function runSuite(options: Options): BattleResult[] {
       runBattle(catalog, {
         seed: `${options.seed}:${iteration}`,
         missionId: options.mission,
-        ...(options.maxTicks === null ? {} : { maxTicks: options.maxTicks }),
+        maxTicks: options.maxTicks ?? missionTickBudget(catalog, options.mission),
       }),
     );
   }
