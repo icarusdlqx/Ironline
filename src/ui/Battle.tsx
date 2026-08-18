@@ -31,6 +31,7 @@ import {
 } from './Panels';
 import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
+import { formatMissionClock, missionClockUrgency } from './missionClock';
 import { selectedUnit, storeDifficulty, useGame } from './store';
 import { TrainingCoach } from './TrainingCoach';
 import {
@@ -47,12 +48,6 @@ const SUPPORT_HINTS: Record<string, string> = {
   minelayer: 'Lays a defensive minefield',
   reinforcement: 'Drops a reserve mech',
 };
-
-function formatClock(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.floor(seconds % 60);
-  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
-}
 
 export function Battle() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -72,6 +67,8 @@ export function Battle() {
   const [lowFx, setLowFx] = useState(false);
   const missionId = useGame((game) => game.skirmishMissionId);
   const difficulty = useGame((game) => game.difficulty);
+  const remainingSeconds = Math.max(0, state.missionDurationSeconds - state.elapsedSeconds);
+  const clockUrgency = missionClockUrgency(remainingSeconds);
 
   // The skirmish lance, edited at the briefing. Kept per mission so switching
   // missions never carries the wrong machines across, persisted so a loadout
@@ -313,8 +310,13 @@ export function Battle() {
 
       <header className="topbar" data-testid="topbar">
         <span className="mission">{state.missionName}</span>
-        <span className="clock" data-testid="clock">
-          {formatClock(state.elapsedSeconds)}
+        <span
+          className={`clock clock-${clockUrgency}`}
+          data-testid="clock"
+          title="Mission time remaining"
+          aria-label={`Mission time remaining ${formatMissionClock(remainingSeconds)}`}
+        >
+          TIME {formatMissionClock(remainingSeconds)}
         </span>
         <button
           type="button"

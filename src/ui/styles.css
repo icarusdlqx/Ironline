@@ -96,6 +96,15 @@ button {
   font-size: 15px;
 }
 
+.clock-minute {
+  color: #e1c476;
+}
+
+.clock-final {
+  color: var(--warn);
+  font-weight: 700;
+}
+
 .pause {
   background: var(--panel);
   border: 1px solid var(--edge);
