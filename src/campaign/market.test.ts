@@ -189,7 +189,7 @@ describe('the yard', () => {
     const mech = state.mechs[0];
     if (node === undefined || mech === undefined) throw new Error('nothing to sign or sell');
 
-    expect(acceptContract(catalog, state, node.id, 0).ok).toBe(true);
+    expect(acceptContract(catalog, state, node.id, 'fee_first').ok).toBe(true);
     const result = sellMech(catalog, state, mech.id);
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/contract/);

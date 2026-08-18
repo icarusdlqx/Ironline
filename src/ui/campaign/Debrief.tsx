@@ -1,8 +1,8 @@
 import type { Catalog } from '../../schema/load';
 import { useState } from 'react';
+import { termsName } from '../../campaign/contractTerms';
 import { SALVAGE_PICKS } from '../../campaign/salvage';
-import type { StoreItem } from '../../campaign/types';
-import type { MissionOutcome } from '../../campaign/types';
+import type { MissionOutcome, StoreItem } from '../../campaign/types';
 
 const DEBRIEFED_KEY = 'ironline.campaign.debriefed';
 
@@ -69,7 +69,8 @@ export function Debrief({
             {outcome.won ? 'Contract complete' : 'Contract failed'} — {mission?.name ?? outcome.missionId}
           </h3>
           <p>
-            Day {outcome.day}. {outcome.won ? `${cbills(outcome.payout)} paid.` : 'No payment.'}
+            {termsName(outcome.termsId)} · Day {outcome.day}.{' '}
+            {outcome.won ? `${cbills(outcome.payout)} paid.` : 'No payment.'}
             {outcome.salvagedItems.length + outcome.salvagedChassis.length > 0
               ? ` ${outcome.salvagedChassis.length} hull(s) and ${outcome.salvagedItems.length} crate(s) recovered.`
               : ''}

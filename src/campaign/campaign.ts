@@ -7,6 +7,7 @@ import { runBattle, type BattleResult, type LanceEntry } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
 import { asPilot, assign, awardXp, promote, resolveCasualty } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
+import { negotiationOptions } from './contractTerms';
 import {
   findMech,
   findPilot,
@@ -18,6 +19,8 @@ import {
   type PilotRecord,
   type PilotReport,
 } from './types';
+
+export { negotiationOptions } from './contractTerms';
 
 export const PLAYER_TEAM = 0;
 
@@ -128,29 +131,6 @@ export function availableNodes(catalog: Catalog, state: CampaignState): Campaign
   return [...campaignNodes(catalog, state), ...sideContracts(catalog, state)];
 }
 
-export interface NegotiationOption {
-  step: number;
-  payout: number;
-  salvageShare: number;
-}
-
-export function negotiationOptions(catalog: Catalog, node: CampaignNode): NegotiationOption[] {
-  const rules = catalog.rules.economy.negotiation;
-  const options: NegotiationOption[] = [];
-
-  for (let step = 0; step < rules.steps; step += 1) {
-    const t = step / (rules.steps - 1);
-    const factor = rules.payoutCeilingFactor + (rules.payoutFloorFactor - rules.payoutCeilingFactor) * t;
-    options.push({
-      step,
-      payout: Math.round(node.basePayout * factor),
-      salvageShare: Number((node.maxSalvageShare * t).toFixed(4)),
-    });
-  }
-
-  return options;
-}
-
 export interface ActionResult {
   ok: boolean;
   reason: string | null;
@@ -160,15 +140,15 @@ export function acceptContract(
   catalog: Catalog,
   state: CampaignState,
   nodeId: string,
-  step: number,
+  termsId: string,
 ): ActionResult {
   if (state.contract !== null) return { ok: false, reason: 'a contract is already active' };
 
   const node = availableNodes(catalog, state).find((entry) => entry.id === nodeId);
   if (node === undefined) return { ok: false, reason: 'that contract is not available' };
 
-  const option = negotiationOptions(catalog, node)[step];
-  if (option === undefined) return { ok: false, reason: 'invalid negotiation step' };
+  const option = negotiationOptions(catalog, node).find((terms) => terms.id === termsId);
+  if (option === undefined) return { ok: false, reason: 'invalid contract terms' };
 
   // A side posting is off the board the moment it is signed. The authored
   // campaign tracks completion instead, because those jobs have to stay
@@ -179,6 +159,7 @@ export function acceptContract(
     nodeId: node.id,
     missionId: node.missionId,
     employer: node.employer,
+    termsId: option.id,
     payout: option.payout,
     salvageShare: option.salvageShare,
     acceptedOnDay: state.day,
@@ -187,7 +168,8 @@ export function acceptContract(
 
   log(
     state,
-    `Signed with ${node.employer} for ${node.name}: ${option.payout} credits, ` +
+    `Signed ${option.name.toLowerCase()} terms with ${node.employer} for ${node.name}: ` +
+      `${option.payout} credits, ` +
       `${Math.round(option.salvageShare * 100)}% salvage, due day ${state.contract.deadlineDay}.`,
   );
   return { ok: true, reason: null };
@@ -484,6 +466,7 @@ export function resolveMission(
   const outcome: MissionOutcome = {
     nodeId: contract.nodeId,
     missionId: contract.missionId,
+    termsId: contract.termsId,
     won,
     day: state.day,
     payout: won ? contract.payout : 0,

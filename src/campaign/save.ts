@@ -47,10 +47,15 @@ const StoreItemSchema = z.strictObject({
   count: z.number().int().positive(),
 });
 
+const ContractTermsSchema = z.enum(['fee_first', 'standard', 'salvage_first']);
+
 const ContractSchema = z.strictObject({
   nodeId: IdSchema,
   missionId: IdSchema,
   employer: z.string().min(1),
+  // Old contracts load on the middle terms; their stored payout and salvage
+  // still remain authoritative.
+  termsId: ContractTermsSchema.default('standard'),
   payout: z.number().int(),
   salvageShare: z.number().min(0).max(1),
   acceptedOnDay: z.number().int(),
@@ -60,6 +65,8 @@ const ContractSchema = z.strictObject({
 const MissionOutcomeSchema = z.strictObject({
   nodeId: IdSchema,
   missionId: IdSchema,
+  // Old debriefs predate named packages but already carry the exact proceeds.
+  termsId: ContractTermsSchema.default('standard'),
   won: z.boolean(),
   day: z.number().int(),
   payout: z.number().int(),

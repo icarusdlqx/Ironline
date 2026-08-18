@@ -32,7 +32,7 @@ function fightNode(state: CampaignState, nodeId: string): void {
   const salvageHeavy = options[options.length - 1];
   if (salvageHeavy === undefined) throw new Error('no negotiation options');
 
-  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.step);
+  const accepted = acceptContract(catalog, state, nodeId, salvageHeavy.id);
   expect(accepted.ok, accepted.reason ?? '').toBe(true);
   runMission(catalog, state);
 }
@@ -223,7 +223,7 @@ describe('deployment', () => {
   });
 
   it('explains itself rather than throwing a bare error when nothing can deploy', () => {
-    const accepted = acceptContract(catalog, state, 'militia_raid', 0);
+    const accepted = acceptContract(catalog, state, 'militia_raid', 'fee_first');
     expect(accepted.ok, accepted.reason ?? '').toBe(true);
     for (const mech of state.mechs) mech.status = 'hulk';
 

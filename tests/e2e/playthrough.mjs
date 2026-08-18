@@ -516,19 +516,25 @@ async function main() {
     );
     check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
 
-    const offerAt = async (value) => {
-      await page.locator('[data-testid="camp-terms"]').fill(String(value));
+    const offerFor = async (termsId) => {
+      await page.locator(`[data-testid="camp-terms-${termsId}"]`).click();
       return page.locator('[data-testid="camp-offer"]').innerText();
     };
-    const payoutHeavy = await offerAt(0);
-    const salvageHeavy = await offerAt(7);
+    const payoutHeavy = await offerFor('fee_first');
+    const salvageHeavy = await offerFor('salvage_first');
     check(
-      'negotiation trades payout against salvage',
+      'named packages trade payout against salvage',
       payoutHeavy !== salvageHeavy &&
         payoutHeavy.includes('0% salvage') &&
         !salvageHeavy.includes('0% salvage'),
       `${payoutHeavy} vs ${salvageHeavy}`,
     );
+    check(
+      'contract terms name success pay and repair exposure',
+      salvageHeavy.includes('on success') && salvageHeavy.includes('Repair cover: none'),
+      salvageHeavy,
+    );
+    await page.screenshot({ path: `${SHOTS}/08-contract-terms.png` });
 
     const posted = await page.locator('[data-testid="camp-hall"] li').count();
     check('the hiring hall is posting work', posted > 0, `${posted} postings`);
@@ -553,9 +559,13 @@ async function main() {
     // whose payout, salvage and unlocks the later checks are written against.
     await page.locator('[data-testid="camp-node-militia_raid"]').click();
 
-    await page.locator('[data-testid="camp-terms"]').fill('7');
+    await page.locator('[data-testid="camp-terms-salvage_first"]').click();
     await page.locator('[data-testid="camp-accept"]').click();
     check('signing shows the active contract', (await page.locator('[data-testid="camp-deploy"]').count()) === 1);
+    check(
+      'the active contract preserves its named package',
+      (await page.locator('[data-testid="camp-active-terms"]').textContent()) === 'Salvage first',
+    );
 
     await page.locator('[data-testid="camp-save"]').click();
     const savedCampaign = await page.evaluate(() => localStorage.getItem('ironline.campaign'));
@@ -672,6 +682,10 @@ async function main() {
       (await page.locator('[data-testid="debrief"] .manifest-skills').first().innerText()).includes(
         'XP',
       ),
+    );
+    check(
+      'the debrief names the signed package',
+      (await page.locator('[data-testid="debrief"] header').innerText()).includes('Salvage first'),
     );
     await page.locator('[data-testid="debrief-close"]').click();
 

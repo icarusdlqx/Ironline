@@ -61,7 +61,7 @@ describe('the hiring hall', () => {
     expect(other).toBeDefined();
     if (taken === undefined || other === undefined) return;
 
-    expect(acceptContract(catalog, state, taken.id, 0).ok).toBe(true);
+    expect(acceptContract(catalog, state, taken.id, 'fee_first').ok).toBe(true);
 
     const after = sideContracts(catalog, state);
     expect(after.map((offer) => offer.id)).not.toContain(taken.id);
@@ -72,7 +72,7 @@ describe('the hiring hall', () => {
   it('forgets last week’s signings rather than remembering them forever', () => {
     const first = sideContracts(catalog, state)[0];
     if (first === undefined) return;
-    acceptContract(catalog, state, first.id, 0);
+    acceptContract(catalog, state, first.id, 'fee_first');
     expect(state.sideTaken).toHaveLength(1);
 
     advanceDays(catalog, state, catalog.rules.economy.sideContracts.refreshDays * 2);

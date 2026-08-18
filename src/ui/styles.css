@@ -1312,6 +1312,13 @@ button {
 .camp-contract {
   grid-area: contract;
 }
+
+/* The hiring board can grow tall enough to starve the contract row. Terms
+   are the decision; posted work can wait below it. */
+.camp-contract.negotiating {
+  min-height: 350px;
+  max-height: 380px;
+}
 .camp-bay {
   grid-area: bay;
 }
@@ -1339,15 +1346,74 @@ button {
 }
 
 .camp-negotiate {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  color: var(--muted);
-  margin-bottom: 4px;
+  border: 0;
+  display: grid;
+  gap: 5px;
+  margin: 0 0 7px;
+  padding: 0;
 }
 
-.camp-negotiate input {
+.camp-negotiate legend {
+  color: var(--muted);
+  margin-bottom: 4px;
+  padding: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.contract-option {
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  cursor: pointer;
+  display: grid;
+  gap: 2px 6px;
+  grid-template-columns: auto 1fr auto;
+  padding: 6px;
+}
+
+.contract-option.chosen {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.contract-option input {
   accent-color: var(--accent);
+  grid-row: 1 / 3;
+  margin: 2px 1px 0 0;
+}
+
+.contract-option-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.contract-option-pay,
+.contract-option-salvage,
+.contract-exposure,
+.contract-package {
+  color: var(--muted);
+}
+
+.contract-option-pay {
+  grid-column: 2;
+}
+
+.contract-option-salvage {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
+}
+
+.contract-exposure {
+  line-height: 1.35;
+  margin: 6px 0 8px;
+}
+
+.contract-package {
+  font-weight: 700;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .camp-buttons {
@@ -2089,6 +2155,11 @@ button {
   .camp-contract {
     max-height: none;
     overflow-y: visible;
+  }
+
+  .camp-contract.negotiating {
+    min-height: min-content;
+    max-height: none;
   }
 
   .camp-top {

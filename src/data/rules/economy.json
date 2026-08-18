@@ -3,7 +3,7 @@
   "negotiation": {
     "payoutFloorFactor": 0.55,
     "payoutCeilingFactor": 1.45,
-    "steps": 8
+    "steps": 3
   },
   "repair": {
     "armourCostPerPoint": 250,
