@@ -312,6 +312,7 @@ async function main() {
         triggers: world.triggers.length,
         rp: world.resources.get(0),
         reserves: world.reserves.length,
+        reserveCost: world.rules.support.reinforcement.cost,
       };
     });
     check('the base capture mission is loaded', mission.id === 'base_capture_ridge', mission.id);
@@ -343,13 +344,20 @@ async function main() {
     check('the objective tracker is on screen', (await page.locator('[data-testid="objective-list"] li').count()) >= 3);
     check('the zone tracker lists both posts', (await page.locator('[data-testid="zone-list"] li').count()) === 2);
     check('resource points are shown', (await page.locator('[data-testid="resource-points"]').innerText()).includes('RP'));
-    // The palette is deliberately short: one eye, one hammer, one wrench.
+    // A mission reserve replaces the probe rather than growing a fourth button.
     check('exactly three support calls are offered', (await page.locator('.support-call').count()) === 3);
     check(
-      'the palette offers probe, air strike and repair truck',
-      (await page.locator('[data-testid="support-sensor_probe"]').count()) === 1 &&
+      'the authored reserve reaches the support palette',
+      (await page.locator('[data-testid="support-reinforcement"]').count()) === 1 &&
         (await page.locator('[data-testid="support-air_strike"]').count()) === 1 &&
-        (await page.locator('[data-testid="support-repair_truck"]').count()) === 1,
+        (await page.locator('[data-testid="support-repair_truck"]').count()) === 1 &&
+        (await page.locator('[data-testid="support-sensor_probe"]').count()) === 0,
+    );
+    const reserveCopy = await page.locator('[data-testid="support-reinforcement"]').innerText();
+    check(
+      'support cost and effect are visible without a tooltip',
+      reserveCopy.includes(`${mission.reserveCost} RP`) && reserveCopy.includes('Drop one mission reserve'),
+      reserveCopy,
     );
 
     const rpText = async () =>
@@ -367,10 +375,21 @@ async function main() {
       `${rpBefore} RP in the palette, ${mission.rp} in the world`,
     );
 
+    await page.locator('[data-testid="support-air_strike"]').click();
+    await page.mouse.move(canvasBox.x + canvasBox.width * 0.62, canvasBox.y + canvasBox.height * 0.36);
+    await page.screenshot({ path: `${SHOTS}/09-support-lane.png` });
+    await page.evaluate(() => globalThis.__ironline.useGame.getState().setSupportMode(null));
+
     // The repair truck fires on the press; the air strike wants a drag for
     // its run-in, so the truck is the one the pointer test drives.
     await page.locator('[data-testid="support-repair_truck"]').click({ timeout: 5_000 });
     check('picking a support call arms it', (await state(page)).supportMode === 'repair_truck');
+    check(
+      'the armed call explains placement in the palette',
+      (await page.locator('[data-testid="support-repair_truck"]').innerText()).includes('Armed'),
+    );
+    await page.mouse.move(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
+    await page.screenshot({ path: `${SHOTS}/09-support-radius.png` });
     await page.mouse.click(canvasBox.x + canvasBox.width * 0.55, canvasBox.y + canvasBox.height * 0.4);
 
     const truckCost = 500;
@@ -397,7 +416,7 @@ async function main() {
     const supportOutcome = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
       const world = engine.world;
-      const calls = ['sensor_probe', 'air_strike', 'repair_truck'];
+      const calls = ['air_strike', 'repair_truck', 'reinforcement'];
       const mod = await import('/src/sim/support.ts');
       world.resources.set(0, 20000);
       const results = {};
@@ -412,7 +431,7 @@ async function main() {
       return { results, pending: world.support.pending.length };
     });
     check(
-      'probe, air strike and repair truck were all accepted',
+      'air strike, repair truck and reinforcement were all accepted',
       Object.values(supportOutcome.results).every(Boolean),
       JSON.stringify(supportOutcome.results),
     );

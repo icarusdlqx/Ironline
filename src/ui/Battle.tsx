@@ -3,7 +3,6 @@ import { dropTonnageFor, prepareDeployment, resolveMission } from '../campaign/c
 import { loadCampaign, saveCampaign } from '../campaign/save';
 import type { Design } from '../schema/design';
 import { getCatalog } from '../schema/load';
-import { PLAYER_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
 import { createEngine, type Engine } from './engine';
@@ -27,7 +26,6 @@ import {
   SupportPalette,
   WeaponGroups,
   type BriefingLance,
-  type SupportOption,
 } from './Panels';
 import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
@@ -35,6 +33,7 @@ import { BriefingSetup, SetupToolbar } from './BattleSetup';
 import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
 import { formatMissionClock, missionClockUrgency } from './missionClock';
 import { selectedUnit, useGame } from './store';
+import { buildSupportOptions } from './supportOptions';
 import { TrainingCoach } from './TrainingCoach';
 import {
   completeTraining,
@@ -42,15 +41,6 @@ import {
   TRAINING_MISSION_ID,
 } from './trainingProgress';
 import { useBattleSetup } from './useBattleSetup';
-
-const SUPPORT_HINTS: Record<string, string> = {
-  sensor_probe: 'Reveals a map region',
-  artillery_strike: 'Delayed area damage',
-  air_strike: 'Fast linear strafe',
-  repair_truck: 'Repairs armour nearby',
-  minelayer: 'Lays a defensive minefield',
-  reinforcement: 'Drops a reserve mech',
-};
 
 export function Battle() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -333,15 +323,10 @@ export function Battle() {
           },
         };
 
-  const supportOptions: SupportOption[] = PLAYER_CALLS.map((id) => ({
-    id,
-    label: id
-      .split('_')
-      .map((word) => `${(word[0] ?? '').toUpperCase()}${word.slice(1)}`)
-      .join(' '),
-    cost: getCatalog().rules.support[id].cost,
-    hint: SUPPORT_HINTS[id] ?? '',
-  }));
+  const supportOptions = useMemo(
+    () => buildSupportOptions(catalog.rules.support, state.reservesLeft),
+    [catalog.rules.support, state.reservesLeft],
+  );
 
   return (
     <div className="app">
