@@ -108,6 +108,50 @@ describe('the hiring hall', () => {
     }
   });
 
+  it('counts timed waves in a defence posting', () => {
+    expect(oppositionTonnage(catalog, 'switchyard_watch')).toBe(245);
+  });
+
+  it('posts the two objective-led jobs without inventing a destroy requirement', () => {
+    const campaign = catalog.campaigns.get(CAMPAIGN_ID);
+    const defence = catalog.missions.get('switchyard_watch');
+    const relay = catalog.missions.get('relay_chain');
+
+    expect(campaign?.sideWork.missionIds).toEqual(
+      expect.arrayContaining(['switchyard_watch', 'relay_chain']),
+    );
+    expect(defence?.objectives.find((objective) => objective.id === 'keep_switch')).toMatchObject({
+      type: 'protect_zones',
+      required: true,
+      zoneIds: ['freight_switch'],
+    });
+    expect(
+      defence?.triggers
+        .filter((trigger) => trigger.effects.some((effect) => effect.type === 'spawn'))
+        .map((trigger) => trigger.when.type === 'elapsed' ? trigger.when.seconds : -1),
+    ).toEqual([30, 70, 110]);
+    expect(relay?.objectives.find((objective) => objective.id === 'key_relays')).toMatchObject({
+      type: 'capture_zones',
+      required: true,
+      zoneIds: ['south_relay', 'west_relay', 'north_relay'],
+    });
+    expect(relay?.objectives.find((objective) => objective.id === 'copy_schedule')).toMatchObject({
+      type: 'hold_zones',
+      required: true,
+      holdSeconds: 25,
+      zoneIds: ['south_relay', 'west_relay', 'north_relay'],
+    });
+    expect(
+      [defence, relay].every((mission) =>
+        mission?.objectives.every(
+          (objective) =>
+            objective.team === 0 &&
+            (objective.type !== 'destroy_all' || objective.required === false),
+        ),
+      ),
+    ).toBe(true);
+  });
+
   it('describes enforced mission facts instead of inventing posting modifiers', () => {
     const mission = catalog.missions.get('causeway_night');
     const map = catalog.maps.get(mission?.mapId ?? '');

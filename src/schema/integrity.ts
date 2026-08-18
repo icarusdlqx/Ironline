@@ -1,5 +1,6 @@
 import { LOCATIONS, type MechLocation } from './common';
 import type { Catalog, ContentIssue } from './load';
+import type { Deployment } from './mission';
 
 type Push = (file: string, path: string, message: string) => void;
 
@@ -104,38 +105,66 @@ function checkMissions(catalog: Catalog, push: Push): void {
     const extentX = map.width * map.tileSize;
     const extentY = map.height * map.tileSize;
 
+    const checkDeployment = (unit: Deployment, path: string): void => {
+      if (!catalog.designs.has(unit.designId)) {
+        push(file, path, `unknown design "${unit.designId}"`);
+      }
+      if (!catalog.pilots.has(unit.pilotId)) {
+        push(file, path, `unknown pilot "${unit.pilotId}"`);
+      }
+      if (unit.spawn.x >= extentX || unit.spawn.y >= extentY) {
+        push(
+          file,
+          path,
+          `spawn (${unit.spawn.x}, ${unit.spawn.y}) is outside the ${extentX}×${extentY}m map`,
+        );
+        return;
+      }
+
+      const column = Math.floor(unit.spawn.x / map.tileSize);
+      const row = Math.floor(unit.spawn.y / map.tileSize);
+      const symbol = map.tiles[row]?.[column];
+      const terrainId = symbol === undefined ? undefined : map.legend[symbol];
+      const terrain = terrainId === undefined ? undefined : catalog.rules.terrain.types[terrainId];
+
+      if (terrain === undefined || !terrain.passable) {
+        push(
+          file,
+          path,
+          `spawn (${unit.spawn.x}, ${unit.spawn.y}) is on impassable terrain "${terrainId ?? '?'}"`,
+        );
+      }
+    };
+
     for (const lance of mission.lances) {
       for (const unit of lance.units) {
-        if (!catalog.designs.has(unit.designId)) {
-          push(file, `lances.${lance.team}`, `unknown design "${unit.designId}"`);
-        }
-        if (!catalog.pilots.has(unit.pilotId)) {
-          push(file, `lances.${lance.team}`, `unknown pilot "${unit.pilotId}"`);
-        }
-        if (unit.spawn.x >= extentX || unit.spawn.y >= extentY) {
-          push(
-            file,
-            `lances.${lance.team}`,
-            `spawn (${unit.spawn.x}, ${unit.spawn.y}) is outside the ${extentX}×${extentY}m map`,
-          );
-          continue;
-        }
-
-        const column = Math.floor(unit.spawn.x / map.tileSize);
-        const row = Math.floor(unit.spawn.y / map.tileSize);
-        const symbol = map.tiles[row]?.[column];
-        const terrainId = symbol === undefined ? undefined : map.legend[symbol];
-        const terrain = terrainId === undefined ? undefined : catalog.rules.terrain.types[terrainId];
-
-        if (terrain === undefined || !terrain.passable) {
-          push(
-            file,
-            `lances.${lance.team}`,
-            `spawn (${unit.spawn.x}, ${unit.spawn.y}) is on impassable terrain "${terrainId ?? '?'}"`,
-          );
-        }
+        checkDeployment(unit, `lances.${lance.team}`);
       }
     }
+
+    mission.zones.forEach((zone, index) => {
+      if (zone.x < extentX && zone.y < extentY) return;
+      push(
+        file,
+        `zones.${index}`,
+        `zone (${zone.x}, ${zone.y}) is outside the ${extentX}×${extentY}m map`,
+      );
+    });
+
+    mission.triggers.forEach((trigger, triggerIndex) => {
+      trigger.effects.forEach((effect, effectIndex) => {
+        const path = `triggers.${triggerIndex}.effects.${effectIndex}`;
+        if (effect.type === 'spawn') {
+          for (const unit of effect.units) checkDeployment(unit, path);
+        } else if (effect.type === 'reveal' && (effect.x >= extentX || effect.y >= extentY)) {
+          push(
+            file,
+            path,
+            `reveal (${effect.x}, ${effect.y}) is outside the ${extentX}×${extentY}m map`,
+          );
+        }
+      });
+    });
   }
 }
 
@@ -157,6 +186,12 @@ function checkCampaigns(catalog: Catalog, push: Push): void {
     for (const node of campaign.nodes) {
       if (!catalog.missions.has(node.missionId)) {
         push(file, `nodes.${node.id}`, `unknown mission "${node.missionId}"`);
+      }
+    }
+
+    for (const missionId of campaign.sideWork.missionIds) {
+      if (!catalog.missions.has(missionId)) {
+        push(file, 'sideWork.missionIds', `unknown mission "${missionId}"`);
       }
     }
 

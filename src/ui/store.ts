@@ -12,6 +12,7 @@ export interface ObjectiveView {
   required: boolean;
   status: string;
   progress: number;
+  sustained?: boolean;
 }
 
 export interface ZoneView {

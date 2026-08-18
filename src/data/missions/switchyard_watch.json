@@ -1,0 +1,249 @@
+{
+  "id": "switchyard_watch",
+  "name": "Watch — Foundry Switch",
+  "type": "defend",
+  "mapId": "foundry_district",
+  "briefing": "The freight switch has to remain under contract control for two and a half minutes. One scout is already moving and three relief elements are due from separate gates. If the switch changes hands, the contract is lost. You are not being paid to clear survivors.",
+  "maxDurationSeconds": 150,
+  "startingResourcePoints": 500,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Switch Guard",
+      "units": [
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 444,
+            "y": 492
+          },
+          "facingDegrees": -135
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": {
+            "x": 516,
+            "y": 492
+          },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "marek_sud",
+          "spawn": {
+            "x": 492,
+            "y": 444
+          },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": {
+            "x": 492,
+            "y": 540
+          },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Gate Scout",
+      "units": [
+        {
+          "designId": "courser_patrol",
+          "pilotId": "juno_reyes",
+          "spawn": {
+            "x": 36,
+            "y": 36
+          },
+          "facingDegrees": 45
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "freight_switch",
+      "name": "Freight Switch",
+      "x": 492,
+      "y": 492,
+      "radius": 76,
+      "owner": 0,
+      "captureSeconds": 10,
+      "resourcePoints": 0
+    }
+  ],
+  "objectives": [
+    {
+      "id": "keep_switch",
+      "label": "Keep the freight switch secure until pickup",
+      "type": "protect_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "freight_switch"
+      ]
+    },
+    {
+      "id": "guard_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "watch_open",
+      "when": {
+        "type": "elapsed",
+        "seconds": 3
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Switch control: north-west scout moving. Three more gates just opened on the board."
+        },
+        {
+          "type": "reveal",
+          "x": 36,
+          "y": 36,
+          "radius": 150,
+          "seconds": 18
+        }
+      ]
+    },
+    {
+      "id": "north_east_wave",
+      "when": {
+        "type": "elapsed",
+        "seconds": 30
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "North-east gate: two light contacts, closing fast."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "wisp_scout",
+              "pilotId": "roz_havel",
+              "spawn": {
+                "x": 876,
+                "y": 36
+              },
+              "facingDegrees": 135
+            },
+            {
+              "designId": "hornet_spotter",
+              "pilotId": "bo_ferrant",
+              "spawn": {
+                "x": 924,
+                "y": 84
+              },
+              "facingDegrees": 135
+            }
+          ]
+        },
+        {
+          "type": "reveal",
+          "x": 900,
+          "y": 60,
+          "radius": 170,
+          "seconds": 18
+        }
+      ]
+    },
+    {
+      "id": "south_west_wave",
+      "when": {
+        "type": "elapsed",
+        "seconds": 70
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "South-west gate: line machines. They are taking the road."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "sentinel_brawler",
+              "pilotId": "teodor_krysa",
+              "spawn": {
+                "x": 36,
+                "y": 876
+              },
+              "facingDegrees": -45
+            },
+            {
+              "designId": "falchion_duellist",
+              "pilotId": "nadia_ostrow",
+              "spawn": {
+                "x": 84,
+                "y": 924
+              },
+              "facingDegrees": -45
+            }
+          ]
+        },
+        {
+          "type": "reveal",
+          "x": 60,
+          "y": 900,
+          "radius": 170,
+          "seconds": 18
+        }
+      ]
+    },
+    {
+      "id": "south_east_wave",
+      "when": {
+        "type": "elapsed",
+        "seconds": 110
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "South-east gate: one heavy contact. Last scheduled arrival."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "warden_lancer",
+              "pilotId": "cato_ferrin",
+              "spawn": {
+                "x": 876,
+                "y": 876
+              },
+              "facingDegrees": -135
+            }
+          ]
+        },
+        {
+          "type": "reveal",
+          "x": 876,
+          "y": 876,
+          "radius": 150,
+          "seconds": 18
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 210
+}
