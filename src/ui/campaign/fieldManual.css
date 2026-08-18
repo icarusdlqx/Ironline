@@ -1,0 +1,97 @@
+.manual-control-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.manual-sheet > header button {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+}
+
+.manual-sheet > header button:hover,
+.manual-sheet > header button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.manual-sheet > header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 4px 0 8px;
+  background: var(--panel);
+}
+
+.manual-controls h5 {
+  margin: 4px 0 8px;
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.manual-bindings {
+  margin: 0;
+}
+
+.manual-bindings > div {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.7fr) minmax(0, 1.7fr);
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.manual-bindings dt,
+.manual-bindings dd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.manual-bindings dt {
+  color: var(--accent);
+}
+
+.manual-bindings dd {
+  color: var(--muted);
+}
+
+.manual-support {
+  margin-top: 16px;
+}
+
+.manual-support .manual-bindings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+  .camp-manual {
+    padding: 10px;
+  }
+
+  .manual-sheet {
+    padding: 14px;
+  }
+
+  .manual-control-columns,
+  .manual-support .manual-bindings {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-bindings > div {
+    grid-template-columns: minmax(100px, 0.7fr) minmax(0, 1.6fr);
+  }
+
+  .manual-sheet > header button {
+    min-height: 44px;
+  }
+}

@@ -23,7 +23,6 @@ import { startFreshCampaign } from '../../campaign/freshness';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
-import { CampaignLoreManual } from './CampaignLoreManual';
 import { ContractPanel } from './ContractPanel';
 import {
   Debrief,
@@ -32,6 +31,7 @@ import {
   resetDebriefed,
   revealLatestDebrief,
 } from './Debrief';
+import { FieldManual } from './FieldManual';
 import { Hangar } from './Hangar';
 import { HiringHall } from './HiringHall';
 import { LanceManifest } from './LanceManifest';
@@ -175,11 +175,9 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         onExit={() => { saveCampaign(state); onExit(); }}
       />
 
-      <CampaignLoreManual
-        catalog={catalog}
-        open={manualOpen}
-        onClose={() => setManualOpen(false)}
-      />
+      {!manualOpen ? null : (
+        <FieldManual lore={[...catalog.lore.values()]} onClose={() => setManualOpen(false)} />
+      )}
 
       <CampaignMap
         campaign={campaign}
