@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { getCatalog } from '../schema/load';
 import type { SupportCallId } from '../sim/support';
 import { PilotStats, type RateablePilot } from './PilotStats';
@@ -343,6 +344,7 @@ export function Briefing({
   text,
   objectives,
   resourcePoints,
+  setup,
   lance,
   onDeploy,
 }: {
@@ -350,6 +352,7 @@ export function Briefing({
   text: string;
   objectives: readonly ObjectiveView[];
   resourcePoints: number;
+  setup?: ReactNode;
   /** Absent for campaign drops, whose lance the dropship manifest decided. */
   lance?: BriefingLance;
   onDeploy: () => void;
@@ -371,6 +374,8 @@ export function Briefing({
           </li>
         ))}
       </ul>
+
+      {setup}
 
       {lance === undefined ? null : (
         <div className="briefing-lance" data-testid="briefing-lance">
