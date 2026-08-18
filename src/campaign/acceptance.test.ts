@@ -15,6 +15,9 @@ import {
 } from './campaign';
 import { applyRefit, fitFromStore, planFit, refitInventory, stripToStore } from './refit';
 import { estimateRepair, startRepair } from './repair';
+import { startFreshCampaign } from './freshness';
+import { deserialiseCampaign, serialiseCampaign } from './save';
+import { sideContracts } from './sidework';
 import { addToStore, isPilotAvailable, storeCount, type CampaignState } from './types';
 
 const CAMPAIGN_ID = 'border_dispute';
@@ -65,6 +68,24 @@ let state: CampaignState;
 
 beforeEach(() => {
   state = start('refit');
+});
+
+describe('campaign freshness', () => {
+  it('rebuilds a persisted hiring hall from its visible run code', () => {
+    let saved = '';
+    const fresh = startFreshCampaign(
+      catalog,
+      CAMPAIGN_ID,
+      () => 'shale-picket-13579bdf',
+      (next) => { saved = serialiseCampaign(next); },
+    );
+    const restored = deserialiseCampaign(saved).state;
+
+    expect(restored?.seed).toBe('shale-picket-13579bdf');
+    expect(restored === null ? [] : sideContracts(catalog, restored)).toEqual(
+      sideContracts(catalog, fresh),
+    );
+  });
 });
 
 describe('refit', () => {

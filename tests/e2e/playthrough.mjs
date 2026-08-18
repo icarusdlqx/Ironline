@@ -516,6 +516,20 @@ async function main() {
     );
     check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
 
+    const firstRunCode = await page.locator('[data-testid="camp-seed"]').innerText();
+    check(
+      'a new campaign exposes a readable run code',
+      /^Run [a-z]+-[a-z]+-[0-9a-f]{8}$/.test(firstRunCode),
+      firstRunCode,
+    );
+    await page.locator('[data-testid="camp-restart"]').click();
+    const restartedCode = await page.locator('[data-testid="camp-seed"]').innerText();
+    const persistedRun = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('ironline.campaign')).state.seed,
+    );
+    check('restart rolls a fresh run code', restartedCode !== firstRunCode, restartedCode);
+    check('the fresh run is saved immediately', restartedCode === `Run ${persistedRun}`);
+
     const offerAt = async (value) => {
       await page.locator('[data-testid="camp-terms"]').fill(String(value));
       return page.locator('[data-testid="camp-offer"]').innerText();
@@ -532,6 +546,18 @@ async function main() {
 
     const posted = await page.locator('[data-testid="camp-hall"] li').count();
     check('the hiring hall is posting work', posted > 0, `${posted} postings`);
+    const postingFacts = await page.locator('[data-testid="camp-hall"] button').first().innerText();
+    check(
+      'a posting states its battlefield and rated opposition',
+      postingFacts.includes('drop /') && postingFacts.includes('rated opposition'),
+      postingFacts,
+    );
+    check(
+      'the board states when it renews',
+      (await page.locator('[data-testid="camp-hall"] .hall-note').innerText()).includes(
+        'New work arrives on day',
+      ),
+    );
 
     // Selecting a posting has to drive the same contract panel the map does,
     // or side work would be visible and unsignable.

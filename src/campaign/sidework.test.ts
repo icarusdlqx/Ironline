@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
 import { acceptContract, advanceDays, campaignNodes, startCampaign } from './campaign';
 import { availableNodes } from './campaign';
-import { isSideContract, offerPeriod, oppositionTonnage, sideContracts } from './sidework';
+import {
+  isSideContract,
+  nextOfferDay,
+  offerPeriod,
+  oppositionTonnage,
+  sideContractProfile,
+  sideContracts,
+} from './sidework';
 import type { CampaignState } from './types';
 
 const CAMPAIGN_ID = 'border_dispute';
@@ -53,6 +60,12 @@ describe('the hiring hall', () => {
     );
   });
 
+  it('says exactly when the current board renews', () => {
+    expect(nextOfferDay(catalog, 0)).toBe(7);
+    expect(nextOfferDay(catalog, 6)).toBe(7);
+    expect(nextOfferDay(catalog, 7)).toBe(14);
+  });
+
   it('takes a signed posting off the board, and leaves the others alone', () => {
     const posted = sideContracts(catalog, state);
     const taken = posted[0];
@@ -93,6 +106,22 @@ describe('the hiring hall', () => {
       expect(offer.maxSalvageShare).toBeGreaterThanOrEqual(0);
       expect(offer.deadlineDays).toBeGreaterThan(0);
     }
+  });
+
+  it('describes enforced mission facts instead of inventing posting modifiers', () => {
+    const mission = catalog.missions.get('causeway_night');
+    const map = catalog.maps.get(mission?.mapId ?? '');
+    const profile = sideContractProfile(catalog, 'causeway_night');
+
+    expect(profile).toEqual({
+      operation: mission?.type,
+      battlefield: map?.name,
+      dropTonnage: mission?.dropTonnage,
+      oppositionTonnage: oppositionTonnage(catalog, 'causeway_night'),
+      objectives: mission?.objectives
+        .filter((objective) => objective.team === 0 && objective.required)
+        .map((objective) => objective.label),
+    });
   });
 
   it('does not end the campaign, because posted work always renews', () => {

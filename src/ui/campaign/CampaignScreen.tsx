@@ -7,11 +7,9 @@ import {
   campaignOf,
   deployableLance,
   negotiationOptions,
-  startCampaign,
 } from '../../campaign/campaign';
 import {
   campaignBlob,
-  clearSavedCampaign,
   deserialiseCampaign,
   loadCampaign,
   saveCampaign,
@@ -21,10 +19,13 @@ import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
+import { startFreshCampaign } from '../../campaign/freshness';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignMap, type NodeState } from './CampaignMap';
+import { CampaignHeader } from './CampaignHeader';
 import { Debrief, debriefedCount, markDebriefed } from './Debrief';
 import { Hangar } from './Hangar';
+import { HiringHall } from './HiringHall';
 import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
 import { useGame } from '../store';
@@ -39,7 +40,7 @@ function cbills(value: number): string {
 export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<CampaignState>(() => {
     const saved = loadCampaign();
-    return saved.state ?? startCampaign(catalog, CAMPAIGN_ID, 'border');
+    return saved.state ?? startFreshCampaign(catalog, CAMPAIGN_ID);
   });
   const [manualOpen, setManualOpen] = useState(false);
   /**
@@ -127,74 +128,36 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="camp" data-testid="campaign">
-      <header className="camp-top">
-        <h2>{campaign.name}</h2>
-        <span data-testid="camp-day">Day {state.day}</span>
-        <span data-testid="camp-cbills">{cbills(state.cbills)}</span>
-        <button type="button" onClick={() => advanceDay()} data-testid="camp-advance">
-          Advance a day
-        </button>
-        <button type="button" onClick={() => { saveCampaign(state); setStatus('Campaign saved.'); }} data-testid="camp-save">
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const loaded = loadCampaign();
-            if (loaded.state === null) setStatus(loaded.error ?? 'no save');
-            else { setState(loaded.state); setStatus('Campaign loaded.'); }
-          }}
-          data-testid="camp-load"
-        >
-          Load
-        </button>
-        <button type="button" onClick={onExportSave} data-testid="camp-export">
-          Export
-        </button>
-        <label className="camp-import">
-          Import
-          <input
-            type="file"
-            accept="application/json"
-            data-testid="camp-import"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file === undefined) return;
-              void file.text().then((text) => {
-                const loaded = deserialiseCampaign(text);
-                if (loaded.state === null) setStatus(loaded.error ?? 'bad save');
-                else { setState(loaded.state); setStatus('Save imported.'); }
-              });
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => { clearSavedCampaign(); setState(startCampaign(catalog, CAMPAIGN_ID, 'border')); setStatus('New campaign.'); }}
-          data-testid="camp-restart"
-        >
-          Restart
-        </button>
-        <button
-          type="button"
-          onClick={() => setManualOpen((open) => !open)}
-          data-testid="camp-manual-toggle"
-        >
-          Field Manual
-        </button>
-        <button type="button" onClick={onExit} data-testid="camp-exit">
-          Skirmish
-        </button>
-        <a
-          className="pause feedback-link"
-          href="https://github.com/icarusdlqx/Ironline/issues"
-          target="_blank"
-          rel="noreferrer"
-          title="Something broken, unfair, or missing? Tell the builders."
-        >
-          Feedback
-        </a>
-      </header>
+      <CampaignHeader
+        title={campaign.name}
+        day={state.day}
+        balance={cbills(state.cbills)}
+        seed={state.seed}
+        manualOpen={manualOpen}
+        onAdvance={advanceDay}
+        onSave={() => { saveCampaign(state); setStatus('Campaign saved.'); }}
+        onLoad={() => {
+          const loaded = loadCampaign();
+          if (loaded.state === null) setStatus(loaded.error ?? 'no save');
+          else { setState(loaded.state); setStatus('Campaign loaded.'); }
+        }}
+        onExport={onExportSave}
+        onImport={(text) => {
+          const loaded = deserialiseCampaign(text);
+          if (loaded.state === null) setStatus(loaded.error ?? 'bad save');
+          else { setState(loaded.state); setStatus('Save imported.'); }
+        }}
+        onRestart={() => {
+          const fresh = startFreshCampaign(catalog, CAMPAIGN_ID);
+          setPrep(null);
+          setRefitting(null);
+          setSelectedNode(null);
+          setState(fresh);
+          setStatus(`New campaign. Seed ${fresh.seed}.`);
+        }}
+        onToggleManual={() => setManualOpen((open) => !open)}
+        onExit={onExit}
+      />
 
       {!manualOpen ? null : (
         <div className="camp-manual" data-testid="camp-manual">
@@ -294,28 +257,14 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       {/* The map draws the war. Side work is posted on a board, so it gets a
           list — and it is marked as side work, because taking it is a decision
           about the calendar rather than about the campaign. */}
-      {posted.length === 0 || state.contract !== null ? null : (
-        <section className="camp-hall" data-testid="camp-hall">
-          <h3>Hiring hall</h3>
-          <ul>
-            {posted.map((offer) => (
-              <li key={offer.id} className={offer.id === node?.id ? 'chosen' : ''}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedNode(offer.id)}
-                  data-testid={`camp-side-${offer.id}`}
-                >
-                  <span className="hall-name">{offer.name}</span>
-                  <span className="hall-employer">{offer.employer}</span>
-                  <span className="hall-terms">
-                    {cbills(offer.basePayout)} · {offer.deadlineDays}d
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="hall-note">Posted work. It pays less than the war and it always renews.</p>
-        </section>
+      {state.contract !== null ? null : (
+        <HiringHall
+          catalog={catalog}
+          day={state.day}
+          offers={posted}
+          selectedId={node?.id ?? null}
+          onSelect={setSelectedNode}
+        />
       )}
 
       <MechBayPanel state={state} mutate={mutate} />
