@@ -37,6 +37,35 @@ export interface WeaponSnapshot {
   location: MechLocation;
 }
 
+export interface TimedActionSnapshot {
+  label: string;
+  note: string;
+  ready: boolean;
+  activeRemaining: number;
+  cooldownRemaining: number;
+}
+
+export interface StabilitySnapshot {
+  value: number;
+  staggerAt: number;
+  knockdownAt: number;
+  footingRemaining: number;
+}
+
+export type HeatBandTone = 'ok' | 'warn' | 'danger' | 'critical';
+
+export interface ReactorSnapshot {
+  /** Heat carried if every live gun bears throughout the next available alpha window. */
+  alphaHeat: number;
+  projectedFraction: number;
+  projectedBand: string;
+  projectedTone: HeatBandTone;
+  governorHoldAt: number;
+  governorResumeAt: number;
+  /** Groups the pilot asked for but the governor has taken out of the firing plan. */
+  shedGroups: number[];
+}
+
 export interface LocationSnapshot {
   armour: number;
   armourMax: number;
@@ -79,6 +108,10 @@ export interface UnitSnapshot {
   groupEnabled: boolean[];
   holdingFire: boolean;
   heatSafety: boolean;
+  ability: TimedActionSnapshot;
+  alpha: TimedActionSnapshot;
+  stability: StabilitySnapshot;
+  reactor: ReactorSnapshot;
   hasMoveOrder: boolean;
   /** How far the jets can throw this mech; 0 when it has none. */
   jumpRange: number;

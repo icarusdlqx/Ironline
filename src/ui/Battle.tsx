@@ -32,6 +32,7 @@ import {
 import { Minimap } from './Minimap';
 import { PaperDoll } from './PaperDoll';
 import { selectedUnit, storeDifficulty, useGame } from './store';
+import { TacticalReadout } from './TacticalReadout';
 
 const SUPPORT_HINTS: Record<string, string> = {
   sensor_probe: 'Reveals a map region',
@@ -493,6 +494,7 @@ export function Battle() {
               activeLocation={state.orderMode === 'called_shot' ? state.calledShotLocation : null}
             />
             <HeatBar heat={unit.heat} capacity={unit.heatCapacity} thresholds={state.heatTiers} />
+            <TacticalReadout unit={unit} />
             <div className="target-line">
               {preview === null ? (
                 <>
@@ -561,6 +563,8 @@ export function Battle() {
           enabled={playerControlled}
           holdingFire={unit?.holdingFire ?? false}
           heatSafety={unit?.heatSafety ?? false}
+          ability={unit?.ability ?? null}
+          alpha={unit?.alpha ?? null}
           jump={
             unit === null
               ? null
