@@ -1,6 +1,10 @@
 import type { CampaignNode } from '../../schema/campaign';
 import type { Catalog } from '../../schema/load';
+import type { Campaign } from '../../schema/campaign';
+import type { EmployerHistory } from '../../campaign/employers';
+import { employerDisplayName } from '../../campaign/employers';
 import { nextOfferDay, sideContractProfile } from '../../campaign/sidework';
+import { employerHistoryText } from './EmployerLedger';
 
 function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
@@ -12,13 +16,23 @@ function capitalise(value: string): string {
 
 export interface HiringHallProps {
   catalog: Catalog;
+  campaign: Campaign;
   day: number;
   offers: CampaignNode[];
+  employers: EmployerHistory[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }
 
-export function HiringHall({ catalog, day, offers, selectedId, onSelect }: HiringHallProps) {
+export function HiringHall({
+  catalog,
+  campaign,
+  day,
+  offers,
+  employers,
+  selectedId,
+  onSelect,
+}: HiringHallProps) {
   if (offers.length === 0) return null;
 
   return (
@@ -27,6 +41,8 @@ export function HiringHall({ catalog, day, offers, selectedId, onSelect }: Hirin
       <ul>
         {offers.map((offer) => {
           const profile = sideContractProfile(catalog, offer.missionId);
+          const name = employerDisplayName(campaign, offer.employerId);
+          const history = employers.find((employer) => employer.id === offer.employerId);
           return (
             <li key={offer.id} className={offer.id === selectedId ? 'chosen' : ''}>
               <button
@@ -35,7 +51,10 @@ export function HiringHall({ catalog, day, offers, selectedId, onSelect }: Hirin
                 data-testid={`camp-side-${offer.id}`}
               >
                 <span className="hall-name">{offer.name}</span>
-                <span className="hall-employer">{offer.employer}</span>
+                <span className="hall-employer">
+                  {name}
+                  {history === undefined ? '' : ` · ${employerHistoryText(history)}`}
+                </span>
                 <span className="hall-terms">
                   {cbills(offer.basePayout)} · {offer.deadlineDays}d
                 </span>

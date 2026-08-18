@@ -22,6 +22,17 @@
     "willem_torrance"
   ],
   "victoryNodeId": "ridge_hold",
+  "employers": [
+    { "id": "kestrel_combine", "name": "Kestrel Combine" },
+    { "id": "halloran_freight", "name": "Halloran Freight" },
+    { "id": "sarn_foundry", "name": "Sarn Foundry" },
+    { "id": "halloran_combine", "name": "Halloran Combine" },
+    { "id": "vasi_reclamation", "name": "Vasi Reclamation" },
+    { "id": "ferrous_guild", "name": "the Ferrous Guild" },
+    { "id": "kestrel_freight", "name": "Kestrel Freight" },
+    { "id": "harrow_compact", "name": "the Harrow Compact" },
+    { "id": "ostrow_holdings", "name": "Ostrow Holdings" }
+  ],
   "sideWork": {
     "missionIds": [
       "skirmish_ridge",
@@ -33,13 +44,13 @@
       "switchyard_watch",
       "relay_chain"
     ],
-    "employers": [
-      "Halloran Combine",
-      "Vasi Reclamation",
-      "the Ferrous Guild",
-      "Kestrel Freight",
-      "the Harrow Compact",
-      "Ostrow Holdings"
+    "employerIds": [
+      "halloran_combine",
+      "vasi_reclamation",
+      "ferrous_guild",
+      "kestrel_freight",
+      "harrow_compact",
+      "ostrow_holdings"
     ]
   },
   "nodes": [
@@ -47,7 +58,7 @@
       "id": "militia_raid",
       "name": "Militia Raid",
       "missionId": "raid_ridge",
-      "employer": "Kestrel Combine",
+      "employerId": "kestrel_combine",
       "brief": "A militia detachment is dug in at the pass. Light opposition, and the Combine is happy to trade salvage rights for a smaller cheque.",
       "requires": [],
       "basePayout": 850000,
@@ -62,7 +73,7 @@
       "id": "pass_skirmish",
       "name": "Contested Pass",
       "missionId": "skirmish_ridge",
-      "employer": "Kestrel Combine",
+      "employerId": "kestrel_combine",
       "brief": "A regular lance holds the crossing. The Combine wants it cleared and is paying properly for it.",
       "requires": [
         "militia_raid"
@@ -79,7 +90,7 @@
       "id": "supply_line",
       "name": "Relay Station",
       "missionId": "base_capture_ridge",
-      "employer": "Halloran Freight",
+      "employerId": "halloran_freight",
       "brief": "Halloran Freight wants their relay back intact. Take the compound and hold it long enough for their engineers to walk in.",
       "requires": [
         "militia_raid"
@@ -96,7 +107,7 @@
       "id": "ridge_hold",
       "name": "Ridge Hold",
       "missionId": "standoff_ridge",
-      "employer": "Kestrel Combine",
+      "employerId": "kestrel_combine",
       "brief": "The Slag Legion has moved a reinforced company onto the ridge. This is the one that decides the border.",
       "requires": [
         "shale_overwatch_node"
@@ -113,7 +124,7 @@
       "id": "causeway_push",
       "name": "The Causeway",
       "missionId": "causeway_crossing",
-      "employer": "Halloran Freight",
+      "employerId": "halloran_freight",
       "brief": "Halloran wants the drowned valley crossing open before the rains close the fords. One raised road, one garrison, and a hardstand at mid-span that decides which of you owns the other bank.",
       "requires": [
         "supply_line"
@@ -130,7 +141,7 @@
       "id": "foundry_sweep_node",
       "name": "Foundry District",
       "missionId": "foundry_sweep",
-      "employer": "Sarn Foundry",
+      "employerId": "sarn_foundry",
       "brief": "A Combine detachment slipped into the outer works and went quiet. Sarn will not shell its own district, so somebody walks in and sweeps it block by block. Knife work; bring brawlers.",
       "requires": [
         "pass_skirmish"
@@ -147,7 +158,7 @@
       "id": "shale_overwatch_node",
       "name": "Shale Steps",
       "missionId": "shale_overwatch",
-      "employer": "Kestrel Combine",
+      "employerId": "kestrel_combine",
       "brief": "Kestrel's survey post on the top terrace has a Combine column coming up the steps after it. Hold the height until the data is away. Five machines against the climb — the climb is on your side.",
       "requires": [
         "foundry_sweep_node"

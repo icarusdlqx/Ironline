@@ -1,0 +1,65 @@
+.employer-facts {
+  margin: 5px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.employer-facts strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.employer-ledger {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.employer-ledger summary {
+  padding: 8px 0 2px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.employer-ledger ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.employer-ledger li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+}
+
+.employer-ledger li span {
+  color: var(--text);
+}
+
+.employer-ledger li small {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+  .employer-ledger summary {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .employer-ledger li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .employer-ledger li small {
+    text-align: left;
+  }
+}

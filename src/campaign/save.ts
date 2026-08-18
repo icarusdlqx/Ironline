@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { DesignSchema } from '../schema/design';
 import { IdSchema, MechLocationSchema, perLocation } from '../schema/common';
+import { getCatalog, type Catalog } from '../schema/load';
+import type { Campaign } from '../schema/campaign';
+import {
+  canonicalEmployer,
+  EMPLOYER_FAILURE_LIMIT,
+  employerById,
+  legacyEmployer,
+  UNKNOWN_EMPLOYER_ID,
+  UNKNOWN_EMPLOYER_NAME,
+  type EmployerIdentity,
+} from './employers';
+import { sideEmployerIdFor } from './sidework';
 import type { CampaignState } from './types';
 
 const SAVE_VERSION = 1;
@@ -76,7 +88,8 @@ const ContractTermsSchema = z.enum(['fee_first', 'standard', 'salvage_first']);
 const ContractSchema = z.strictObject({
   nodeId: IdSchema,
   missionId: IdSchema,
-  employer: z.string().min(1),
+  employerId: IdSchema,
+  employerName: z.string().min(1),
   // Old contracts load on the middle terms; their stored payout and salvage
   // still remain authoritative.
   termsId: ContractTermsSchema.default('standard'),
@@ -89,6 +102,8 @@ const ContractSchema = z.strictObject({
 const MissionOutcomeSchema = z.strictObject({
   nodeId: IdSchema,
   missionId: IdSchema,
+  employerId: IdSchema,
+  employerName: z.string().min(1),
   // Old debriefs predate named packages but already carry the exact proceeds.
   termsId: ContractTermsSchema.default('standard'),
   won: z.boolean(),
@@ -122,6 +137,14 @@ const MissionOutcomeSchema = z.strictObject({
     .default([]),
 });
 
+const EmployerFailureSchema = z.strictObject({
+  employerId: IdSchema,
+  employerName: z.string().min(1),
+  day: z.number().int().nonnegative(),
+  reason: z.enum(['withdrawn', 'expired']),
+  count: z.number().int().positive().default(1),
+});
+
 const RngStateSchema = z.strictObject({
   x: z.number().int().nonnegative(),
   y: z.number().int().nonnegative(),
@@ -149,6 +172,7 @@ export const CampaignStateSchema = z.strictObject({
   marketBought: z.array(IdSchema).default([]),
   contract: ContractSchema.nullable(),
   history: z.array(MissionOutcomeSchema),
+  employerFailures: z.array(EmployerFailureSchema).max(EMPLOYER_FAILURE_LIMIT).default([]),
   log: z.array(z.strictObject({ day: z.number().int(), text: z.string() })),
   finished: z.boolean(),
   won: z.boolean(),
@@ -171,7 +195,103 @@ export interface LoadResult {
   error: string | null;
 }
 
-export function deserialiseCampaign(text: string): LoadResult {
+type JsonObject = Record<string, unknown>;
+
+function object(value: unknown): JsonObject | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as JsonObject)
+    : null;
+}
+
+function inferredEmployer(
+  campaign: Campaign | undefined,
+  record: JsonObject,
+  recoveredEmployerId: string | null,
+): EmployerIdentity {
+  const legacyName = typeof record.employer === 'string' ? record.employer : null;
+  if (legacyName !== null && campaign !== undefined) return canonicalEmployer(campaign, legacyName);
+  if (legacyName !== null) return legacyEmployer(legacyName);
+
+  const employerId = typeof record.employerId === 'string' ? record.employerId : null;
+  if (employerId !== null && campaign !== undefined) return employerById(campaign, employerId);
+
+  const nodeId = typeof record.nodeId === 'string' ? record.nodeId : null;
+  const node = campaign?.nodes.find((entry) => entry.id === nodeId);
+  if (node !== undefined && campaign !== undefined) return employerById(campaign, node.employerId);
+  if (recoveredEmployerId !== null && campaign !== undefined) {
+    return employerById(campaign, recoveredEmployerId);
+  }
+
+  return { id: employerId ?? UNKNOWN_EMPLOYER_ID, name: UNKNOWN_EMPLOYER_NAME };
+}
+
+function migrateRecord(
+  campaign: Campaign | undefined,
+  value: unknown,
+  recoveredEmployerId: string | null,
+): unknown {
+  const record = object(value);
+  if (record === null) return value;
+  if (
+    typeof record.employerId === 'string' &&
+    typeof record.employerName === 'string' &&
+    record.employer === undefined
+  ) {
+    return value;
+  }
+
+  const identity =
+    typeof record.employerId === 'string' && typeof record.employerName === 'string'
+      ? { id: record.employerId, name: record.employerName }
+      : inferredEmployer(campaign, record, recoveredEmployerId);
+  const migrated: JsonObject = {
+    ...record,
+    employerId: identity.id,
+    employerName: identity.name,
+  };
+  delete migrated.employer;
+  return migrated;
+}
+
+export function migrateEmployerSave(raw: unknown, catalog: Catalog): unknown {
+  const save = object(raw);
+  const state = object(save?.state);
+  if (save === null || state === null) return raw;
+
+  const campaign =
+    typeof state.campaignId === 'string' ? catalog.campaigns.get(state.campaignId) : undefined;
+  const recoveredEmployer = (value: unknown): string | null => {
+    const record = object(value);
+    if (
+      record === null ||
+      typeof state.campaignId !== 'string' ||
+      typeof state.seed !== 'string' ||
+      typeof record.nodeId !== 'string' ||
+      typeof record.missionId !== 'string'
+    ) {
+      return null;
+    }
+    return sideEmployerIdFor(
+      catalog,
+      state.campaignId,
+      state.seed,
+      record.nodeId,
+      record.missionId,
+    );
+  };
+  const contract =
+    state.contract === null
+      ? null
+      : migrateRecord(campaign, state.contract, recoveredEmployer(state.contract));
+  const history = Array.isArray(state.history)
+    ? state.history.map((record) =>
+        migrateRecord(campaign, record, recoveredEmployer(record)),
+      )
+    : state.history;
+  return { ...save, state: { ...state, contract, history } };
+}
+
+export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog()): LoadResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -179,7 +299,7 @@ export function deserialiseCampaign(text: string): LoadResult {
     return { state: null, error: `not valid JSON: ${(error as Error).message}` };
   }
 
-  const parsed = SaveFileSchema.safeParse(raw);
+  const parsed = SaveFileSchema.safeParse(migrateEmployerSave(raw, catalog));
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     return {
@@ -195,10 +315,10 @@ export function saveCampaign(state: CampaignState): void {
   globalThis.localStorage?.setItem(STORAGE_KEY, serialiseCampaign(state));
 }
 
-export function loadCampaign(): LoadResult {
+export function loadCampaign(catalog: Catalog = getCatalog()): LoadResult {
   const text = globalThis.localStorage?.getItem(STORAGE_KEY);
   if (text === null || text === undefined) return { state: null, error: 'no saved campaign' };
-  return deserialiseCampaign(text);
+  return deserialiseCampaign(text, catalog);
 }
 
 export function clearSavedCampaign(): void {

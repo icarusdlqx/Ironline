@@ -45,7 +45,8 @@ export type ContractTermsId = 'fee_first' | 'standard' | 'salvage_first';
 export interface Contract {
   nodeId: string;
   missionId: string;
-  employer: string;
+  employerId: string;
+  employerName: string;
   termsId: ContractTermsId;
   payout: number;
   salvageShare: number;
@@ -84,6 +85,14 @@ export interface CampaignLogEntry {
   text: string;
 }
 
+export interface EmployerFailure {
+  employerId: string;
+  employerName: string;
+  day: number;
+  reason: 'withdrawn' | 'expired';
+  count: number;
+}
+
 /** What one pilot did on one drop, and what it did for them. */
 export interface PilotReport {
   pilotId: string;
@@ -102,6 +111,8 @@ export interface PilotReport {
 export interface MissionOutcome {
   nodeId: string;
   missionId: string;
+  employerId: string;
+  employerName: string;
   termsId: ContractTermsId;
   won: boolean;
   day: number;
@@ -151,6 +162,7 @@ export interface CampaignState {
   marketBought: string[];
   contract: Contract | null;
   history: MissionOutcome[];
+  employerFailures: EmployerFailure[];
   log: CampaignLogEntry[];
   finished: boolean;
   won: boolean;

@@ -13,6 +13,7 @@ import {
   startCampaign,
 } from './campaign';
 import { storeItemSaleBasis, storeItemValueOf } from './market';
+import { employerHistories } from './employers';
 import { fitFromStore, planFit } from './refit';
 import { estimateRepair, startRepair } from './repair';
 import {
@@ -225,6 +226,20 @@ describe('campaign contracts', () => {
     }
 
     expect(run.completedNodes).toEqual(expect.arrayContaining(route));
+    const campaign = catalog.campaigns.get(CAMPAIGN_ID);
+    if (campaign === undefined) throw new Error('missing campaign');
+    const employers = employerHistories(campaign, run.history);
+    expect(employers.find((record) => record.id === 'kestrel_combine')).toMatchObject({
+      completed: 4,
+      failed: 1,
+    });
+    expect(employers.find((record) => record.id === 'sarn_foundry')).toMatchObject({
+      completed: 1,
+      failed: 0,
+    });
+    expect(employers.reduce((paid, record) => paid + record.paid, 0)).toBe(
+      run.history.reduce((paid, outcome) => paid + outcome.payout, 0),
+    );
     expect(run.finished).toBe(true);
     expect(run.won).toBe(true);
     expect(availableNodes(catalog, run)).toEqual([]);

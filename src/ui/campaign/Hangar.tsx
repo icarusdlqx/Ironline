@@ -2,6 +2,7 @@ import { LOCATIONS } from '../../schema/common';
 import type { Catalog } from '../../schema/load';
 import { rebuildHulk } from '../../campaign/refit';
 import { estimateRepair, startRepair } from '../../campaign/repair';
+import { employerNameFor } from '../../campaign/employers';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
 
@@ -40,6 +41,10 @@ function integrity(state: CampaignState, mechId: string): number {
 export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }: Props) {
   const contract = state.contract;
   const mission = contract === null ? null : catalog.missions.get(contract.missionId);
+  const employer =
+    contract === null
+      ? null
+      : employerNameFor(catalog, state.campaignId, contract.employerId, contract.employerName);
 
   return (
     <div className="manifest-backdrop" data-testid="hangar-stage">
@@ -48,7 +53,7 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
           <h3>Mechbay — prepare the machines</h3>
           <p>
             {mission?.name ?? 'Contract'}
-            {contract === null ? '' : ` — ${contract.employer}.`} Repair what is broken, refit
+            {employer === null ? '' : ` — ${employer}.`} Repair what is broken, refit
             what is mis-armed, then move on to the drop manifest.
           </p>
         </header>

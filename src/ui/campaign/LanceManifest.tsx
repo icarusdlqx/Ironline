@@ -1,6 +1,7 @@
 import { LOCATIONS } from '../../schema/common';
 import type { Catalog } from '../../schema/load';
 import { dropTeam, dropTonnageFor, missionSlots } from '../../campaign/campaign';
+import { employerNameFor } from '../../campaign/employers';
 import { assign } from '../../campaign/roster';
 import { isPilotAvailable, type CampaignState, type PilotRecord } from '../../campaign/types';
 import { PilotStats } from '../PilotStats';
@@ -48,6 +49,12 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
   const allowance = dropTonnageFor(catalog, contract.missionId);
   const dropping = dropTeam(catalog, state, contract.missionId);
   const mission = catalog.missions.get(contract.missionId);
+  const employer = employerNameFor(
+    catalog,
+    state.campaignId,
+    contract.employerId,
+    contract.employerName,
+  );
   const tonnage = dropping.reduce(
     (total, pair) => total + (catalog.chassis.get(pair.mech.design.chassisId)?.tonnage ?? 0),
     0,
@@ -80,7 +87,7 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
         <header>
           <h3>Dropship manifest</h3>
           <p>
-            {mission?.name ?? contract.missionId} — {contract.employer}.
+            {mission?.name ?? contract.missionId} — {employer}.
           </p>
           {/* The profile the loadout has to answer to: how many berths, how
               much weight, and what the contract is actually asking for. */}

@@ -1,6 +1,7 @@
 import type { CampaignNode } from '../schema/campaign';
 import type { Catalog } from '../schema/load';
 import { createRng } from '../sim/rng';
+import { UNKNOWN_EMPLOYER_ID } from './employers';
 import type { CampaignState } from './types';
 
 const PLAYER_TEAM = 0;
@@ -14,6 +15,38 @@ export function offerPeriod(catalog: Catalog, day: number): number {
 export function nextOfferDay(catalog: Catalog, day: number): number {
   const refreshDays = catalog.rules.economy.sideContracts.refreshDays;
   return (offerPeriod(catalog, day) + 1) * refreshDays;
+}
+
+export function sideEmployerIdFor(
+  catalog: Catalog,
+  campaignId: string,
+  campaignSeed: string,
+  nodeId: string,
+  missionId: string,
+): string | null {
+  const match = /^side_(0|[1-9]\d*)_(0|[1-9]\d*)$/.exec(nodeId);
+  const campaign = catalog.campaigns.get(campaignId);
+  if (match === null || campaign === undefined) return null;
+  const period = Number(match[1]);
+  const slot = Number(match[2]);
+  const employers = campaign.sideWork.employerIds;
+  const offersPerPeriod = catalog.rules.economy.sideContracts.offersPerPeriod;
+  if (
+    !Number.isSafeInteger(period) ||
+    !Number.isSafeInteger(slot) ||
+    slot >= offersPerPeriod ||
+    employers.length === 0
+  ) {
+    return null;
+  }
+
+  const rng = createRng(`${campaignSeed}:sidework:${period}`);
+  // Employer order is the second shuffle on a board. Replaying the first keeps
+  // old unsigned outcomes tied to the client the player actually saw.
+  const offered = rng.shuffle(campaign.sideWork.missionIds).slice(0, offersPerPeriod);
+  if (offered[slot] !== missionId) return null;
+  const posting = rng.shuffle(employers);
+  return posting[slot % posting.length] ?? null;
 }
 
 export interface SideContractProfile {
@@ -72,8 +105,8 @@ export function oppositionTonnage(catalog: Catalog, missionId: string): number {
 export function sideContracts(catalog: Catalog, state: CampaignState): CampaignNode[] {
   const campaign = catalog.campaigns.get(state.campaignId);
   const pool = campaign?.sideWork.missionIds ?? [];
-  const employers = campaign?.sideWork.employers ?? [];
-  if (pool.length === 0 || employers.length === 0) return [];
+  const employerIds = campaign?.sideWork.employerIds ?? [];
+  if (pool.length === 0 || employerIds.length === 0) return [];
 
   const rules = catalog.rules.economy.sideContracts;
   const period = offerPeriod(catalog, state.day);
@@ -83,7 +116,7 @@ export function sideContracts(catalog: Catalog, state: CampaignState): CampaignN
   // and the same for who is posting, so the board reads as a hall with several
   // outfits in it rather than one client with a lot of work.
   const offered = rng.shuffle(pool).slice(0, rules.offersPerPeriod);
-  const posting = rng.shuffle(employers);
+  const posting = rng.shuffle(employerIds);
   const taken = new Set(state.sideTaken);
   const nodes: CampaignNode[] = [];
 
@@ -96,7 +129,8 @@ export function sideContracts(catalog: Catalog, state: CampaignState): CampaignN
     const variance = rng.range(rules.payoutVariance[0], rules.payoutVariance[1]);
     const share = rng.range(rules.salvageShare[0], rules.salvageShare[1]);
     const deadline = rng.int(rules.deadlineDays[0], rules.deadlineDays[1] + 1);
-    const employer = posting[slot % posting.length] ?? employers[0] ?? 'Unknown';
+    const employerId =
+      posting[slot % posting.length] ?? employerIds[0] ?? UNKNOWN_EMPLOYER_ID;
 
     if (mission === undefined || taken.has(id)) return;
 
@@ -115,7 +149,7 @@ export function sideContracts(catalog: Catalog, state: CampaignState): CampaignN
       id,
       name: mission.name,
       missionId,
-      employer,
+      employerId,
       brief: mission.briefing,
       requires: [],
       basePayout: Math.max(

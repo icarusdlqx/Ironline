@@ -20,6 +20,11 @@ import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
 import { startFreshCampaign } from '../../campaign/freshness';
+import {
+  employerDisplayName,
+  employerHistories,
+  type EmployerHistory,
+} from '../../campaign/employers';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
@@ -66,12 +71,17 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const patch = useGame((game) => game.patch);
 
   const campaign = campaignOf(catalog, state);
+  const employers = useMemo(
+    () => employerHistories(campaign, state.history, state.employerFailures),
+    [campaign, state.history, state.employerFailures],
+  );
   const open = useMemo(() => availableNodes(catalog, state), [state]);
   const posted = useMemo(() => open.filter((entry) => isSideContract(entry.id)), [open]);
   const node = open.find((entry) => entry.id === selectedNode) ?? open[0] ?? null;
   const options = node === null ? [] : negotiationOptions(catalog, node);
   const lance = deployableLance(state);
   const pendingDebrief = state.history[state.history.length - 1];
+  const employer = currentEmployer();
 
   // The machine on the gantry, if the player has opened one for a refit.
   const refitMech = refitting === null ? null : (state.mechs.find((m) => m.id === refitting) ?? null);
@@ -200,6 +210,8 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         readyMechs={lance.length}
         finished={state.finished}
         won={state.won}
+        employer={employer}
+        employers={employers}
         onSelectTerms={setSelectedTerms}
         onAccept={(termsId) =>
           mutate((draft) => {
@@ -222,8 +234,10 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       {state.contract !== null ? null : (
         <HiringHall
           catalog={catalog}
+          campaign={campaign}
           day={state.day}
           offers={posted}
+          employers={employers}
           selectedId={node?.id ?? null}
           onSelect={setSelectedNode}
         />
@@ -314,6 +328,22 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   function advanceDay(): void {
     mutate((draft) => advanceDays(catalog, draft, 1));
+  }
+
+  function currentEmployer(): EmployerHistory | null {
+    const employerId = state.contract?.employerId ?? node?.employerId;
+    if (employerId === undefined) return null;
+    return (
+      employers.find((record) => record.id === employerId) ?? {
+        id: employerId,
+        name: employerDisplayName(campaign, employerId, state.contract?.employerName),
+        completed: 0,
+        failed: 0,
+        withdrawn: 0,
+        expired: 0,
+        paid: 0,
+      }
+    );
   }
 
   function onExportSave(): void {
