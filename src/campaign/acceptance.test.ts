@@ -15,6 +15,7 @@ import {
   startCampaign,
 } from './campaign';
 import { applyRefit, fitFromStore, planFit, refitInventory, stripToStore } from './refit';
+import { storeItemSaleBasis, storeItemValueOf } from './market';
 import { estimateRepair, startRepair } from './repair';
 import { addToStore, isPilotAvailable, storeCount, type CampaignState } from './types';
 import type { BattleResult } from '../sim/world';
@@ -273,6 +274,11 @@ describe('campaign contracts', () => {
 
       const crate = candidate.store.filter((item) => item.kind === 'weapon');
       if (crate.length === 0) continue;
+      for (const item of candidate.history[0]?.salvageOffered ?? []) {
+        expect(storeItemValueOf(catalog, item), `${item.itemId} has no build value`).toBeGreaterThan(0);
+        expect(storeItemSaleBasis(catalog, item), `${item.itemId} has no mounted sale basis`).toBeGreaterThan(0);
+        expect(storeItemSaleBasis(catalog, item)).toBeLessThanOrEqual(storeItemValueOf(catalog, item));
+      }
 
       repairAll(candidate);
       waitForCrew(candidate);

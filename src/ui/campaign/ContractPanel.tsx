@@ -1,6 +1,7 @@
 import { termsName, type NegotiationOption } from '../../campaign/contractTerms';
 import type { Contract, ContractTermsId } from '../../campaign/types';
 import type { CampaignNode } from '../../schema/campaign';
+import { SalvageTerms } from './SalvageTerms';
 
 function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
@@ -39,6 +40,7 @@ export function ContractPanel({
 }: ContractPanelProps) {
   const selected =
     options.find((option) => option.id === selectedTerms) ?? options[1] ?? options[0] ?? null;
+  const selectedIndex = selected === null ? 0 : Math.max(0, options.indexOf(selected));
   const choosing = contract === null && node !== null;
 
   return (
@@ -54,7 +56,7 @@ export function ContractPanel({
           </p>
           <p>
             {contract.employer} — {cbills(contract.payout)} on success,{' '}
-            {Math.round(contract.salvageShare * 100)}% salvage, due day {contract.deadlineDay}.
+            {Math.round(contract.salvageShare * 100)}% salvage claim, due day {contract.deadlineDay}.
           </p>
           <p className="contract-exposure">{repairTerms()}</p>
           <div className="camp-buttons">
@@ -96,10 +98,10 @@ export function ContractPanel({
             ))}
           </fieldset>
           {selected === null ? null : (
-            <p className="contract-exposure" data-testid="camp-offer">
-              {cbills(selected.payout)} on success · {Math.round(selected.salvageShare * 100)}%
-              salvage. {repairTerms()}
-            </p>
+            <>
+              <SalvageTerms option={selected} step={selectedIndex} steps={options.length} />
+              <p className="contract-exposure">{repairTerms()}</p>
+            </>
           )}
           <button
             type="button"

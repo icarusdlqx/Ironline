@@ -1,8 +1,10 @@
 import type { Catalog } from '../../schema/load';
 import { useState } from 'react';
 import { termsName } from '../../campaign/contractTerms';
+import { storeItemValueOf } from '../../campaign/market';
 import { SALVAGE_PICKS } from '../../campaign/salvage';
-import type { MissionOutcome, StoreItem } from '../../campaign/types';
+import type { CampaignState, MissionOutcome, StoreItem } from '../../campaign/types';
+import { salvageItemFacts } from './salvageFacts';
 
 const DEBRIEFED_KEY = 'ironline.campaign.debriefed';
 
@@ -39,11 +41,13 @@ function cbills(value: number): string {
  */
 export function Debrief({
   catalog,
+  state,
   outcome,
   onClose,
   onChooseSalvage,
 }: {
   catalog: Catalog;
+  state: CampaignState;
   outcome: MissionOutcome;
   onClose: () => void;
   /** Swaps what came home for a different pick out of the same offer. */
@@ -54,11 +58,9 @@ export function Debrief({
   const [picks, setPicks] = useState<string[]>(() =>
     outcome.salvagedItems.map((item) => `${item.kind}:${item.itemId}`),
   );
-
-  const nameOf = (item: StoreItem): string =>
-    (item.kind === 'weapon'
-      ? catalog.weapons.get(item.itemId)?.name
-      : catalog.equipment.get(item.itemId)?.name) ?? item.itemId;
+  const selectedValue = offered
+    .filter((item) => picks.includes(`${item.kind}:${item.itemId}`))
+    .reduce((total, item) => total + storeItemValueOf(catalog, item), 0);
 
   const toggle = (key: string): void => {
     const next = picks.includes(key)
@@ -91,26 +93,41 @@ export function Debrief({
         {offered.length === 0 ? null : (
           <div className="debrief-salvage" data-testid="debrief-salvage">
             <h4>
-              Salvage — the hold takes {SALVAGE_PICKS} ({picks.length}/{SALVAGE_PICKS} chosen)
+              Salvage — {picks.length}/{SALVAGE_PICKS} picks · {cbills(selectedValue)} build value
             </h4>
             <p className="salvage-note">
-              The crews cut loose more than the dropship will carry. Choose what comes home.
+              Choose what comes home; one pick takes the full listed crate. Loose crates cannot be
+              sold. Mounted sale basis is what a part adds to an intact mech's yard valuation.
             </p>
             <ul className="salvage-offer">
               {offered.map((item) => {
                 const key = `${item.kind}:${item.itemId}`;
                 const taken = picks.includes(key);
+                const takenCount =
+                  outcome.salvagedItems.find(
+                    (held) => held.kind === item.kind && held.itemId === item.itemId,
+                  )?.count ?? 0;
+                const facts = salvageItemFacts(catalog, state, item, takenCount);
                 return (
                   <li key={key}>
                     <button
                       type="button"
                       className={taken ? 'taken' : ''}
                       onClick={() => toggle(key)}
+                      aria-pressed={taken}
                       data-testid={`salvage-pick-${item.itemId}`}
                     >
-                      <span className="salvage-name">{nameOf(item)}</span>
-                      <span className="salvage-kind">{item.kind}</span>
+                      <span className="salvage-name">
+                        {facts.name} {item.count > 1 ? `× ${item.count}` : ''}
+                      </span>
+                      <span className="salvage-kind">{facts.kind}</span>
                       <span className="salvage-mark">{taken ? 'aboard' : 'left'}</span>
+                      <span className="salvage-spec">{facts.specification}</span>
+                      <span className="salvage-fit">{facts.fit}</span>
+                      <span className="salvage-owned">Owned before this haul: {facts.ownedBefore}</span>
+                      <span className="salvage-value">
+                        {cbills(facts.buildValue)} build · {cbills(facts.saleBasis)} mounted sale basis
+                      </span>
                     </button>
                   </li>
                 );
