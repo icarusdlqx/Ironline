@@ -34,6 +34,7 @@ import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
 import { formatMissionClock, missionClockUrgency } from './missionClock';
 import { selectedUnit, useGame } from './store';
 import { buildSupportOptions } from './supportOptions';
+import { TacticalReadout } from './TacticalReadout';
 import { TrainingCoach } from './TrainingCoach';
 import {
   completeTraining,
@@ -568,6 +569,7 @@ export function Battle() {
               activeLocation={state.orderMode === 'called_shot' ? state.calledShotLocation : null}
             />
             <HeatBar heat={unit.heat} capacity={unit.heatCapacity} thresholds={state.heatTiers} />
+            <TacticalReadout unit={unit} />
             <div className="target-line">
               {preview === null ? (
                 <>
@@ -636,6 +638,8 @@ export function Battle() {
           enabled={playerControlled}
           holdingFire={unit?.holdingFire ?? false}
           heatSafety={unit?.heatSafety ?? false}
+          ability={unit?.ability ?? null}
+          alpha={unit?.alpha ?? null}
           jump={
             unit === null
               ? null

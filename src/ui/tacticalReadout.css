@@ -1,0 +1,156 @@
+/* Orders expose the machine's decisions here. The bar alone says how hot it
+   is; these rows say what one more decision will cost. */
+.tactical-readout {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 8px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+}
+
+.ability-readout,
+.tactical-row {
+  display: grid;
+  grid-template-columns: 68px 1fr auto;
+  gap: 2px 6px;
+  align-items: center;
+}
+
+.ability-readout .tactical-label {
+  grid-column: 1;
+}
+
+.ability-readout strong {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.ability-readout .tactical-state {
+  grid-column: 3;
+}
+
+.ability-readout p {
+  grid-column: 1 / -1;
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.tactical-label {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tactical-state {
+  color: var(--accent);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tactical-state.ok,
+.alpha-band.ok {
+  color: #8fd49a;
+}
+
+.tactical-state.warn,
+.alpha-band.warn,
+.governor-line .warn {
+  color: var(--warn);
+}
+
+.tactical-state.danger,
+.alpha-band.danger,
+.alpha-band.critical {
+  color: var(--danger);
+}
+
+.stability-track {
+  position: relative;
+  grid-column: 1 / 3;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.stability-fill {
+  display: block;
+  height: 100%;
+  background: #8fd49a;
+}
+
+.stability-fill.warn {
+  background: var(--warn);
+}
+
+.stability-fill.danger {
+  background: var(--danger);
+}
+
+.stability-mark {
+  position: absolute;
+  inset-block: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.tactical-number {
+  color: var(--muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.alpha-readout strong {
+  grid-column: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.alpha-band {
+  grid-column: 2 / 4;
+  font-size: 8px;
+  text-align: right;
+}
+
+.alpha-caveat {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.governor-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.governor-line strong {
+  color: var(--accent);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+}
+
+.command.timed {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 6px;
+  row-gap: 1px;
+}
+
+.command.timed .command-key {
+  grid-row: 1 / 3;
+}
+
+.command-state {
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

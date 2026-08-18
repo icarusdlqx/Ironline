@@ -3,6 +3,12 @@ import { canJump, isHoldingFire } from '../sim/orders';
 import { isIdentifiedBy } from '../sim/sensors';
 import { findEntity, isOperational, isStaggered, type MechEntity, type World } from '../sim/types';
 import type { LocationSnapshot, UnitSnapshot, WeaponSnapshot } from './store';
+import {
+  abilityReadout,
+  alphaReadout,
+  reactorReadout,
+  stabilityReadout,
+} from './combatTelemetry';
 
 function locationsOf(entity: MechEntity): Record<MechLocation, LocationSnapshot> {
   const entries = LOCATIONS.map((location) => {
@@ -89,6 +95,10 @@ export function snapshotUnit(world: World, entity: MechEntity): UnitSnapshot {
     groupEnabled: [...entity.groupEnabled],
     holdingFire: isHoldingFire(entity),
     heatSafety: entity.heatSafety,
+    ability: abilityReadout(world, entity),
+    alpha: alphaReadout(world, entity),
+    stability: stabilityReadout(world, entity),
+    reactor: reactorReadout(world, entity),
     hasMoveOrder: entity.orders.move !== null,
     jumpRange: entity.jumpRange,
     jumpCooldown: entity.jumpCooldown,

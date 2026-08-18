@@ -150,6 +150,18 @@ async function main() {
       'weapon groups render with cooldown rings',
       (await page.locator('.cooldown-ring').count()) > 0,
     );
+    check(
+      'tactical readouts expose ability, stability, alpha heat and governor state',
+        (await page.locator('[data-testid="tactical-readout"]').count()) === 1 &&
+        (await page.locator('[data-testid="stability-readout"]').innerText()).includes('/') &&
+        (await page.locator('[data-testid="alpha-readout"]').innerText()).includes('%') &&
+        (await page.locator('[data-testid="governor-readout"]').count()) === 1,
+    );
+    check(
+      'ability and alpha commands show live readiness',
+      (await page.locator('[data-testid="command-ability"]').innerText()).includes('READY') &&
+        (await page.locator('[data-testid="command-alpha_strike"]').innerText()).includes('READY'),
+    );
     await page.screenshot({ path: `${SHOTS}/02-selected.png` });
 
     process.stdout.write('\npause\n');

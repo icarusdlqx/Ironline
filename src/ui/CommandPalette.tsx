@@ -1,4 +1,5 @@
-import type { OrderMode } from './store';
+import { actionStatus } from './combatTelemetry';
+import type { OrderMode, TimedActionSnapshot } from './store';
 
 export interface Command {
   id: string;
@@ -64,6 +65,8 @@ interface Props {
   enabled: boolean;
   holdingFire: boolean;
   heatSafety: boolean;
+  ability: TimedActionSnapshot | null;
+  alpha: TimedActionSnapshot | null;
   /** Jets aboard, charged and free to fire. Null when nothing is selected. */
   jump: { ready: boolean; range: number; cooldown: number } | null;
   /** The standing order the selected mech is following. */
@@ -83,6 +86,8 @@ export function CommandPalette({
   enabled,
   holdingFire,
   heatSafety,
+  ability,
+  alpha,
   jump,
   posture,
   onCommand,
@@ -90,28 +95,38 @@ export function CommandPalette({
   return (
     <div className="palette" data-testid="command-palette">
       {COMMANDS.map((command) => {
+        const timed =
+          command.id === 'ability' ? ability : command.id === 'alpha_strike' ? alpha : null;
         const active =
           (command.mode !== null && command.mode === orderMode) ||
           (command.id === 'hold_fire' && holdingFire) ||
           (command.id === 'heat_safety' && heatSafety) ||
+          (timed?.activeRemaining ?? 0) > 0 ||
           command.id === posture;
 
         const isJump = command.id === 'jump';
         const disabled = command.disabled === true || !enabled || (isJump && jump?.ready !== true);
-        const title = isJump ? jumpTitle(jump) : (command.title ?? `${command.label} (${command.key})`);
+        const title = isJump
+          ? jumpTitle(jump)
+          : timed === null
+            ? (command.title ?? `${command.label} (${command.key})`)
+            : `${timed.label}: ${timed.note} ${actionStatus(timed)} (${command.key})`;
 
         return (
           <button
             key={command.id}
             type="button"
-            className={`command ${active ? 'active' : ''}`}
+            className={`command ${active ? 'active' : ''} ${timed === null ? '' : 'timed'}`}
             disabled={disabled}
             title={title}
             onClick={() => onCommand(command)}
             data-testid={`command-${command.id}`}
           >
             <span className="command-key">{command.key}</span>
-            <span className="command-label">{command.label}</span>
+            <span className="command-label">{timed?.label ?? command.label}</span>
+            {timed === null ? null : (
+              <span className="command-state">{actionStatus(timed)}</span>
+            )}
           </button>
         );
       })}
