@@ -24,6 +24,11 @@ export const DESKTOP_BINDINGS: readonly Binding[] = [
       'Arm Move, Run, or Attack Move, then click a destination. Hold Shift to append it.',
   },
   {
+    input: 'End shape',
+    action:
+      'Auto, Line, Column, Wedge, or Box spreads a group at its destination. Mechs route independently and do not hold the shape while moving.',
+  },
+  {
     input: 'F / C / Q',
     action: 'Arm Attack or Called Shot, or target the nearest visible contact.',
   },
@@ -66,6 +71,11 @@ export const TOUCH_BINDINGS: readonly Binding[] = [
   {
     input: 'Tap a command',
     action: 'Arm it, then tap its destination or target. Queue keeps route orders armed.',
+  },
+  {
+    input: 'End shape',
+    action:
+      'Chooses the group shape at the tapped destination. It is not maintained while the mechs move.',
   },
   {
     input: 'All / Queue / Cancel',
