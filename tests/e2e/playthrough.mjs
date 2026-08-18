@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import { runMobilePlaythrough } from './mobile-playthrough.mjs';
 
 const PORT = 5183;
 const URL = `http://localhost:${PORT}/`;
@@ -94,7 +95,6 @@ async function main() {
 
     await page.goto(URL);
     await page.waitForFunction(() => globalThis.__ironline !== undefined, { timeout: 30_000 });
-    await page.waitForSelector('[data-testid="lance-bar"]');
 
     check(
       'a fresh profile opens on training',
@@ -103,6 +103,7 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/00-training-briefing.png` });
     await page.locator('[data-testid="briefing-deploy"]').click();
     await page.waitForSelector('[data-testid="training-coach"]');
+    await page.waitForSelector('[data-testid="lance-bar"]');
     await page.screenshot({ path: `${SHOTS}/00-training-coach.png` });
     await page.locator('[data-testid="choose-mission"]').click();
     await page.waitForSelector('[data-testid="briefing"]');
@@ -617,7 +618,7 @@ async function main() {
 
     await page.screenshot({ path: `${SHOTS}/06-mechbay-legal.png` });
     await page.locator('[data-testid="bay-exit"]').click();
-    await page.waitForSelector('[data-testid="lance-bar"]');
+    await page.waitForSelector('[data-testid="briefing"]');
     check('returning to the skirmish remounts the battle', (await page.locator('.viewport canvas:not(.perf-overlay)').count()) === 1);
 
     process.stdout.write('\ncampaign\n');
@@ -826,10 +827,10 @@ async function main() {
     await page.waitForSelector('[data-testid="lance-manifest"]');
 
     await page.locator('[data-testid="manifest-launch"]').click();
-    await page.waitForSelector('[data-testid="lance-bar"]');
     await page.waitForSelector('[data-testid="briefing"]');
     check('the contracted mission opens on its briefing', true);
     await page.locator('[data-testid="briefing-deploy"]').click();
+    await page.waitForSelector('[data-testid="lance-bar"]');
     check('deploying launches the contracted mission', (await page.locator('.viewport canvas:not(.perf-overlay)').count()) === 1);
 
     const deployed = await page.evaluate(() => {
@@ -917,6 +918,7 @@ async function main() {
     );
 
     check('no page errors across the whole run', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
+    await runMobilePlaythrough({ browser, url: URL, shots: SHOTS, check });
   } finally {
     await browser.close();
     try {

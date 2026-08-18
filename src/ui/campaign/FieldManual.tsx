@@ -65,7 +65,11 @@ export const TOUCH_BINDINGS: readonly Binding[] = [
   },
   {
     input: 'Tap a command',
-    action: 'Arm it, then tap its destination or target. A completed order clears it.',
+    action: 'Arm it, then tap its destination or target. Queue keeps route orders armed.',
+  },
+  {
+    input: 'All / Queue / Cancel',
+    action: 'Select the lance, build a route across successive taps, or clear the armed order.',
   },
   {
     input: 'Drag / pinch',
@@ -82,7 +86,7 @@ export const TOUCH_BINDINGS: readonly Binding[] = [
   {
     input: 'Tap a support call',
     action:
-      'Arm it, then tap the battlefield. Tap the active call again to cancel it.',
+      'Arm it, then tap the battlefield. For a strafing run, press and drag its heading.',
   },
 ];
 
@@ -91,7 +95,7 @@ const SUPPORT_NOTES: readonly Binding[] = [
   {
     input: 'Air Strike',
     action:
-      'Strafes a line. With a mouse, press at the aim point and drag the run-in. On touch, it runs from the lance through the point tapped.',
+      'Strafes a line. Press at the aim point and drag the run-in before releasing.',
   },
   { input: 'Repair Truck', action: 'Repairs armour near the point placed.' },
   { input: 'Reinforcement', action: 'Drops one unused mission reserve.' },

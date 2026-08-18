@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { getCatalog } from '../schema/load';
 import { PilotStats, type RateablePilot } from './PilotStats';
-import type { HitPreviewView, ObjectiveView, UnitSnapshot, WeaponSnapshot, ZoneView } from './store';
+import type { HitPreviewView, ObjectiveView, UnitSnapshot, WeaponSnapshot } from './store';
 import type { SupportOption } from './supportOptions';
 
 export function HeatBar({
@@ -214,56 +214,6 @@ export function EventLog({ lines }: { lines: readonly string[] }) {
         <li key={`${index}-${line}`}>{line}</li>
       ))}
     </ul>
-  );
-}
-
-export function ObjectiveList({
-  objectives,
-  zones,
-}: {
-  objectives: readonly ObjectiveView[];
-  zones: readonly ZoneView[];
-}) {
-  if (objectives.length === 0) return null;
-
-  return (
-    <div className="objectives" data-testid="objective-list">
-      <h4>Objectives</h4>
-      <ul>
-        {objectives.map((objective) => (
-          <li key={objective.id} className={objective.status} data-testid={`objective-${objective.id}`}>
-            <span className="objective-mark">
-              {objective.status === 'complete' ? '✓' : objective.status === 'failed' ? '✗' : '•'}
-            </span>
-            <span className="objective-label">
-              {objective.label}
-              {objective.required ? '' : ' (optional)'}
-            </span>
-            <span className="objective-progress">{Math.round(objective.progress * 100)}%</span>
-          </li>
-        ))}
-      </ul>
-      {zones.length === 0 ? null : (
-        <ul className="zones" data-testid="zone-list">
-          {zones.map((zone) => (
-            <li key={zone.id} data-testid={`zone-${zone.id}`}>
-              <span>{zone.name}</span>
-              <span className={zone.owner === 0 ? 'held' : 'lost'}>
-                {zone.contested
-                  ? 'contested'
-                  : zone.owner === 0
-                    ? 'held'
-                    : zone.contender === 0
-                      ? `${Math.round((zone.progress / zone.captureSeconds) * 100)}%`
-                      : zone.owner === null
-                        ? 'neutral'
-                        : 'enemy'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

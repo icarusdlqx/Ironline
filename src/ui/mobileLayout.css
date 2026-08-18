@@ -1,0 +1,312 @@
+/* Loaded after the desktop sheets. The narrow layout has to win over campaign
+   panels declared late in the base file, or named grid areas rebuild columns. */
+@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+  .camp,
+  .bay,
+  .briefing,
+  .battle-results,
+  .manual-sheet,
+  .manifest {
+    --tap-size: 44px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .camp,
+  .bay {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: none;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: row;
+    grid-auto-rows: min-content;
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: calc(10px + env(safe-area-inset-top, 0px))
+      calc(10px + env(safe-area-inset-right, 0px))
+      calc(10px + env(safe-area-inset-bottom, 0px))
+      calc(10px + env(safe-area-inset-left, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+  .camp > *,
+  .bay > *,
+  .camp > .camp-hall,
+  .camp > .camp-market {
+    grid-area: auto;
+    grid-column: 1;
+    grid-row: auto;
+    min-width: 0;
+    width: auto;
+  }
+  .camp > *,
+  .bay > * {
+    min-height: min-content;
+  }
+  .camp button,
+  .camp select,
+  .camp input[type='file'],
+  .bay button,
+  .bay select,
+  .bay input:not([type='checkbox']):not([type='range']),
+  .briefing button,
+  .briefing select,
+  .battle-results button,
+  .battle-results select,
+  .manual-sheet button,
+  .manifest button,
+  .manifest select {
+    min-height: var(--tap-size);
+    font-size: 13px;
+  }
+  .camp small,
+  .bay small,
+  .setup-description,
+  .manifest-status,
+  .manifest-brief,
+  .battle-results small {
+    font-size: 11px;
+  }
+  .camp h3,
+  .camp h4,
+  .bay h3,
+  .bay h4 {
+    font-size: 13px;
+  }
+  .setup-field,
+  .setup-fixed small,
+  .pilot-trait,
+  .pilot-seat,
+  .pilot-training button small,
+  .pilot-picks button small,
+  .pilot-state,
+  .bay-slots,
+  .bay-armour-read,
+  .bay-show-all,
+  .dossier-stats dt {
+    font-size: 11px;
+  }
+  .camp-top {
+    gap: 8px;
+  }
+  .camp-title,
+  .camp-top h2 {
+    flex-basis: 100%;
+  }
+  .camp-top button,
+  .camp-top .feedback-link {
+    flex: 1 1 92px;
+    display: grid;
+    place-items: center;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .camp-import {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .camp-import input {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  .camp-map {
+    width: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px;
+  }
+  .camp-terrain {
+    display: none;
+  }
+  .camp-node {
+    position: static;
+    transform: none;
+    width: 100%;
+    min-width: var(--tap-size);
+    min-height: var(--tap-size);
+    padding: 7px 9px;
+    white-space: normal;
+  }
+  .camp-node .node-state {
+    display: none;
+  }
+  .camp-node .node-meta {
+    display: block;
+    font-size: 9px;
+  }
+  .camp-node .node-name {
+    display: block;
+    max-width: none;
+    font-size: 11px;
+  }
+  .camp-legend {
+    position: static;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 2px;
+    font-size: 11px;
+  }
+  .camp-contract,
+  .camp-contract.negotiating,
+  .camp-bay,
+  .camp-roster,
+  .camp-store {
+    max-height: none;
+    min-height: min-content;
+    overflow-y: visible;
+  }
+  .contract-option {
+    min-height: 56px;
+    padding: 8px;
+  }
+  .contract-option input[type='radio'] {
+    width: 20px;
+    height: 20px;
+  }
+  /* A capped shelf keeps pick-then-place from becoming a thousand-pixel trip.
+     Stores precede the loadout, so placement continues in the scroll direction. */
+  .bay-top {
+    gap: 8px;
+    order: 0;
+  }
+  .bay-name {
+    flex: 1 1 100%;
+  }
+  .bay-top select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .bay-machine {
+    order: 1;
+    overflow-y: visible;
+  }
+
+  .chassis-silhouette {
+    height: clamp(180px, 30dvh, 260px);
+  }
+  .bay-side {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .bay-side > .bay-stocks {
+    flex: none;
+    max-height: min(46dvh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .bay-grid {
+    order: 3;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: none;
+    overflow: visible;
+  }
+
+  .bay-grid > * {
+    grid-area: auto;
+  }
+  .bay-actions {
+    order: 4;
+  }
+
+  .bay-shelf-tabs button,
+  .bay-stock,
+  .bay-show-all,
+  .bay-armed-banner button,
+  .bay-sinks > button {
+    min-height: var(--tap-size);
+  }
+
+  .bay-stock {
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .stock-detail {
+    font-size: 11px;
+  }
+  .bay-show-all input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .bay input[type='range'] {
+    min-height: var(--tap-size);
+  }
+  .bay-armed-banner {
+    position: sticky;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    z-index: 3;
+    min-height: var(--tap-size);
+    background: rgba(12, 22, 28, 0.98);
+  }
+
+  /* The slot diagram remains visible in its counters and hardpoint pips. Fitted
+     items become rows because a one-slot block is only a few pixels wide. */
+  .bay-slotgrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 4px;
+  }
+
+  .slot-block {
+    grid-column: 1 !important;
+    height: var(--tap-size);
+  }
+  .slot-block.empty {
+    display: none;
+  }
+
+  .slot-block > button {
+    padding: 0 10px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .briefing p,
+  .briefing ul,
+  .manual-sheet p {
+    font-size: 13px;
+  }
+
+  .briefing-berth {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .briefing > button:last-child {
+    width: 100%;
+  }
+
+  .manifest-actions,
+  .battle-results-actions {
+    align-items: stretch;
+  }
+  .manifest-actions > button,
+  .battle-results-actions > button {
+    flex: 1 1 140px;
+  }
+
+  .camp-manual,
+  .manifest-backdrop {
+    padding: calc(10px + env(safe-area-inset-top, 0px))
+      calc(10px + env(safe-area-inset-right, 0px))
+      calc(10px + env(safe-area-inset-bottom, 0px))
+      calc(10px + env(safe-area-inset-left, 0px));
+  }
+
+  .battle-results-backdrop {
+    padding: 8px calc(8px + env(safe-area-inset-right, 0px))
+      calc(8px + env(safe-area-inset-bottom, 0px))
+      calc(8px + env(safe-area-inset-left, 0px));
+  }
+}

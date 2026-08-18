@@ -188,6 +188,8 @@ export interface GameState {
   /** Lance elements the player has bound to the number keys. */
   controlGroups: Record<number, EntityId[]>;
   orderMode: OrderMode;
+  /** A phone has no Shift key, so route-building persists across successive taps. */
+  queueOrders: boolean;
   calledShotLocation: MechLocation | null;
   units: UnitSnapshot[];
   enemies: UnitSnapshot[];
@@ -240,6 +242,7 @@ export const useGame = create<GameState & GameActions>((set) => ({
   selection: [],
   controlGroups: {},
   orderMode: null,
+  queueOrders: false,
   calledShotLocation: null,
   units: [],
   enemies: [],

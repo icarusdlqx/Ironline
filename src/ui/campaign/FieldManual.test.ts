@@ -26,6 +26,9 @@ describe('field manual controls', () => {
     expect(TOUCH_BINDINGS).toContainEqual(
       expect.objectContaining({ input: 'Tap a support call' }),
     );
+    expect(TOUCH_BINDINGS).toContainEqual(
+      expect.objectContaining({ input: 'All / Queue / Cancel' }),
+    );
   });
 
   it('keeps supported controls ahead of the setting pages', () => {
@@ -34,7 +37,7 @@ describe('field manual controls', () => {
     );
 
     expect(markup.indexOf('Controls')).toBeLessThan(markup.indexOf('Standing Orders'));
-    expect(markup).toContain('On touch, it runs from the lance through the point tapped.');
+    expect(markup).toContain('Press at the aim point and drag the run-in before releasing.');
     expect(markup).toContain('Reinforcement');
     expect(markup).toContain('Drops one unused mission reserve.');
     expect(markup).not.toContain('Artillery Strike');

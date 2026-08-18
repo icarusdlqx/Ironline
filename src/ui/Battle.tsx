@@ -19,9 +19,9 @@ import { listStoredDesigns, loadFromStorage } from './mechbay/editor';
 import { Mechbay, type BayCommission } from './mechbay/Mechbay';
 import {
   Briefing,
-  ObjectiveList,
   type BriefingLance,
 } from './Panels';
+import { ObjectiveList } from './ObjectiveList';
 import { BriefingSetup } from './BattleSetup';
 import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
 import { useGame } from './store';
@@ -352,10 +352,10 @@ export function Battle() {
         </div>
       )}
 
-      <ObjectiveList objectives={state.objectives} zones={state.zones} />
-      {missionId === TRAINING_MISSION_ID && !state.campaignPending ? <TrainingCoach /> : null}
+      {state.briefingSeen ? <ObjectiveList objectives={state.objectives} zones={state.zones} /> : null}
+      {state.briefingSeen && missionId === TRAINING_MISSION_ID && !state.campaignPending ? <TrainingCoach /> : null}
 
-      {state.paused && !state.finished ? (
+      {state.briefingSeen && state.paused && !state.finished ? (
         <div className="paused-banner" data-testid="paused-banner">
           PAUSED — orders still accepted
         </div>
@@ -393,7 +393,7 @@ export function Battle() {
         </div>
       ) : null}
 
-      <BattleHud engine={engineRef.current} supportOptions={supportOptions} />
+      {state.briefingSeen ? <BattleHud engine={engineRef.current} supportOptions={supportOptions} /> : null}
     </div>
   );
 }
