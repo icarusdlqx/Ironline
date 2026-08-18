@@ -1,0 +1,105 @@
+{
+  "id": "salvage_tactics",
+  "name": "Field Exercise — Salvage Tactics",
+  "type": "defend",
+  "mapId": "ridge_pass",
+  "briefing": "Field exercise. Hold the recovery yard until the clock while one live range target presses it. Use Called Shot, take one leg, then the other, and press Hold Fire immediately when both are gone. A standing attack order keeps shooting. If your side holds the field, an operational machine with both legs gone is recorded as legged: the best hull-recovery chance you can deliberately make here, never a guaranteed recovery. The exercise pays no C-bills and adds nothing to inventory.",
+  "maxDurationSeconds": 60,
+  "startingResourcePoints": 0,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Recovery Detail",
+      "units": [
+        {
+          "designId": "colossus_siege",
+          "pilotId": "kessa_vale",
+          "spawn": {
+            "x": 492,
+            "y": 612
+          },
+          "facingDegrees": -90
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Live Range Target",
+      "units": [
+        {
+          "designId": "warden_lancer",
+          "pilotId": "bo_ferrant",
+          "spawn": {
+            "x": 492,
+            "y": 348
+          },
+          "facingDegrees": 90
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "recovery_yard",
+      "name": "Recovery Yard",
+      "x": 492,
+      "y": 612,
+      "radius": 78,
+      "owner": 0,
+      "captureSeconds": 12,
+      "resourcePoints": 0
+    }
+  ],
+  "objectives": [
+    {
+      "id": "hold_recovery_yard",
+      "label": "Hold the recovery yard for 60 seconds",
+      "type": "protect_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "recovery_yard"
+      ],
+      "resourcePoints": 0
+    },
+    {
+      "id": "detail_survives",
+      "label": "Keep the recovery detail operational",
+      "type": "survive",
+      "team": 0,
+      "required": true,
+      "resourcePoints": 0
+    }
+  ],
+  "triggers": [
+    {
+      "id": "called_shot_order",
+      "when": {
+        "type": "elapsed",
+        "seconds": 2
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Range control: use Called Shot on LL, then RL after the first leg goes. At two legs, press Hold Fire immediately. A standing attack order keeps shooting."
+        }
+      ]
+    },
+    {
+      "id": "hold_the_field",
+      "when": {
+        "type": "elapsed",
+        "seconds": 35
+      },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Range control: two legs means Hold Fire now. A legged machine can still shoot, and the field result is not settled until the yard is held to the clock."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 100
+}

@@ -26,7 +26,7 @@ import { BriefingSetup } from './BattleSetup';
 import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
 import { useGame } from './store';
 import { buildSupportOptions } from './supportOptions';
-import { TrainingCoach } from './TrainingCoach';
+import { BattleCoach } from './BattleCoach';
 import {
   completeTraining,
   skipTraining,
@@ -353,7 +353,7 @@ export function Battle() {
       )}
 
       {state.briefingSeen ? <ObjectiveList objectives={state.objectives} zones={state.zones} /> : null}
-      {state.briefingSeen && missionId === TRAINING_MISSION_ID && !state.campaignPending ? <TrainingCoach /> : null}
+      {state.briefingSeen && !state.campaignPending ? <BattleCoach missionId={missionId} /> : null}
 
       {state.briefingSeen && state.paused && !state.finished ? (
         <div className="paused-banner" data-testid="paused-banner">

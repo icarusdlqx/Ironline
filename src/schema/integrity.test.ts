@@ -82,4 +82,37 @@ describe('campaign content integrity', () => {
       }),
     ]));
   });
+
+  it('catalogues the reward-free field exercise outside the campaign', () => {
+    const mission = catalog.missions.get('salvage_tactics');
+    expect(mission).toBeDefined();
+    if (mission === undefined) return;
+
+    const campaignMissionIds = [...catalog.campaigns.values()].flatMap((campaign) => [
+      ...campaign.nodes.map((node) => node.missionId),
+      ...campaign.sideWork.missionIds,
+    ]);
+    expect(campaignMissionIds).not.toContain(mission.id);
+    expect(mission.startingResourcePoints).toBe(0);
+    expect(mission.maxDurationSeconds).toBe(60);
+    expect(mission.objectives.map((objective) => objective.type)).toEqual([
+      'protect_zones',
+      'survive',
+    ]);
+    expect(mission.objectives.every((objective) => objective.resourcePoints === 0)).toBe(true);
+    expect(
+      mission.triggers.flatMap((trigger) => trigger.effects)
+        .some((effect) => effect.type === 'award_resource_points'),
+    ).toBe(false);
+    const hostileUnits = mission.lances
+      .filter((lance) => lance.team !== 0)
+      .flatMap((lance) => lance.units);
+    expect(hostileUnits).toHaveLength(1);
+    const targetDesign = catalog.designs.get(hostileUnits[0]?.designId ?? '');
+    expect(catalog.chassis.get(targetDesign?.chassisId ?? '')?.frame).toBe('mech');
+
+    const issues: ContentIssue[] = [];
+    checkIntegrity(catalog, issues);
+    expect(issues.filter((issue) => issue.file === `missions/${mission.id}.json`)).toEqual([]);
+  });
 });
