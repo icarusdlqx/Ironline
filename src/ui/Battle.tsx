@@ -6,6 +6,7 @@ import { getCatalog } from '../schema/load';
 import { PLAYER_CALLS } from '../sim/support';
 import type { MechLocation } from '../schema/common';
 import { CommandPalette, type Command } from './CommandPalette';
+import { BattleResults } from './BattleResults';
 import { createEngine, type Engine } from './engine';
 import {
   berthDesign,
@@ -64,6 +65,8 @@ export function Battle() {
   const [resolved, setResolved] = useState(false);
   const [muted, setMuted] = useState(false);
   const [lowFx, setLowFx] = useState(false);
+  const deployRestart = useRef(false);
+  const [battleRun, setBattleRun] = useState(0);
   const missionId = useGame((game) => game.skirmishMissionId);
   const difficulty = useGame((game) => game.difficulty);
 
@@ -89,6 +92,8 @@ export function Battle() {
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) return;
+    const deployImmediately = deployRestart.current;
+    deployRestart.current = false;
 
     let options: Record<string, unknown> = { missionId, difficulty };
     const entries = lanceEntries(getCatalog(), JSON.parse(lanceKey) as SkirmishBerth[]);
@@ -126,6 +131,10 @@ export function Battle() {
           return;
         }
         engineRef.current = engine;
+        if (deployImmediately) {
+          engine.renderer.camera.beginDropIn();
+          useGame.getState().patch({ briefingSeen: true, paused: false });
+        }
       })
       .catch((error: unknown) => {
         useGame.getState().patch({ error: error instanceof Error ? error.message : String(error) });
@@ -136,7 +145,7 @@ export function Battle() {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [missionId, difficulty, lanceKey]);
+  }, [missionId, difficulty, lanceKey, battleRun]);
 
   const onReturnToCampaign = (): void => {
     const engine = engineRef.current;
@@ -152,6 +161,41 @@ export function Battle() {
       return;
     }
     state.patch({ campaignPending: false, screen: 'campaign' });
+  };
+
+  const restartBattle = (deploy: boolean, nextMissionId = missionId): void => {
+    deployRestart.current = deploy;
+    setResolved(false);
+    state.patch({
+      skirmishMissionId: nextMissionId,
+      ready: false,
+      error: null,
+      paused: true,
+      speed: 1,
+      tick: 0,
+      elapsedSeconds: 0,
+      finished: false,
+      winner: null,
+      selection: [],
+      orderMode: null,
+      calledShotLocation: null,
+      units: [],
+      enemies: [],
+      log: [],
+      missionName: '',
+      briefing: '',
+      briefingSeen: false,
+      resourcePoints: 0,
+      objectives: [],
+      zones: [],
+      missionStatus: 'active',
+      missionReason: null,
+      supportMode: null,
+      reservesLeft: 0,
+      marquee: null,
+      hitPreview: null,
+    });
+    setBattleRun((run) => run + 1);
   };
 
   const onCommand = (command: Command): void => {
@@ -287,6 +331,7 @@ export function Battle() {
     cost: getCatalog().rules.support[id].cost,
     hint: SUPPORT_HINTS[id] ?? '',
   }));
+  const battleResult = state.finished ? (engineRef.current?.result() ?? null) : null;
 
   return (
     <div className="app">
@@ -453,24 +498,23 @@ export function Battle() {
         </div>
       ) : null}
 
-      {state.finished ? (
-        <div className="outcome" data-testid="outcome">
-          <span>
-            {state.missionStatus === 'success'
-              ? 'Mission accomplished'
-              : state.missionStatus === 'failure'
-                ? `Mission failed — ${state.missionReason ?? ''}`
-                : state.winner === state.playerTeam
-                  ? 'Mission accomplished'
-                  : 'Lance destroyed'}
-          </span>
-          {state.campaignPending ? (
-            <button type="button" onClick={onReturnToCampaign} data-testid="return-to-campaign">
-              {resolved ? 'Back to campaign' : 'Resolve contract'}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {battleResult === null ? null : (
+        <BattleResults
+          result={battleResult}
+          playerTeam={state.playerTeam}
+          missionName={state.missionName}
+          campaignPending={state.campaignPending}
+          campaignResolved={resolved}
+          missions={[...catalog.missions.values()].map((mission) => ({
+            id: mission.id,
+            name: mission.name,
+          }))}
+          selectedMissionId={missionId}
+          onReplay={() => restartBattle(true)}
+          onChooseMission={(nextMissionId) => restartBattle(false, nextMissionId)}
+          onReturnToCampaign={onReturnToCampaign}
+        />
+      )}
 
       {state.error !== null ? (
         <div className="error" data-testid="error">
