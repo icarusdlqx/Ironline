@@ -3,9 +3,11 @@ import type { MissionChoice } from './BattleSetup';
 import { SetupToolbar } from './BattleSetup';
 import type { Engine } from './engine';
 import { formatMissionClock, missionClockUrgency } from './missionClock';
+import { MobileBattleTopbar } from './MobileBattleTopbar';
 import { useGame } from './store';
+import { useCompactLayout } from './useCompactLayout';
 
-interface BattleTopbarProps {
+export interface BattleTopbarProps {
   engine: Engine | null;
   muted: boolean;
   lowFx: boolean;
@@ -39,6 +41,27 @@ export function BattleTopbar({
   onChooseMission,
 }: BattleTopbarProps) {
   const state = useGame();
+  const compact = useCompactLayout();
+  if (compact) {
+    return (
+      <MobileBattleTopbar
+        engine={engine}
+        muted={muted}
+        lowFx={lowFx}
+        setupMissionId={setupMissionId}
+        setupDifficultyId={setupDifficultyId}
+        missions={missions}
+        difficulties={difficulties}
+        locked={locked}
+        onMuted={onMuted}
+        onLowFx={onLowFx}
+        onMission={onMission}
+        onDifficulty={onDifficulty}
+        onRestart={onRestart}
+        onChooseMission={onChooseMission}
+      />
+    );
+  }
   const remainingSeconds = Math.max(0, state.missionDurationSeconds - state.elapsedSeconds);
   const clockUrgency = missionClockUrgency(remainingSeconds);
   const lockedTitle = state.campaignPending

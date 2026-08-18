@@ -821,6 +821,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
     paused: true,
     speed: 1,
     hitPreview: null,
+    queueOrders: false,
     supportMode: null,
     heatTiers: catalog.rules.heat.tiers.map((tier) => tier.fraction),
   });

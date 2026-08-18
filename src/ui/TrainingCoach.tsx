@@ -9,6 +9,7 @@ import {
   type TrainingSignals,
   type TrainingStep,
 } from './trainingProgress';
+import { useCompactLayout } from './useCompactLayout';
 
 const LESSONS: Record<TrainingStep, { title: string; instruction: string }> = {
   0: {
@@ -45,6 +46,8 @@ function damaged(unit: UnitSnapshot): boolean {
 export function TrainingCoach() {
   const state = useGame();
   const [step, setStep] = useState<TrainingStep>(trainingStartStep);
+  const [open, setOpen] = useState(true);
+  const compact = useCompactLayout();
   const seen = useRef<TrainingSignals>({
     selected: false,
     moved: false,
@@ -92,17 +95,38 @@ export function TrainingCoach() {
 
   if (!activeMission || !state.briefingSeen || state.finished) return null;
   const lesson = LESSONS[step];
+  const progress = (
+    <span className="training-progress" aria-label={`Training step ${step + 1} of 5`}>
+      {[0, 1, 2, 3, 4].map((index) => (
+        <i key={index} className={index <= step ? 'done' : ''} />
+      ))}
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <details
+        className="training-coach mobile-training"
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+        data-testid="training-coach"
+        aria-live="polite"
+      >
+        <summary>
+          Range control <strong>{lesson.title}</strong>
+        </summary>
+        <p>{lesson.instruction}</p>
+        {progress}
+      </details>
+    );
+  }
 
   return (
     <section className="training-coach" data-testid="training-coach" aria-live="polite">
       <span className="training-kicker">Range control</span>
       <strong>{lesson.title}</strong>
       <p>{lesson.instruction}</p>
-      <span className="training-progress" aria-label={`Training step ${step + 1} of 5`}>
-        {[0, 1, 2, 3, 4].map((index) => (
-          <i key={index} className={index <= step ? 'done' : ''} />
-        ))}
-      </span>
+      {progress}
     </section>
   );
 }
