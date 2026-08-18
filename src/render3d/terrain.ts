@@ -225,7 +225,7 @@ export function buildTerrain(
   };
 }
 
-/** Bilinear sample of the corner heights, so a mech walks up a slope smoothly. */
+/** Matches the two visible triangles, so grounded objects cannot enter a facet. */
 function sampleHeight(
   heights: Float32Array,
   across: number,
@@ -243,7 +243,10 @@ function sampleHeight(
   const fy = gy - row;
 
   const at = (c: number, r: number): number => heights[r * across + c] ?? 0;
-  const top = at(column, row) * (1 - fx) + at(column + 1, row) * fx;
-  const bottom = at(column, row + 1) * (1 - fx) + at(column + 1, row + 1) * fx;
-  return top * (1 - fy) + bottom * fy;
+  const a = at(column, row);
+  const b = at(column + 1, row);
+  const c = at(column, row + 1);
+  const d = at(column + 1, row + 1);
+  if (fx + fy <= 1) return a + (b - a) * fx + (c - a) * fy;
+  return d + (c - d) * (1 - fx) + (b - d) * (1 - fy);
 }

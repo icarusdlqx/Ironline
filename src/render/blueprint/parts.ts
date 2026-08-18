@@ -5,6 +5,7 @@ import type {
   Bones,
   Fitting,
   HardpointCount,
+  LegJoint,
   PartShape,
   Profile,
   Tone,
@@ -26,6 +27,10 @@ export function part(
 
 export function bolted(piece: BlueprintPart): BlueprintPart {
   return { ...piece, fixed: true };
+}
+
+function jointed(piece: BlueprintPart, joint: LegJoint): BlueprintPart {
+  return { ...piece, joint };
 }
 
 export function shaped(
@@ -66,11 +71,16 @@ export function walkerLeg(parts: BlueprintPart[], b: Bones, side: number, boot: 
   const t = b.thigh;
 
   parts.push(
-    part(location, 'limb', [0, (b.hip + b.kneeHeight) / 2, z], [t * 1.18, b.hip - b.kneeHeight, t * 0.86], 'deep'),
-    part(location, 'sphere', [0, b.kneeHeight, z], [t * 1.06, t * 1.06, t * 1.06], 'plate'),
-    part(location, 'limb', [0, b.kneeHeight * 0.5, z], [t * 0.92, b.kneeHeight * 0.86, t * 1.02], 'plate'),
-    part(location, 'sphere', [0, b.kneeHeight * 0.14, z], [t * 0.72, t * 0.72, t * 0.72], 'deep'),
-    shaped(location, PROFILES.foot, [boot * 0.24, 0.1, z], [boot, 0.2, t * 1.24], 'deep'),
+    jointed(part(location, 'limb', [0, (b.hip + b.kneeHeight) / 2, z],
+      [t * 1.18, b.hip - b.kneeHeight, t * 0.86], 'deep'), 'hip'),
+    jointed(part(location, 'sphere', [0, b.kneeHeight, z],
+      [t * 1.06, t * 1.06, t * 1.06], 'plate'), 'knee'),
+    jointed(part(location, 'limb', [0, b.kneeHeight * 0.5, z],
+      [t * 0.92, b.kneeHeight * 0.86, t * 1.02], 'plate'), 'knee'),
+    jointed(part(location, 'sphere', [0, b.kneeHeight * 0.14, z],
+      [t * 0.72, t * 0.72, t * 0.72], 'deep'), 'ankle'),
+    jointed(shaped(location, PROFILES.foot, [boot * 0.24, 0.1, z],
+      [boot, 0.2, t * 1.24], 'deep'), 'ankle'),
   );
 }
 
@@ -83,14 +93,17 @@ export function birdLeg(parts: BlueprintPart[], b: Bones, side: number, boot: nu
   const thighTilt = Math.atan2(b.knee, Math.max(0.01, drop));
 
   parts.push(
-    part(location, 'limb', [b.knee * 0.5, (b.hip + b.kneeHeight) / 2, z],
-      [t * 1.16, Math.hypot(drop, b.knee), t * 0.84], 'deep', thighTilt),
-    part(location, 'sphere', [b.knee, b.kneeHeight, z], [t * 1.1, t * 1.1, t * 1.1], 'plate'),
-    part(location, 'limb', [b.knee * 0.45, b.kneeHeight * 0.5, z],
+    jointed(part(location, 'limb', [b.knee * 0.5, (b.hip + b.kneeHeight) / 2, z],
+      [t * 1.16, Math.hypot(drop, b.knee), t * 0.84], 'deep', thighTilt), 'hip'),
+    jointed(part(location, 'sphere', [b.knee, b.kneeHeight, z],
+      [t * 1.1, t * 1.1, t * 1.1], 'plate'), 'knee'),
+    jointed(part(location, 'limb', [b.knee * 0.45, b.kneeHeight * 0.5, z],
       [t * 0.86, Math.hypot(b.kneeHeight, b.knee), t * 0.98], 'plate',
-      -Math.atan2(b.knee, Math.max(0.01, b.kneeHeight))),
-    part(location, 'sphere', [0, b.kneeHeight * 0.12, z], [t * 0.62, t * 0.62, t * 0.62], 'deep'),
-    shaped(location, PROFILES.foot, [boot * 0.3, 0.09, z], [boot, 0.18, t * 1.1], 'deep'),
+      -Math.atan2(b.knee, Math.max(0.01, b.kneeHeight))), 'knee'),
+    jointed(part(location, 'sphere', [0, b.kneeHeight * 0.12, z],
+      [t * 0.62, t * 0.62, t * 0.62], 'deep'), 'ankle'),
+    jointed(shaped(location, PROFILES.foot, [boot * 0.3, 0.09, z],
+      [boot, 0.18, t * 1.1], 'deep'), 'ankle'),
   );
 }
 

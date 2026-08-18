@@ -1,9 +1,22 @@
 import { Vector3 } from 'three';
 import { radiusFor } from '../render/shape';
+import { angleDifference } from '../sim/math';
 import type { EntityId, MechEntity, Vec2 } from '../sim/types';
 import type { BattleEffects } from './battleEffects';
+import { createFootContactState, resetFootContact, settleFootContact,
+  type FootContactState } from './footContact';
+import { resetLegPose, writeJumpPose, writeStridePose, writeTurnPose, type LegPose } from './legMotion';
 import type { MechModel } from './mechModel';
+import { strideLengthFor, strideSwing, turnStrideLength } from './motionProfiles';
+import {
+  advanceGait,
+  gaitForTerrain,
+  responseBlend,
+  type GaitProfile,
+} from './terrainGait';
 import type { Interpolated } from './unitViews';
+
+export { advanceGait, gaitForTerrain, responseBlend, type GaitProfile } from './terrainGait';
 
 export interface GroundSample {
   height: number;
@@ -11,18 +24,13 @@ export interface GroundSample {
   gradeY: number;
 }
 
-export interface GaitProfile {
-  stride: number;
-  swing: number;
-  knee: number;
-  bob: number;
-}
-
 interface AnimationState {
   phase: number;
   amp: number;
+  lean: number;
   lastX: number;
   lastY: number;
+  lastFacing: number;
   hasLast: boolean;
   lastStep: number;
   fall: number;
@@ -32,23 +40,16 @@ interface AnimationState {
   hasGround: boolean;
   gait: GaitProfile;
   landedFall: boolean;
+  wasJumping: boolean;
+  poses: [LegPose, LegPose];
+  contact: FootContactState;
+  turnPhase: number;
+  turnDirection: -1 | 0 | 1;
 }
 
 const NOZZLE = new Vector3();
 const TILT_LIMIT = 0.32;
-
-const GAITS: Record<string, GaitProfile> = {
-  open: { stride: 1, swing: 0.42, knee: 0.5, bob: 1 },
-  road: { stride: 1.08, swing: 0.43, knee: 0.46, bob: 0.9 },
-  forest: { stride: 0.74, swing: 0.32, knee: 0.68, bob: 0.68 },
-  rough: { stride: 0.84, swing: 0.36, knee: 0.6, bob: 0.78 },
-  water: { stride: 0.7, swing: 0.28, knee: 0.72, bob: 0.52 },
-  building: { stride: 0.9, swing: 0.37, knee: 0.55, bob: 0.82 },
-};
-
-export function gaitForTerrain(terrainId: string): GaitProfile {
-  return GAITS[terrainId] ?? GAITS.open ?? { stride: 1, swing: 0.42, knee: 0.5, bob: 1 };
-}
+const OPEN_KNEE = 0.5;
 
 /** Samples gradients in world axes, so a turn on one slope cannot swap lagging pitch and roll. */
 export function sampleGround(
@@ -83,22 +84,6 @@ export function localTilt(
   };
 }
 
-export function responseBlend(rate: number, deltaSeconds: number): number {
-  return 1 - Math.exp(-Math.max(0, deltaSeconds) * rate);
-}
-
-export function advanceGait(
-  current: GaitProfile,
-  target: GaitProfile,
-  deltaSeconds: number,
-): void {
-  const blend = responseBlend(7, deltaSeconds);
-  current.stride += (target.stride - current.stride) * blend;
-  current.swing += (target.swing - current.swing) * blend;
-  current.knee += (target.knee - current.knee) * blend;
-  current.bob += (target.bob - current.bob) * blend;
-}
-
 /** Render-only gait and ground pose; simulation positions remain authoritative. */
 export class Locomotion {
   onFootfall: ((at: Vec2, tonnage: number) => void) | null = null;
@@ -124,7 +109,8 @@ export class Locomotion {
     this.followGround(state, ground, deltaSeconds);
     const tilt = localTilt(state.gradeX, state.gradeY, at.facing);
 
-    model.root.position.set(at.x, state.ground + lift, at.y);
+    const contact = entity.jump === null ? state.contact.body : 0;
+    model.root.position.set(at.x, state.ground + lift + contact, at.y);
     model.root.rotation.y = -at.facing;
     model.root.rotation.x = tilt.x;
     model.root.rotation.z = tilt.z;
@@ -188,13 +174,16 @@ export class Locomotion {
       model.root.rotation.z = tilt.z;
     }
 
-    const travelled = state.hasLast ? Math.hypot(at.x - state.lastX, at.y - state.lastY) : 0;
-    const moved = travelled > model.strideLength * 2 ? 0 : travelled;
+    const translated = state.hasLast ? Math.hypot(at.x - state.lastX, at.y - state.lastY) : 0;
+    const turnDelta = state.hasLast ? angleDifference(state.lastFacing, at.facing) : 0;
+    const turned = Math.abs(turnDelta);
     state.lastX = at.x;
     state.lastY = at.y;
+    state.lastFacing = at.facing;
     state.hasLast = true;
 
-    if (model.legs.length === 0) {
+    const motion = model.motion;
+    if (model.legs.length === 0 || motion === null) {
       model.root.rotation.x = tilt.x;
       return;
     }
@@ -203,33 +192,149 @@ export class Locomotion {
     const profile = state.gait;
     const grade = Math.hypot(state.gradeX, state.gradeY);
     const climb = clamp(grade / 0.45, 0, 1);
-    const stride = profile.stride * (1 - climb * 0.18);
-    state.phase += (moved / Math.max(1, model.strideLength * stride)) * Math.PI;
+    const strideLength = strideLengthFor(model.legReach, motion, profile) * (1 - climb * 0.18);
 
-    const speed = dt > 0 ? moved / dt : 0;
+    if (entity.jump !== null) {
+      state.wasJumping = true;
+      this.jumpPose(entity, model, state, tilt, dt);
+      return;
+    }
+
+    if (state.wasJumping) {
+      state.wasJumping = false;
+      this.resetMotion(state, model, tilt);
+      return;
+    }
+
+    if (translated > Math.max(2, model.strideLength * 2) || turned > Math.PI * 0.45) {
+      this.resetMotion(state, model, tilt);
+      return;
+    }
+
+    const turnTravel = turnDelta * model.turnRadius;
+    const travelled = Math.hypot(translated, turnTravel);
+    const pureTurn = turned > 0 && translated <= Math.abs(turnTravel) * 0.25;
+    let posePhase: number;
+    let poseStride = strideLength;
+    if (pureTurn) {
+      const direction: -1 | 1 = turnDelta < 0 ? -1 : 1;
+      if (state.turnDirection !== direction) state.turnPhase = Math.PI / 2;
+      state.turnDirection = direction;
+      poseStride = turnStrideLength(strideLength, model.turnRadius);
+      state.turnPhase += (Math.abs(turnTravel) / poseStride) * Math.PI;
+      posePhase = state.turnPhase;
+    } else if (translated > 0) {
+      if (state.turnDirection !== 0) state.phase = Math.PI / 2;
+      state.turnDirection = 0;
+      state.phase += (travelled / strideLength) * Math.PI;
+      posePhase = state.phase;
+    } else {
+      posePhase = state.turnDirection === 0 ? state.phase : state.turnPhase;
+    }
+
+    const speed = dt > 0 ? travelled / dt : 0;
     const wantedAmp = clamp(speed / 3.5, 0, 1);
-    state.amp += (wantedAmp - state.amp) * responseBlend(8, dt);
+    const acceleration = wantedAmp - state.amp;
+    const wantedLean = -clamp(acceleration * 2.4, -1, 1) * motion.lean;
+    state.amp += acceleration * responseBlend(motion.response, dt);
+    state.lean += (wantedLean - state.lean) * responseBlend(motion.response * 0.72, dt);
 
-    const swing = profile.swing * (1 - climb * 0.15) * state.amp;
-    const knee = profile.knee * (1 + climb * 0.25) * state.amp;
-    model.legs.forEach((leg, index) => {
-      const phase = state.phase + (index === 0 ? 0 : Math.PI);
-      leg.hip.rotation.z = Math.sin(phase) * swing;
-      leg.knee.rotation.z = -Math.max(0, Math.sin(phase + 0.9)) * knee;
-    });
+    const swing = strideSwing(poseStride, model.legReach);
+    const knee = motion.kneeLift * (profile.knee / OPEN_KNEE) * (1 + climb * 0.25) * state.amp;
+    for (let index = 0; index < model.legs.length; index += 1) {
+      const leg = model.legs[index];
+      const pose = state.poses[index];
+      if (leg === undefined || pose === undefined) continue;
+      const phase = posePhase + (index === 0 ? 0 : Math.PI);
+      if (state.turnDirection === 0) writeStridePose(pose, phase, swing, knee, 0);
+      else writeTurnPose(pose, phase, swing, knee, index === 0 ? -1 : 1, state.turnDirection);
+      leg.hip.rotation.z = pose.hip;
+      leg.knee.rotation.z = pose.knee;
+      leg.ankle.rotation.z = pose.ankle;
+    }
 
-    const bob = profile.bob * (1 - climb * 0.35);
+    const bob = motion.bob * profile.bob * (1 - climb * 0.35);
     model.torso.position.y =
-      model.torsoRestY + Math.abs(Math.sin(state.phase)) * model.torsoRestY * 0.035 * state.amp * bob;
-    model.root.rotation.x = tilt.x + Math.sin(state.phase) * 0.02 * state.amp * bob;
+      model.torsoRestY + Math.abs(Math.sin(posePhase)) * model.torsoRestY * 0.035 * state.amp * bob;
+    model.torso.rotation.x = Math.sin(posePhase) * 0.018 * state.amp * bob;
+    model.torso.rotation.z = state.lean - Math.sin(posePhase) * motion.torsoCounter * state.amp;
+    model.root.rotation.x = tilt.x;
+    model.root.rotation.z = tilt.z;
+    settleFootContact(
+      state.contact,
+      model,
+      state.poses,
+      this.heightAt,
+      dt,
+    );
 
-    const step = Math.floor(state.phase / Math.PI);
+    const step = Math.floor(posePhase / Math.PI);
     if (step !== state.lastStep) {
       state.lastStep = step;
-      if (state.amp > 0.35 && this.onFootfall !== null) {
+      if (state.amp > 0.35 && travelled !== 0 && this.onFootfall !== null) {
         this.onFootfall({ x: at.x, y: at.y }, entity.tonnage);
       }
     }
+  }
+
+  private jumpPose(
+    entity: MechEntity,
+    model: MechModel,
+    state: AnimationState,
+    tilt: { x: number; z: number },
+    dt: number,
+  ): void {
+    const jump = entity.jump;
+    const motion = model.motion;
+    if (jump === null || motion === null) return;
+    const progress = jump.duration <= 0 ? 1 : jump.elapsed / jump.duration;
+    state.amp += (0 - state.amp) * responseBlend(motion.response, dt);
+    state.lean = 0;
+    resetFootContact(state.contact, model);
+    for (let index = 0; index < model.legs.length; index += 1) {
+      const leg = model.legs[index];
+      const pose = state.poses[index];
+      if (leg === undefined || pose === undefined) continue;
+      writeJumpPose(pose, progress, motion.tuck, index === 0 ? -1 : 1);
+      leg.hip.rotation.z = pose.hip;
+      leg.knee.rotation.z = pose.knee;
+      leg.ankle.rotation.z = pose.ankle;
+    }
+    model.torso.position.y = model.torsoRestY;
+    model.torso.rotation.x = 0;
+    model.torso.rotation.z = 0;
+    model.root.rotation.x = tilt.x;
+    model.root.rotation.z = tilt.z;
+  }
+
+  private resetMotion(
+    state: AnimationState,
+    model: MechModel,
+    tilt: { x: number; z: number },
+  ): void {
+    const previousContact = state.contact.body;
+    state.phase = Math.PI / 2;
+    state.turnPhase = Math.PI / 2;
+    state.turnDirection = 0;
+    state.amp = 0;
+    state.lean = 0;
+    state.lastStep = 0;
+    resetFootContact(state.contact, model);
+    model.root.position.y -= previousContact;
+    for (let index = 0; index < model.legs.length; index += 1) {
+      const leg = model.legs[index];
+      const pose = state.poses[index];
+      if (leg === undefined || pose === undefined) continue;
+      resetLegPose(pose);
+      leg.hip.rotation.z = 0;
+      leg.knee.rotation.z = 0;
+      leg.ankle.rotation.z = 0;
+    }
+    model.torso.position.y = model.torsoRestY;
+    model.torso.rotation.x = 0;
+    model.torso.rotation.z = 0;
+    model.root.rotation.x = tilt.x;
+    model.root.rotation.z = tilt.z;
   }
 
   private burn(entity: MechEntity, model: MechModel): void {
@@ -253,10 +358,12 @@ export class Locomotion {
     const existing = this.states.get(id);
     if (existing !== undefined) return existing;
     const fresh: AnimationState = {
-      phase: 0,
+      phase: Math.PI / 2,
       amp: 0,
+      lean: 0,
       lastX: 0,
       lastY: 0,
+      lastFacing: 0,
       hasLast: false,
       lastStep: 0,
       fall: 0,
@@ -266,6 +373,14 @@ export class Locomotion {
       hasGround: false,
       gait: { ...gaitForTerrain('open') },
       landedFall: false,
+      wasJumping: false,
+      poses: [
+        { hip: 0, knee: 0, ankle: 0, planted: true },
+        { hip: 0, knee: 0, ankle: 0, planted: true },
+      ],
+      contact: createFootContactState(),
+      turnPhase: Math.PI / 2,
+      turnDirection: 0,
     };
     this.states.set(id, fresh);
     return fresh;

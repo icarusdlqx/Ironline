@@ -10,6 +10,7 @@ export type {
   BlueprintPart,
   HardpointCount,
   HardpointMap,
+  LegJoint,
   PartShape,
   Profile,
   Tone,
@@ -84,6 +85,13 @@ export function chassisBlueprint(
 
   const built = PLANS[shape.form](bones, has, fit, identity);
   const torsoY = bones.hip + bones.tall * 0.5;
+  const reversed = shape.form === 'scout' || shape.form === 'bird' || shape.form === 'battle';
+  const ankleHeight = bones.kneeHeight * (reversed ? 0.12 : 0.14);
+  const ankleForward = 0;
+  const legReach =
+    Math.hypot(bones.hip - bones.kneeHeight, bones.knee) +
+    Math.hypot(bones.kneeHeight - ankleHeight, bones.knee - ankleForward);
+  const stanceReach = Math.hypot(bones.hip - ankleHeight, ankleForward);
 
   return {
     parts: built.parts,
@@ -94,6 +102,11 @@ export function chassisBlueprint(
       hipHeight: bones.hip,
       kneeHeight: bones.kneeHeight,
       kneeForward: bones.knee,
+      ankleHeight,
+      ankleForward,
+      reach: legReach,
+      stanceReach,
+      stanceWidth: bones.spread,
     },
     articulated: WALKS.has(shape.form),
   };
