@@ -101,46 +101,6 @@ export function traitFactor(
   return factor;
 }
 
-/**
- * Which skill a pilot puts their own experience into.
- *
- * Left to themselves, people get better at what they already do: a marksman
- * works on gunnery, a scout on sensors. Which speciality points where is
- * authored on the trait now rather than kept in a table here.
- */
-function preferredSkills(catalog: Catalog, pilot: PilotRecord): Skill[] {
-  const wanted = pilot.traits
-    .map((traitId) => catalog.rules.pilotTraits.entries[traitId]?.speciality ?? null)
-    .filter((skill): skill is Skill => skill !== null);
-  // Their speciality first, then whatever is furthest behind — a pilot with no
-  // speciality still rounds themselves out rather than stalling.
-  const rest = [...SKILLS].sort((a, b) => pilot[a] - pilot[b]);
-  return [...wanted, ...rest];
-}
-
-export interface Promotion {
-  skill: Skill;
-  level: number;
-}
-
-/**
- * Spends whatever experience a pilot came home with. Called at debrief, so a
- * pilot who survives a mission visibly comes back better at something.
- */
-export function promote(catalog: Catalog, pilot: PilotRecord): Promotion[] {
-  const gained: Promotion[] = [];
-  for (let round = 0; round < SKILLS.length * MAX_SKILL; round += 1) {
-    const skill = preferredSkills(catalog, pilot).find(
-      (candidate) => pilot[candidate] < MAX_SKILL && availableXp(pilot) >= skillCost(catalog, pilot[candidate]),
-    );
-    if (skill === undefined) break;
-    const result = raiseSkill(catalog, pilot, skill);
-    if (!result.ok) break;
-    gained.push({ skill, level: pilot[skill] });
-  }
-  return gained;
-}
-
 export interface CasualtyResult {
   died: boolean;
   injuredDays: number;

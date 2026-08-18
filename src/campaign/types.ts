@@ -74,7 +74,9 @@ export interface PilotReport {
   kills: number;
   damage: number;
   xp: number;
-  /** Skills raised on the strength of this drop, as "gunnery 3". */
+  /** Unspent total after this award; old reports did not record it. */
+  xpBanked: number | null;
+  /** Skills raised by old automatic debriefs, retained for their saved reports. */
   promotions: string[];
   fate: 'returned' | 'injured' | 'killed';
 }

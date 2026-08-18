@@ -1,0 +1,157 @@
+.progression-roster {
+  min-height: 520px;
+  max-height: 520px;
+}
+
+/* Scroll containers contribute almost no height to the campaign grid. These
+   are decisions, not narrow title bars with their contents trapped inside. */
+.progression-bay {
+  min-height: 320px;
+}
+
+.roster-ledger {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.roster-ledger strong {
+  color: var(--warn);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-note,
+.pilot-milestone,
+.pilot-picks p {
+  margin: 3px 0 7px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.progression-roster .pilot-card {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas: none;
+  gap: 5px;
+  padding: 8px 0;
+}
+
+.pilot-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pilot-card .pilot-state {
+  flex: none;
+}
+
+.pilot-card .pilot-traits {
+  display: grid;
+  gap: 2px;
+}
+
+.pilot-trait {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pilot-trait strong {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pilot-seat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pilot-training,
+.pilot-picks {
+  display: grid;
+  gap: 3px;
+}
+
+.pilot-training button,
+.pilot-picks button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 8px;
+  text-align: left;
+}
+
+.pilot-training button span,
+.pilot-picks button strong {
+  text-transform: capitalize;
+}
+
+.pilot-training button small,
+.pilot-picks button small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.pilot-training button b {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.pilot-picks {
+  padding: 5px;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+}
+
+.pilot-picks p {
+  color: var(--warn);
+  margin: 0 0 2px;
+}
+
+.progression-roster .camp-hires .pilot-trait {
+  margin-top: 2px;
+}
+
+.progression-roster .camp-hires li {
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'hire-name hire-button'
+    'hire-skills hire-state';
+}
+
+.progression-roster .camp-hires .pilot-name {
+  grid-area: hire-name;
+  white-space: normal;
+}
+
+.progression-roster .camp-hires .pilot-skills {
+  grid-area: hire-skills;
+}
+
+.progression-roster .camp-hires .pilot-state {
+  grid-area: hire-state;
+}
+
+.progression-roster .camp-hires > li > button {
+  grid-area: hire-button;
+  grid-row: 1 / span 2;
+}

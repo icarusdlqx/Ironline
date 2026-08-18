@@ -160,11 +160,20 @@ export function Debrief({
                   </div>
                   <div>
                     <dt>Earned</dt>
-                    <dd>{report.xp} XP</dd>
+                    <dd>
+                      +{report.xp} XP
+                      {report.xpBanked === null ? '' : ` · ${report.xpBanked} banked`}
+                    </dd>
                   </div>
                   <div>
-                    <dt>Raised</dt>
-                    <dd>{report.promotions.length === 0 ? '—' : report.promotions.join(', ')}</dd>
+                    <dt>Training</dt>
+                    <dd>
+                      {report.promotions.length > 0
+                        ? report.promotions.join(', ')
+                        : report.fate === 'killed'
+                          ? 'record closed'
+                          : 'choose in barracks'}
+                    </dd>
                   </div>
                 </dl>
 
