@@ -100,20 +100,24 @@ describe('contract negotiation', () => {
     expect(acceptContract(catalog, state, 'militia_raid', 99).ok).toBe(false);
   });
 
-  it('marks a node failed when the deadline passes', () => {
+  it('returns an expired campaign contract to the board after recovery', () => {
     acceptContract(catalog, state, 'militia_raid', 0);
     const deadline = state.contract?.deadlineDay ?? 0;
     advanceDays(catalog, state, deadline - state.day + 1);
 
     expect(state.contract).toBeNull();
-    expect(state.failedNodes).toContain('militia_raid');
+    expect(state.failedNodes).not.toContain('militia_raid');
+    expect(campaignNodes(catalog, state).map((entry) => entry.id)).toContain('militia_raid');
+    expect(state.finished).toBe(false);
   });
 
-  it('records a withdrawal as a failure', () => {
+  it('returns a withdrawn campaign contract to the board after recovery', () => {
     acceptContract(catalog, state, 'militia_raid', 0);
-    abandonContract(state);
+    abandonContract(catalog, state);
     expect(state.contract).toBeNull();
-    expect(state.failedNodes).toContain('militia_raid');
+    expect(state.failedNodes).not.toContain('militia_raid');
+    expect(campaignNodes(catalog, state).map((entry) => entry.id)).toContain('militia_raid');
+    expect(state.finished).toBe(false);
   });
 });
 
