@@ -1,7 +1,7 @@
 import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import { createRng } from '../sim/rng';
-import { pristineCondition } from './repair';
+import { estimateRepair, pristineCondition } from './repair';
 import type { CampaignState, MechRecord, StoreItem } from './types';
 
 /** Which week of stock the yard is showing. */
@@ -47,11 +47,18 @@ export function storeItemSaleBasis(catalog: Catalog, item: StoreItem): number {
  * selling a mech is selling it to someone who has to make a living reselling
  * it, and a market that paid full price would make salvage a money printer.
  *
- * A hulk is worth its scrap, less what it would take to make it walk.
+ * The yard prices the work it inherits. Selling a damaged survivor before the
+ * workshop sees it should not erase the same bill the company would have paid.
  */
 export function saleValueOf(catalog: Catalog, mech: MechRecord): number {
   const full = valueOf(catalog, mech.design) * catalog.rules.economy.market.sellFraction;
-  return Math.max(0, Math.round(full - mech.rebuildCost));
+  // Workshop bills are paid when work starts. A hulk has its separate rebuild
+  // quote; only a ready-but-damaged machine still hands a repair bill to the yard.
+  const inheritedBill =
+    mech.status === 'repairing'
+      ? 0
+      : estimateRepair(catalog, mech).cost;
+  return Math.max(0, Math.round(full - inheritedBill));
 }
 
 export interface Listing {
@@ -177,6 +184,9 @@ export function sellMech(catalog: Catalog, state: CampaignState, mechId: string)
   if (mech === undefined) return { ok: false, reason: 'no such machine' };
   if (state.mechs.length <= 1) return { ok: false, reason: 'that is the last machine in the bay' };
   if (state.contract !== null) return { ok: false, reason: 'not while a contract is signed' };
+  if (mech.status === 'repairing') {
+    return { ok: false, reason: 'wait for its paid workshop booking to finish' };
+  }
 
   for (const pilot of state.pilots) {
     if (pilot.mechId === mech.id) pilot.mechId = null;

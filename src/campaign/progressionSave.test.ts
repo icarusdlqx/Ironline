@@ -20,6 +20,7 @@ describe('progression reports in old saves', () => {
       salvagedChassis: [],
       salvagedItems: [],
       salvageOffered: [],
+      salvageFinalized: false,
       salvageCandidates: [],
       salvageProvenance: [],
       pilotCasualties: [],

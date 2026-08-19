@@ -2,6 +2,12 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import {
+  checkBriefingInputSafety,
+  checkDeployedInputSafety,
+  clearControlFocus,
+} from './input-safety.mjs';
+import { runCampaignRecovery } from './campaign-recovery.mjs';
 import { runMobilePlaythrough } from './mobile-playthrough.mjs';
 
 const PORT = 5183;
@@ -69,7 +75,10 @@ async function main() {
   // detached puts npx and vite in their own process group, so shutdown can
   // kill the group: signalling npx alone orphans vite, which keeps the stdio
   // pipes open and the finished script waiting forever to exit.
-  const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
+  // Worktrees share the dependency install during validation. Force Vite to
+  // rebuild its root-specific dep graph so a prior worktree cannot leave React
+  // optimized against a different source root.
+  const server = spawn('npx', ['vite', '--force', '--port', String(PORT), '--strictPort'], {
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   });
@@ -138,6 +147,15 @@ async function main() {
     check('the sim is held while briefing', (await sim(page)).tick === beforeBriefing);
     await page.screenshot({ path: `${SHOTS}/01-boot.png` });
 
+    await checkBriefingInputSafety({
+      page,
+      check,
+      sim,
+      state,
+      beforeBriefing,
+      shots: SHOTS,
+    });
+
     const battleCode = page.locator('[data-testid="briefing-battle-code"]');
     await battleCode.fill('x');
     check(
@@ -154,6 +172,7 @@ async function main() {
       (await page.evaluate(() => globalThis.__ironline.useGame.getState().battleCode)) ===
         'ridge-touch-0000002a',
     );
+    await checkDeployedInputSafety({ page, check, state });
 
     process.stdout.write('\nselection\n');
     await page.locator('[data-testid="lance-bar"] button').first().click();
@@ -180,6 +199,7 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/02-selected.png` });
 
     process.stdout.write('\npause\n');
+    await clearControlFocus(page);
     await page.keyboard.press('Space');
     await page.waitForSelector('[data-testid="paused-banner"]');
     const pausedTick = (await sim(page)).tick;
@@ -313,26 +333,81 @@ async function main() {
     check('called shot location is recorded', (await state(page)).calledShotLocation === 'left_leg');
 
     process.stdout.write('\ncamera\n');
-    const before = await page.evaluate(() => {
-      const { camera } = globalThis.__ironline.engine.renderer;
-      return { x: camera.target.x, distance: camera.distance };
-    });
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const zoomPointer = { x: box.width * 0.72, y: box.height * 0.46 };
+    const before = await page.evaluate((screen) => {
+      const { renderer } = globalThis.__ironline.engine;
+      return {
+        target: { ...renderer.camera.target },
+        distance: renderer.camera.distance,
+        anchor: renderer.camera.screenToWorld(
+          screen,
+          renderer.viewport,
+          renderer.groundMesh,
+        ),
+      };
+    }, zoomPointer);
+    await page.mouse.move(box.x + zoomPointer.x, box.y + zoomPointer.y);
     await page.mouse.wheel(0, -600);
+    const afterZoom = await page.evaluate((screen) => {
+      const { renderer } = globalThis.__ironline.engine;
+      return {
+        target: { ...renderer.camera.target },
+        distance: renderer.camera.distance,
+        anchor: renderer.camera.screenToWorld(
+          screen,
+          renderer.viewport,
+          renderer.groundMesh,
+        ),
+      };
+    }, zoomPointer);
+    await clearControlFocus(page);
     await page.keyboard.down('ArrowRight');
     await sleep(400);
     await page.keyboard.up('ArrowRight');
     const after = await page.evaluate(() => {
       const { camera } = globalThis.__ironline.engine.renderer;
-      return { x: camera.target.x, distance: camera.distance };
+      return { target: { ...camera.target }, distance: camera.distance };
     });
     // Zooming in pulls the eye closer: wheel-up shrinks the camera distance.
     check(
       'wheel zooms the camera',
-      after.distance < before.distance,
-      `${before.distance} → ${after.distance}`,
+      afterZoom.distance < before.distance,
+      `${before.distance} → ${afterZoom.distance}`,
     );
-    check('arrow keys pan the camera', after.x !== before.x, `${before.x} → ${after.x}`);
+    check(
+      'wheel zoom keeps the ground under the pointer',
+      Math.hypot(
+        afterZoom.anchor.x - before.anchor.x,
+        afterZoom.anchor.y - before.anchor.y,
+      ) < 1,
+    );
+    check(
+      'arrow keys pan the camera',
+      after.target.x !== afterZoom.target.x,
+      `${afterZoom.target.x} → ${after.target.x}`,
+    );
+
+    const centreError = async () =>
+      page.evaluate(() => {
+        const { engine, useGame, world } = globalThis.__ironline;
+        const selected = new Set(useGame.getState().selection);
+        const units = world.entities.filter((entity) => selected.has(entity.id));
+        const sum = units.reduce(
+          (point, entity) => ({ x: point.x + entity.pos.x, y: point.y + entity.pos.y }),
+          { x: 0, y: 0 },
+        );
+        const expected = { x: sum.x / units.length, y: sum.y / units.length };
+        return {
+          error: Math.hypot(
+            engine.renderer.camera.target.x - expected.x,
+            engine.renderer.camera.target.y - expected.y,
+          ),
+          tolerance: world.terrain.tileSize * 4,
+        };
+      });
+    await page.locator('[data-testid="centre-selection"]').click();
+    const buttonCentre = await centreError();
+    check('centre button finds the selection', buttonCentre.error < buttonCentre.tolerance);
 
     process.stdout.write('\nfog of war\n');
     const fog = await sim(page);
@@ -343,6 +418,7 @@ async function main() {
     );
 
     process.stdout.write('\nrun the battle to a conclusion\n');
+    await page.locator('[data-testid="feedback-link"]').focus();
     const outcome = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
       const deadline = Date.now() + 25_000;
@@ -358,6 +434,54 @@ async function main() {
     check('battle reaches a conclusion', outcome.finished === true, JSON.stringify(outcome));
     await page.waitForSelector('[data-testid="outcome"]', { timeout: 5000 }).catch(() => {});
     check('battle debrief is shown', (await page.locator('.battle-results').count()) === 1);
+    await page.waitForFunction(() => document.activeElement?.classList.contains('battle-results'));
+    check(
+      'battle debrief receives focus without skipping its report',
+      await page.evaluate(() => document.activeElement?.classList.contains('battle-results')),
+    );
+    const debriefInputBefore = await page.evaluate(() => {
+      const { engine, useGame } = globalThis.__ironline;
+      return {
+        paused: useGame.getState().paused,
+        orderMode: useGame.getState().orderMode,
+        camera: { ...engine.renderer.camera.target },
+      };
+    });
+    await page.keyboard.press('Space');
+    await page.keyboard.down('ArrowRight');
+    await sleep(120);
+    await page.keyboard.up('ArrowRight');
+    const debriefInputAfter = await page.evaluate(() => {
+      const { engine, useGame } = globalThis.__ironline;
+      return {
+        paused: useGame.getState().paused,
+        orderMode: useGame.getState().orderMode,
+        camera: { ...engine.renderer.camera.target },
+      };
+    });
+    check(
+      'battle controls stay suspended behind the debrief',
+      JSON.stringify(debriefInputAfter) === JSON.stringify(debriefInputBefore),
+    );
+    await page.keyboard.press('Tab');
+    check(
+      'battle debrief tabs into its first action',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'replay-mission',
+    );
+    await page.locator('[data-testid="choose-mission"]').focus();
+    await page.keyboard.press('Tab');
+    check(
+      'battle debrief traps forward focus',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'replay-mission',
+    );
+    await page.keyboard.press('Shift+Tab');
+    check(
+      'battle debrief traps reverse focus',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'choose-mission',
+    );
     check(
       'the debrief reports battle and lance statistics',
       (await page.locator('.battle-results-summary > div').count()) === 4 &&
@@ -376,6 +500,11 @@ async function main() {
     await page.locator('[data-testid="result-mission-picker"]').selectOption('base_capture_ridge');
     await page.locator('[data-testid="choose-mission"]').click();
     await page.waitForSelector('[data-testid="briefing"]');
+    check(
+      'closing the battle debrief returns focus',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'feedback-link',
+    );
     check(
       'switching mission shows its briefing',
       (await page.locator('[data-testid="briefing"] h2').innerText()).includes('Base Capture'),
@@ -670,6 +799,8 @@ async function main() {
     check('restart rolls a fresh run code', restartedCode !== firstRunCode, restartedCode);
     check('the fresh run is saved immediately', restartedCode === `Run ${persistedRun}`);
 
+    await runCampaignRecovery({ page, shots: SHOTS, check });
+
     await page.locator('[data-testid="camp-manual-toggle"]').click();
     await page.waitForSelector('[data-testid="manual-controls"]');
     check(
@@ -703,8 +834,9 @@ async function main() {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     const offerFor = async (termsId) => {
-      await page.locator(`[data-testid="camp-terms-${termsId}"]`).click();
-      return page.locator('[data-testid="camp-offer"]').innerText();
+      const choice = page.locator(`[data-testid="camp-terms-${termsId}"]`);
+      await choice.click();
+      return choice.evaluate((element) => element.closest('label')?.innerText ?? '');
     };
     const payoutHeavy = await offerFor('fee_first');
     const salvageHeavy = await offerFor('salvage_first');
@@ -717,8 +849,10 @@ async function main() {
       `${payoutHeavy} vs ${salvageHeavy}`,
     );
     check(
-      'contract terms name success pay and repair exposure',
-      selectedTermsText.includes('on success') && selectedTermsText.includes('Repair cover: none'),
+      'contract terms name success pay, field clock and wage exposure',
+      selectedTermsText.includes('on success only') &&
+        selectedTermsText.includes('clock') &&
+        selectedTermsText.includes('maximum through deadline'),
       selectedTermsText,
     );
     await page.screenshot({ path: `${SHOTS}/08-contract-terms.png` });

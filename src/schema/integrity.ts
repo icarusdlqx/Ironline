@@ -4,6 +4,10 @@ import type { Deployment } from './mission';
 
 type Push = (file: string, path: string, message: string) => void;
 
+// Mirror Ridge fields the same authored lance on both sides so balance measures
+// the machines rather than two different pilot rosters.
+const DUPLICATE_PILOT_EXEMPTIONS = new Set(['mirror_ridge']);
+
 function checkDesigns(catalog: Catalog, push: Push): void {
   for (const design of catalog.designs.values()) {
     const file = `designs/${design.id}.json`;
@@ -104,6 +108,7 @@ function checkMissions(catalog: Catalog, push: Push): void {
 
     const extentX = map.width * map.tileSize;
     const extentY = map.height * map.tileSize;
+    const pilotDeployments = new Map<string, string>();
 
     const checkDeployment = (unit: Deployment, path: string): void => {
       if (!catalog.designs.has(unit.designId)) {
@@ -111,6 +116,14 @@ function checkMissions(catalog: Catalog, push: Push): void {
       }
       if (!catalog.pilots.has(unit.pilotId)) {
         push(file, path, `unknown pilot "${unit.pilotId}"`);
+      }
+      if (!DUPLICATE_PILOT_EXEMPTIONS.has(mission.id)) {
+        const firstPath = pilotDeployments.get(unit.pilotId);
+        if (firstPath === undefined) {
+          pilotDeployments.set(unit.pilotId, path);
+        } else {
+          push(file, `${path}.pilotId`, `duplicate pilot "${unit.pilotId}"; first deployed at ${firstPath}`);
+        }
       }
       if (unit.spawn.x >= extentX || unit.spawn.y >= extentY) {
         push(
@@ -136,11 +149,12 @@ function checkMissions(catalog: Catalog, push: Push): void {
       }
     };
 
-    for (const lance of mission.lances) {
-      for (const unit of lance.units) {
-        checkDeployment(unit, `lances.${lance.team}`);
-      }
-    }
+    mission.lances.forEach((lance, lanceIndex) =>
+      lance.units.forEach((unit, unitIndex) =>
+        checkDeployment(unit, `lances.${lanceIndex}.units.${unitIndex}`),
+      ),
+    );
+    mission.reserves.forEach((unit, unitIndex) => checkDeployment(unit, `reserves.${unitIndex}`));
 
     mission.zones.forEach((zone, index) => {
       if (zone.x < extentX && zone.y < extentY) return;
@@ -155,7 +169,9 @@ function checkMissions(catalog: Catalog, push: Push): void {
       trigger.effects.forEach((effect, effectIndex) => {
         const path = `triggers.${triggerIndex}.effects.${effectIndex}`;
         if (effect.type === 'spawn') {
-          for (const unit of effect.units) checkDeployment(unit, path);
+          effect.units.forEach((unit, unitIndex) =>
+            checkDeployment(unit, `${path}.units.${unitIndex}`),
+          );
         } else if (effect.type === 'reveal' && (effect.x >= extentX || effect.y >= extentY)) {
           push(
             file,

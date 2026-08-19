@@ -5,7 +5,12 @@ import {
 } from '../../campaign/refit';
 import { buyMech, marketListings, saleValueOf, sellMech } from '../../campaign/market';
 import { dailyPayroll, payrollThrough } from '../../campaign/ledger';
-import { estimateRepair, startRepair } from '../../campaign/repair';
+import {
+  estimateRepair,
+  projectedRepairWindow,
+  repairQueue,
+  startRepair,
+} from '../../campaign/repair';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { computeLoadout } from '../../sim/loadout';
@@ -30,27 +35,45 @@ export interface PanelProps {
 
 export function MechBayPanel({ state, mutate }: PanelProps) {
   const payroll = dailyPayroll(catalog, state);
+  const bayCapacity = catalog.rules.economy.repair.bayCapacity;
+  const bayDescription = `${bayCapacity === 1 ? 'One lift works' : `${bayCapacity} lifts work`} through the queue in order.`;
+  const queue = repairQueue(catalog, state);
+  const queueByMech = new Map(queue.map((entry) => [entry.mechId, entry]));
   return (
       <section className="camp-bay progression-bay" data-testid="camp-bay">
         <h3>Mech bay</h3>
         <p className="ledger-note">
-          Workshop bills are paid up front. The {cbills(payroll)} daily payroll continues while the bay works.
+          {bayDescription} Workshop bills are paid up front; the {cbills(payroll)} daily
+          payroll continues while work is booked.
         </p>
         <ul>
           {state.mechs.map((mech) => {
             const estimate = estimateRepair(catalog, mech);
             const ready = isMechAvailable(state, mech) && mech.status !== 'hulk';
+            const projected = projectedRepairWindow(catalog, state, estimate.days);
+            const booking = queueByMech.get(mech.id);
+            const calendarDays = projected.readyOnDay - state.day;
+            const projectedTiming =
+              projected.status === 'active'
+                ? `ready day ${projected.readyOnDay}`
+                : `starts day ${projected.startsOnDay} · ready day ${projected.readyOnDay}`;
             return (
               <li key={mech.id} data-testid={`camp-mech-${mech.id}`}>
                 <span className="bay-mech-name">{mech.design.name}</span>
                 <span className="bay-mech-state">
                   {mech.status === 'hulk'
-                    ? `wreck — ${cbills(mech.rebuildCost)} now · ${catalog.rules.salvage.hulkRebuildDays}d · ${cbills(payrollThrough(catalog, state, catalog.rules.salvage.hulkRebuildDays))} wages`
+                    ? `wreck — ${cbills(estimate.cost)} now · ${projectedTiming} · ${cbills(payrollThrough(catalog, state, calendarDays))} wages`
                     : ready
-                      ? estimate.days === 0
-                        ? 'ready'
-                        : `damaged — ${cbills(estimate.cost)} now · ${estimate.days}d · ${cbills(payrollThrough(catalog, state, estimate.days))} wages`
-                      : `in bay until day ${mech.readyOnDay} · ${cbills(payrollThrough(catalog, state, mech.readyOnDay - state.day))} wages left`}
+                      ? mech.design.mounts.length === 0
+                        ? 'rebuilt — fit a weapon before deployment'
+                        : estimate.days === 0
+                          ? 'ready'
+                          : `damaged — ${cbills(estimate.cost)} now · ${projectedTiming} · ${cbills(payrollThrough(catalog, state, calendarDays))} wages`
+                      : booking?.status === 'active'
+                        ? `on a lift · ready day ${mech.readyOnDay} · ${cbills(payrollThrough(catalog, state, mech.readyOnDay - state.day))} wages left`
+                        : booking?.status === 'inherited'
+                          ? `inherited concurrent booking · ready day ${mech.readyOnDay}`
+                          : `queued ${booking?.queuePosition ?? 1} · starts day ${booking?.startsOnDay ?? state.day} · ready day ${mech.readyOnDay}`}
                 </span>
                 {mech.status === 'hulk' ? (
                   <button
@@ -60,11 +83,13 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
                         const target = draft.mechs.find((entry) => entry.id === mech.id);
                         if (target === undefined) return null;
                         const result = rebuildHulk(catalog, draft, target);
-                        return result.ok ? `${target.design.name} rebuilt.` : result.reason;
+                        return result.ok
+                          ? `${target.design.name} booked; ready day ${target.readyOnDay}.`
+                          : result.reason;
                       })
                     }
                   >
-                    Rebuild
+                    {projected.status === 'active' ? 'Rebuild' : 'Queue rebuild'}
                   </button>
                 ) : estimate.days > 0 && mech.status === 'ready' ? (
                   <button
@@ -74,12 +99,14 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
                         const target = draft.mechs.find((entry) => entry.id === mech.id);
                         if (target === undefined) return null;
                         const result = startRepair(catalog, draft, target);
-                        return result.ok ? `${target.design.name} in the shop.` : result.reason;
+                        return result.ok
+                          ? `${target.design.name} booked; ready day ${target.readyOnDay}.`
+                          : result.reason;
                       })
                     }
                     data-testid={`camp-repair-${mech.id}`}
                   >
-                    Repair
+                    {projected.status === 'active' ? 'Repair' : 'Queue repair'}
                   </button>
                 ) : null}
               </li>
@@ -229,32 +256,44 @@ export function MarketPanel({ state, mutate }: PanelProps) {
 
       <h4>{signed ? 'Sell — not while a contract is signed' : 'Sell'}</h4>
       <ul className="market-sell">
-        {state.mechs.map((mech) => (
-          <li key={mech.id} data-testid={`market-sell-row-${mech.id}`}>
-            <span className="market-name">
-              {mech.design.name}
-              <small>{mech.status === 'hulk' ? 'wreck' : mech.status}</small>
-            </span>
-            <span className="market-price">{cbills(saleValueOf(catalog, mech))}</span>
-            <button
-              type="button"
-              // Selling under contract is how a company arrives at a drop with
-              // nothing to drop; the rule refuses it, and so does the button.
-              disabled={signed || state.mechs.length <= 1}
-              onClick={() =>
-                mutate((draft) => {
-                  const result = sellMech(catalog, draft, mech.id);
-                  return result.ok
-                    ? `Sold the ${mech.design.name} for ${cbills(saleValueOf(catalog, mech))}.`
-                    : result.reason;
-                })
-              }
-              data-testid={`market-sell-${mech.id}`}
-            >
-              Sell
-            </button>
-          </li>
-        ))}
+        {state.mechs.map((mech) => {
+          const booked = mech.status === 'repairing';
+          return (
+            <li key={mech.id} data-testid={`market-sell-row-${mech.id}`}>
+              <span className="market-name">
+                {mech.design.name}
+                <small>
+                  {mech.status === 'hulk'
+                    ? 'wreck'
+                    : booked
+                      ? `paid workshop booking · ready day ${mech.readyOnDay}`
+                      : mech.design.mounts.length === 0
+                        ? 'needs a weapon'
+                        : mech.status}
+                </small>
+              </span>
+              <span className="market-price">{cbills(saleValueOf(catalog, mech))}</span>
+              <button
+                type="button"
+                // A signed contract protects the drop; a paid booking protects
+                // the queue. Both rules refuse the operation at the model too.
+                disabled={signed || state.mechs.length <= 1 || booked}
+                title={booked ? 'This paid workshop booking must finish before sale' : undefined}
+                onClick={() =>
+                  mutate((draft) => {
+                    const result = sellMech(catalog, draft, mech.id);
+                    return result.ok
+                      ? `Sold the ${mech.design.name} for ${cbills(saleValueOf(catalog, mech))}.`
+                      : result.reason;
+                  })
+                }
+                data-testid={`market-sell-${mech.id}`}
+              >
+                Sell
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

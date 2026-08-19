@@ -2,7 +2,12 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { LoreEntry } from '../../schema/lore';
-import { DESKTOP_BINDINGS, FieldManual, TOUCH_BINDINGS } from './FieldManual';
+import {
+  DESKTOP_BINDINGS,
+  FieldManual,
+  manualControlSections,
+  TOUCH_BINDINGS,
+} from './FieldManual';
 
 const lore: LoreEntry[] = [
   {
@@ -20,7 +25,10 @@ describe('field manual controls', () => {
       expect.objectContaining({ input: '1–9', action: expect.stringContaining('control group') }),
     );
     expect(DESKTOP_BINDINGS).toContainEqual(
-      expect.objectContaining({ input: 'Arrow keys / middle drag' }),
+      expect.objectContaining({
+        input: 'Arrow keys / middle drag / Centre',
+        action: expect.stringContaining('zooms under the pointer'),
+      }),
     );
     expect(DESKTOP_BINDINGS.some((binding) => binding.input.includes('WASD'))).toBe(false);
     expect(TOUCH_BINDINGS).toContainEqual(
@@ -29,6 +37,20 @@ describe('field manual controls', () => {
     expect(TOUCH_BINDINGS).toContainEqual(
       expect.objectContaining({ input: 'All / Queue / Cancel' }),
     );
+    expect(TOUCH_BINDINGS).toContainEqual(
+      expect.objectContaining({ input: 'Drag / pinch / Centre' }),
+    );
+  });
+
+  it('puts the relevant input grammar first without changing desktop order', () => {
+    expect(manualControlSections(true).map((section) => section.heading)).toEqual([
+      'Touch',
+      'Mouse and keyboard',
+    ]);
+    expect(manualControlSections(false).map((section) => section.heading)).toEqual([
+      'Mouse and keyboard',
+      'Touch',
+    ]);
   });
 
   it('keeps supported controls ahead of the setting pages', () => {

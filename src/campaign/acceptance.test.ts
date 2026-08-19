@@ -12,10 +12,12 @@ import {
   runMission,
   startCampaign,
 } from './campaign';
-import { storeItemSaleBasis, storeItemValueOf } from './market';
+import { sellMech, storeItemSaleBasis, storeItemValueOf } from './market';
 import { employerHistories } from './employers';
-import { fitFromStore, planFit } from './refit';
+import { campaignOutcomeCount } from './history';
+import { fitFromStore, planFit, rebuildHulk } from './refit';
 import { estimateRepair, startRepair } from './repair';
+import { assessSolvency, retireCompany } from './solvency';
 import {
   isPilotAvailable,
   storeCount,
@@ -126,7 +128,10 @@ describe('campaign contracts', () => {
     let run: CampaignState | null = null;
     let match: { weaponId: string; host: CampaignState['mechs'][number] } | null = null;
 
-    for (const seed of ['workshop', 'acceptance', 'salvage', 'refit', 'bay', 'depot', 'pipeline', 'quartermaster']) {
+    for (const seed of [
+      'withdrawal-4', 'workshop', 'acceptance', 'salvage', 'refit', 'bay', 'depot', 'pipeline',
+      'quartermaster',
+    ]) {
       const candidate = start(seed);
       fightNode(candidate, 'militia_raid');
       if (candidate.history[0]?.won !== true) continue;
@@ -143,6 +148,7 @@ describe('campaign contracts', () => {
       repairAll(candidate);
       waitForCrew(candidate);
       fightNode(candidate, 'supply_line');
+      if (candidate.history[1]?.won !== true) continue;
       repairAll(candidate);
       waitForCrew(candidate);
       if (deployableLance(candidate).length === 0) continue;
@@ -185,7 +191,7 @@ describe('campaign contracts', () => {
 
     fightNode(run, 'pass_skirmish');
 
-    expect(run.history, 'three contracts were not fought').toHaveLength(3);
+    expect(campaignOutcomeCount(run), 'three contracts were not fought').toBe(3);
     expect(run.completedNodes.length, 'no contract was completed').toBeGreaterThanOrEqual(2);
     expect(
       host.design.mounts.some((mount) => mount.weaponId === weaponId),
@@ -228,7 +234,12 @@ describe('campaign contracts', () => {
     expect(run.completedNodes).toEqual(expect.arrayContaining(route));
     const campaign = catalog.campaigns.get(CAMPAIGN_ID);
     if (campaign === undefined) throw new Error('missing campaign');
-    const employers = employerHistories(campaign, run.history);
+    const employers = employerHistories(
+      campaign,
+      run.history,
+      run.employerFailures,
+      run.historyArchive.employers,
+    );
     expect(employers.find((record) => record.id === 'kestrel_combine')).toMatchObject({
       completed: 4,
       failed: 1,
@@ -238,7 +249,10 @@ describe('campaign contracts', () => {
       failed: 0,
     });
     expect(employers.reduce((paid, record) => paid + record.paid, 0)).toBe(
-      run.history.reduce((paid, outcome) => paid + outcome.payout, 0),
+      Object.values(run.historyArchive.employers).reduce(
+        (paid, summary) => paid + summary.paid,
+        run.history.reduce((paid, outcome) => paid + outcome.payout, 0),
+      ),
     );
     expect(run.finished).toBe(true);
     expect(run.won).toBe(true);
@@ -268,14 +282,64 @@ describe('campaign contracts', () => {
       fightNode(run, nodeId);
     }
 
-    expect(run.history.length).toBeGreaterThanOrEqual(2);
-    expect(run.history.map((outcome) => outcome.nodeId)).toEqual(route.slice(0, run.history.length));
-    expect(run.completedNodes).toHaveLength(run.history.filter((outcome) => outcome.won).length);
+    const fought = campaignOutcomeCount(run);
+    expect(fought).toBeGreaterThanOrEqual(2);
+    const last = run.history.at(-1);
+    expect(last?.nodeId).toBe(route[fought - 1]);
+    expect(run.completedNodes).toEqual(
+      route.slice(0, fought - (last?.won === false ? 1 : 0)),
+    );
     expect(run.failedNodes).toHaveLength(0);
 
-    const last = run.history[run.history.length - 1];
     if (last?.won === false) {
       expect(availableNodes(catalog, run).map((node) => node.id)).toContain(last.nodeId);
     }
+  });
+
+  it('liquidates surplus wrecks and fields the retained hull', () => {
+    const run = start('solvency-rebuild');
+    for (const mech of run.mechs) {
+      mech.status = 'hulk';
+      mech.rebuildCost = 100_000;
+    }
+    run.cbills = 0;
+
+    const report = assessSolvency(catalog, run);
+    expect(report).toMatchObject({
+      state: 'fundable',
+      plan: { needsSale: true, mechNeedsRebuild: true },
+    });
+    const retained = run.mechs.find((mech) => mech.id === report.plan?.mechId);
+    if (retained === undefined) throw new Error('reported recovery hull is missing');
+
+    for (const mech of [...run.mechs]) {
+      if (mech.id !== retained.id) expect(sellMech(catalog, run, mech.id).ok).toBe(true);
+    }
+    expect(run.cbills).toBeGreaterThanOrEqual(retained.rebuildCost);
+    expect(rebuildHulk(catalog, run, retained).ok).toBe(true);
+    advanceDays(catalog, run, retained.readyOnDay - run.day);
+
+    expect(deployableLance(run)).toHaveLength(1);
+    expect(assessSolvency(catalog, run).state).toBe('fieldable');
+    expect(availableNodes(catalog, run).length).toBeGreaterThan(0);
+  });
+
+  it('ends only when an unfundable company confirms retirement', () => {
+    const run = start('solvency-retirement');
+    const last = run.mechs[0];
+    if (last === undefined) throw new Error('campaign has no mech');
+    run.mechs = [last];
+    last.status = 'hulk';
+    last.rebuildCost = 500_000;
+    run.cbills = -1;
+
+    expect(assessSolvency(catalog, run).state).toBe('terminal');
+    expect(retireCompany(catalog, run)).toEqual({ ok: true, reason: null });
+    expect(run).toMatchObject({ finished: true, won: false });
+    expect(availableNodes(catalog, run)).toEqual([]);
+    expect(acceptContract(catalog, run, 'militia_raid', 'fee_first')).toEqual({
+      ok: false,
+      reason: 'the campaign is over',
+    });
   });
 });

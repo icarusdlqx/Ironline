@@ -3,6 +3,7 @@ import { isOperational } from '../sim/types';
 import type { Engine } from './engine';
 import { useGame } from './store';
 import { TouchInput } from './touchInput';
+import { isInteractiveKeyTarget, shouldIgnoreBattleKey } from './battleKeyboard';
 
 /** How far off a mech, in screen pixels, a click still counts as hitting it. */
 const PICK_RADIUS = 34;
@@ -33,6 +34,8 @@ function isSecondary(event: PointerEvent | MouseEvent): boolean {
 
 export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => void {
   const viewport = (): { width: number; height: number } => engine.renderer.viewport;
+  const battleFinished = (): boolean => engine.world.finished || useGame.getState().finished;
+  const canAct = (): boolean => useGame.getState().briefingSeen && !battleFinished();
 
   const held = new Set<string>();
   let panning = false;
@@ -150,6 +153,15 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     engine,
     pickAt,
     screenWorld,
+    zoomBetween: (factor, from, to) =>
+      engine.renderer.camera.zoomBetween(
+        factor,
+        from,
+        to,
+        viewport(),
+        engine.renderer.groundMesh,
+      ),
+    canAct,
     onPinchStart: () => {
       panning = false;
       lastPan = null;
@@ -182,6 +194,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onPointerDown = (event: PointerEvent): void => {
+    if (battleFinished()) return;
     // A press whose release never arrived — the pointer left the window, the
     // browser cancelled it — must not leave a gesture half-open for this one
     // to trip over.
@@ -210,6 +223,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
       lastPan = pointerToScreen(canvas, event);
       return;
     }
+
+    // The field may be inspected while the briefing is open, but no click may
+    // quietly become an order that starts executing the moment Deploy is tapped.
+    if (!state.briefingSeen) return;
 
     if (state.supportMode !== null && event.button === 0 && !event.ctrlKey) {
       // A strafing run needs a direction as well as a point: press to aim, drag
@@ -298,6 +315,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onPointerMove = (event: PointerEvent): void => {
+    if (battleFinished()) return;
     if (event.pointerType === 'touch') {
       touchInput.move(event.pointerId, pointerToScreen(canvas, event));
       return;
@@ -364,6 +382,20 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   const onPointerUp = (event: PointerEvent): void => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
 
+    if (battleFinished()) {
+      if (event.pointerType === 'touch') touchInput.cancel(event.pointerId);
+      pressedOnMech = null;
+      marqueeFrom = null;
+      marqueeScreenFrom = null;
+      marqueeFromMech = null;
+      panning = false;
+      lastPan = null;
+      engine.selectionBox = null;
+      engine.supportAim = null;
+      useGame.getState().patch({ marquee: null });
+      return;
+    }
+
     if (event.pointerType === 'touch') {
       touchInput.finish(event.pointerId, pointerToScreen(canvas, event));
       return;
@@ -415,7 +447,13 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const onWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    engine.renderer.camera.zoomBy(event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
+    if (battleFinished()) return;
+    engine.renderer.camera.zoomAt(
+      event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP,
+      pointerToScreen(canvas, event),
+      viewport(),
+      engine.renderer.groundMesh,
+    );
   };
 
   /**
@@ -426,9 +464,10 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
    */
   const onContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
+    const state = useGame.getState();
+    if (!state.briefingSeen || battleFinished()) return;
     if (event.timeStamp - orderedAt < 400) return;
 
-    const state = useGame.getState();
     if (state.supportMode !== null) return;
 
     const screen = pointerToScreen(canvas, event);
@@ -447,8 +486,19 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    engine.audio.unlock();
     const state = useGame.getState();
+    if (
+      shouldIgnoreBattleKey({
+        briefingSeen: state.briefingSeen,
+        finished: state.finished || engine.world.finished,
+        interactiveTarget: isInteractiveKeyTarget(event.target),
+        code: event.code,
+        repeat: event.repeat,
+      })
+    ) {
+      return;
+    }
+    engine.audio.unlock();
 
     // A browser shortcut is not a battle order. Ctrl+R has to reload the page
     // without also putting the lance into run mode, and Cmd+T has to open a tab
@@ -613,7 +663,8 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     if (held.has('ArrowUp')) dy -= 1;
     if (held.has('ArrowDown')) dy += 1;
 
-    if (dx !== 0 || dy !== 0) {
+    if (battleFinished()) held.clear();
+    if (!battleFinished() && (dx !== 0 || dy !== 0)) {
       const speed = PAN_SPEED * delta * (engine.renderer.camera.distance / 620);
       // Screen-space directions, so the keys keep meaning the same thing on
       // screen after the camera has been swung round.
@@ -627,7 +678,7 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     // pointer is not a question anyone is asking, so it is not answered.
     const busy =
       panning || marqueeFrom !== null || engine.supportAim !== null || touchInput.active;
-    if (lastPointer !== null && !busy) {
+    if (lastPointer !== null && !busy && !battleFinished()) {
       const camera = engine.renderer.camera;
       const cameraKey = `${camera.target.x}:${camera.target.y}:${camera.distance}`;
       const moved = pointerDirty || cameraKey !== lastCameraKey;

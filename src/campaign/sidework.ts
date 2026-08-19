@@ -52,6 +52,7 @@ export function sideEmployerIdFor(
 export interface SideContractProfile {
   operation: string;
   battlefield: string;
+  clockSeconds: number;
   dropTonnage: number;
   oppositionTonnage: number;
   objectives: string[];
@@ -192,6 +193,7 @@ export function sideContractProfile(
   return {
     operation: mission.type.replaceAll('_', ' '),
     battlefield: map?.name ?? mission.mapId,
+    clockSeconds: mission.maxDurationSeconds,
     dropTonnage: dropAllowance(catalog, missionId),
     oppositionTonnage: oppositionTonnage(catalog, missionId),
     objectives: mission.objectives
@@ -213,4 +215,8 @@ export function isSideContract(nodeId: string): boolean {
 export function pruneSideOffers(catalog: Catalog, state: CampaignState): void {
   const live = `side_${offerPeriod(catalog, state.day)}_`;
   state.sideTaken = state.sideTaken.filter((id) => id.startsWith(live));
+  // The derived board and its live taken list carry all renewable state. Old
+  // posting ids in the war ledgers cannot affect either board again.
+  state.completedNodes = state.completedNodes.filter((id) => !isSideContract(id));
+  state.failedNodes = state.failedNodes.filter((id) => !isSideContract(id));
 }

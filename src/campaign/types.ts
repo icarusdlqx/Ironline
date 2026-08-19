@@ -80,6 +80,12 @@ export interface SalvageProvenance {
   location: MechLocation;
 }
 
+/** The field condition of a hull the recovery crews actually got aboard. */
+export interface RecoveredHull {
+  designId: string;
+  condition: Record<MechLocation, LocationCondition>;
+}
+
 export interface CampaignLogEntry {
   day: number;
   text: string;
@@ -121,6 +127,8 @@ export interface MissionOutcome {
   salvagedItems: StoreItem[];
   /** Everything the crews cut loose, of which `salvagedItems` was taken. */
   salvageOffered: StoreItem[];
+  /** Once acknowledged, this field report may be viewed but its haul cannot be changed. */
+  salvageFinalized: boolean;
   /** Every hull roll, including misses, at the odds the signed package bought. */
   salvageCandidates: SalvageCandidate[];
   /** One source record per physical part represented by `salvageOffered`. */
@@ -133,6 +141,18 @@ export interface MissionOutcome {
    * earned by taking a contract.
    */
   pilotReports: PilotReport[];
+}
+
+export interface EmployerOutcomeSummary {
+  employerName: string;
+  completed: number;
+  failed: number;
+  paid: number;
+}
+
+export interface CampaignHistoryArchive {
+  outcomes: number;
+  employers: Record<string, EmployerOutcomeSummary>;
 }
 
 export interface CampaignState {
@@ -162,6 +182,8 @@ export interface CampaignState {
   marketBought: string[];
   contract: Contract | null;
   history: MissionOutcome[];
+  /** Old field reports reduced to the totals the campaign still shows. */
+  historyArchive: CampaignHistoryArchive;
   employerFailures: EmployerFailure[];
   log: CampaignLogEntry[];
   finished: boolean;

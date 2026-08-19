@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startCampaign } from '../../campaign/campaign';
-import { loadCampaign } from '../../campaign/save';
+import { clearSavedCampaign, loadCampaign } from '../../campaign/save';
 import { catalog } from '../../../tests/support';
 import {
   debriefedCount,
@@ -8,13 +8,14 @@ import {
   resetDebriefed,
   revealLatestDebrief,
 } from './Debrief';
-import { commitCampaignChange } from './campaignSession';
+import { commitCampaignChange, openCampaignSession } from './campaignSession';
 
 describe('campaign screen persistence', () => {
   const real = globalThis.localStorage;
+  let store: Map<string, string>;
 
   beforeEach(() => {
-    const store = new Map<string, string>();
+    store = new Map<string, string>();
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,
       value: {
@@ -28,6 +29,7 @@ describe('campaign screen persistence', () => {
         clear: () => store.clear(),
       },
     });
+    clearSavedCampaign({ recover: true });
   });
 
   afterEach(() => {
@@ -49,6 +51,23 @@ describe('campaign screen persistence', () => {
     expect(loadCampaign().state?.cbills).toBe(openingBalance - 250);
   });
 
+  it('keeps a transaction in memory while an invalid campaign is held for recovery', () => {
+    const damaged = '{"version":1,"state":';
+    store.set('ironline.campaign', damaged);
+    const onEmpty = vi.fn();
+    const session = openCampaignSession(catalog, 'border_dispute', onEmpty);
+
+    const committed = commitCampaignChange(session.state, (draft) => {
+      draft.cbills -= 250;
+    });
+
+    expect(onEmpty).toHaveBeenCalledOnce();
+    expect(session.persistence).toMatchObject({ mode: 'memory-only', issue: 'invalid-save' });
+    expect(committed.state.cbills).toBe(session.state.cbills - 250);
+    expect(committed.persistence.ok).toBe(false);
+    expect(store.get('ironline.campaign')).toBe(damaged);
+  });
+
   it('reopens the latest restored report instead of trusting another run count', () => {
     markDebriefed(9);
 
@@ -62,5 +81,26 @@ describe('campaign screen persistence', () => {
     resetDebriefed();
 
     expect(debriefedCount()).toBe(0);
+  });
+
+  it('keeps debrief bookkeeping secondary when browser storage is denied', () => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: () => {
+          throw new DOMException('access denied', 'SecurityError');
+        },
+        setItem: () => {
+          throw new DOMException('access denied', 'SecurityError');
+        },
+        removeItem: () => {
+          throw new DOMException('access denied', 'SecurityError');
+        },
+      },
+    });
+
+    expect(debriefedCount()).toBe(0);
+    expect(() => markDebriefed(2)).not.toThrow();
+    expect(() => resetDebriefed()).not.toThrow();
   });
 });

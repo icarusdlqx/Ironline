@@ -1,10 +1,11 @@
-import { LOCATIONS } from '../../schema/common';
 import type { Catalog } from '../../schema/load';
 import { dropTeam, dropTonnageFor, missionSlots } from '../../campaign/campaign';
 import { employerNameFor } from '../../campaign/employers';
+import { mechIntegrity } from '../../campaign/integrity';
 import { assign } from '../../campaign/roster';
 import { isPilotAvailable, type CampaignState, type PilotRecord } from '../../campaign/types';
 import { PilotStats } from '../PilotStats';
+import { ContractBriefing } from './ContractBriefing';
 
 interface Props {
   catalog: Catalog;
@@ -14,22 +15,6 @@ interface Props {
   onCancel: () => void;
   /** Opens the bay on one of the company's machines, for a pre-drop refit. */
   onRefit: (mechId: string) => void;
-}
-
-/** How much of a mech is still there, as a fraction of what it should have. */
-function integrity(state: CampaignState, mechId: string): number {
-  const mech = state.mechs.find((entry) => entry.id === mechId);
-  if (mech === undefined) return 0;
-  let have = 0;
-  let want = 0;
-  for (const location of LOCATIONS) {
-    const condition = mech.condition[location];
-    // The design's number is the front and back together, so `want` already
-    // accounts for the split without needing to know about it.
-    have += condition.armour + condition.rearArmour + condition.internal;
-    want += mech.design.armour[location] + condition.internal;
-  }
-  return want === 0 ? 1 : Math.max(0, Math.min(1, have / want));
 }
 
 /**
@@ -109,6 +94,14 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
               <dd>{mission?.type.replace('_', ' ') ?? 'contract'}</dd>
             </div>
           </dl>
+          <ContractBriefing
+            catalog={catalog}
+            state={state}
+            missionId={contract.missionId}
+            deadlineDay={contract.deadlineDay}
+            nodeId={contract.nodeId}
+            terms={contract}
+          />
           {mission === undefined ? null : <p className="manifest-brief">{mission.briefing}</p>}
         </header>
 
@@ -118,7 +111,8 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
             const drops = order >= 0 && order < slots;
             const available = isPilotAvailable(state, pilot);
             const seated = state.mechs.find((mech) => mech.id === pilot.mechId) ?? null;
-            const health = seated === null ? 0 : integrity(state, seated.id);
+            const integrity = seated === null ? null : mechIntegrity(catalog, seated);
+            const health = integrity?.fraction ?? 0;
 
             const weight =
               seated === null ? 0 : (catalog.chassis.get(seated.design.chassisId)?.tonnage ?? 0);
@@ -131,6 +125,8 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
                   ? 'No mech'
                   : seated.status !== 'ready'
                     ? `Mech ${seated.status}`
+                    : seated.design.mounts.length === 0
+                      ? 'Mech needs a weapon'
                     : drops
                       ? `Dropping · ${weight}t`
                       : dropping.length >= slots
@@ -173,7 +169,15 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
                     ))}
                   </select>
                   {seated === null ? null : (
-                    <div className="manifest-health" title={`${Math.round(health * 100)}% intact`}>
+                    <div
+                      className="manifest-health"
+                      title={`${Math.round(health * 100)}% intact · ${integrity?.current ?? 0}/${integrity?.maximum ?? 0} armour and structure`}
+                      role="progressbar"
+                      aria-label={`${seated.design.name} integrity`}
+                      aria-valuemin={0}
+                      aria-valuemax={integrity?.maximum ?? 0}
+                      aria-valuenow={integrity?.current ?? 0}
+                    >
                       <span style={{ width: `${Math.round(health * 100)}%` }} />
                     </div>
                   )}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { catalog } from '../../tests/support';
+import { createTerrainGrid } from '../sim/terrain';
 import { TacticalCamera } from './camera';
+import { buildTerrain } from './terrain';
 
 const VIEWPORT = { width: 1280, height: 720 };
 
@@ -99,6 +102,62 @@ describe('tactical camera', () => {
 
     for (let step = 0; step < 20; step += 1) view.zoomBy(1 / 1.2);
     expect(view.target.x, 'zooming out left the map edge off screen').toBeGreaterThan(close);
+  });
+
+  it('keeps an off-centre ground point under the zoom anchor', () => {
+    const view = camera();
+    const pointer = { x: 880, y: 420 };
+    const before = view.screenToWorld(pointer, VIEWPORT);
+
+    view.zoomAt(1.35, pointer, VIEWPORT);
+
+    const after = view.screenToWorld(pointer, VIEWPORT);
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+    expect(view.azimuth).toBe(-Math.PI / 2);
+  });
+
+  it('keeps the pointer planted on sloped battlefield terrain', () => {
+    const data = catalog.maps.get('ridge_pass');
+    expect(data).toBeDefined();
+    if (data === undefined) return;
+    const grid = createTerrainGrid(data, catalog.rules.terrain);
+    const terrain = buildTerrain(grid, data);
+    try {
+      const view = new TacticalCamera(true);
+      view.setBounds(grid.width * grid.tileSize, grid.height * grid.tileSize);
+      view.centreOn({
+        x: (grid.width * grid.tileSize) / 2,
+        y: (grid.height * grid.tileSize) / 2,
+      });
+      const pointer = { x: 880, y: 420 };
+      const before = view.screenToWorld(pointer, VIEWPORT, terrain.mesh);
+
+      view.zoomAt(1.12, pointer, VIEWPORT, terrain.mesh);
+
+      const after = view.screenToWorld(pointer, VIEWPORT, terrain.mesh);
+      expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(0.05);
+    } finally {
+      terrain.mesh.geometry.dispose();
+      if (Array.isArray(terrain.mesh.material)) {
+        terrain.mesh.material.forEach((material) => material.dispose());
+      } else {
+        terrain.mesh.material.dispose();
+      }
+    }
+  });
+
+  it('carries the inspected ground between moving pinch centroids', () => {
+    const view = camera();
+    const centre = { x: 520, y: 360 };
+    const anchor = view.screenToWorld(centre, VIEWPORT);
+
+    view.zoomBetween(280 / 200, centre, { x: 480, y: 360 }, VIEWPORT);
+    view.zoomBetween(360 / 280, { x: 480, y: 360 }, centre, VIEWPORT);
+
+    const after = view.screenToWorld(centre, VIEWPORT);
+    expect(after.x).toBeCloseTo(anchor.x, 3);
+    expect(after.y).toBeCloseTo(anchor.y, 3);
   });
 
   it('clamps how close and how far the camera can be pulled', () => {

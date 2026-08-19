@@ -11,7 +11,10 @@ function offer(...ids: string[]): StoreItem[] {
 }
 
 function report(taken: StoreItem[], offered: StoreItem[]): SalvageReport {
-  return { candidates: [], chassisRecovered: [], offered, items: taken, provenance: [] };
+  return {
+    candidates: [], chassisRecovered: [], finalized: false,
+    hulls: [], offered, items: taken, provenance: [],
+  };
 }
 
 const countOf = (state: CampaignState, itemId: string): number =>
@@ -57,5 +60,30 @@ describe('choosing what comes home', () => {
 
     expect(picked).toHaveLength(SALVAGE_PICKS);
     expect(countOf(state, 'gauss_rifle')).toBe(0);
+  });
+
+  it('keeps a finalized manifest unchanged', () => {
+    const state = stubState();
+    const taken = offer('medium_laser');
+    addToStore(state, 'weapon', 'medium_laser');
+    const record = report(taken, offer('medium_laser', 'ppc'));
+    record.finalized = true;
+
+    expect(rechooseSalvage(state, record, offer('ppc'))).toEqual(taken);
+    expect(record.items).toEqual(taken);
+    expect(countOf(state, 'medium_laser')).toBe(1);
+    expect(countOf(state, 'ppc')).toBe(0);
+  });
+
+  it('refuses the whole editable swap when any prior crate is missing', () => {
+    const state = stubState();
+    const taken = offer('medium_laser', 'ac10');
+    addToStore(state, 'weapon', 'medium_laser');
+    const record = report(taken, offer('medium_laser', 'ac10', 'ppc'));
+
+    expect(rechooseSalvage(state, record, offer('ppc'))).toEqual(taken);
+    expect(record.items).toEqual(taken);
+    expect(countOf(state, 'medium_laser')).toBe(1);
+    expect(countOf(state, 'ppc')).toBe(0);
   });
 });

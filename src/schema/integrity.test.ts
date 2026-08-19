@@ -115,6 +115,63 @@ describe('campaign content integrity', () => {
     ]));
   });
 
+  it('rejects one pilot identity across initial, reserve, and delayed deployments', () => {
+    const mission = catalog.missions.get('base_capture_ridge');
+    expect(mission).toBeDefined();
+    if (mission === undefined) return;
+
+    const broken = structuredClone(mission);
+    const firstPilot = broken.lances[0]?.units[0]?.pilotId;
+    const reserve = broken.reserves[0];
+    const delayed = broken.triggers[0]?.effects.find((effect) => effect.type === 'spawn');
+    if (firstPilot === undefined || reserve === undefined || delayed?.type !== 'spawn') return;
+    const delayedUnit = delayed.units[0];
+    if (delayedUnit === undefined) return;
+    reserve.pilotId = firstPilot;
+    delayedUnit.pilotId = firstPilot;
+
+    const missions = new Map(catalog.missions);
+    missions.set(broken.id, broken);
+    const issues: ContentIssue[] = [];
+    checkIntegrity({ ...catalog, missions } satisfies Catalog, issues);
+
+    expect(issues).toEqual(expect.arrayContaining([
+      {
+        file: 'missions/base_capture_ridge.json',
+        path: 'reserves.0.pilotId',
+        message: `duplicate pilot "${firstPilot}"; first deployed at lances.0.units.0`,
+      },
+      {
+        file: 'missions/base_capture_ridge.json',
+        path: 'triggers.0.effects.1.units.0.pilotId',
+        message: `duplicate pilot "${firstPilot}"; first deployed at lances.0.units.0`,
+      },
+    ]));
+
+    const catalogIssues: ContentIssue[] = [];
+    checkIntegrity(catalog, catalogIssues);
+    expect(catalogIssues.filter((issue) => issue.message.startsWith('duplicate pilot'))).toEqual([]);
+  });
+
+  it('keeps delayed mission copy aligned with the objective contract', () => {
+    const standoff = catalog.missions.get('standoff_ridge');
+    const shale = catalog.missions.get('shale_overwatch');
+    expect(standoff).toBeDefined();
+    expect(shale).toBeDefined();
+    if (standoff === undefined || shale === undefined) return;
+
+    const secondWave = standoff.triggers.find((trigger) => trigger.id === 'second_wave');
+    expect(secondWave?.when).toEqual({ type: 'elapsed', seconds: 120 });
+    expect(standoff.objectives.some((objective) => objective.type === 'destroy_all')).toBe(false);
+    expect(standoff.briefing).toContain('The clock, not the body count');
+
+    const holdWon = shale.triggers.find((trigger) => trigger.id === 'hold_won');
+    expect(holdWon?.when).toEqual({ type: 'objective_complete', objectiveId: 'hold_post' });
+    expect(holdWon?.effects).toContainEqual(
+      expect.objectContaining({ type: 'message', text: expect.stringContaining('contract is complete') }),
+    );
+  });
+
   it('catalogues the reward-free field exercise outside the campaign', () => {
     const mission = catalog.missions.get('salvage_tactics');
     expect(mission).toBeDefined();

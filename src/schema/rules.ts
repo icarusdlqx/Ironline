@@ -573,6 +573,9 @@ export const EconomyRulesSchema = z.strictObject({
     recoveryCostFactor: z.number().positive().max(1),
   }),
   repair: z.strictObject({
+    // One is the current campaign's field workshop; the default keeps older
+    // economy packs valid while making capacity an authored rule.
+    bayCapacity: z.number().int().positive().max(8).default(1),
     armourCostPerPoint: z.number().nonnegative(),
     internalCostPerPoint: z.number().nonnegative(),
     locationReplaceCostFraction: z.number().nonnegative().max(1),

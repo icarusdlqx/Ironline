@@ -1,9 +1,9 @@
+import { verifyTouchNavigation, verifyTouchOrders } from './touch-battle.mjs';
+
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
-
-function same(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
+const TABLET = { width: 1024, height: 768 };
+const COMPACT_QUERY = '(max-width: 640px), (pointer: coarse) and (max-width: 1100px)';
 
 async function mobilePage(browser, url, viewport) {
   const context = await browser.newContext({
@@ -53,80 +53,37 @@ async function fullyInViewport(page, selector) {
   });
 }
 
+async function briefingActionState(page) {
+  return page.locator('[data-testid="briefing-actions"]').evaluate((actions) => {
+    const briefing = actions.closest('[data-testid="briefing"]');
+    const deploy = actions.querySelector('[data-testid="briefing-deploy"]');
+    if (!(briefing instanceof HTMLElement) || !(deploy instanceof HTMLElement)) {
+      throw new Error('briefing actions are incomplete');
+    }
+    const panelRect = briefing.getBoundingClientRect();
+    const actionRect = actions.getBoundingClientRect();
+    const deployRect = deploy.getBoundingClientRect();
+    return {
+      position: getComputedStyle(actions).position,
+      contained:
+        actionRect.left >= panelRect.left &&
+        actionRect.right <= panelRect.right &&
+        actionRect.bottom <= panelRect.bottom + 1,
+      deployVisible:
+        deployRect.left >= 0 &&
+        deployRect.top >= 0 &&
+        deployRect.right <= innerWidth &&
+        deployRect.bottom <= innerHeight,
+    };
+  });
+}
+
 async function openBattleMenu(page) {
   const sheet = page.locator('[data-testid="mobile-menu-sheet"]');
   if (!(await sheet.isVisible())) await page.locator('[data-testid="mobile-menu-toggle"]').tap();
   await sheet.waitFor({ state: 'visible' });
 }
 
-async function orderSnapshot(page) {
-  return page.evaluate(() => {
-    const { useGame, world } = globalThis.__ironline;
-    const state = useGame.getState();
-    return {
-      selection: [...state.selection],
-      orders: world.entities
-        .filter((entity) => entity.team === state.playerTeam)
-        .map((entity) => ({
-          id: entity.id,
-          move: entity.orders.move,
-          attack: entity.orders.attack,
-        })),
-    };
-  });
-}
-
-async function dispatchPinch(page) {
-  await page.evaluate(() => {
-    const canvas = document.querySelector('.viewport canvas:not(.perf-overlay)');
-    if (!(canvas instanceof HTMLCanvasElement)) throw new Error('battle canvas missing');
-    const bounds = canvas.getBoundingClientRect();
-    const dock = document.querySelector('[data-testid="mobile-dock"]')?.getBoundingClientRect();
-    const fieldBottom = dock?.top ?? bounds.bottom;
-    const y = Math.max(bounds.top + 90, (bounds.top + fieldBottom) / 2);
-    const point = (fraction) => bounds.left + bounds.width * fraction;
-    const emit = (type, pointerId, x, buttons) =>
-      canvas.dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          pointerId,
-          pointerType: 'touch',
-          clientX: x,
-          clientY: y,
-          button: 0,
-          buttons,
-        }),
-      );
-    emit('pointerdown', 41, point(0.42), 1);
-    emit('pointerdown', 42, point(0.58), 1);
-    emit('pointermove', 41, point(0.36), 1);
-    emit('pointermove', 42, point(0.64), 1);
-    emit('pointerup', 41, point(0.36), 0);
-    emit('pointerup', 42, point(0.64), 0);
-  });
-}
-
-async function dispatchCancel(page) {
-  await page.evaluate(() => {
-    const canvas = document.querySelector('.viewport canvas:not(.perf-overlay)');
-    if (!(canvas instanceof HTMLCanvasElement)) throw new Error('battle canvas missing');
-    const bounds = canvas.getBoundingClientRect();
-    const x = bounds.left + bounds.width * 0.5;
-    const y = bounds.top + bounds.height * 0.42;
-    const options = {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 51,
-      pointerType: 'touch',
-      clientX: x,
-      clientY: y,
-      button: 0,
-    };
-    canvas.dispatchEvent(new PointerEvent('pointerdown', { ...options, buttons: 1 }));
-    canvas.dispatchEvent(new PointerEvent('pointercancel', { ...options, buttons: 0 }));
-  });
-}
 
 async function runOrientation({ browser, url, shots, check, viewport, label, shotLabel }) {
   const { context, page, errors } = await mobilePage(browser, url, viewport);
@@ -136,14 +93,33 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
       `${prefix} uses a coarse touch layout`,
       await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
     );
+    check(
+      `${prefix} matches the compact boundary`,
+      await page.evaluate((query) => matchMedia(query).matches, COMPACT_QUERY),
+    );
+
+    const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute('content');
+    check(
+      `${prefix} leaves browser zoom available`,
+      viewportMeta?.includes('viewport-fit=cover') === true &&
+        !viewportMeta.includes('user-scalable') &&
+        !viewportMeta.includes('maximum-scale'),
+      viewportMeta ?? 'viewport meta missing',
+    );
 
     const rootAtBriefing = await documentOverflow(page);
     const briefing = await overflowOf(page, '[data-testid="briefing"]');
+    const actions = await briefingActionState(page);
     check(
       `${prefix} briefing has no horizontal overflow`,
       rootAtBriefing.scrollWidth <= rootAtBriefing.clientWidth + 1 &&
         briefing.scrollWidth <= briefing.clientWidth + 1,
       `root ${rootAtBriefing.scrollWidth}/${rootAtBriefing.clientWidth}, briefing ${briefing.scrollWidth}/${briefing.clientWidth}`,
+    );
+    check(
+      `${prefix} keeps deploy pinned and reachable on the opening briefing`,
+      actions.position === 'sticky' && actions.contained && actions.deployVisible,
+      JSON.stringify(actions),
     );
     await page.screenshot({ path: `${shots}/11-mobile-${shotLabel}-briefing.png` });
 
@@ -162,7 +138,8 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     await firstLance.tap();
     check(
       `${prefix} first lance card accepts a touch`,
-      (await page.evaluate(() => globalThis.__ironline.useGame.getState().selection.length)) === 1,
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().selection.length)) === 1 &&
+        (await firstLance.getAttribute('aria-pressed')) === 'true',
     );
 
     await page.locator('[data-testid="mobile-select-all"]').tap();
@@ -188,21 +165,18 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     await page.locator('[data-testid="command-move"]').tap();
     check(
       `${prefix} order palette arms a move`,
-      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === 'move',
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === 'move' &&
+        (await page.locator('[data-testid="command-move"]').getAttribute('aria-pressed')) === 'true',
     );
     await page.locator('[data-testid="mobile-cancel"]').tap();
     check(
       `${prefix} cancel clears an armed order`,
-      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === null,
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === null &&
+        (await page.locator('[data-testid="command-move"]').getAttribute('aria-pressed')) === 'false',
     );
 
-    const beforeGesture = await orderSnapshot(page);
-    await dispatchPinch(page);
-    const afterPinch = await orderSnapshot(page);
-    check(`${prefix} pinch does not select or order`, same(afterPinch, beforeGesture));
-    await dispatchCancel(page);
-    const afterCancel = await orderSnapshot(page);
-    check(`${prefix} pointer cancellation does not select or order`, same(afterCancel, afterPinch));
+    await verifyTouchNavigation({ page, check, prefix });
+    if (label === 'portrait') await verifyTouchOrders({ page, check, prefix });
     await page.screenshot({ path: `${shots}/12-mobile-${shotLabel}-battle.png` });
 
     await openBattleMenu(page);
@@ -219,12 +193,36 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
       campaign.scrollWidth <= campaign.clientWidth + 1,
       `${campaign.scrollWidth}/${campaign.clientWidth}`,
     );
+    await page.locator('[data-testid="camp-manual-toggle"]').tap();
+    await page.waitForSelector('[data-testid="camp-manual"]');
+    check(
+      `${prefix} field manual puts touch controls first`,
+      (await page.locator('.manual-control-columns > section').first().getAttribute('data-testid')) ===
+        'manual-touch-controls',
+    );
+    await page.locator('[data-testid="camp-manual-close"]').tap();
+    await page.waitForSelector('[data-testid="camp-manual"]', { state: 'detached' });
     await page.locator('.camp-node.available').first().tap();
     await page.locator('[data-testid="camp-terms-salvage_first"]').tap();
     check(
       `${prefix} campaign contract controls accept touch`,
       await page.locator('[data-testid="camp-terms-salvage_first"]').isChecked(),
     );
+    const posting = page.locator('[data-testid="camp-hall"] button').first();
+    if ((await posting.count()) > 0) {
+      await posting.scrollIntoViewIfNeeded();
+      await posting.tap();
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-testid') === 'camp-contract',
+      );
+      check(
+        `${prefix} side posting reveals its signable terms`,
+        await page.locator('[data-testid="camp-contract"]').evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return document.activeElement === element && bounds.top >= -1 && bounds.top < innerHeight;
+        }),
+      );
+    }
     await page.screenshot({ path: `${shots}/13-mobile-${shotLabel}-campaign.png` });
 
     await page.locator('[data-testid="camp-exit"]').tap();
@@ -283,4 +281,31 @@ export async function runMobilePlaythrough({ browser, url, shots, check }) {
     label: 'landscape',
     shotLabel: 'landscape',
   });
+  process.stdout.write('\ncoarse tablet\n');
+  await runOrientation({
+    browser,
+    url,
+    shots,
+    check,
+    viewport: TABLET,
+    label: 'tablet',
+    shotLabel: 'tablet',
+  });
+
+  // The coarse context above owns the touch contract. A separate context
+  // proves width alone does not turn an ordinary tablet-sized window into the
+  // finger layout.
+  const desktopContext = await browser.newContext({ viewport: TABLET });
+  const desktopPage = await desktopContext.newPage();
+  try {
+    await desktopPage.goto(url);
+    await desktopPage.waitForSelector('[data-testid="briefing"]');
+    check(
+      '1024px fine-pointer desktop keeps the desktop layout',
+      !(await desktopPage.evaluate((query) => matchMedia(query).matches, COMPACT_QUERY)) &&
+        (await desktopPage.locator('.mobile-topbar').count()) === 0,
+    );
+  } finally {
+    await desktopContext.close();
+  }
 }

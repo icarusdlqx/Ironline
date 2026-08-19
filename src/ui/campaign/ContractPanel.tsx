@@ -1,20 +1,21 @@
+import type { ReactNode } from 'react';
 import { termsName, type NegotiationOption } from '../../campaign/contractTerms';
-import type { Contract, ContractTermsId } from '../../campaign/types';
+import type { CampaignState, Contract, ContractTermsId } from '../../campaign/types';
 import type { CampaignNode } from '../../schema/campaign';
 import type { SalvageRules } from '../../schema/rules';
 import type { EmployerHistory } from '../../campaign/employers';
+import type { Catalog } from '../../schema/load';
 import { EmployerLedger, employerHistoryText } from './EmployerLedger';
+import { ContractBriefing } from './ContractBriefing';
 import { SalvageTerms } from './SalvageTerms';
 
 function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
 }
 
-function repairTerms(): string {
-  return 'Repair cover: none. The company pays its own yard bill.';
-}
-
 interface ContractPanelProps {
+  catalog: Catalog;
+  state: CampaignState;
   contract: Contract | null;
   node: CampaignNode | null;
   options: NegotiationOption[];
@@ -25,6 +26,7 @@ interface ContractPanelProps {
   won: boolean;
   employer: EmployerHistory | null;
   employers: EmployerHistory[];
+  companyStatus?: ReactNode;
   onSelectTerms: (termsId: ContractTermsId) => void;
   onAccept: (termsId: ContractTermsId) => void;
   onDeploy: () => void;
@@ -32,6 +34,8 @@ interface ContractPanelProps {
 }
 
 export function ContractPanel({
+  catalog,
+  state,
   contract,
   node,
   options,
@@ -42,6 +46,7 @@ export function ContractPanel({
   won,
   employer,
   employers,
+  companyStatus,
   onSelectTerms,
   onAccept,
   onDeploy,
@@ -51,15 +56,20 @@ export function ContractPanel({
     options.find((option) => option.id === selectedTerms) ?? options[1] ?? options[0] ?? null;
   const selectedIndex = selected === null ? 0 : Math.max(0, options.indexOf(selected));
   const choosing = contract === null && node !== null;
+  const signedNode = contract === null
+    ? null
+    : catalog.campaigns.get(state.campaignId)?.nodes.find((entry) => entry.id === contract.nodeId);
+  const signedMission = contract === null ? null : catalog.missions.get(contract.missionId);
 
   return (
     <section
       className={choosing ? 'camp-contract negotiating' : 'camp-contract'}
       data-testid="camp-contract"
+      tabIndex={-1}
     >
       {contract !== null ? (
         <>
-          <h3>Active contract</h3>
+          <h3>{signedNode?.name ?? signedMission?.name ?? 'Active contract'}</h3>
           <p className="contract-package" data-testid="camp-active-terms">
             {termsName(contract.termsId)}
           </p>
@@ -68,16 +78,20 @@ export function ContractPanel({
               <strong>{employer.name}</strong> · {employerHistoryText(employer)}
             </p>
           )}
-          <p>
-            {cbills(contract.payout)} on success,{' '}
-            {Math.round(contract.salvageShare * 100)}% salvage claim, due day {contract.deadlineDay}.
-          </p>
-          <p className="contract-exposure">{repairTerms()}</p>
+          <ContractBriefing
+            catalog={catalog}
+            state={state}
+            missionId={contract.missionId}
+            deadlineDay={contract.deadlineDay}
+            nodeId={contract.nodeId}
+            terms={contract}
+          />
+          <p className="camp-brief">{signedNode?.brief ?? signedMission?.briefing ?? ''}</p>
           <div className="camp-buttons">
-            <button type="button" onClick={onDeploy} data-testid="camp-deploy">
+            <button type="button" onClick={onDeploy} disabled={finished} data-testid="camp-deploy">
               Prepare drop ({readyMechs} mech{readyMechs === 1 ? '' : 's'} ready)
             </button>
-            <button type="button" onClick={onAbandon} data-testid="camp-abandon">
+            <button type="button" onClick={onAbandon} disabled={finished} data-testid="camp-abandon">
               Withdraw
             </button>
           </div>
@@ -93,6 +107,16 @@ export function ContractPanel({
             </p>
           )}
           <p className="camp-brief">{node.brief}</p>
+          {selected === null ? null : (
+            <ContractBriefing
+              catalog={catalog}
+              state={state}
+              missionId={node.missionId}
+              deadlineDay={state.day + node.deadlineDays}
+              nodeId={node.id}
+              terms={selected}
+            />
+          )}
           <fieldset className="camp-negotiate" data-testid="camp-terms">
             <legend>Terms</legend>
             {options.map((option) => (
@@ -109,7 +133,7 @@ export function ContractPanel({
                   data-testid={`camp-terms-${option.id}`}
                 />
                 <span className="contract-option-name">{option.name}</span>
-                <span className="contract-option-pay">{cbills(option.payout)} on success</span>
+                <span className="contract-option-pay">{cbills(option.payout)} on success only</span>
                 <span className="contract-option-salvage">
                   {Math.round(option.salvageShare * 100)}% salvage
                 </span>
@@ -117,15 +141,15 @@ export function ContractPanel({
             ))}
           </fieldset>
           {selected === null ? null : (
-            <>
+            <details className="contract-salvage-detail">
+              <summary>Recovery odds for {selected.name.toLowerCase()} terms</summary>
               <SalvageTerms
                 option={selected}
                 step={selectedIndex}
                 steps={options.length}
                 rules={salvageRules}
               />
-              <p className="contract-exposure">{repairTerms()}</p>
-            </>
+            </details>
           )}
           <button
             type="button"
@@ -139,6 +163,7 @@ export function ContractPanel({
           </button>
         </>
       )}
+      {companyStatus}
       <EmployerLedger employers={employers} />
     </section>
   );

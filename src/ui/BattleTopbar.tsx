@@ -82,10 +82,11 @@ export function BattleTopbar({
       <button
         type="button"
         className={`pause ${state.paused ? 'active' : ''}`}
+        disabled={!state.briefingSeen}
         onClick={() => engine?.togglePause()}
         data-testid="pause-button"
       >
-        {state.paused ? '▶ Resume' : '❚❚ Pause'}
+        {!state.briefingSeen ? 'Briefing' : state.paused ? '▶ Resume' : '❚❚ Pause'}
       </button>
       <span className="speed-controls" data-testid="speed-controls">
         {[1, 2, 4].map((speed) => (
@@ -93,6 +94,7 @@ export function BattleTopbar({
             key={speed}
             type="button"
             className={`pause ${!state.paused && state.speed === speed ? 'active' : ''}`}
+            disabled={!state.briefingSeen}
             onClick={() => engine?.setSpeed(speed)}
             title={`Run the battle at ${speed}× (, and . step speed)`}
             data-testid={`speed-${speed}`}
@@ -168,7 +170,7 @@ export function BattleTopbar({
       </a>
       <span className="hint">
         Space pauses · , . change speed · P perf graph · click an enemy to attack ·
-        right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms
+        right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms · Centre recentres
       </span>
     </header>
   );

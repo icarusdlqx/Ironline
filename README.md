@@ -158,7 +158,7 @@ sees furthest is not the one who shoots straightest.
 | H / G | Hold Fire / hold position |
 | Q / V / X | Target nearest contact, pilot ability, alpha strike |
 | Tab | Cycle through your lance |
-| Arrow keys | Pan · wheel zooms · middle-drag pans · minimap click recentres |
+| Arrow keys / Centre | Pan or centre the selection · wheel zooms under the pointer · middle-drag pans · minimap click jumps |
 | , / . | Lower / raise battle speed |
 | P | Toggle the performance graph |
 | Esc | Cancel targeting and clear the selection |
@@ -168,6 +168,7 @@ calls are picked from the palette and then placed with a left click; an air
 strike uses a press-drag to set its run-in. Esc cancels an armed call.
 
 On touch, tap a friendly to select it, open ground to move, or a hostile to
-attack. Drag the ground to pan and pinch to zoom. Commands take their next
-target from a tap. Tap an armed support call again to cancel it; air strikes
-run from the lance through the point tapped.
+attack. Drag the ground to pan, pinch around the fingers to zoom, or tap Centre
+to find the selection. Commands take their next target from a tap. Tap an armed
+support call again to cancel it; press and drag an air strike across the field
+to choose its run-in.

@@ -63,6 +63,10 @@ export interface PilotMissionRecord {
   unit: UnitResult;
 }
 
+export function returnedFromField(unit: UnitResult): boolean {
+  return unit.alive || unit.withdrew;
+}
+
 /**
  * What a pilot learned from a drop.
  *
@@ -77,7 +81,7 @@ export function awardXp(catalog: Catalog, entry: PilotMissionRecord, won: boolea
     entry.unit.damageDealt * rules.perDamageDealt +
     entry.unit.shotsHit * rules.perHit +
     entry.unit.kills * rules.perKill;
-  if (entry.unit.alive) gained += rules.missionSurvival;
+  if (returnedFromField(entry.unit)) gained += rules.missionSurvival;
   if (won) gained += rules.missionWin;
 
   gained *= traitFactor(catalog, entry.pilot, 'xpFactor');
@@ -106,6 +110,15 @@ export interface CasualtyResult {
   injuredDays: number;
 }
 
+function preserveWithdrawalSequence(catalog: Catalog, rng: Rng, pilot: PilotRecord): void {
+  const rules = catalog.rules.economy.pilot;
+  const survival = traitFactor(catalog, pilot, 'survivalFactor');
+  // Withdrawal once entered the mech-loss branch. Keeping its discarded draws
+  // prevents a corrected pilot outcome from rerolling salvage on existing seeds.
+  if (rng.chance(rules.deathChanceOnMechLoss * survival)) return;
+  if (rng.chance(rules.injuryChanceOnMechLoss * survival)) rng.int(1, 4);
+}
+
 /**
  * A pilot only risks harm when their mech goes down. A head kill is far more
  * likely to be fatal than losing the mech around them.
@@ -122,7 +135,8 @@ export function resolveCasualty(
   // A pilot who walked off the field under their own power but got thrown
   // about inside the cockpit still sees the surgeon — for days, not weeks.
   // No base term: nobody had to cut them out of anything.
-  if (unit.alive) {
+  if (returnedFromField(unit)) {
+    if (!unit.alive) preserveWithdrawalSequence(catalog, rng, pilot);
     if (unit.pilotWounds <= 0) return { died: false, injuredDays: 0 };
     const days = rules.injuryDaysPerWound * unit.pilotWounds;
     pilot.injuredUntilDay = day + days;
@@ -169,16 +183,18 @@ export interface HireResult {
 }
 
 /**
- * Who is on the register and not already flying for you.
+ * Who this campaign put on the register and is not already flying for you.
  *
- * The hiring hall is the whole roster minus the people you have. It does not
- * refresh or rotate: these are the pilots on this continent, and when the last
- * one is dead the company is down to whoever is left.
+ * The authored pool is a content boundary, not a save boundary. A pilot hired
+ * by an older build stays employed even if the register has since tightened.
  */
 export function availableHires(catalog: Catalog, state: CampaignState): Pilot[] {
   const employed = new Set(state.pilots.filter((entry) => !entry.dead).map((entry) => entry.templateId));
   const buried = new Set(state.pilots.filter((entry) => entry.dead).map((entry) => entry.templateId));
-  return [...catalog.pilots.values()]
+  const campaign = catalog.campaigns.get(state.campaignId);
+  return (campaign?.hiringPoolPilotIds ?? [])
+    .map((id) => catalog.pilots.get(id))
+    .filter((pilot): pilot is Pilot => pilot !== undefined)
     .filter((pilot) => !employed.has(pilot.id) && !buried.has(pilot.id))
     .sort((a, b) => hireCost(catalog, a) - hireCost(catalog, b));
 }
@@ -191,6 +207,10 @@ export function hirePilot(
 ): HireResult {
   const template = catalog.pilots.get(templateId);
   if (template === undefined) return { ok: false, reason: 'no such pilot', pilot: null };
+  const campaign = catalog.campaigns.get(state.campaignId);
+  if (campaign?.hiringPoolPilotIds.includes(templateId) !== true) {
+    return { ok: false, reason: `${template.name} is not on this campaign's register`, pilot: null };
+  }
   if (state.pilots.some((entry) => entry.templateId === templateId)) {
     return { ok: false, reason: `${template.name} is already on the books`, pilot: null };
   }

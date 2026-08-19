@@ -79,6 +79,7 @@ export function WeaponGroups({
               type="button"
               className="group-key"
               onClick={() => onToggleGroup(group)}
+              aria-pressed={enabled}
               title={`Toggle weapon group ${group}`}
               data-testid={`group-${group}`}
             >
@@ -177,6 +178,7 @@ export function LanceBar({
             type="button"
             className={`lance-card ${selection.includes(unit.id) ? 'selected' : ''} ${unit.alive ? '' : 'dead'}`}
             onClick={() => onSelect(unit.id)}
+            aria-pressed={selection.includes(unit.id)}
             data-testid={`lance-card-${unit.id}`}
           >
             <span className="lance-name">{unit.pilotName}</span>
@@ -248,6 +250,7 @@ export function SupportPalette({
             type="button"
             className={`support-call ${active === option.id ? 'active' : ''}`}
             disabled={unaffordable || noReserves}
+            aria-pressed={active === option.id}
             title={status}
             onClick={() => onPick(option.id)}
             data-testid={`support-${option.id}`}

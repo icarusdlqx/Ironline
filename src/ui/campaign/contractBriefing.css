@@ -1,0 +1,66 @@
+.contract-facts {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 9px;
+  min-width: 0;
+}
+
+.contract-facts > div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 62px minmax(0, 1fr);
+}
+
+.contract-facts dt {
+  color: var(--muted);
+}
+
+.contract-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.contract-salvage-detail {
+  margin: 6px 0 8px;
+}
+
+.contract-salvage-detail summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.hall-name,
+.hall-employer,
+.hall-profile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 420px) {
+  .contract-facts > div {
+    gap: 1px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .contract-option {
+    grid-template-columns: auto minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .contract-option-salvage {
+    align-self: auto;
+    grid-column: 2;
+    grid-row: auto;
+  }
+
+  .camp-hall button {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hall-terms {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+}

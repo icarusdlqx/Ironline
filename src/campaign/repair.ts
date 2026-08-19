@@ -12,6 +12,106 @@ export interface RepairEstimate {
   days: number;
 }
 
+export interface RepairQueueEntry {
+  mechId: string;
+  /** Stable ordering among every outstanding booking. */
+  position: number;
+  /** Waiting place after the active lifts; inherited work is not put in this line. */
+  queuePosition: number | null;
+  status: 'active' | 'queued' | 'inherited';
+  startsOnDay: number | null;
+  readyOnDay: number;
+}
+
+/**
+ * The persisted completion dates are the queue: old saves already carry them,
+ * and need no new repair state or save version to remain playable.
+ */
+export function repairQueue(catalog: Catalog, state: CampaignState): RepairQueueEntry[] {
+  const booked = state.mechs
+    .map((mech, rosterIndex) => ({ mech, rosterIndex }))
+    .filter(({ mech }) => mech.status === 'repairing' && mech.readyOnDay > state.day)
+    .sort((a, b) => a.mech.readyOnDay - b.mech.readyOnDay || a.rosterIndex - b.rosterIndex);
+  const capacity = catalog.rules.economy.repair.bayCapacity;
+  let waiting = 0;
+
+  return booked.map(({ mech }, index) => {
+    const previous = booked[index - capacity]?.mech;
+    if (previous === undefined) {
+      return {
+        mechId: mech.id,
+        position: index + 1,
+        queuePosition: null,
+        status: 'active',
+        startsOnDay: state.day,
+        readyOnDay: mech.readyOnDay,
+      };
+    }
+
+    // Saves made before capacity existed may promise two completions before a
+    // single lift could have performed them. Keep that paid promise, but do
+    // not invent an impossible zero-day sequential job in the readout.
+    if (mech.readyOnDay <= previous.readyOnDay) {
+      return {
+        mechId: mech.id,
+        position: index + 1,
+        queuePosition: null,
+        status: 'inherited',
+        startsOnDay: null,
+        readyOnDay: mech.readyOnDay,
+      };
+    }
+
+    waiting += 1;
+    return {
+      mechId: mech.id,
+      position: index + 1,
+      queuePosition: waiting,
+      status: 'queued',
+      startsOnDay: previous.readyOnDay,
+      readyOnDay: mech.readyOnDay,
+    };
+  });
+}
+
+export function projectedRepairWindow(
+  catalog: Catalog,
+  state: CampaignState,
+  days: number,
+): Omit<RepairQueueEntry, 'mechId'> {
+  const queue = repairQueue(catalog, state);
+  const capacity = catalog.rules.economy.repair.bayCapacity;
+  const startsOnDay = Math.max(
+    state.day,
+    queue[queue.length - capacity]?.readyOnDay ?? state.day,
+  );
+  const queuePosition =
+    startsOnDay === state.day
+      ? null
+      : queue.filter((entry) => entry.status === 'queued').length + 1;
+  return {
+    position: queue.length + 1,
+    queuePosition,
+    status: queuePosition === null ? 'active' : 'queued',
+    startsOnDay,
+    readyOnDay: startsOnDay + days,
+  };
+}
+
+/** Books paid work into the authored field-workshop capacity without save-only state. */
+export function bookRepair(
+  catalog: Catalog,
+  state: CampaignState,
+  mech: MechRecord,
+  days: number,
+): RepairQueueEntry {
+  const window = projectedRepairWindow(catalog, state, days);
+  mech.status = 'repairing';
+  mech.readyOnDay = window.readyOnDay;
+  mech.rebuildCost = 0;
+  return { mechId: mech.id, ...window };
+}
+
 export function pristineCondition(
   catalog: Catalog,
   design: Design,
@@ -119,9 +219,7 @@ export function startRepair(
   }
 
   state.cbills -= estimate.cost;
-  mech.status = 'repairing';
-  mech.readyOnDay = state.day + estimate.days;
-  mech.rebuildCost = 0;
+  bookRepair(catalog, state, mech, estimate.days);
 
   return { ok: true, reason: null, estimate };
 }

@@ -1,13 +1,19 @@
+import type { CampaignPersistenceState } from '../../campaign/save';
+import { CampaignRecoveryNotice } from './CampaignRecoveryNotice';
+
 export interface CampaignHeaderProps {
   title: string;
   day: number;
   balance: string;
   seed: string;
   manualOpen: boolean;
+  persistence: CampaignPersistenceState;
+  advanceDisabled: boolean;
   onAdvance: () => void;
   onSave: () => void;
   onLoad: () => void;
   onExport: () => void;
+  onExportRecovery: () => void;
   onImport: (text: string) => void;
   onRestart: () => void;
   onToggleManual: () => void;
@@ -20,10 +26,13 @@ export function CampaignHeader({
   balance,
   seed,
   manualOpen,
+  persistence,
+  advanceDisabled,
   onAdvance,
   onSave,
   onLoad,
   onExport,
+  onExportRecovery,
   onImport,
   onRestart,
   onToggleManual,
@@ -43,7 +52,12 @@ export function CampaignHeader({
       </div>
       <span data-testid="camp-day">Day {day}</span>
       <span data-testid="camp-cbills">{balance}</span>
-      <button type="button" onClick={onAdvance} data-testid="camp-advance">
+      <button
+        type="button"
+        onClick={onAdvance}
+        disabled={advanceDisabled}
+        data-testid="camp-advance"
+      >
         Advance a day
       </button>
       <button type="button" onClick={onSave} data-testid="camp-save">
@@ -86,6 +100,10 @@ export function CampaignHeader({
       >
         Feedback
       </a>
+      <CampaignRecoveryNotice
+        persistence={persistence}
+        onExportOriginal={onExportRecovery}
+      />
     </header>
   );
 }

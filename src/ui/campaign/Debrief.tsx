@@ -19,17 +19,29 @@ const DEBRIEFED_KEY = 'ironline.campaign.debriefed';
 
 /** How many missions the player has already been shown a debrief for. */
 export function debriefedCount(): number {
-  const raw = globalThis.localStorage?.getItem(DEBRIEFED_KEY);
-  const value = raw === null || raw === undefined ? 0 : Number(raw);
-  return Number.isFinite(value) ? value : 0;
+  try {
+    const raw = globalThis.localStorage?.getItem(DEBRIEFED_KEY);
+    const value = raw === null || raw === undefined ? 0 : Number(raw);
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function markDebriefed(count: number): void {
-  globalThis.localStorage?.setItem(DEBRIEFED_KEY, String(count));
+  try {
+    globalThis.localStorage?.setItem(DEBRIEFED_KEY, String(count));
+  } catch {
+    // The campaign warning already carries the storage failure.
+  }
 }
 
 export function resetDebriefed(): void {
-  globalThis.localStorage?.removeItem(DEBRIEFED_KEY);
+  try {
+    globalThis.localStorage?.removeItem(DEBRIEFED_KEY);
+  } catch {
+    // A secondary receipt must not hide the recoverable campaign.
+  }
 }
 
 /** Restored campaigns show their latest report once, never an earlier run's place. */
@@ -96,7 +108,7 @@ export function Debrief({
   outcome: MissionOutcome;
   onClose: () => void;
   /** Swaps what came home for a different pick out of the same offer. */
-  onChooseSalvage?: (picks: StoreItem[]) => void;
+  onChooseSalvage?: (picks: StoreItem[]) => StoreItem[] | void;
 }) {
   const mission = catalog.missions.get(outcome.missionId);
   const campaign = catalog.campaigns.get(state.campaignId);
@@ -109,6 +121,7 @@ export function Debrief({
           outcome.employerId,
           outcome.employerName,
           state.employerFailures,
+          state.historyArchive.employers,
         );
   const offered = outcome.salvageOffered ?? [];
   const candidates = outcome.salvageCandidates ?? [];
@@ -121,15 +134,15 @@ export function Debrief({
     .reduce((total, item) => total + storeItemValueOf(catalog, item), 0);
 
   const toggle = (key: string): void => {
+    if (outcome.salvageFinalized) return;
     const next = picks.includes(key)
       ? picks.filter((held) => held !== key)
       : [...picks, key].slice(-SALVAGE_PICKS);
-    setPicks(next);
-    onChooseSalvage?.(
-      next
-        .map((entry) => offered.find((item) => `${item.kind}:${item.itemId}` === entry))
-        .filter((item): item is StoreItem => item !== undefined),
-    );
+    const wanted = next
+      .map((entry) => offered.find((item) => `${item.kind}:${item.itemId}` === entry))
+      .filter((item): item is StoreItem => item !== undefined);
+    const selected = onChooseSalvage?.(wanted) ?? wanted;
+    setPicks(selected.map((item) => `${item.kind}:${item.itemId}`));
   };
 
   return (
@@ -188,8 +201,17 @@ export function Debrief({
               Salvage — {picks.length}/{SALVAGE_PICKS} picks · {cbills(selectedValue)} build value
             </h4>
             <p className="salvage-note">
-              Choose what comes home; one pick takes the full listed crate. Loose crates cannot be
-              sold. Mounted sale basis is what a part adds to an intact mech's yard valuation.
+              {outcome.salvageFinalized
+                ? 'Salvage manifest finalized. This restored report is read-only. '
+                : ''}
+              Recovered hulls are already in the yard, carrying their field damage and no mounted
+              weapons or equipment. When the field yields more than five crate types, weapons and
+              equipment alternate; each list rotates from one field to the next.
+              {outcome.salvageFinalized
+                ? ' The aboard and left marks record what came home. '
+                : ' Choose what comes home; one pick takes the full listed crate. '}
+              Loose crates cannot be sold.
+              Mounted sale basis is what a part adds to an intact mech's yard valuation.
             </p>
             <ul className="salvage-offer">
               {offered.map((item) => {
@@ -208,6 +230,7 @@ export function Debrief({
                     <button
                       type="button"
                       className={taken ? 'taken' : ''}
+                      disabled={outcome.salvageFinalized}
                       onClick={() => toggle(key)}
                       aria-pressed={taken}
                       data-testid={`salvage-pick-${item.itemId}`}

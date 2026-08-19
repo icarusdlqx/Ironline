@@ -72,7 +72,7 @@
       ]
     }
   ],
-  "briefing": "Outnumbered and nowhere to fall back to. They will come in two pushes — hold the pass for five minutes. Killing them all is optional.",
+  "briefing": "Outnumbered and nowhere to fall back to. They will come in two pushes — hold the pass for five minutes. The clock, not the body count, settles the contract.",
   "startingResourcePoints": 700,
   "objectives": [
     {
@@ -81,13 +81,6 @@
       "type": "survive",
       "team": 0,
       "required": true
-    },
-    {
-      "id": "wipe_them_out",
-      "label": "Destroy the opposing lance",
-      "type": "destroy_all",
-      "team": 0,
-      "required": false
     }
   ],
   "triggers": [
@@ -118,7 +111,7 @@
             },
             {
               "designId": "sentinel_brawler",
-              "pilotId": "cato_ferrin",
+              "pilotId": "teodor_krysa",
               "spawn": {
                 "x": 804,
                 "y": 132

@@ -4,6 +4,7 @@ import type {
   CampaignState,
   Contract,
   EmployerFailure,
+  EmployerOutcomeSummary,
   MissionOutcome,
 } from './types';
 
@@ -131,6 +132,7 @@ export function employerHistories(
   campaign: Campaign,
   history: readonly MissionOutcome[],
   failures: readonly EmployerFailure[] = [],
+  archived: Readonly<Record<string, EmployerOutcomeSummary>> = {},
 ): EmployerHistory[] {
   const records = new Map<string, EmployerHistory>(
     campaign.employers.map((employer) => [
@@ -138,6 +140,22 @@ export function employerHistories(
       { ...employer, completed: 0, failed: 0, withdrawn: 0, expired: 0, paid: 0 },
     ]),
   );
+
+  for (const [employerId, summary] of Object.entries(archived)) {
+    const current = records.get(employerId) ?? {
+      id: employerId,
+      name: employerDisplayName(campaign, employerId, summary.employerName),
+      completed: 0,
+      failed: 0,
+      withdrawn: 0,
+      expired: 0,
+      paid: 0,
+    };
+    current.completed += summary.completed;
+    current.failed += summary.failed;
+    current.paid += summary.paid;
+    records.set(current.id, current);
+  }
 
   for (const outcome of history) {
     const current = records.get(outcome.employerId) ?? {
@@ -179,8 +197,9 @@ export function employerHistoryFor(
   employerId: string,
   savedName?: string,
   failures: readonly EmployerFailure[] = [],
+  archived: Readonly<Record<string, EmployerOutcomeSummary>> = {},
 ): EmployerHistory {
-  return employerHistories(campaign, history, failures).find(
+  return employerHistories(campaign, history, failures, archived).find(
     (record) => record.id === employerId,
   ) ?? {
     id: employerId,

@@ -131,6 +131,7 @@ describe('mission resolution', () => {
 
     const outcome = state.history[0];
     expect(outcome?.won).toBe(true);
+    expect(outcome?.salvageFinalized).toBe(false);
     expect(state.cbills).toBeGreaterThan(before);
     expect(state.completedNodes).toContain('militia_raid');
     expect(campaignNodes(catalog, state).map((node) => node.id).sort()).toEqual([

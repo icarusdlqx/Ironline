@@ -14,13 +14,15 @@ function hostile(id = 9): MechEntity {
   } as MechEntity;
 }
 
-function harness() {
+function harness(canAct = true) {
+  let actionAllowed = canAct;
   let picked: MechEntity | null = null;
+  const zoomBetween = vi.fn();
   const engine = {
     cursorWorld: null,
     supportAim: null,
     renderer: {
-      camera: { distance: 470, zoomBy: vi.fn(), panBy: vi.fn() },
+      camera: { distance: 470, panBy: vi.fn() },
     },
     supportNeedsHeading: vi.fn(() => false),
     callSupport: vi.fn(() => ({ ok: true, reason: null })),
@@ -34,9 +36,17 @@ function harness() {
     engine,
     pickAt: () => picked,
     screenWorld: (point) => point,
+    zoomBetween,
+    canAct: () => actionAllowed,
     onPinchStart: vi.fn(),
   });
-  return { engine, input, pick: (entity: MechEntity | null) => (picked = entity) };
+  return {
+    engine,
+    input,
+    zoomBetween,
+    pick: (entity: MechEntity | null) => (picked = entity),
+    setCanAct: (allowed: boolean) => (actionAllowed = allowed),
+  };
 }
 
 beforeEach(() => {
@@ -50,17 +60,67 @@ beforeEach(() => {
 });
 
 describe('touch input', () => {
+  it('keeps camera drag available without committing a pre-deploy tap or order', () => {
+    const { engine, input, pick } = harness(false);
+    useGame.setState({ orderMode: 'attack' });
+    pick(hostile());
+
+    input.start(1, { x: 20, y: 30 }, { x: 20, y: 30 });
+    input.move(1, { x: 50, y: 60 });
+    input.finish(1, { x: 50, y: 60 });
+
+    expect(engine.renderer.camera.panBy).toHaveBeenCalled();
+    expect(engine.orderMove).not.toHaveBeenCalled();
+    expect(engine.orderAttack).not.toHaveBeenCalled();
+    expect(useGame.getState().orderMode).toBe('attack');
+  });
+
+  it('never turns a touch begun before deployment into an order after deployment', () => {
+    const { engine, input, setCanAct } = harness(false);
+    useGame.setState({ orderMode: 'move' });
+
+    input.start(1, { x: 20, y: 30 }, { x: 20, y: 30 });
+    setCanAct(true);
+    input.finish(1, { x: 20, y: 30 });
+
+    expect(engine.orderMove).not.toHaveBeenCalled();
+    expect(engine.orderAttack).not.toHaveBeenCalled();
+    expect(useGame.getState().orderMode).toBe('move');
+  });
+
   it('zooms a pinch without committing its final release', () => {
-    const { engine, input } = harness();
+    const { engine, input, zoomBetween } = harness();
     input.start(1, { x: 10, y: 10 }, { x: 10, y: 10 });
     input.start(2, { x: 30, y: 10 }, { x: 30, y: 10 });
     input.move(2, { x: 50, y: 10 });
     input.finish(1, { x: 10, y: 10 });
     input.finish(2, { x: 50, y: 10 });
 
-    expect(engine.renderer.camera.zoomBy).toHaveBeenCalled();
+    expect(zoomBetween).toHaveBeenCalledWith(2, { x: 20, y: 10 }, { x: 30, y: 10 });
     expect(engine.orderMove).not.toHaveBeenCalled();
     expect(engine.callSupport).not.toHaveBeenCalled();
+  });
+
+  it('moves the pinch anchor through both halves of a symmetric gesture', () => {
+    const { input, zoomBetween } = harness();
+    input.start(1, { x: 420, y: 360 }, { x: 420, y: 360 });
+    input.start(2, { x: 620, y: 360 }, { x: 620, y: 360 });
+
+    input.move(1, { x: 340, y: 360 });
+    input.move(2, { x: 700, y: 360 });
+
+    expect(zoomBetween).toHaveBeenNthCalledWith(
+      1,
+      280 / 200,
+      { x: 520, y: 360 },
+      { x: 480, y: 360 },
+    );
+    expect(zoomBetween).toHaveBeenNthCalledWith(
+      2,
+      360 / 280,
+      { x: 480, y: 360 },
+      { x: 520, y: 360 },
+    );
   });
 
   it('previews and commits a directional support drag once', () => {

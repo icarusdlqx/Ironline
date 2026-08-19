@@ -1,4 +1,5 @@
 import { CommandPalette, type Command } from './CommandPalette';
+import { CentreSelectionButton } from './CentreSelectionButton';
 import type { Engine } from './engine';
 import { FormationPicker } from './FormationPicker';
 import { Minimap } from './Minimap';
@@ -72,11 +73,14 @@ export function BattleHud({ engine, supportOptions }: BattleHudProps) {
       />
       <Minimap engine={engine} />
       <footer className="bottombar">
-        <LanceBar
-          units={state.units}
-          selection={state.selection}
-          onSelect={(id) => state.setSelection([id])}
-        />
+        <div className="camera-lance-row">
+          <CentreSelectionButton engine={engine} className="command camera-centre" />
+          <LanceBar
+            units={state.units}
+            selection={state.selection}
+            onSelect={(id) => state.setSelection([id])}
+          />
+        </div>
         <CommandPalette
           leading={
             <FormationPicker

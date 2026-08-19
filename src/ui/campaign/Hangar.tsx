@@ -1,10 +1,16 @@
-import { LOCATIONS } from '../../schema/common';
 import type { Catalog } from '../../schema/load';
 import { rebuildHulk } from '../../campaign/refit';
-import { estimateRepair, startRepair } from '../../campaign/repair';
+import { mechIntegrity } from '../../campaign/integrity';
+import {
+  estimateRepair,
+  projectedRepairWindow,
+  repairQueue,
+  startRepair,
+} from '../../campaign/repair';
 import { employerNameFor } from '../../campaign/employers';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
+import { ContractBriefing } from './ContractBriefing';
 
 interface Props {
   catalog: Catalog;
@@ -14,20 +20,6 @@ interface Props {
   onRefit: (mechId: string) => void;
   onContinue: () => void;
   onCancel: () => void;
-}
-
-/** How much of a mech is still there, as a fraction of what it should have. */
-function integrity(state: CampaignState, mechId: string): number {
-  const mech = state.mechs.find((entry) => entry.id === mechId);
-  if (mech === undefined) return 0;
-  let have = 0;
-  let want = 0;
-  for (const location of LOCATIONS) {
-    const condition = mech.condition[location];
-    have += condition.armour + condition.rearArmour + condition.internal;
-    want += mech.design.armour[location] + condition.internal;
-  }
-  return want === 0 ? 1 : Math.max(0, Math.min(1, have / want));
 }
 
 /**
@@ -45,6 +37,8 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
     contract === null
       ? null
       : employerNameFor(catalog, state.campaignId, contract.employerId, contract.employerName);
+  const queue = repairQueue(catalog, state);
+  const queueByMech = new Map(queue.map((entry) => [entry.mechId, entry]));
 
   return (
     <div className="manifest-backdrop" data-testid="hangar-stage">
@@ -56,21 +50,44 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
             {employer === null ? '' : ` — ${employer}.`} Repair what is broken, refit
             what is mis-armed, then move on to the drop manifest.
           </p>
+          {contract === null ? null : (
+            <ContractBriefing
+              catalog={catalog}
+              state={state}
+              missionId={contract.missionId}
+              deadlineDay={contract.deadlineDay}
+              nodeId={contract.nodeId}
+              terms={contract}
+            />
+          )}
         </header>
 
         <ul className="manifest-list">
           {state.mechs.map((mech) => {
             const estimate = estimateRepair(catalog, mech);
             const ready = isMechAvailable(state, mech) && mech.status !== 'hulk';
-            const health = integrity(state, mech.id);
+            const integrity = mechIntegrity(catalog, mech);
+            const health = integrity.fraction;
+            const projected = projectedRepairWindow(catalog, state, estimate.days);
+            const booking = queueByMech.get(mech.id);
+            const projectedTiming =
+              projected.status === 'active'
+                ? `ready day ${projected.readyOnDay}`
+                : `starts day ${projected.startsOnDay}, ready day ${projected.readyOnDay}`;
             const status =
               mech.status === 'hulk'
-                ? `Wreck — rebuild for ${cbills(mech.rebuildCost)}`
+                ? `Wreck — ${cbills(estimate.cost)}, ${projectedTiming}`
                 : !ready
-                  ? `In the shop until day ${mech.readyOnDay}`
-                  : estimate.days === 0
-                    ? 'Ready'
-                    : `Damaged — ${cbills(estimate.cost)}, ${estimate.days}d to fix`;
+                  ? booking?.status === 'active'
+                    ? `On a lift — ready day ${mech.readyOnDay}`
+                    : booking?.status === 'inherited'
+                      ? `Inherited concurrent booking — ready day ${mech.readyOnDay}`
+                      : `Queued ${booking?.queuePosition ?? 1} — starts day ${booking?.startsOnDay ?? state.day}, ready day ${mech.readyOnDay}`
+                  : mech.design.mounts.length === 0
+                    ? 'Rebuilt — fit a weapon before deployment'
+                    : estimate.days === 0
+                      ? 'Ready'
+                      : `Damaged — ${cbills(estimate.cost)}, ${projectedTiming}`;
 
             return (
               <li key={mech.id} className="manifest-row" data-testid={`hangar-${mech.id}`}>
@@ -80,7 +97,15 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
                 </div>
 
                 <div className="manifest-mech">
-                  <div className="manifest-health" title={`${Math.round(health * 100)}% intact`}>
+                  <div
+                    className="manifest-health"
+                    title={`${Math.round(health * 100)}% intact · ${integrity.current}/${integrity.maximum} armour and structure`}
+                    role="progressbar"
+                    aria-label={`${mech.design.name} integrity`}
+                    aria-valuemin={0}
+                    aria-valuemax={integrity.maximum}
+                    aria-valuenow={integrity.current}
+                  >
                     <span style={{ width: `${Math.round(health * 100)}%` }} />
                   </div>
                   <div className="manifest-buttons">
@@ -92,12 +117,14 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
                             const target = draft.mechs.find((entry) => entry.id === mech.id);
                             if (target === undefined) return null;
                             const result = rebuildHulk(catalog, draft, target);
-                            return result.ok ? `${target.design.name} rebuilt.` : result.reason;
+                            return result.ok
+                              ? `${target.design.name} booked; ready day ${target.readyOnDay}.`
+                              : result.reason;
                           })
                         }
                         data-testid={`hangar-rebuild-${mech.id}`}
                       >
-                        Rebuild
+                        {projected.status === 'active' ? 'Rebuild' : 'Queue rebuild'}
                       </button>
                     ) : (
                       <>
@@ -109,12 +136,14 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
                               const target = draft.mechs.find((entry) => entry.id === mech.id);
                               if (target === undefined) return null;
                               const result = startRepair(catalog, draft, target);
-                              return result.ok ? `${target.design.name} in the shop.` : result.reason;
+                              return result.ok
+                                ? `${target.design.name} booked; ready day ${target.readyOnDay}.`
+                                : result.reason;
                             })
                           }
                           data-testid={`hangar-repair-${mech.id}`}
                         >
-                          Repair
+                          {projected.status === 'active' ? 'Repair' : 'Queue repair'}
                         </button>
                         <button
                           type="button"

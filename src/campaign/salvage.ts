@@ -1,14 +1,17 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
 import type { SalvageRules } from '../schema/rules';
-import type { Rng } from '../sim/rng';
+import { createRng, type Rng, type RngSeed } from '../sim/rng';
 import type { BattleResult, UnitResult } from '../sim/world';
 import {
   addToStore,
+  storeCount,
   takeFromStore,
   type SalvageCandidate,
   type SalvageOutcome,
   type SalvageProvenance,
+  type RecoveredHull,
+  type StoreKind,
   type StoreItem,
 } from './types';
 import type { CampaignState } from './types';
@@ -18,15 +21,17 @@ export type { SalvageCandidate, SalvageOutcome, SalvageProvenance } from './type
 export interface SalvageReport {
   candidates: SalvageCandidate[];
   chassisRecovered: string[];
+  finalized: boolean;
+  hulls: RecoveredHull[];
   offered: StoreItem[];
   items: StoreItem[];
   provenance: SalvageProvenance[];
 }
 
 /**
- * How many of the recovered items the dropship has room for. Everything the
- * crews cut loose is offered; the commander decides what comes home, which is
- * a decision worth having and a reason to look at the debrief at all.
+ * How many recovered crate types the quartermaster can put before the
+ * commander, and how many the dropship has room for. Hulls are towed
+ * separately; weapon and equipment crates share these berths.
  *
  * Three, not two, and measured rather than guessed: a win recovers two to five
  * items, so a hold of three leaves the thin hauls whole and makes the choice
@@ -134,6 +139,57 @@ function merge(items: readonly StoreItem[]): StoreItem[] {
   );
 }
 
+const OFFER_KINDS: readonly StoreKind[] = ['weapon', 'equipment'];
+
+function rotate<T>(items: readonly T[], offset: number): T[] {
+  if (items.length < 2) return [...items];
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
+function offerOffset(seed: RngSeed, label: string, length: number): number {
+  if (length < 2) return 0;
+  // Recovery rolls own the campaign stream. A field-keyed stream can rotate
+  // the loading list without moving any later casualty or salvage roll.
+  const field = typeof seed === 'number' ? `number:${seed}` : `text:${seed}`;
+  return createRng(`${field}:salvage-offer:${label}`).int(0, length);
+}
+
+/**
+ * Builds the capped loading list without letting a large weapon pile erase
+ * every recovered equipment type. Each present class gets one turn per round;
+ * the battle seed rotates both the class order and the first item in each one.
+ */
+export function selectSalvageOffers(
+  recovered: readonly StoreItem[],
+  battleSeed: RngSeed,
+): StoreItem[] {
+  const merged = merge(recovered);
+  const queues = new Map<StoreKind, StoreItem[]>();
+
+  for (const kind of OFFER_KINDS) {
+    const items = merged.filter((item) => item.kind === kind);
+    queues.set(kind, rotate(items, offerOffset(battleSeed, kind, items.length)));
+  }
+
+  const present = OFFER_KINDS.filter((kind) => (queues.get(kind)?.length ?? 0) > 0);
+  const order = rotate(present, offerOffset(battleSeed, 'classes', present.length));
+  const offered: StoreItem[] = [];
+
+  while (offered.length < SALVAGE_OFFERED) {
+    let found = false;
+    for (const kind of order) {
+      const item = queues.get(kind)?.shift();
+      if (item === undefined) continue;
+      offered.push(item);
+      found = true;
+      if (offered.length >= SALVAGE_OFFERED) break;
+    }
+    if (!found) break;
+  }
+
+  return offered;
+}
+
 export function resolveSalvage(
   catalog: Catalog,
   rng: Rng,
@@ -144,6 +200,7 @@ export function resolveSalvage(
   const rules = catalog.rules.salvage;
   const candidates: SalvageCandidate[] = [];
   const chassisRecovered: string[] = [];
+  const hulls: RecoveredHull[] = [];
   const items: StoreItem[] = [];
   const provenance: SalvageProvenance[] = [];
 
@@ -171,18 +228,39 @@ export function resolveSalvage(
       recovered,
     });
 
-    if (recovered) chassisRecovered.push(unit.designId);
+    if (recovered) {
+      chassisRecovered.push(unit.designId);
+      hulls.push({
+        designId: unit.designId,
+        condition: Object.fromEntries(
+          LOCATIONS.map((location) => {
+            const condition = unit.condition[location];
+            return [
+              location,
+              {
+                armour: condition?.armour ?? 0,
+                rearArmour: condition?.rearArmour ?? 0,
+                internal: condition?.internal ?? 0,
+                destroyed: condition?.destroyed ?? true,
+              },
+            ];
+          }),
+        ) as RecoveredHull['condition'],
+      });
+    }
     const fieldItems = itemsFrom(catalog, rng, unit, unit.designId, salvageShare);
     items.push(...fieldItems.items);
     provenance.push(...fieldItems.provenance);
   }
 
-  // Everything cut loose is offered; the hold takes what the commander picks.
-  const offered = merge(items).slice(0, SALVAGE_OFFERED);
+  // Every recovered hull is already aboard. Crates compete only with crates.
+  const offered = selectSalvageOffers(items, result.seed);
   const offeredKeys = new Set(offered.map((item) => `${item.kind}:${item.itemId}`));
   return {
     candidates,
     chassisRecovered,
+    finalized: false,
+    hulls,
     offered,
     items: offered.slice(0, SALVAGE_PICKS),
     provenance: provenance.filter((item) => offeredKeys.has(`${item.kind}:${item.itemId}`)),
@@ -199,6 +277,8 @@ export function rechooseSalvage(
   report: SalvageReport,
   wanted: readonly StoreItem[],
 ): StoreItem[] {
+  if (report.finalized) return report.items.map((item) => ({ ...item }));
+
   const allowed = new Map(report.offered.map((item) => [`${item.kind}:${item.itemId}`, item]));
   const picked: StoreItem[] = [];
   for (const item of wanted) {
@@ -208,9 +288,25 @@ export function rechooseSalvage(
     picked.push({ ...match });
   }
 
+  // The receipt is the decision boundary; this inventory check only makes an
+  // editable swap atomic if its previously selected crates are unexpectedly
+  // absent. Never grant a new haul after a partial or failed return.
+  const returns = new Map<string, StoreItem>();
+  for (const item of report.items) {
+    const key = `${item.kind}:${item.itemId}`;
+    const existing = returns.get(key);
+    if (existing === undefined) returns.set(key, { ...item });
+    else existing.count += item.count;
+  }
+  if ([...returns.values()].some(
+    (item) => storeCount(state, item.kind, item.itemId) < item.count,
+  )) {
+    return report.items.map((item) => ({ ...item }));
+  }
+
   // Put back what was taken, then take what was chosen. Doing it in that order
   // means a pick that overlaps the old one nets out to no change at all.
-  for (const item of report.items) takeFromStore(state, item.kind, item.itemId, item.count);
+  for (const item of returns.values()) takeFromStore(state, item.kind, item.itemId, item.count);
   for (const item of picked) addToStore(state, item.kind, item.itemId, item.count);
   report.items = picked;
   return picked;

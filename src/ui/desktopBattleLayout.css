@@ -1,0 +1,15 @@
+@media (min-width: 641px) {
+  .briefing {
+    top: max(52px, 5%);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1320px) {
+  .topbar {
+    gap: 8px;
+  }
+
+  .topbar .hint {
+    display: none;
+  }
+}
