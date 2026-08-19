@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './ui/App';
 import './ui/styles.css';
+import './ui/desktopBattleLayout.css';
 import './ui/tacticalReadout.css';
 import './ui/mobileLayout.css';
 import './ui/mobileBattle.css';

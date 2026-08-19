@@ -2,6 +2,11 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import {
+  checkBriefingInputSafety,
+  checkDeployedInputSafety,
+  clearControlFocus,
+} from './input-safety.mjs';
 import { runMobilePlaythrough } from './mobile-playthrough.mjs';
 
 const PORT = 5183;
@@ -138,6 +143,15 @@ async function main() {
     check('the sim is held while briefing', (await sim(page)).tick === beforeBriefing);
     await page.screenshot({ path: `${SHOTS}/01-boot.png` });
 
+    await checkBriefingInputSafety({
+      page,
+      check,
+      sim,
+      state,
+      beforeBriefing,
+      shots: SHOTS,
+    });
+
     const battleCode = page.locator('[data-testid="briefing-battle-code"]');
     await battleCode.fill('x');
     check(
@@ -154,6 +168,7 @@ async function main() {
       (await page.evaluate(() => globalThis.__ironline.useGame.getState().battleCode)) ===
         'ridge-touch-0000002a',
     );
+    await checkDeployedInputSafety({ page, check, state });
 
     process.stdout.write('\nselection\n');
     await page.locator('[data-testid="lance-bar"] button').first().click();
@@ -180,6 +195,7 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/02-selected.png` });
 
     process.stdout.write('\npause\n');
+    await clearControlFocus(page);
     await page.keyboard.press('Space');
     await page.waitForSelector('[data-testid="paused-banner"]');
     const pausedTick = (await sim(page)).tick;
@@ -319,6 +335,7 @@ async function main() {
     });
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, -600);
+    await clearControlFocus(page);
     await page.keyboard.down('ArrowRight');
     await sleep(400);
     await page.keyboard.up('ArrowRight');

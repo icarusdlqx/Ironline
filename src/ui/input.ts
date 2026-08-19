@@ -3,6 +3,7 @@ import { isOperational } from '../sim/types';
 import type { Engine } from './engine';
 import { useGame } from './store';
 import { TouchInput } from './touchInput';
+import { isInteractiveKeyTarget, shouldIgnoreBattleKey } from './battleKeyboard';
 
 /** How far off a mech, in screen pixels, a click still counts as hitting it. */
 const PICK_RADIUS = 34;
@@ -447,8 +448,18 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    engine.audio.unlock();
     const state = useGame.getState();
+    if (
+      shouldIgnoreBattleKey({
+        briefingSeen: state.briefingSeen,
+        interactiveTarget: isInteractiveKeyTarget(event.target),
+        code: event.code,
+        repeat: event.repeat,
+      })
+    ) {
+      return;
+    }
+    engine.audio.unlock();
 
     // A browser shortcut is not a battle order. Ctrl+R has to reload the page
     // without also putting the lance into run mode, and Cmd+T has to open a tab
