@@ -1,7 +1,12 @@
 import type { Catalog } from '../../schema/load';
 import { rebuildHulk } from '../../campaign/refit';
-import { estimateRepair, startRepair } from '../../campaign/repair';
 import { mechIntegrity } from '../../campaign/integrity';
+import {
+  estimateRepair,
+  projectedRepairWindow,
+  repairQueue,
+  startRepair,
+} from '../../campaign/repair';
 import { employerNameFor } from '../../campaign/employers';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
@@ -32,6 +37,8 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
     contract === null
       ? null
       : employerNameFor(catalog, state.campaignId, contract.employerId, contract.employerName);
+  const queue = repairQueue(catalog, state);
+  const queueByMech = new Map(queue.map((entry) => [entry.mechId, entry]));
 
   return (
     <div className="manifest-backdrop" data-testid="hangar-stage">
@@ -61,16 +68,26 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
             const ready = isMechAvailable(state, mech) && mech.status !== 'hulk';
             const integrity = mechIntegrity(catalog, mech);
             const health = integrity.fraction;
+            const projected = projectedRepairWindow(catalog, state, estimate.days);
+            const booking = queueByMech.get(mech.id);
+            const projectedTiming =
+              projected.status === 'active'
+                ? `ready day ${projected.readyOnDay}`
+                : `starts day ${projected.startsOnDay}, ready day ${projected.readyOnDay}`;
             const status =
               mech.status === 'hulk'
-                ? `Wreck — rebuild for ${cbills(estimate.cost)} · ${estimate.days}d`
+                ? `Wreck — ${cbills(estimate.cost)}, ${projectedTiming}`
                 : !ready
-                  ? `In the shop until day ${mech.readyOnDay}`
+                  ? booking?.status === 'active'
+                    ? `On a lift — ready day ${mech.readyOnDay}`
+                    : booking?.status === 'inherited'
+                      ? `Inherited concurrent booking — ready day ${mech.readyOnDay}`
+                      : `Queued ${booking?.queuePosition ?? 1} — starts day ${booking?.startsOnDay ?? state.day}, ready day ${mech.readyOnDay}`
                   : mech.design.mounts.length === 0
                     ? 'Rebuilt — fit a weapon before deployment'
-                  : estimate.days === 0
-                    ? 'Ready'
-                    : `Damaged — ${cbills(estimate.cost)}, ${estimate.days}d to fix`;
+                    : estimate.days === 0
+                      ? 'Ready'
+                      : `Damaged — ${cbills(estimate.cost)}, ${projectedTiming}`;
 
             return (
               <li key={mech.id} className="manifest-row" data-testid={`hangar-${mech.id}`}>
@@ -100,12 +117,14 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
                             const target = draft.mechs.find((entry) => entry.id === mech.id);
                             if (target === undefined) return null;
                             const result = rebuildHulk(catalog, draft, target);
-                            return result.ok ? `${target.design.name} rebuilt.` : result.reason;
+                            return result.ok
+                              ? `${target.design.name} booked; ready day ${target.readyOnDay}.`
+                              : result.reason;
                           })
                         }
                         data-testid={`hangar-rebuild-${mech.id}`}
                       >
-                        Rebuild
+                        {projected.status === 'active' ? 'Rebuild' : 'Queue rebuild'}
                       </button>
                     ) : (
                       <>
@@ -117,12 +136,14 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
                               const target = draft.mechs.find((entry) => entry.id === mech.id);
                               if (target === undefined) return null;
                               const result = startRepair(catalog, draft, target);
-                              return result.ok ? `${target.design.name} in the shop.` : result.reason;
+                              return result.ok
+                                ? `${target.design.name} booked; ready day ${target.readyOnDay}.`
+                                : result.reason;
                             })
                           }
                           data-testid={`hangar-repair-${mech.id}`}
                         >
-                          Repair
+                          {projected.status === 'active' ? 'Repair' : 'Queue repair'}
                         </button>
                         <button
                           type="button"

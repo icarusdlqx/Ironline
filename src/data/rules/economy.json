@@ -10,6 +10,7 @@
     "recoveryCostFactor": 0.1
   },
   "repair": {
+    "bayCapacity": 1,
     "armourCostPerPoint": 250,
     "internalCostPerPoint": 1200,
     "locationReplaceCostFraction": 0.08,

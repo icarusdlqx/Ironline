@@ -57,9 +57,7 @@ export function saleValueOf(catalog: Catalog, mech: MechRecord): number {
   const inheritedBill =
     mech.status === 'repairing'
       ? 0
-      : mech.status === 'hulk'
-        ? mech.rebuildCost
-        : estimateRepair(catalog, mech).cost;
+      : estimateRepair(catalog, mech).cost;
   return Math.max(0, Math.round(full - inheritedBill));
 }
 
@@ -186,6 +184,9 @@ export function sellMech(catalog: Catalog, state: CampaignState, mechId: string)
   if (mech === undefined) return { ok: false, reason: 'no such machine' };
   if (state.mechs.length <= 1) return { ok: false, reason: 'that is the last machine in the bay' };
   if (state.contract !== null) return { ok: false, reason: 'not while a contract is signed' };
+  if (mech.status === 'repairing') {
+    return { ok: false, reason: 'wait for its paid workshop booking to finish' };
+  }
 
   for (const pilot of state.pilots) {
     if (pilot.mechId === mech.id) pilot.mechId = null;
