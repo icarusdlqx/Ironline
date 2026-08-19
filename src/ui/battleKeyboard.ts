@@ -20,6 +20,7 @@ const TOGGLE_KEYS = new Set(['Space', 'KeyH', 'KeyP', 'KeyT']);
 
 export interface BattleKeyContext {
   briefingSeen: boolean;
+  finished: boolean;
   interactiveTarget: boolean;
   code: string;
   repeat: boolean;
@@ -35,6 +36,7 @@ export function isInteractiveKeyTarget(target: EventTarget | null): boolean {
 export function shouldIgnoreBattleKey(context: BattleKeyContext): boolean {
   return (
     !context.briefingSeen ||
+    context.finished ||
     context.interactiveTarget ||
     (context.repeat && TOGGLE_KEYS.has(context.code))
   );

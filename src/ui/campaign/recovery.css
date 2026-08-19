@@ -45,7 +45,7 @@
   color: #ffe1ba;
 }
 
-@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+@media (max-width: 640px), (pointer: coarse) and (max-width: 1100px) {
   .camp-recovery {
     align-items: stretch;
     flex-direction: column;

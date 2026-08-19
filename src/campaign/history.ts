@@ -53,6 +53,12 @@ export function campaignOutcomeCount(state: CampaignState): number {
   return state.historyArchive.outcomes + state.history.length;
 }
 
+/** A closed debrief remains reviewable, but its physical haul is now a receipt. */
+export function finalizeLatestDebrief(state: CampaignState): void {
+  const latest = state.history.at(-1);
+  if (latest !== undefined) latest.salvageFinalized = true;
+}
+
 export function emptyHistoryArchive(): CampaignState['historyArchive'] {
   return { outcomes: 0, employers: {} };
 }

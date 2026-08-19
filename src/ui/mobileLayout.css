@@ -321,7 +321,8 @@
   }
 
   .battle-results-backdrop {
-    padding: 8px calc(8px + env(safe-area-inset-right, 0px))
+    padding: calc(8px + env(safe-area-inset-top, 0px))
+      calc(8px + env(safe-area-inset-right, 0px))
       calc(8px + env(safe-area-inset-bottom, 0px))
       calc(8px + env(safe-area-inset-left, 0px));
   }

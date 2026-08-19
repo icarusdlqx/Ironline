@@ -5,6 +5,7 @@ import { createRng, type Rng, type RngSeed } from '../sim/rng';
 import type { BattleResult, UnitResult } from '../sim/world';
 import {
   addToStore,
+  storeCount,
   takeFromStore,
   type SalvageCandidate,
   type SalvageOutcome,
@@ -20,6 +21,7 @@ export type { SalvageCandidate, SalvageOutcome, SalvageProvenance } from './type
 export interface SalvageReport {
   candidates: SalvageCandidate[];
   chassisRecovered: string[];
+  finalized: boolean;
   hulls: RecoveredHull[];
   offered: StoreItem[];
   items: StoreItem[];
@@ -257,6 +259,7 @@ export function resolveSalvage(
   return {
     candidates,
     chassisRecovered,
+    finalized: false,
     hulls,
     offered,
     items: offered.slice(0, SALVAGE_PICKS),
@@ -274,6 +277,8 @@ export function rechooseSalvage(
   report: SalvageReport,
   wanted: readonly StoreItem[],
 ): StoreItem[] {
+  if (report.finalized) return report.items.map((item) => ({ ...item }));
+
   const allowed = new Map(report.offered.map((item) => [`${item.kind}:${item.itemId}`, item]));
   const picked: StoreItem[] = [];
   for (const item of wanted) {
@@ -283,9 +288,25 @@ export function rechooseSalvage(
     picked.push({ ...match });
   }
 
+  // The receipt is the decision boundary; this inventory check only makes an
+  // editable swap atomic if its previously selected crates are unexpectedly
+  // absent. Never grant a new haul after a partial or failed return.
+  const returns = new Map<string, StoreItem>();
+  for (const item of report.items) {
+    const key = `${item.kind}:${item.itemId}`;
+    const existing = returns.get(key);
+    if (existing === undefined) returns.set(key, { ...item });
+    else existing.count += item.count;
+  }
+  if ([...returns.values()].some(
+    (item) => storeCount(state, item.kind, item.itemId) < item.count,
+  )) {
+    return report.items.map((item) => ({ ...item }));
+  }
+
   // Put back what was taken, then take what was chosen. Doing it in that order
   // means a pick that overlaps the old one nets out to no change at all.
-  for (const item of report.items) takeFromStore(state, item.kind, item.itemId, item.count);
+  for (const item of returns.values()) takeFromStore(state, item.kind, item.itemId, item.count);
   for (const item of picked) addToStore(state, item.kind, item.itemId, item.count);
   report.items = picked;
   return picked;

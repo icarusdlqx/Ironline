@@ -439,6 +439,30 @@ async function main() {
       'battle debrief receives focus without skipping its report',
       await page.evaluate(() => document.activeElement?.classList.contains('battle-results')),
     );
+    const debriefInputBefore = await page.evaluate(() => {
+      const { engine, useGame } = globalThis.__ironline;
+      return {
+        paused: useGame.getState().paused,
+        orderMode: useGame.getState().orderMode,
+        camera: { ...engine.renderer.camera.target },
+      };
+    });
+    await page.keyboard.press('Space');
+    await page.keyboard.down('ArrowRight');
+    await sleep(120);
+    await page.keyboard.up('ArrowRight');
+    const debriefInputAfter = await page.evaluate(() => {
+      const { engine, useGame } = globalThis.__ironline;
+      return {
+        paused: useGame.getState().paused,
+        orderMode: useGame.getState().orderMode,
+        camera: { ...engine.renderer.camera.target },
+      };
+    });
+    check(
+      'battle controls stay suspended behind the debrief',
+      JSON.stringify(debriefInputAfter) === JSON.stringify(debriefInputBefore),
+    );
     await page.keyboard.press('Tab');
     check(
       'battle debrief tabs into its first action',

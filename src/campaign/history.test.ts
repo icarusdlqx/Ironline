@@ -4,6 +4,7 @@ import { startCampaign } from './campaign';
 import { employerHistories, employerHistoryFor } from './employers';
 import {
   campaignOutcomeCount,
+  finalizeLatestDebrief,
   pruneCampaignHistory,
 } from './history';
 import { deserialiseCampaign, serialiseCampaign } from './save';
@@ -31,6 +32,7 @@ function outcome(index: number, day: number): MissionOutcome {
     salvagedChassis: [],
     salvagedItems: [],
     salvageOffered: [{ kind: 'weapon', itemId: 'medium_laser', count: 1 }],
+    salvageFinalized: false,
     salvageCandidates: [],
     salvageProvenance: [],
     pilotCasualties: [],
@@ -49,6 +51,17 @@ function expectedTotals(records: readonly MissionOutcome[], employerId: string) 
 }
 
 describe('bounded campaign records', () => {
+  it('finalizes the latest salvage manifest when its debrief closes', () => {
+    const state = startCampaign(catalog, CAMPAIGN_ID, 'finalized-debrief');
+    state.history.push(outcome(0, state.day));
+
+    finalizeLatestDebrief(state);
+
+    expect(state.history.at(-1)?.salvageFinalized).toBe(true);
+    expect(deserialiseCampaign(serialiseCampaign(state)).state?.history.at(-1)?.salvageFinalized)
+      .toBe(true);
+  });
+
   it('plateaus across renewable boards without losing ledger or debrief facts', () => {
     const state = startCampaign(catalog, CAMPAIGN_ID, 'bounded-history');
     const campaign = catalog.campaigns.get(CAMPAIGN_ID);

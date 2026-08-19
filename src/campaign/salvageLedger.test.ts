@@ -82,6 +82,7 @@ function outcome(): MissionOutcome {
     salvagedChassis: ['sentinel_brawler'],
     salvagedItems: [{ kind: 'weapon', itemId: 'medium_laser', count: 3 }],
     salvageOffered: [{ kind: 'weapon', itemId: 'medium_laser', count: 3 }],
+    salvageFinalized: false,
     salvageCandidates: [
       {
         designId: 'sentinel_brawler',
@@ -249,9 +250,11 @@ describe('salvage field ledger', () => {
     };
     delete oldSave.state.history[0]?.salvageCandidates;
     delete oldSave.state.history[0]?.salvageProvenance;
+    delete oldSave.state.history[0]?.salvageFinalized;
 
     const oldRestored = deserialiseCampaign(JSON.stringify(oldSave)).state;
     expect(oldRestored?.history[0]?.salvageCandidates).toEqual([]);
     expect(oldRestored?.history[0]?.salvageProvenance).toEqual([]);
+    expect(oldRestored?.history[0]?.salvageFinalized).toBe(true);
   });
 });

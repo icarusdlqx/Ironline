@@ -101,6 +101,47 @@ describe('company recovery status', () => {
     expect(html).toContain('Fit Medium Laser before returning it to the field');
   });
 
+  it('does not put a ready unarmed hull in the workshop while its pilot recovers', () => {
+    const report: SolvencyReport = {
+      state: 'temporary', action: 'wait', block: 'none', recoverOnDay: 12,
+      plan: {
+        ...terminal.plan!,
+        mechNeedsRebuild: false,
+        mechNeedsWeapon: true,
+        weaponId: 'medium_laser',
+        weaponName: 'Medium Laser',
+        mechReadyOnDay: 8,
+        mechCost: 0,
+        requiredCredits: 0,
+        availableCredits: -1,
+        needsSale: false,
+      },
+    };
+    const html = renderToStaticMarkup(createElement(CompanyStatus, {
+      report,
+      contractActive: false,
+      onAdvance: () => undefined,
+      onRetire: () => undefined,
+    }));
+
+    expect(html).toContain('Cairn is ready for refit');
+    expect(html).toContain('Fit Medium Laser now');
+    expect(html).toContain('injured crew can return the company to the field on day 12');
+    expect(html).not.toContain('leaves the workshop on day 12');
+  });
+
+  it('does not claim an unarmed recovered hull is absent from the company', () => {
+    const html = renderToStaticMarkup(createElement(CompanyStatus, {
+      report: { state: 'terminal', action: 'retire', block: 'no_mech', recoverOnDay: null, plan: null },
+      contractActive: false,
+      onAdvance: () => undefined,
+      onRetire: () => undefined,
+    }));
+
+    expect(html).toContain('No fieldable company mech remains');
+    expect(html).not.toContain('No company mech remains');
+  });
+
   it('waits for paid work before claiming its sale proceeds', () => {
     const html = renderToStaticMarkup(createElement(CompanyStatus, {
       report: {

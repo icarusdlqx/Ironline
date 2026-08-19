@@ -21,6 +21,7 @@ describe('campaign debrief recovery ledger', () => {
       salvagedChassis: ['sentinel_brawler'],
       salvagedItems: [{ kind: 'weapon', itemId: 'medium_laser', count: 2 }],
       salvageOffered: [{ kind: 'weapon', itemId: 'medium_laser', count: 2 }],
+      salvageFinalized: false,
       salvageCandidates: [
         {
           designId: 'sentinel_brawler',
@@ -90,5 +91,21 @@ describe('campaign debrief recovery ledger', () => {
     expect(html).toContain('each list rotates from one field to the next');
     expect(html).toContain('Kestrel Combine');
     expect(html).toContain('1 completed · 0 failed · 100 C paid');
+
+    outcome.salvageFinalized = true;
+    const restored = renderToStaticMarkup(
+      createElement(Debrief, {
+        catalog,
+        state,
+        outcome,
+        onChooseSalvage: (picks) => picks,
+        onClose: () => undefined,
+      }),
+    );
+    expect(restored).toContain('Salvage manifest finalized');
+    expect(restored).toContain('This restored report is read-only');
+    expect(restored).toContain('marks record what came home');
+    expect(restored).not.toContain('Choose what comes home');
+    expect(restored).toMatch(/disabled=""[^>]*data-testid="salvage-pick-medium_laser"/);
   });
 });

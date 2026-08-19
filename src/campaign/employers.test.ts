@@ -25,6 +25,7 @@ function outcome(values: Partial<MissionOutcome>): MissionOutcome {
     salvagedChassis: [],
     salvagedItems: [],
     salvageOffered: [],
+    salvageFinalized: false,
     salvageCandidates: [],
     salvageProvenance: [],
     pilotCasualties: [],

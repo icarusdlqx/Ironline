@@ -48,7 +48,7 @@ function terminalText(report: SolvencyReport, contractActive: boolean): string {
     return 'No living pilot remains, and nobody eligible remains on the register.';
   }
   if (report.block === 'no_mech') {
-    return 'No company mech remains, and the yard has nothing it can sell today.';
+    return 'No fieldable company mech remains, and the yard has nothing it can sell today.';
   }
   const plan = report.plan;
   if (plan === null) return 'No fieldable recovery remains.';
@@ -75,9 +75,14 @@ export function CompanyStatus({
 
   let text: string;
   if (report.action === 'wait') {
-    const fit = report.plan?.mechNeedsWeapon === true && report.plan.weaponName !== null
-      ? `${report.plan.mechName} leaves the workshop on day ${report.recoverOnDay ?? '?'}. ` +
-        `Fit ${report.plan.weaponName} before returning it to the field.`
+    const plan = report.plan;
+    const recoverOnDay = report.recoverOnDay ?? plan?.mechReadyOnDay ?? 0;
+    const fit = plan?.mechNeedsWeapon === true && plan.weaponName !== null
+      ? plan.mechReadyOnDay < recoverOnDay
+        ? `${plan.mechName} is ready for refit. Fit ${plan.weaponName} now; ` +
+          `injured crew can return the company to the field on day ${recoverOnDay}.`
+        : `${plan.mechName} leaves the workshop on day ${plan.mechReadyOnDay}. ` +
+          `Fit ${plan.weaponName} before returning it to the field.`
       : `Paid workshop work or injured crew can return the company to the field on day ${report.recoverOnDay ?? '?'}.`;
     text = fit;
   } else if (report.action === 'wait_booking') {

@@ -12,12 +12,14 @@ interface TouchInputOptions {
   pickAt: (screen: Vec2) => MechEntity | null;
   screenWorld: (screen: Vec2) => Vec2;
   zoomBetween: (factor: number, from: Vec2, to: Vec2) => void;
+  canAct: () => boolean;
   onPinchStart: () => void;
 }
 
 /** The phone's camera and order grammar, kept apart from mouse and keyboard state. */
 export class TouchInput {
   private readonly gesture = new TouchGesture();
+  private actionEligible = false;
   private pinchFrom: number | null = null;
   private panFrom: Vec2 | null = null;
 
@@ -30,6 +32,8 @@ export class TouchInput {
   start(pointerId: number, screen: Vec2, world: Vec2): void {
     const { engine } = this.options;
     const fingers = this.gesture.start(pointerId, screen);
+    if (fingers === 1) this.actionEligible = this.options.canAct();
+    else this.actionEligible &&= this.options.canAct();
     engine.cursorWorld = world;
 
     if (fingers >= 2) {
@@ -40,7 +44,7 @@ export class TouchInput {
       return;
     }
 
-    const support = useGame.getState().supportMode;
+    const support = this.options.canAct() ? useGame.getState().supportMode : null;
     if (support !== null && engine.supportNeedsHeading(support)) {
       engine.supportAim = { call: support, at: world, to: world };
       this.panFrom = null;
@@ -98,8 +102,14 @@ export class TouchInput {
   finish(pointerId: number, fallback: Vec2): void {
     const { engine } = this.options;
     const ended = this.gesture.finish(pointerId, fallback);
+    const mayAct = this.actionEligible && this.options.canAct();
+    if (this.gesture.size === 0) this.actionEligible = false;
     if (this.gesture.size < 2) this.pinchFrom = null;
     this.panFrom = null;
+    if (!mayAct) {
+      engine.supportAim = null;
+      return;
+    }
     if (!ended.commitTap) {
       engine.supportAim = null;
       return;
@@ -159,6 +169,7 @@ export class TouchInput {
 
   cancel(pointerId: number): void {
     this.gesture.cancel(pointerId);
+    if (this.gesture.size === 0) this.actionEligible = false;
     if (this.gesture.size < 2) this.pinchFrom = null;
     this.panFrom = null;
     this.options.engine.supportAim = null;
@@ -166,6 +177,7 @@ export class TouchInput {
 
   cancelAll(): void {
     this.gesture.reset();
+    this.actionEligible = false;
     this.pinchFrom = null;
     this.panFrom = null;
     this.options.engine.supportAim = null;

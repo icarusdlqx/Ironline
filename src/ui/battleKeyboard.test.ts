@@ -3,6 +3,7 @@ import { shouldIgnoreBattleKey } from './battleKeyboard';
 
 const context = {
   briefingSeen: true,
+  finished: false,
   interactiveTarget: false,
   code: 'Space',
   repeat: false,
@@ -11,6 +12,10 @@ const context = {
 describe('battle keyboard gate', () => {
   it('holds every battle shortcut behind deployment', () => {
     expect(shouldIgnoreBattleKey({ ...context, briefingSeen: false })).toBe(true);
+  });
+
+  it('holds every battle shortcut behind the result report', () => {
+    expect(shouldIgnoreBattleKey({ ...context, finished: true })).toBe(true);
   });
 
   it('leaves focused controls and editors to the browser', () => {

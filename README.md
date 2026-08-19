@@ -170,5 +170,5 @@ strike uses a press-drag to set its run-in. Esc cancels an armed call.
 On touch, tap a friendly to select it, open ground to move, or a hostile to
 attack. Drag the ground to pan, pinch around the fingers to zoom, or tap Centre
 to find the selection. Commands take their next target from a tap. Tap an armed
-support call again to cancel it; air strikes run from the lance through the
-point tapped.
+support call again to cancel it; press and drag an air strike across the field
+to choose its run-in.

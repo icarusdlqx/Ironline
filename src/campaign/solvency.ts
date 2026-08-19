@@ -43,6 +43,10 @@ function saleValueNow(catalog: Catalog, mech: MechRecord): number {
   return mech.status === 'repairing' ? 0 : saleValueOf(catalog, mech);
 }
 
+function isFunded(plan: RecoveryPlan): boolean {
+  return plan.requiredCredits === 0 || plan.availableCredits >= plan.requiredCredits;
+}
+
 function compatibleStoredWeapon(
   catalog: Catalog,
   state: CampaignState,
@@ -152,12 +156,14 @@ function fundedPlan(catalog: Catalog, state: CampaignState): {
       saleProceeds,
       availableCredits,
       requiredCredits,
-      needsSale: state.cbills < requiredCredits,
+      needsSale: requiredCredits > 0 && state.cbills < requiredCredits,
     };
   });
   plans.sort((left, right) => {
-    const leftShortfall = Math.max(0, left.requiredCredits - left.availableCredits);
-    const rightShortfall = Math.max(0, right.requiredCredits - right.availableCredits);
+    const leftShortfall = left.requiredCredits === 0
+      ? 0 : Math.max(0, left.requiredCredits - left.availableCredits);
+    const rightShortfall = right.requiredCredits === 0
+      ? 0 : Math.max(0, right.requiredCredits - right.availableCredits);
     return leftShortfall - rightShortfall ||
       left.requiredCredits - right.requiredCredits ||
       left.mechReadyOnDay - right.mechReadyOnDay;
@@ -166,7 +172,7 @@ function fundedPlan(catalog: Catalog, state: CampaignState): {
   return {
     plan,
     block:
-      plan !== null && plan.availableCredits >= plan.requiredCredits
+      plan !== null && isFunded(plan)
         ? 'none'
         : 'insufficient_funds',
   };
@@ -240,7 +246,7 @@ function futureBookedRecovery(
   for (const day of dates) {
     const projected = projectedStateOnDay(catalog, state, day);
     const recovery = fundedPlan(catalog, projected);
-    if (recovery.plan !== null && recovery.plan.availableCredits >= recovery.plan.requiredCredits) {
+    if (recovery.plan !== null && isFunded(recovery.plan)) {
       return { day, projected, plan: recovery.plan };
     }
   }
@@ -302,7 +308,7 @@ export function assessSolvency(catalog: Catalog, state: CampaignState): Solvency
   const recovery = fundedPlan(catalog, state);
   if (
     recovery.plan !== null &&
-    recovery.plan.availableCredits >= recovery.plan.requiredCredits
+    isFunded(recovery.plan)
   ) {
     const readyOnDay = recoveryDay(state, recovery.plan);
     if (

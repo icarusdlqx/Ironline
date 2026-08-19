@@ -1,4 +1,5 @@
 import { rechooseSalvage } from '../../campaign/salvage';
+import { finalizeLatestDebrief } from '../../campaign/history';
 import type { CampaignState } from '../../campaign/types';
 import type { Catalog } from '../../schema/load';
 import { Debrief, markDebriefed } from './Debrief';
@@ -48,6 +49,7 @@ export function CampaignPostBattle({
           state={state}
           outcome={pendingDebrief}
           onChooseSalvage={(picks) => {
+            let selected = picks;
             mutate((draft) => {
               const record = draft.history[draft.history.length - 1];
               if (record === undefined) return null;
@@ -56,17 +58,20 @@ export function CampaignPostBattle({
               const report = {
                 candidates: record.salvageCandidates ?? [],
                 chassisRecovered: record.salvagedChassis,
+                finalized: record.salvageFinalized,
                 hulls: [],
                 offered: record.salvageOffered ?? [],
                 items: record.salvagedItems,
                 provenance: record.salvageProvenance ?? [],
               };
-              rechooseSalvage(draft, report, picks);
+              selected = rechooseSalvage(draft, report, picks);
               record.salvagedItems = report.items;
               return null;
             });
+            return selected;
           }}
           onClose={() => {
+            mutate((draft) => finalizeLatestDebrief(draft));
             markDebriefed(outcomeCount);
             onDebriefed(outcomeCount);
           }}

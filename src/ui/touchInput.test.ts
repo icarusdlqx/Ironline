@@ -14,7 +14,8 @@ function hostile(id = 9): MechEntity {
   } as MechEntity;
 }
 
-function harness() {
+function harness(canAct = true) {
+  let actionAllowed = canAct;
   let picked: MechEntity | null = null;
   const zoomBetween = vi.fn();
   const engine = {
@@ -36,9 +37,16 @@ function harness() {
     pickAt: () => picked,
     screenWorld: (point) => point,
     zoomBetween,
+    canAct: () => actionAllowed,
     onPinchStart: vi.fn(),
   });
-  return { engine, input, zoomBetween, pick: (entity: MechEntity | null) => (picked = entity) };
+  return {
+    engine,
+    input,
+    zoomBetween,
+    pick: (entity: MechEntity | null) => (picked = entity),
+    setCanAct: (allowed: boolean) => (actionAllowed = allowed),
+  };
 }
 
 beforeEach(() => {
@@ -52,6 +60,34 @@ beforeEach(() => {
 });
 
 describe('touch input', () => {
+  it('keeps camera drag available without committing a pre-deploy tap or order', () => {
+    const { engine, input, pick } = harness(false);
+    useGame.setState({ orderMode: 'attack' });
+    pick(hostile());
+
+    input.start(1, { x: 20, y: 30 }, { x: 20, y: 30 });
+    input.move(1, { x: 50, y: 60 });
+    input.finish(1, { x: 50, y: 60 });
+
+    expect(engine.renderer.camera.panBy).toHaveBeenCalled();
+    expect(engine.orderMove).not.toHaveBeenCalled();
+    expect(engine.orderAttack).not.toHaveBeenCalled();
+    expect(useGame.getState().orderMode).toBe('attack');
+  });
+
+  it('never turns a touch begun before deployment into an order after deployment', () => {
+    const { engine, input, setCanAct } = harness(false);
+    useGame.setState({ orderMode: 'move' });
+
+    input.start(1, { x: 20, y: 30 }, { x: 20, y: 30 });
+    setCanAct(true);
+    input.finish(1, { x: 20, y: 30 });
+
+    expect(engine.orderMove).not.toHaveBeenCalled();
+    expect(engine.orderAttack).not.toHaveBeenCalled();
+    expect(useGame.getState().orderMode).toBe('move');
+  });
+
   it('zooms a pinch without committing its final release', () => {
     const { engine, input, zoomBetween } = harness();
     input.start(1, { x: 10, y: 10 }, { x: 10, y: 10 });

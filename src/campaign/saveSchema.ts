@@ -108,6 +108,8 @@ const MissionOutcomeSchema = z.strictObject({
   salvagedItems: z.array(StoreItemSchema),
   /** Older saves predate the salvage choice and simply offered nothing. */
   salvageOffered: z.array(StoreItemSchema).default([]),
+  // Reports saved before the receipt existed have already passed their debrief.
+  salvageFinalized: z.boolean().default(true),
   // A missing ledger means the old debrief never recorded the field rolls.
   salvageCandidates: z.array(SalvageCandidateSchema).default([]),
   salvageProvenance: z.array(SalvageProvenanceSchema).default([]),

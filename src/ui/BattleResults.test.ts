@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -36,6 +37,23 @@ const COMMON = {
 };
 
 describe('battle results screen', () => {
+  it('covers the compact navigation while the result is modal', () => {
+    const resultsCss = readFileSync(new URL('./battleResults.css', import.meta.url), 'utf8');
+    const mobileCss = readFileSync(new URL('./mobileBattle.css', import.meta.url), 'utf8');
+    const mobileLayoutCss = readFileSync(new URL('./mobileLayout.css', import.meta.url), 'utf8');
+    const rule = (source: string, selector: string): string =>
+      source.match(new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    const layer = (declarations: string): number =>
+      Number(declarations.match(/z-index:\s*(\d+)/)?.[1] ?? 0);
+    const backdrop = rule(resultsCss, '.battle-results-backdrop');
+    const lateCompactBackdrop = rule(mobileLayoutCss, '.battle-results-backdrop');
+
+    expect(backdrop).toMatch(/inset:\s*0/);
+    expect(layer(backdrop)).toBeGreaterThan(layer(rule(mobileCss, '.mobile-topbar')));
+    expect(layer(backdrop)).toBeGreaterThan(layer(rule(mobileCss, '.mobile-menu-sheet')));
+    expect(lateCompactBackdrop).toMatch(/safe-area-inset-top/);
+  });
+
   it('offers same and new fields plus a mission briefing after a skirmish', () => {
     const markup = renderToStaticMarkup(
       createElement(BattleResults, { ...COMMON, campaignPending: false }),

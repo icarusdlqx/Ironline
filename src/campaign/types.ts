@@ -127,6 +127,8 @@ export interface MissionOutcome {
   salvagedItems: StoreItem[];
   /** Everything the crews cut loose, of which `salvagedItems` was taken. */
   salvageOffered: StoreItem[];
+  /** Once acknowledged, this field report may be viewed but its haul cannot be changed. */
+  salvageFinalized: boolean;
   /** Every hull roll, including misses, at the odds the signed package bought. */
   salvageCandidates: SalvageCandidate[];
   /** One source record per physical part represented by `salvageOffered`. */

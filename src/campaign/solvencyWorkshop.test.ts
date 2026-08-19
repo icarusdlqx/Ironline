@@ -5,7 +5,7 @@ import { saleValueOf, sellMech } from './market';
 import { fitFromStore, rebuildHulk } from './refit';
 import { estimateRepair, startRepair } from './repair';
 import { deserialiseCampaign, serialiseCampaign } from './save';
-import { assessSolvency } from './solvency';
+import { assessSolvency, retireCompany } from './solvency';
 import { addToStore, type CampaignState, type MechRecord } from './types';
 
 function campaign(seed: string): CampaignState {
@@ -95,6 +95,28 @@ describe('company solvency workshop paths', () => {
     advanceDays(catalog, state, mech.readyOnDay - state.day);
     expect(assessSolvency(catalog, state)).toMatchObject({
       state: 'fundable', plan: { mechNeedsWeapon: true, weaponId },
+    });
+    expect(fitFromStore(catalog, state, mech, weaponId).ok).toBe(true);
+    expect(assessSolvency(catalog, state).state).toBe('fieldable');
+  });
+
+  it('does not retire a company in debt when fitting its stored weapon is free', () => {
+    const state = campaign('free-fit-in-debt');
+    const mech = state.mechs[0];
+    if (mech === undefined) throw new Error('campaign has no mech');
+    state.mechs = [mech];
+    const weaponId = stripWeapons(mech);
+    addToStore(state, 'weapon', weaponId);
+    state.cbills = -1_000_000;
+
+    expect(assessSolvency(catalog, state)).toMatchObject({
+      state: 'fundable',
+      action: 'finance',
+      plan: { mechId: mech.id, mechCost: 0, mechNeedsWeapon: true, needsSale: false },
+    });
+    expect(retireCompany(catalog, state)).toEqual({
+      ok: false,
+      reason: 'the company still has a recovery path',
     });
     expect(fitFromStore(catalog, state, mech, weaponId).ok).toBe(true);
     expect(assessSolvency(catalog, state).state).toBe('fieldable');
