@@ -7,7 +7,7 @@ import { createRng, rngFromState, type Rng } from '../sim/rng';
 import { runBattle, type BattleResult } from '../sim/world';
 import { completeRepair, pristineCondition } from './repair';
 import { applyContractFailure, recoveryNotice } from './recovery';
-import { availableXp, awardXp, resolveCasualty } from './roster';
+import { availableXp, awardXp, resolveCasualty, returnedFromField } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
 import { negotiationOptions } from './contractTerms';
 import { dailyPayroll } from './ledger';
@@ -233,7 +233,7 @@ export function resolveMission(
       pair.mech.condition = unit.condition;
       // A mech that walked off the field is off the field, not lost — pulling a
       // cripple out before it dies is the whole point of ordering a withdrawal.
-      if (unit.alive || unit.withdrew) {
+      if (returnedFromField(unit)) {
         pair.mech.status = 'ready';
       } else {
         pair.mech.status = 'hulk';

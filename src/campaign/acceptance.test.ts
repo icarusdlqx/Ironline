@@ -126,7 +126,10 @@ describe('campaign contracts', () => {
     let run: CampaignState | null = null;
     let match: { weaponId: string; host: CampaignState['mechs'][number] } | null = null;
 
-    for (const seed of ['workshop', 'acceptance', 'salvage', 'refit', 'bay', 'depot', 'pipeline', 'quartermaster']) {
+    for (const seed of [
+      'withdrawal-4', 'workshop', 'acceptance', 'salvage', 'refit', 'bay', 'depot', 'pipeline',
+      'quartermaster',
+    ]) {
       const candidate = start(seed);
       fightNode(candidate, 'militia_raid');
       if (candidate.history[0]?.won !== true) continue;
