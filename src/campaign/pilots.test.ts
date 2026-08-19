@@ -127,7 +127,8 @@ describe('the pilot register', () => {
   it('offers the pilots you have not got, and signs one for money', () => {
     const state = campaign();
     const offered = availableHires(catalog, state);
-    expect(offered.length).toBeGreaterThan(0);
+    const authored = catalog.campaigns.get(state.campaignId)?.hiringPoolPilotIds ?? [];
+    expect(offered.map((pilot) => pilot.id).sort()).toEqual([...authored].sort());
     for (const hire of offered) {
       expect(state.pilots.some((entry) => entry.templateId === hire.id)).toBe(false);
     }
@@ -143,6 +144,52 @@ describe('the pilot register', () => {
     expect(state.cbills).toBeLessThan(10_000_000);
     // And they are no longer on offer.
     expect(availableHires(catalog, state).some((hire) => hire.id === target.id)).toBe(false);
+  });
+
+  it('refuses a direct hire outside the authored register', () => {
+    const state = campaign();
+    const pool = new Set(catalog.campaigns.get(state.campaignId)?.hiringPoolPilotIds ?? []);
+    const outsider = [...catalog.pilots.values()].find(
+      (pilot) => !pool.has(pilot.id) && !state.pilots.some((entry) => entry.templateId === pilot.id),
+    );
+    if (outsider === undefined) throw new Error('the pilot catalogue has no outsider');
+
+    state.cbills = 10_000_000;
+    const before = state.pilots.length;
+    const result = hirePilot(catalog, state, outsider.id);
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/register/);
+    expect(state.pilots).toHaveLength(before);
+    expect(availableHires(catalog, state)).not.toContainEqual(outsider);
+  });
+
+  it('keeps a legacy out-of-pool hire on the books', () => {
+    const state = campaign();
+    const pool = new Set(catalog.campaigns.get(state.campaignId)?.hiringPoolPilotIds ?? []);
+    const outsider = [...catalog.pilots.values()].find(
+      (pilot) => !pool.has(pilot.id) && !state.pilots.some((entry) => entry.templateId === pilot.id),
+    );
+    if (outsider === undefined) throw new Error('the pilot catalogue has no outsider');
+
+    state.pilots.push({
+      id: 'pilot-legacy',
+      templateId: outsider.id,
+      name: outsider.name,
+      gunnery: outsider.gunnery,
+      piloting: outsider.piloting,
+      sensors: outsider.sensors,
+      xp: 0,
+      spentXp: 0,
+      traits: [...outsider.traits],
+      bio: outsider.bio,
+      injuredUntilDay: state.day,
+      dead: false,
+      mechId: null,
+    });
+
+    expect(state.pilots.some((pilot) => pilot.templateId === outsider.id)).toBe(true);
+    expect(availableHires(catalog, state).some((pilot) => pilot.id === outsider.id)).toBe(false);
   });
 
   it('will not sign someone the company cannot pay for', () => {

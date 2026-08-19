@@ -183,16 +183,18 @@ export interface HireResult {
 }
 
 /**
- * Who is on the register and not already flying for you.
+ * Who this campaign put on the register and is not already flying for you.
  *
- * The hiring hall is the whole roster minus the people you have. It does not
- * refresh or rotate: these are the pilots on this continent, and when the last
- * one is dead the company is down to whoever is left.
+ * The authored pool is a content boundary, not a save boundary. A pilot hired
+ * by an older build stays employed even if the register has since tightened.
  */
 export function availableHires(catalog: Catalog, state: CampaignState): Pilot[] {
   const employed = new Set(state.pilots.filter((entry) => !entry.dead).map((entry) => entry.templateId));
   const buried = new Set(state.pilots.filter((entry) => entry.dead).map((entry) => entry.templateId));
-  return [...catalog.pilots.values()]
+  const campaign = catalog.campaigns.get(state.campaignId);
+  return (campaign?.hiringPoolPilotIds ?? [])
+    .map((id) => catalog.pilots.get(id))
+    .filter((pilot): pilot is Pilot => pilot !== undefined)
     .filter((pilot) => !employed.has(pilot.id) && !buried.has(pilot.id))
     .sort((a, b) => hireCost(catalog, a) - hireCost(catalog, b));
 }
@@ -205,6 +207,10 @@ export function hirePilot(
 ): HireResult {
   const template = catalog.pilots.get(templateId);
   if (template === undefined) return { ok: false, reason: 'no such pilot', pilot: null };
+  const campaign = catalog.campaigns.get(state.campaignId);
+  if (campaign?.hiringPoolPilotIds.includes(templateId) !== true) {
+    return { ok: false, reason: `${template.name} is not on this campaign's register`, pilot: null };
+  }
   if (state.pilots.some((entry) => entry.templateId === templateId)) {
     return { ok: false, reason: `${template.name} is already on the books`, pilot: null };
   }
