@@ -11,6 +11,13 @@ import {
   storeItemValueOf,
   valueOf,
 } from './market';
+import {
+  completeRepair,
+  estimateRepair,
+  pristineCondition,
+  startRepair,
+  wreckedCondition,
+} from './repair';
 import { availableNodes } from './campaign';
 import type { CampaignState } from './types';
 
@@ -172,15 +179,69 @@ describe('the yard', () => {
     expect(buyMech(catalog, state, 'market_99_9').ok).toBe(false);
   });
 
-  it('pays well under what a machine is worth, less what it would take to fix', () => {
+  it('deducts the workshop bill from a damaged machine', () => {
     const mech = state.mechs[0];
     if (mech === undefined) throw new Error('the bay was empty');
 
     const full = valueOf(catalog, mech.design);
-    expect(saleValueOf(catalog, mech)).toBeLessThan(full);
+    const pristineSale = Math.round(full * catalog.rules.economy.market.sellFraction);
+    expect(saleValueOf(catalog, mech)).toBe(pristineSale);
 
-    mech.rebuildCost = full;
-    expect(saleValueOf(catalog, mech)).toBe(0);
+    mech.condition.left_arm.armour = Math.max(0, mech.condition.left_arm.armour - 18);
+    mech.condition.left_arm.internal = Math.max(1, mech.condition.left_arm.internal - 4);
+    const repair = estimateRepair(catalog, mech);
+
+    expect(repair.cost).toBeGreaterThan(0);
+    expect(saleValueOf(catalog, mech)).toBe(Math.max(0, pristineSale - repair.cost));
+
+    completeRepair(catalog, mech);
+    expect(saleValueOf(catalog, mech)).toBe(pristineSale);
+  });
+
+  it('does not let a worn purchase resell as a pristine machine', () => {
+    const design = state.mechs[0]?.design;
+    if (design === undefined) throw new Error('the bay was empty');
+    const mech = state.mechs[0];
+    if (mech === undefined) throw new Error('the bay was empty');
+
+    const pristineSale = saleValueOf(catalog, mech);
+    const worn = pristineCondition(catalog, design);
+    for (const condition of Object.values(worn)) {
+      condition.armour = Math.floor(condition.armour * 0.45);
+      condition.rearArmour = Math.floor(condition.rearArmour * 0.45);
+    }
+    mech.condition = worn;
+
+    expect(saleValueOf(catalog, mech)).toBeLessThan(pristineSale);
+  });
+
+  it('subtracts only the quoted rebuild cost from a hulk', () => {
+    const mech = state.mechs[0];
+    if (mech === undefined) throw new Error('the bay was empty');
+    const fullSale = Math.round(
+      valueOf(catalog, mech.design) * catalog.rules.economy.market.sellFraction,
+    );
+
+    mech.status = 'hulk';
+    mech.condition = wreckedCondition(catalog, mech.design);
+    mech.rebuildCost = Math.floor(fullSale / 3);
+
+    expect(estimateRepair(catalog, mech).cost).toBeGreaterThan(mech.rebuildCost);
+    expect(saleValueOf(catalog, mech)).toBe(fullSale - mech.rebuildCost);
+  });
+
+  it('does not charge a repair bill twice after work has started', () => {
+    const mech = state.mechs[0];
+    if (mech === undefined) throw new Error('the bay was empty');
+    const fullSale = saleValueOf(catalog, mech);
+    mech.condition.left_arm.armour = 0;
+    state.cbills = 10_000_000;
+
+    const repair = startRepair(catalog, state, mech);
+    expect(repair.ok).toBe(true);
+    expect(repair.estimate.cost).toBeGreaterThan(0);
+    expect(mech.status).toBe('repairing');
+    expect(saleValueOf(catalog, mech)).toBe(fullSale);
   });
 
   it('unseats whoever was sitting in a machine it sells', () => {
