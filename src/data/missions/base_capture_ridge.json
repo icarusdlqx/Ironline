@@ -169,7 +169,7 @@
           "units": [
             {
               "designId": "bulwark_assault",
-              "pilotId": "nadia_ostrow",
+              "pilotId": "teodor_krysa",
               "spawn": {
                 "x": 876,
                 "y": 180
@@ -178,7 +178,7 @@
             },
             {
               "designId": "sentinel_brawler",
-              "pilotId": "willem_torrance",
+              "pilotId": "silas_okonkwo",
               "spawn": {
                 "x": 828,
                 "y": 84
