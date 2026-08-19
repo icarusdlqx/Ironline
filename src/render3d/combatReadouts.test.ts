@@ -47,7 +47,7 @@ describe('combat readouts', () => {
     expect(friendly === undefined ? false : canPresentEntity(world, friendly.id)).toBe(true);
   });
 
-  it('renders each available combat fact and ignores unlocated support damage', () => {
+  it('lets the terminal consequence replace lesser facts on the same target', () => {
     const world = testWorld('combat-readout-cues');
     const target = unitOf(world, 'sentinel_brawler');
     target.locations.left_arm.armour = 3;
@@ -123,14 +123,65 @@ describe('combat readouts', () => {
     const labels = host.children[0]?.children
       .map((child) => child.textContent)
       .filter((label) => label !== null && label !== '') ?? [];
-    expect(labels).toContain(
-      '-3 ARMOUR · -4 STRUCTURE · CRITICAL: ACTUATOR · LOCATION LOST: LEFT ARM',
-    );
-    expect(labels).toContain('MISS');
-    expect(labels).toContain('AMMO 25 · DESTROYED');
-    expect(labels).toHaveLength(3);
+    expect(labels).toEqual(['DESTROYED']);
     readouts.destroy();
     expect(host.children).toHaveLength(0);
+  });
+
+  it('aggregates one tick across locations and omits misses when the volley lands', () => {
+    const world = testWorld('combat-readout-volley');
+    const target = unitOf(world, 'sentinel_brawler');
+    const host = new FakeElement();
+    const dom = { createElement: () => new FakeElement() as unknown as HTMLElement };
+    const locations: string[] = [];
+    const readouts = new CombatReadouts(
+      host as unknown as HTMLElement,
+      world,
+      false,
+      (_id, location, out) => {
+        locations.push(location);
+        out.set(100, 20, 80);
+        return true;
+      },
+      (at) => ({ x: at.x, y: at.z }),
+      dom,
+    );
+
+    readouts.consume(world, [
+      {
+        type: 'projectile_hit',
+        tick: 10,
+        shooterId: 99,
+        targetId: target.id,
+        weaponId: 'medium_laser',
+        location: 'left_arm',
+        damage: 2,
+        arc: 'front',
+      },
+      {
+        type: 'projectile_hit',
+        tick: 10,
+        shooterId: 99,
+        targetId: target.id,
+        weaponId: 'medium_laser',
+        location: 'right_arm',
+        damage: 3,
+        arc: 'front',
+      },
+      {
+        type: 'projectile_miss',
+        tick: 10,
+        shooterId: 99,
+        targetId: target.id,
+        weaponId: 'medium_laser',
+      },
+    ]);
+
+    const labels = host.children[0]?.children
+      .map((child) => child.textContent)
+      .filter((label) => label !== null && label !== '') ?? [];
+    expect(labels).toEqual(['-5 ARMOUR']);
+    expect(locations).toEqual(['centre_torso']);
   });
 
   it('measures once per event batch and clamps a phone projection above its dock', () => {
@@ -177,7 +228,9 @@ describe('combat readouts', () => {
     ]);
 
     expect(measures).toBe(1);
-    expect(Number.parseInt(host.children[0]?.children[0]?.style.top ?? '', 10)).toBeLessThan(626);
-    expect(Number.parseInt(host.children[0]?.children[1]?.style.top ?? '', 10)).toBeLessThan(626);
+    const visible = host.children[0]?.children.filter((child) => !child.hidden) ?? [];
+    expect(visible).toHaveLength(1);
+    expect(visible[0]?.textContent).toBe('MISS x2');
+    expect(Number.parseInt(visible[0]?.style.top ?? '', 10)).toBeLessThan(626);
   });
 });
