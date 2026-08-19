@@ -153,4 +153,41 @@ describe('contract panel', () => {
       /@media \(max-width: 420px\)[\s\S]*?\.camp-hall button\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/,
     );
   });
+
+  it('keeps an imported finished contract read-only', () => {
+    if (node === undefined) throw new Error('missing opening contract');
+    const campaign = catalog.campaigns.get('border_dispute');
+    if (campaign === undefined) throw new Error('missing campaign');
+    const identity = employerById(campaign, node.employerId);
+    const employers = employerHistories(campaign, []);
+    const terms = negotiationOptions(catalog, node).find((option) => option.id === 'standard');
+    if (terms === undefined) throw new Error('missing standard terms');
+    const html = renderToStaticMarkup(createElement(ContractPanel, {
+      contract: {
+        nodeId: node.id,
+        missionId: node.missionId,
+        employerId: identity.id,
+        employerName: identity.name,
+        termsId: 'standard',
+        payout: terms.payout,
+        salvageShare: terms.salvageShare,
+        acceptedOnDay: 0,
+        deadlineDay: node.deadlineDays,
+      },
+      node: null,
+      options: [],
+      selectedTerms: 'standard',
+      salvageRules: catalog.rules.salvage,
+      readyMechs: 4,
+      finished: true,
+      won: false,
+      employer: employers.find((record) => record.id === node.employerId) ?? null,
+      employers,
+      onSelectTerms: () => undefined,
+      onAccept: () => undefined,
+      onDeploy: () => undefined,
+      onAbandon: () => undefined,
+    }));
+    expect(html.match(/disabled=""/g)).toHaveLength(2);
+  });
 });

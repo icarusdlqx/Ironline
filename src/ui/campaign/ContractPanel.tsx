@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { termsName, type NegotiationOption } from '../../campaign/contractTerms';
 import type { CampaignState, Contract, ContractTermsId } from '../../campaign/types';
 import type { CampaignNode } from '../../schema/campaign';
@@ -25,6 +26,7 @@ interface ContractPanelProps {
   won: boolean;
   employer: EmployerHistory | null;
   employers: EmployerHistory[];
+  companyStatus?: ReactNode;
   onSelectTerms: (termsId: ContractTermsId) => void;
   onAccept: (termsId: ContractTermsId) => void;
   onDeploy: () => void;
@@ -44,6 +46,7 @@ export function ContractPanel({
   won,
   employer,
   employers,
+  companyStatus,
   onSelectTerms,
   onAccept,
   onDeploy,
@@ -85,10 +88,10 @@ export function ContractPanel({
           />
           <p className="camp-brief">{signedNode?.brief ?? signedMission?.briefing ?? ''}</p>
           <div className="camp-buttons">
-            <button type="button" onClick={onDeploy} data-testid="camp-deploy">
+            <button type="button" onClick={onDeploy} disabled={finished} data-testid="camp-deploy">
               Prepare drop ({readyMechs} mech{readyMechs === 1 ? '' : 's'} ready)
             </button>
-            <button type="button" onClick={onAbandon} data-testid="camp-abandon">
+            <button type="button" onClick={onAbandon} disabled={finished} data-testid="camp-abandon">
               Withdraw
             </button>
           </div>
@@ -160,6 +163,7 @@ export function ContractPanel({
           </button>
         </>
       )}
+      {companyStatus}
       <EmployerLedger employers={employers} />
     </section>
   );

@@ -12,11 +12,12 @@ import {
   runMission,
   startCampaign,
 } from './campaign';
-import { storeItemSaleBasis, storeItemValueOf } from './market';
+import { sellMech, storeItemSaleBasis, storeItemValueOf } from './market';
 import { employerHistories } from './employers';
 import { campaignOutcomeCount } from './history';
-import { fitFromStore, planFit } from './refit';
+import { fitFromStore, planFit, rebuildHulk } from './refit';
 import { estimateRepair, startRepair } from './repair';
+import { assessSolvency, retireCompany } from './solvency';
 import {
   isPilotAvailable,
   storeCount,
@@ -293,5 +294,52 @@ describe('campaign contracts', () => {
     if (last?.won === false) {
       expect(availableNodes(catalog, run).map((node) => node.id)).toContain(last.nodeId);
     }
+  });
+
+  it('liquidates surplus wrecks and fields the retained hull', () => {
+    const run = start('solvency-rebuild');
+    for (const mech of run.mechs) {
+      mech.status = 'hulk';
+      mech.rebuildCost = 100_000;
+    }
+    run.cbills = 0;
+
+    const report = assessSolvency(catalog, run);
+    expect(report).toMatchObject({
+      state: 'fundable',
+      plan: { needsSale: true, mechNeedsRebuild: true },
+    });
+    const retained = run.mechs.find((mech) => mech.id === report.plan?.mechId);
+    if (retained === undefined) throw new Error('reported recovery hull is missing');
+
+    for (const mech of [...run.mechs]) {
+      if (mech.id !== retained.id) expect(sellMech(catalog, run, mech.id).ok).toBe(true);
+    }
+    expect(run.cbills).toBeGreaterThanOrEqual(retained.rebuildCost);
+    expect(rebuildHulk(catalog, run, retained).ok).toBe(true);
+    advanceDays(catalog, run, catalog.rules.salvage.hulkRebuildDays);
+
+    expect(deployableLance(run)).toHaveLength(1);
+    expect(assessSolvency(catalog, run).state).toBe('fieldable');
+    expect(availableNodes(catalog, run).length).toBeGreaterThan(0);
+  });
+
+  it('ends only when an unfundable company confirms retirement', () => {
+    const run = start('solvency-retirement');
+    const last = run.mechs[0];
+    if (last === undefined) throw new Error('campaign has no mech');
+    run.mechs = [last];
+    last.status = 'hulk';
+    last.rebuildCost = 500_000;
+    run.cbills = -1;
+
+    expect(assessSolvency(catalog, run).state).toBe('terminal');
+    expect(retireCompany(catalog, run)).toEqual({ ok: true, reason: null });
+    expect(run).toMatchObject({ finished: true, won: false });
+    expect(availableNodes(catalog, run)).toEqual([]);
+    expect(acceptContract(catalog, run, 'militia_raid', 'fee_first')).toEqual({
+      ok: false,
+      reason: 'the campaign is over',
+    });
   });
 });
