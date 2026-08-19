@@ -10,6 +10,14 @@ import type { ReadoutLayout } from './readoutSafeArea';
 type LocationOf = (id: number, location: MechLocation, out: Vector3) => boolean;
 type Project = (at: Vector3) => Vec2;
 
+interface RoutineCue {
+  tick: number;
+  targetId: number;
+  armour: number;
+  structure: number;
+  misses: number;
+}
+
 function destroyedLocation(event: Extract<SimEvent, { type: 'mech_destroyed' }>): MechLocation {
   return event.method === 'head' ? 'head' : 'centre_torso';
 }
@@ -35,12 +43,14 @@ export function canPresentEntity(world: World, id: number): boolean {
   return tileExplored(vision, tile.row * world.terrain.width + tile.column);
 }
 
-/** Converts simulation facts into one terse readout per struck plate and tick. */
+/** Converts projectile traffic into one target summary while keeping consequences explicit. */
 export class CombatReadouts {
   private readonly ledger: DamageLedger;
   private readonly pool: DamageReadoutPool;
   private readonly at = new Vector3();
   private readonly split: DamageSplit = { armour: 0, structure: 0, known: false };
+  private readonly routineCues: RoutineCue[] = [];
+  private routineCount = 0;
 
   constructor(
     host: HTMLElement,
@@ -57,15 +67,19 @@ export class CombatReadouts {
 
   consume(world: World, events: readonly SimEvent[]): void {
     if (events.some(hasReadout)) this.pool.refreshLayout();
+    this.routineCount = 0;
     for (const event of events) {
       if (event.type === 'projectile_hit') {
         const split = this.ledger.classify(world, event, this.split);
-        this.offer(world, event.tick, event.targetId, event.location, {
-          armour: split.known ? split.armour : event.damage,
-          structure: split.known ? split.structure : 0,
-        });
+        this.accumulateRoutine(
+          event.tick,
+          event.targetId,
+          split.known ? split.armour : event.damage,
+          split.known ? split.structure : 0,
+          0,
+        );
       } else if (event.type === 'projectile_miss') {
-        this.offer(world, event.tick, event.targetId, null, { misses: 1 }, 'centre_torso');
+        this.accumulateRoutine(event.tick, event.targetId, 0, 0, 1);
       } else if (event.type === 'critical_hit') {
         this.offer(world, event.tick, event.entityId, event.location, {
           critical: event.component ?? '',
@@ -78,6 +92,15 @@ export class CombatReadouts {
         const location = destroyedLocation(event);
         this.offer(world, event.tick, event.entityId, location, { destroyed: true });
       }
+    }
+    for (let index = 0; index < this.routineCount; index += 1) {
+      const cue = this.routineCues[index];
+      if (cue === undefined) continue;
+      this.offer(world, cue.tick, cue.targetId, null, {
+        armour: cue.armour,
+        structure: cue.structure,
+        misses: cue.misses,
+      });
     }
     this.ledger.sync(world);
   }
@@ -104,7 +127,7 @@ export class CombatReadouts {
       ammo?: number;
       destroyed?: boolean;
     },
-    anchorLocation: MechLocation = keyLocation ?? 'centre_torso',
+    anchorLocation: MechLocation = 'centre_torso',
   ): void {
     if (!canPresentEntity(world, targetId)) return;
     if (!this.locationOf(targetId, anchorLocation, this.at)) return;
@@ -115,5 +138,39 @@ export class CombatReadouts {
       screen: this.project(this.at),
       ...cue,
     });
+  }
+
+  private accumulateRoutine(
+    tick: number,
+    targetId: number,
+    armour: number,
+    structure: number,
+    misses: number,
+  ): void {
+    let cue: RoutineCue | undefined;
+    for (let index = 0; index < this.routineCount; index += 1) {
+      const candidate = this.routineCues[index];
+      if (candidate?.tick === tick && candidate.targetId === targetId) {
+        cue = candidate;
+        break;
+      }
+    }
+    if (cue === undefined) {
+      cue = this.routineCues[this.routineCount];
+      if (cue === undefined) {
+        cue = { tick, targetId, armour: 0, structure: 0, misses: 0 };
+        this.routineCues.push(cue);
+      } else {
+        cue.tick = tick;
+        cue.targetId = targetId;
+        cue.armour = 0;
+        cue.structure = 0;
+        cue.misses = 0;
+      }
+      this.routineCount += 1;
+    }
+    cue.armour += armour;
+    cue.structure += structure;
+    cue.misses += misses;
   }
 }

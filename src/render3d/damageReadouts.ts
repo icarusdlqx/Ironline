@@ -1,6 +1,19 @@
 import type { MechLocation } from '../schema/common';
 import type { Vec2 } from '../sim/types';
 import {
+  DEFAULT_READOUT_CAPACITY,
+  MAX_READOUT_CAPACITY,
+  READOUT_BURST_TICKS,
+  READOUT_PRIORITY,
+  compactReadouts,
+  readoutBudget,
+  readoutLabel,
+  readoutLife,
+  readoutPriority,
+  readoutTone,
+  type ReadoutCueFacts,
+} from './damageReadoutPolicy';
+import {
   clampReadout,
   readoutBounds,
   readoutEnvelope,
@@ -8,35 +21,27 @@ import {
   type ReadoutLayout,
 } from './readoutSafeArea';
 
-export interface DamageCue {
+export interface DamageCue extends ReadoutCueFacts {
   tick: number;
   targetId: number;
-  location: MechLocation | null;
   screen: Vec2;
-  armour?: number;
-  structure?: number;
-  misses?: number;
-  critical?: string | null;
-  locationLost?: boolean;
-  ammo?: number;
-  destroyed?: boolean;
 }
 
 interface ReadoutSlot {
   element: HTMLElement;
   active: boolean;
   age: number;
-  tick: number;
+  burstTick: number;
   targetId: number;
-  location: MechLocation | null;
   armour: number;
   structure: number;
   misses: number;
   criticalCount: number;
   criticals: Set<string>;
-  locationLost: boolean;
+  lostLocations: Set<MechLocation>;
   ammo: number;
   destroyed: boolean;
+  priority: number;
   label: string;
   anchor: Vec2;
   screen: Vec2;
@@ -44,23 +49,6 @@ interface ReadoutSlot {
 }
 
 type ReadoutDocument = Pick<Document, 'createElement'>;
-
-const LIFE_SECONDS = 1.35;
-const DEFAULT_CAPACITY = 40;
-const MAX_CAPACITY = 47;
-
-function amount(value: number): string {
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-}
-
-function append(label: string, cue: string): string {
-  return label === '' ? cue : `${label} · ${cue}`;
-}
-
-function locationName(location: MechLocation | null): string {
-  return location === null ? '' : location.replace(/_/g, ' ').toUpperCase();
-}
 
 /** A fixed DOM budget keeps a long firefight from growing a second HUD tree. */
 export class DamageReadoutPool {
@@ -72,11 +60,11 @@ export class DamageReadoutPool {
   constructor(
     host: HTMLElement,
     private readonly reducedMotion: boolean,
-    capacity = DEFAULT_CAPACITY,
+    capacity = DEFAULT_READOUT_CAPACITY,
     dom: ReadoutDocument = document,
     private readonly layoutOf: (() => ReadoutLayout) | null = null,
   ) {
-    const count = Math.max(1, Math.min(MAX_CAPACITY, Math.trunc(capacity)));
+    const count = Math.max(1, Math.min(MAX_READOUT_CAPACITY, Math.trunc(capacity)));
     this.root = dom.createElement('div');
     this.root.className = `damage-readouts${reducedMotion ? ' reduced-motion' : ''}`;
     this.root.setAttribute('aria-hidden', 'true');
@@ -89,17 +77,17 @@ export class DamageReadoutPool {
         element,
         active: false,
         age: 0,
-        tick: -1,
+        burstTick: -1,
         targetId: -1,
-        location: null,
         armour: 0,
         structure: 0,
         misses: 0,
         criticalCount: 0,
         criticals: new Set<string>(),
-        locationLost: false,
+        lostLocations: new Set<MechLocation>(),
         ammo: 0,
         destroyed: false,
+        priority: READOUT_PRIORITY.miss,
         label: '',
         anchor: { x: 0, y: 0 },
         screen: { x: 0, y: 0 },
@@ -115,28 +103,39 @@ export class DamageReadoutPool {
 
   get activeCount(): number {
     let count = 0;
-    for (const slot of this.slots) if (slot.active) count += 1;
+    for (const slot of this.slots) {
+      if (slot.active && slot.label !== '') count += 1;
+    }
     return count;
   }
 
   refreshLayout(): void {
     this.layout = this.layoutOf?.() ?? null;
+    this.enforceBudget();
     if (this.layout !== null) this.reflow();
   }
 
   offer(cue: DamageCue): void {
+    const incomingPriority = readoutPriority(cue);
     let slot = this.slots.find(
-      (candidate) =>
-        candidate.active &&
-        candidate.tick === cue.tick &&
-        candidate.targetId === cue.targetId &&
-        candidate.location === cue.location,
+      (candidate) => candidate.active && candidate.targetId === cue.targetId,
     );
+    const occupiedPreviously = slot !== undefined && slot.label !== '';
+    let restart = false;
+    if (slot !== undefined && cue.tick - slot.burstTick > READOUT_BURST_TICKS) {
+      if (incomingPriority < slot.priority) return;
+      this.reset(slot, cue, incomingPriority);
+      restart = true;
+    }
     if (slot === undefined) {
-      slot = this.slots[this.next];
-      this.next = (this.next + 1) % this.slots.length;
+      slot = this.claim(incomingPriority);
       if (slot === undefined) return;
-      this.reset(slot, cue);
+      this.reset(slot, cue, incomingPriority);
+      restart = true;
+    } else if (incomingPriority > slot.priority) {
+      slot.priority = incomingPriority;
+      slot.age = 0;
+      restart = true;
     }
 
     slot.armour += cue.armour ?? 0;
@@ -146,28 +145,36 @@ export class DamageReadoutPool {
       slot.criticalCount += 1;
       if (cue.critical !== null && cue.critical !== '') slot.criticals.add(cue.critical);
     }
-    slot.locationLost ||= cue.locationLost === true;
+    if (cue.locationLost === true && cue.location !== null) {
+      slot.lostLocations.add(cue.location);
+    }
     slot.ammo += cue.ammo ?? 0;
     slot.destroyed ||= cue.destroyed === true;
-    slot.age = 0;
+    slot.priority = Math.max(slot.priority, incomingPriority);
     slot.anchor.x = cue.screen.x;
     slot.anchor.y = cue.screen.y;
     const label = this.labelFor(slot);
     slot.label = label;
-    this.place(slot);
-    this.paint(slot, label);
+    if (label === '') {
+      this.conceal(slot);
+      return;
+    }
+    if (!occupiedPreviously && !this.admit(slot)) {
+      this.conceal(slot);
+      return;
+    }
+    if (!occupiedPreviously) slot.age = 0;
+    this.paint(slot, label, restart || !occupiedPreviously);
+    if (this.layout === null) this.place(slot);
+    else this.reflow();
   }
 
   advance(deltaSeconds: number): void {
     for (const slot of this.slots) {
       if (!slot.active) continue;
       slot.age += deltaSeconds;
-      if (slot.age < LIFE_SECONDS) continue;
-      slot.active = false;
-      slot.label = '';
-      slot.envelope = { halfWidth: 0, above: 0, below: 0 };
-      slot.element.hidden = true;
-      slot.element.className = 'damage-readout';
+      if (slot.age < this.lifeFor(slot)) continue;
+      this.deactivate(slot);
     }
   }
 
@@ -176,19 +183,115 @@ export class DamageReadoutPool {
     this.root.remove();
   }
 
-  private reset(slot: ReadoutSlot, cue: DamageCue): void {
+  private reset(slot: ReadoutSlot, cue: DamageCue, priority: number): void {
     slot.active = true;
-    slot.tick = cue.tick;
+    slot.age = 0;
+    slot.burstTick = cue.tick;
     slot.targetId = cue.targetId;
-    slot.location = cue.location;
     slot.armour = 0;
     slot.structure = 0;
     slot.misses = 0;
     slot.criticalCount = 0;
     slot.criticals.clear();
-    slot.locationLost = false;
+    slot.lostLocations.clear();
     slot.ammo = 0;
     slot.destroyed = false;
+    slot.priority = priority;
+    slot.label = '';
+  }
+
+  private claim(priority: number): ReadoutSlot | undefined {
+    for (let offset = 0; offset < this.slots.length; offset += 1) {
+      const index = (this.next + offset) % this.slots.length;
+      const slot = this.slots[index];
+      if (slot?.active === false) {
+        this.next = (index + 1) % this.slots.length;
+        return slot;
+      }
+    }
+    const victim = this.victimFor(priority, false);
+    if (victim === undefined) return undefined;
+    this.deactivate(victim);
+    return victim;
+  }
+
+  private admit(slot: ReadoutSlot): boolean {
+    if (this.activeCount <= this.visibleBudget()) return true;
+    const victim = this.victimFor(slot.priority, true, slot);
+    if (victim === undefined) return false;
+    this.deactivate(victim);
+    return true;
+  }
+
+  private enforceBudget(): void {
+    const budget = this.visibleBudget();
+    while (this.activeCount > budget) {
+      let victim: ReadoutSlot | undefined;
+      for (const slot of this.slots) {
+        if (!slot.active || slot.label === '') continue;
+        if (
+          victim === undefined ||
+          slot.priority < victim.priority ||
+          (slot.priority === victim.priority && slot.age > victim.age)
+        ) {
+          victim = slot;
+        }
+      }
+      if (victim === undefined) return;
+      this.deactivate(victim);
+    }
+  }
+
+  private victimFor(
+    incomingPriority: number,
+    visibleOnly: boolean,
+    exclude?: ReadoutSlot,
+  ): ReadoutSlot | undefined {
+    let victim: ReadoutSlot | undefined;
+    for (const slot of this.slots) {
+      if (
+        slot === exclude ||
+        !slot.active ||
+        (visibleOnly && slot.label === '') ||
+        slot.priority > incomingPriority
+      ) {
+        continue;
+      }
+      if (
+        victim === undefined ||
+        slot.priority < victim.priority ||
+        (slot.priority === victim.priority && slot.age > victim.age)
+      ) {
+        victim = slot;
+      }
+    }
+    return victim;
+  }
+
+  private visibleBudget(): number {
+    return Math.min(
+      readoutBudget(
+        this.layout?.width ?? Number.POSITIVE_INFINITY,
+        this.layout?.height ?? Number.POSITIVE_INFINITY,
+      ),
+      this.slots.length,
+    );
+  }
+
+  private lifeFor(slot: ReadoutSlot): number {
+    return readoutLife(slot.priority);
+  }
+
+  private conceal(slot: ReadoutSlot): void {
+    slot.label = '';
+    slot.envelope = { halfWidth: 0, above: 0, below: 0 };
+    slot.element.hidden = true;
+    slot.element.className = 'damage-readout';
+  }
+
+  private deactivate(slot: ReadoutSlot): void {
+    slot.active = false;
+    this.conceal(slot);
   }
 
   private place(slot: ReadoutSlot): void {
@@ -210,7 +313,12 @@ export class DamageReadoutPool {
       );
       slot.screen.x = screen.x;
       slot.screen.y = screen.y;
-      slot.envelope = readoutEnvelope(slot.label, layout.width, this.reducedMotion);
+      slot.envelope = readoutEnvelope(
+        slot.label,
+        layout.width,
+        this.reducedMotion,
+        layout.height,
+      );
     }
     slot.element.style.left = `${String(slot.screen.x)}px`;
     slot.element.style.top = `${String(slot.screen.y)}px`;
@@ -220,8 +328,10 @@ export class DamageReadoutPool {
     const layout = this.layout;
     if (layout === null) return;
     const occupied = [];
-    for (const slot of this.slots) {
-      if (!slot.active || slot.label === '') continue;
+    const visible = this.slots
+      .filter((slot) => slot.active && slot.label !== '')
+      .sort((left, right) => right.priority - left.priority || left.age - right.age);
+    for (const slot of visible) {
       const screen = clampReadout(
         slot.anchor,
         slot.label,
@@ -231,7 +341,12 @@ export class DamageReadoutPool {
       );
       slot.screen.x = screen.x;
       slot.screen.y = screen.y;
-      slot.envelope = readoutEnvelope(slot.label, layout.width, this.reducedMotion);
+      slot.envelope = readoutEnvelope(
+        slot.label,
+        layout.width,
+        this.reducedMotion,
+        layout.height,
+      );
       occupied.push(readoutBounds(slot.screen, slot.envelope));
       slot.element.style.left = `${String(slot.screen.x)}px`;
       slot.element.style.top = `${String(slot.screen.y)}px`;
@@ -239,38 +354,25 @@ export class DamageReadoutPool {
   }
 
   private labelFor(slot: ReadoutSlot): string {
-    let label = '';
-    if (slot.armour > 0) label = append(label, `-${amount(slot.armour)} ARMOUR`);
-    if (slot.structure > 0) label = append(label, `-${amount(slot.structure)} STRUCTURE`);
-    if (slot.misses > 0) {
-      label = append(label, slot.misses === 1 ? 'MISS' : `MISS x${String(slot.misses)}`);
-    }
-    if (slot.criticalCount > 0) {
-      const count = slot.criticalCount === 1 ? '' : ` x${String(slot.criticalCount)}`;
-      let components = '';
-      for (const name of slot.criticals) {
-        const component = name.toUpperCase();
-        components = components === '' ? component : `${components} / ${component}`;
-      }
-      label = append(label, `CRITICAL${count}${components === '' ? '' : `: ${components}`}`);
-    }
-    if (slot.locationLost) label = append(label, `LOCATION LOST: ${locationName(slot.location)}`);
-    if (slot.ammo > 0) label = append(label, `AMMO ${amount(slot.ammo)}`);
-    if (slot.destroyed) label = append(label, 'DESTROYED');
-    return label;
+    return readoutLabel(
+      slot,
+      compactReadouts(
+        this.layout?.width ?? Number.POSITIVE_INFINITY,
+        this.layout?.height ?? Number.POSITIVE_INFINITY,
+      ),
+    );
   }
 
-  private paint(slot: ReadoutSlot, label: string): void {
-    const tone = slot.destroyed || slot.ammo > 0 || slot.locationLost
-      ? 'danger'
-      : slot.structure > 0 || slot.criticalCount > 0
-        ? 'structure'
-        : slot.misses > 0
-          ? 'miss'
-          : 'armour';
+  private paint(slot: ReadoutSlot, label: string, restart: boolean): void {
+    const tone = readoutTone(slot.priority);
+    const baseClass = `damage-readout ${tone}`;
     slot.element.textContent = label;
     slot.element.hidden = false;
-    slot.element.className = `damage-readout ${tone}`;
+    if (!restart && slot.element.className.includes('is-active')) {
+      slot.element.className = `${baseClass} is-active`;
+      return;
+    }
+    slot.element.className = baseClass;
     void slot.element.offsetWidth;
     slot.element.className += ' is-active';
   }

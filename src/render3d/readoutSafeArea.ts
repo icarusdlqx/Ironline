@@ -1,4 +1,5 @@
 import type { Vec2 } from '../sim/types';
+import { compactReadouts } from './damageReadoutPolicy';
 
 export interface ReadoutObstacle {
   left: number;
@@ -31,7 +32,7 @@ const BLOCKERS = [
   '.minimap',
   '.training-coach',
   '.paused-banner',
-  '.mobile-menu-sheet',
+  '.mobile-battle-menu[open] .mobile-menu-sheet',
 ].join(',');
 
 function clippedObstacle(
@@ -56,6 +57,7 @@ export function measureReadoutLayout(host: HTMLElement): ReadoutLayout {
   const app = host.parentElement;
   if (app !== null) {
     for (const element of app.querySelectorAll<HTMLElement>(BLOCKERS)) {
+      if (element.closest('.mobile-battle-menu:not([open])') !== null) continue;
       const obstacle = clippedObstacle(viewport, element.getBoundingClientRect(), width, height);
       if (obstacle !== null) obstacles.push(obstacle);
     }
@@ -67,12 +69,13 @@ export function readoutEnvelope(
   label: string,
   viewportWidth: number,
   reducedMotion: boolean,
+  viewportHeight = Number.POSITIVE_INFINITY,
 ): ReadoutEnvelope {
-  const compact = viewportWidth <= 700;
+  const compact = compactReadouts(viewportWidth, viewportHeight);
   const fontSize = compact ? 11 : Math.max(10, Math.min(13, viewportWidth * 0.0105));
   const maxWidth = Math.max(
     1,
-    Math.min(compact ? viewportWidth * 0.74 : Math.min(360, viewportWidth * 0.62), viewportWidth - 16),
+    Math.min(compact ? viewportWidth * 0.68 : Math.min(360, viewportWidth * 0.62), viewportWidth - 16),
   );
   const naturalWidth = Math.max(44, label.length * fontSize * 0.68 + 16);
   const width = Math.min(maxWidth, naturalWidth);
@@ -120,7 +123,7 @@ export function clampReadout(
   reducedMotion: boolean,
   occupied: readonly ReadoutObstacle[] = [],
 ): Vec2 {
-  const envelope = readoutEnvelope(label, layout.width, reducedMotion);
+  const envelope = readoutEnvelope(label, layout.width, reducedMotion, layout.height);
   const xMin = EDGE_GAP + envelope.halfWidth;
   const xMax = layout.width - EDGE_GAP - envelope.halfWidth;
   const yMin = EDGE_GAP + envelope.above;

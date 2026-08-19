@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampReadout,
+  measureReadoutLayout,
   readoutBounds,
   readoutEnvelope,
   readoutOverlaps,
@@ -8,8 +9,7 @@ import {
 } from './readoutSafeArea';
 
 const combined =
-  '-12 ARMOUR · -7 STRUCTURE · CRITICAL x2: WEAPON / HEAT SINK · ' +
-  'LOCATION LOST: CENTRE TORSO · AMMO 25 · DESTROYED';
+  '-7 STRUCTURE · CRITICAL x2: WEAPON / HEAT SINK';
 
 function expectClear(
   point: { x: number; y: number },
@@ -17,7 +17,7 @@ function expectClear(
   layout: ReadoutLayout,
   reducedMotion = false,
 ): void {
-  const envelope = readoutEnvelope(label, layout.width, reducedMotion);
+  const envelope = readoutEnvelope(label, layout.width, reducedMotion, layout.height);
   expect(layout.obstacles.some((obstacle) => readoutOverlaps(point, envelope, obstacle))).toBe(false);
 }
 
@@ -30,7 +30,7 @@ function placeTogether(
   const placed = [];
   for (const label of labels) {
     const point = clampReadout(anchor, label, layout, false, occupied);
-    const envelope = readoutEnvelope(label, layout.width, false);
+    const envelope = readoutEnvelope(label, layout.width, false, layout.height);
     expectClear(point, label, layout);
     expect(occupied.some((obstacle) => readoutOverlaps(point, envelope, obstacle))).toBe(false);
     occupied.push(readoutBounds(point, envelope));
@@ -40,6 +40,33 @@ function placeTogether(
 }
 
 describe('damage readout safe area', () => {
+  it('does not reserve the closed mobile menu sheet', () => {
+    const rect = {
+      left: 0,
+      top: 0,
+      right: 390,
+      bottom: 844,
+      width: 390,
+      height: 844,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const nestedAction = {
+      closest: () => ({}),
+      getBoundingClientRect: () => rect,
+    };
+    const app = { querySelectorAll: () => [nestedAction] };
+    const host = {
+      clientWidth: 390,
+      clientHeight: 844,
+      parentElement: app,
+      getBoundingClientRect: () => rect,
+    };
+
+    expect(measureReadoutLayout(host as unknown as HTMLElement).obstacles).toEqual([]);
+  });
+
   it('lifts a desktop readout above the lance and support HUD', () => {
     const layout: ReadoutLayout = {
       width: 1280,
@@ -81,7 +108,7 @@ describe('damage readout safe area', () => {
   it('clamps offscreen projections without motion-dependent overflow', () => {
     const layout: ReadoutLayout = { width: 390, height: 844, obstacles: [] };
     const point = clampReadout({ x: -40, y: 900 }, 'MISS', layout, true);
-    const envelope = readoutEnvelope('MISS', layout.width, true);
+    const envelope = readoutEnvelope('MISS', layout.width, true, layout.height);
 
     expect(point.x - envelope.halfWidth).toBeGreaterThanOrEqual(8);
     expect(point.y + envelope.below).toBeLessThanOrEqual(layout.height - 8);
@@ -98,7 +125,7 @@ describe('damage readout safe area', () => {
       ],
     };
     const placed = placeTogether(
-      ['-12 ARMOUR', '-7 STRUCTURE', 'AMMO 25 · DESTROYED'],
+      ['-12 ARMOUR', '-7 STRUCTURE', 'DESTROYED'],
       { x: 640, y: 755 },
       layout,
     );
@@ -118,15 +145,29 @@ describe('damage readout safe area', () => {
       ],
     };
     const placed = placeTogether(
-      ['-12 ARMOUR', '-7 STRUCTURE', 'AMMO 25 · DESTROYED'],
+      ['-12 ARMOUR', '-7 STRUCTURE', 'DESTROYED'],
       { x: 195, y: 830 },
       layout,
     );
 
     expect(placed).toHaveLength(3);
     for (const { point, label } of placed) {
-      const envelope = readoutEnvelope(label, layout.width, false);
+      const envelope = readoutEnvelope(label, layout.width, false, layout.height);
       expect(point.y + envelope.below).toBeLessThan(626);
     }
+  });
+
+  it('budgets wrapped consequence copy with the compact CSS width', () => {
+    const layout: ReadoutLayout = { width: 390, height: 844, obstacles: [] };
+    const short = readoutEnvelope('DESTROYED', layout.width, false, layout.height);
+    const wrapped = readoutEnvelope(
+      'AMMO DETONATION · LEFT TORSO / RIGHT TORSO LOST',
+      layout.width,
+      false,
+      layout.height,
+    );
+
+    expect(wrapped.above).toBeGreaterThan(short.above);
+    expect(wrapped.halfWidth * 2).toBeLessThanOrEqual(layout.width * 0.68);
   });
 });
