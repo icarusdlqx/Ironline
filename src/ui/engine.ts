@@ -36,6 +36,7 @@ import { PerfOverlay } from './perf';
 import { snapshotUnits } from './snapshot';
 import { useGame, type HitPreviewView, type OrderMode } from './store';
 import { supportRadius } from './supportOptions';
+import { stoppedCount } from './objectiveReadout';
 
 const HUD_INTERVAL_SECONDS = 0.1;
 const SMOKE_INTERVAL_SECONDS = 0.7;
@@ -519,6 +520,7 @@ export class Engine {
         status: objective.status,
         progress: objective.progress,
         sustained: objective.type === 'protect_zones' || objective.type === 'survive',
+        stopped: stoppedCount(this.world, objective),
       })),
       zones: this.world.zones.map((zone) => ({
         id: zone.id,

@@ -9,6 +9,9 @@ interface ObjectiveListProps {
 
 export function objectiveProgress(objective: ObjectiveView): string {
   if (objective.status === 'failed') return 'failed';
+  if (objective.stopped !== undefined) {
+    return `${objective.stopped.stopped}/${objective.stopped.total} stopped`;
+  }
   if (objective.sustained === true && objective.status === 'active') return 'holding';
   return `${String(Math.round(objective.progress * 100))}%`;
 }

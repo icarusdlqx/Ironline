@@ -37,4 +37,20 @@ describe('objective progress copy', () => {
       sustained: true,
     })).toBe('failed');
   });
+
+  it('names partial destroy-all progress as a count', () => {
+    const objective = {
+      id: 'opposition',
+      label: 'Stop the opposing lance',
+      required: true,
+      status: 'active',
+      progress: 0,
+      stopped: { stopped: 3, total: 4 },
+    };
+
+    expect(objectiveProgress(objective)).toBe('3/4 stopped');
+    expect(
+      renderToStaticMarkup(createElement(ObjectiveList, { objectives: [objective], zones: [] })),
+    ).toContain('3/4 stopped');
+  });
 });

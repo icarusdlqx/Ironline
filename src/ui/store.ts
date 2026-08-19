@@ -15,6 +15,7 @@ export interface ObjectiveView {
   status: string;
   progress: number;
   sustained?: boolean;
+  stopped?: { stopped: number; total: number };
 }
 
 export interface ZoneView {
