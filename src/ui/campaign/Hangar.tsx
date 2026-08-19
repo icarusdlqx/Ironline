@@ -52,9 +52,11 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
             const health = integrity.fraction;
             const status =
               mech.status === 'hulk'
-                ? `Wreck — rebuild for ${cbills(mech.rebuildCost)}`
+                ? `Wreck — rebuild for ${cbills(estimate.cost)} · ${estimate.days}d`
                 : !ready
                   ? `In the shop until day ${mech.readyOnDay}`
+                  : mech.design.mounts.length === 0
+                    ? 'Rebuilt — fit a weapon before deployment'
                   : estimate.days === 0
                     ? 'Ready'
                     : `Damaged — ${cbills(estimate.cost)}, ${estimate.days}d to fix`;

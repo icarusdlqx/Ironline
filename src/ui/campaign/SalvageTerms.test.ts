@@ -52,7 +52,7 @@ describe('salvage terms copy', () => {
       }),
     );
 
-    expect(html).toContain('Recovered hulls are towed separately.');
+    expect(html).toContain('Recovered hulls are towed separately with their field damage');
     expect(html).toContain('weapons and equipment alternate');
     expect(html).toContain('The hold takes 3.');
     expect(html).not.toMatch(/eject|heat/i);

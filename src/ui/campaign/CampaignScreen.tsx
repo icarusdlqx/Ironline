@@ -308,6 +308,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
               const report = {
                 candidates: record.salvageCandidates ?? [],
                 chassisRecovered: record.salvagedChassis,
+                hulls: [],
                 offered: record.salvageOffered ?? [],
                 items: record.salvagedItems,
                 provenance: record.salvageProvenance ?? [],

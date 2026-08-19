@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DesignSchema } from '../schema/design';
+import { DesignSchema, WeaponMountSchema } from '../schema/design';
 import { IdSchema, MechLocationSchema, perLocation } from '../schema/common';
 import { getCatalog, type Catalog } from '../schema/load';
 import type { Campaign } from '../schema/campaign';
@@ -38,9 +38,17 @@ const LocationConditionSchema = z.strictObject({
   destroyed: z.boolean(),
 });
 
+// Catalogue designs always carry a weapon. A recovered campaign hull is a
+// different state: it may be stored, rebuilt and saved before the company fits
+// its first gun. Keep that exception local to campaign persistence rather than
+// weakening authored-design validation.
+const StoredDesignSchema = DesignSchema.extend({
+  mounts: z.array(WeaponMountSchema).max(24),
+});
+
 const MechRecordSchema = z.strictObject({
   id: z.string().min(1),
-  design: DesignSchema,
+  design: StoredDesignSchema,
   condition: perLocation(LocationConditionSchema),
   status: z.enum(['ready', 'repairing', 'hulk']),
   readyOnDay: z.number().int(),

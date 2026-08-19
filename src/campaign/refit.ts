@@ -2,7 +2,7 @@ import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Design } from '../schema/design';
 import type { Catalog } from '../schema/load';
 import { computeLoadout, maximiseArmour } from '../sim/loadout';
-import { pristineCondition } from './repair';
+import { pristineCondition, startRepair } from './repair';
 import { addToStore, storeCount, takeFromStore, type CampaignState, type MechRecord } from './types';
 
 export interface RefitResult {
@@ -151,15 +151,12 @@ export function rebuildHulk(
   if (mech.status !== 'hulk') {
     return { ok: false, reason: 'this chassis is not a wreck', location: null };
   }
-  if (mech.rebuildCost > state.cbills) {
-    return { ok: false, reason: `rebuild costs ${mech.rebuildCost} credits`, location: null };
-  }
-
-  state.cbills -= mech.rebuildCost;
-  mech.rebuildCost = 0;
-  mech.status = 'repairing';
-  mech.readyOnDay = state.day + catalog.rules.salvage.hulkRebuildDays;
-  return { ok: true, reason: null, location: null };
+  // The field condition is the useful part of recovering a better wreck. The
+  // normal workshop quote already combines its missing plate/structure with
+  // the fixed chassis rebuild, so use that quote instead of silently erasing
+  // the damage for the flat chassis fee.
+  const result = startRepair(catalog, state, mech);
+  return { ok: result.ok, reason: result.reason, location: null };
 }
 
 /** How many of each item a design has bolted to it, by item id. */

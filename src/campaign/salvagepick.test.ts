@@ -11,7 +11,7 @@ function offer(...ids: string[]): StoreItem[] {
 }
 
 function report(taken: StoreItem[], offered: StoreItem[]): SalvageReport {
-  return { candidates: [], chassisRecovered: [], offered, items: taken, provenance: [] };
+  return { candidates: [], chassisRecovered: [], hulls: [], offered, items: taken, provenance: [] };
 }
 
 const countOf = (state: CampaignState, itemId: string): number =>

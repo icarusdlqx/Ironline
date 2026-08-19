@@ -107,9 +107,9 @@ export function SalvageTerms({
         {partRecoveryOdds(rules, share)}
       </p>
       <p className="salvage-capacity">
-        Recovered hulls are towed separately. A rich field lists up to {SALVAGE_OFFERED} crate
-        types; weapons and equipment alternate, and each list rotates from one field to the next.
-        The hold takes {SALVAGE_PICKS}.
+        Recovered hulls are towed separately with their field damage and no mounted weapons or
+        equipment. A rich field lists up to {SALVAGE_OFFERED} crate types; weapons and equipment
+        alternate, and each list rotates from one field to the next. The hold takes {SALVAGE_PICKS}.
       </p>
     </div>
   );

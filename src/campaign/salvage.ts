@@ -9,6 +9,7 @@ import {
   type SalvageCandidate,
   type SalvageOutcome,
   type SalvageProvenance,
+  type RecoveredHull,
   type StoreKind,
   type StoreItem,
 } from './types';
@@ -19,6 +20,7 @@ export type { SalvageCandidate, SalvageOutcome, SalvageProvenance } from './type
 export interface SalvageReport {
   candidates: SalvageCandidate[];
   chassisRecovered: string[];
+  hulls: RecoveredHull[];
   offered: StoreItem[];
   items: StoreItem[];
   provenance: SalvageProvenance[];
@@ -196,6 +198,7 @@ export function resolveSalvage(
   const rules = catalog.rules.salvage;
   const candidates: SalvageCandidate[] = [];
   const chassisRecovered: string[] = [];
+  const hulls: RecoveredHull[] = [];
   const items: StoreItem[] = [];
   const provenance: SalvageProvenance[] = [];
 
@@ -223,7 +226,26 @@ export function resolveSalvage(
       recovered,
     });
 
-    if (recovered) chassisRecovered.push(unit.designId);
+    if (recovered) {
+      chassisRecovered.push(unit.designId);
+      hulls.push({
+        designId: unit.designId,
+        condition: Object.fromEntries(
+          LOCATIONS.map((location) => {
+            const condition = unit.condition[location];
+            return [
+              location,
+              {
+                armour: condition?.armour ?? 0,
+                rearArmour: condition?.rearArmour ?? 0,
+                internal: condition?.internal ?? 0,
+                destroyed: condition?.destroyed ?? true,
+              },
+            ];
+          }),
+        ) as RecoveredHull['condition'],
+      });
+    }
     const fieldItems = itemsFrom(catalog, rng, unit, unit.designId, salvageShare);
     items.push(...fieldItems.items);
     provenance.push(...fieldItems.provenance);
@@ -235,6 +257,7 @@ export function resolveSalvage(
   return {
     candidates,
     chassisRecovered,
+    hulls,
     offered,
     items: offered.slice(0, SALVAGE_PICKS),
     provenance: provenance.filter((item) => offeredKeys.has(`${item.kind}:${item.itemId}`)),

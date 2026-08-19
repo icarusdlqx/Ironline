@@ -26,7 +26,9 @@ export interface DeployablePair {
 }
 
 function isFieldable(state: CampaignState, mech: MechRecord): boolean {
-  return mech.status !== 'hulk' && isMechAvailable(state, mech);
+  // A rebuilt salvage hull may legitimately be saved without weapons while it
+  // waits for a refit. It is workshop-ready, not combat-ready.
+  return mech.status !== 'hulk' && mech.design.mounts.length > 0 && isMechAvailable(state, mech);
 }
 
 /**

@@ -134,6 +134,14 @@ describe('salvage field ledger', () => {
       },
     ]);
     expect(report.chassisRecovered).toEqual(['sentinel_brawler']);
+    expect(report.hulls).toHaveLength(1);
+    expect(report.hulls[0]?.condition.head.destroyed).toBe(true);
+    expect(report.hulls[0]?.condition.left_arm).toEqual({
+      armour: 1,
+      rearArmour: 0,
+      internal: 1,
+      destroyed: false,
+    });
     expect(
       report.provenance.filter((source) => source.itemId === 'medium_laser'),
     ).toEqual([

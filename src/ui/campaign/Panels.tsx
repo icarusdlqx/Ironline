@@ -45,10 +45,12 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
                 <span className="bay-mech-name">{mech.design.name}</span>
                 <span className="bay-mech-state">
                   {mech.status === 'hulk'
-                    ? `wreck — ${cbills(mech.rebuildCost)} now · ${catalog.rules.salvage.hulkRebuildDays}d · ${cbills(payrollThrough(catalog, state, catalog.rules.salvage.hulkRebuildDays))} wages`
+                    ? `wreck — ${cbills(estimate.cost)} now · ${estimate.days}d · ${cbills(payrollThrough(catalog, state, estimate.days))} wages`
                     : ready
-                      ? estimate.days === 0
-                        ? 'ready'
+                      ? mech.design.mounts.length === 0
+                        ? 'rebuilt — fit a weapon before deployment'
+                        : estimate.days === 0
+                          ? 'ready'
                         : `damaged — ${cbills(estimate.cost)} now · ${estimate.days}d · ${cbills(payrollThrough(catalog, state, estimate.days))} wages`
                       : `in bay until day ${mech.readyOnDay} · ${cbills(payrollThrough(catalog, state, mech.readyOnDay - state.day))} wages left`}
                 </span>
@@ -233,7 +235,13 @@ export function MarketPanel({ state, mutate }: PanelProps) {
           <li key={mech.id} data-testid={`market-sell-row-${mech.id}`}>
             <span className="market-name">
               {mech.design.name}
-              <small>{mech.status === 'hulk' ? 'wreck' : mech.status}</small>
+              <small>
+                {mech.status === 'hulk'
+                  ? 'wreck'
+                  : mech.design.mounts.length === 0
+                    ? 'needs a weapon'
+                    : mech.status}
+              </small>
             </span>
             <span className="market-price">{cbills(saleValueOf(catalog, mech))}</span>
             <button

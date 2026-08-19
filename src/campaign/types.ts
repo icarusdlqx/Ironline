@@ -80,6 +80,12 @@ export interface SalvageProvenance {
   location: MechLocation;
 }
 
+/** The field condition of a hull the recovery crews actually got aboard. */
+export interface RecoveredHull {
+  designId: string;
+  condition: Record<MechLocation, LocationCondition>;
+}
+
 export interface CampaignLogEntry {
   day: number;
   text: string;

@@ -116,6 +116,8 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
                   ? 'No mech'
                   : seated.status !== 'ready'
                     ? `Mech ${seated.status}`
+                    : seated.design.mounts.length === 0
+                      ? 'Mech needs a weapon'
                     : drops
                       ? `Dropping · ${weight}t`
                       : dropping.length >= slots

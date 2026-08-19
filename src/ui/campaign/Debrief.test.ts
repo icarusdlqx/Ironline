@@ -83,7 +83,9 @@ describe('campaign debrief recovery ledger', () => {
     expect(html).toContain('not eligible');
     expect(html).toContain("Field source: Sentinel SNL-2 &#x27;Brawler&#x27;, left arm");
     expect(html).toContain("Sentinel SNL-2 &#x27;Brawler&#x27;, centre torso");
-    expect(html).toContain('Recovered hulls are already in the yard.');
+    expect(html).toContain('Recovered hulls are already in the yard');
+    expect(html).toContain('carrying their field damage and no mounted');
+    expect(html).toContain('weapons or equipment');
     expect(html).toContain('weapons and equipment alternate');
     expect(html).toContain('each list rotates from one field to the next');
     expect(html).toContain('Kestrel Combine');

@@ -9,6 +9,7 @@ import { completeRepair, pristineCondition } from './repair';
 import { applyContractFailure, recoveryNotice } from './recovery';
 import { availableXp, awardXp, resolveCasualty, returnedFromField } from './roster';
 import { applySalvage, resolveSalvage, type SalvageReport } from './salvage';
+import { recoveredHulk } from './salvagedHull';
 import { negotiationOptions } from './contractTerms';
 import { dailyPayroll } from './ledger';
 import { employerById, recordEmployerFailure } from './employers';
@@ -274,7 +275,7 @@ export function resolveMission(
     ? withRng(state, (rng) =>
         resolveSalvage(catalog, rng, battle, PLAYER_TEAM, contract.salvageShare),
       )
-    : { candidates: [], chassisRecovered: [], offered: [], items: [], provenance: [] };
+    : { candidates: [], chassisRecovered: [], hulls: [], offered: [], items: [], provenance: [] };
 
   const failure = won ? null : applyContractFailure(catalog, state, contract);
 
@@ -282,20 +283,10 @@ export function resolveMission(
     applySalvage(state, salvage);
     state.cbills += contract.payout;
 
-    for (const designId of salvage.chassisRecovered) {
-      const design = catalog.designs.get(designId);
-      if (design === undefined) continue;
-      state.mechs.push({
-        id: `mech-${state.nextId}`,
-        design: JSON.parse(JSON.stringify(design)) as typeof design,
-        condition: pristineCondition(catalog, design),
-        status: 'hulk',
-        readyOnDay: state.day,
-        rebuildCost: Math.round(
-          (catalog.chassis.get(design.chassisId)?.baseCost ?? 0) *
-            catalog.rules.salvage.hulkRebuildCostFraction,
-        ),
-      });
+    for (const hull of salvage.hulls) {
+      const mech = recoveredHulk(catalog, hull, `mech-${state.nextId}`, state.day);
+      if (mech === null) continue;
+      state.mechs.push(mech);
       state.nextId += 1;
     }
     state.completedNodes.push(contract.nodeId);
