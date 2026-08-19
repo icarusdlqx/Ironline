@@ -1,7 +1,7 @@
 import { LOCATIONS, type MechLocation } from '../schema/common';
 import type { Catalog } from '../schema/load';
 import type { SalvageRules } from '../schema/rules';
-import type { Rng } from '../sim/rng';
+import { createRng, type Rng, type RngSeed } from '../sim/rng';
 import type { BattleResult, UnitResult } from '../sim/world';
 import {
   addToStore,
@@ -9,6 +9,7 @@ import {
   type SalvageCandidate,
   type SalvageOutcome,
   type SalvageProvenance,
+  type StoreKind,
   type StoreItem,
 } from './types';
 import type { CampaignState } from './types';
@@ -24,9 +25,9 @@ export interface SalvageReport {
 }
 
 /**
- * How many of the recovered items the dropship has room for. Everything the
- * crews cut loose is offered; the commander decides what comes home, which is
- * a decision worth having and a reason to look at the debrief at all.
+ * How many recovered crate types the quartermaster can put before the
+ * commander, and how many the dropship has room for. Hulls are towed
+ * separately; weapon and equipment crates share these berths.
  *
  * Three, not two, and measured rather than guessed: a win recovers two to five
  * items, so a hold of three leaves the thin hauls whole and makes the choice
@@ -134,6 +135,57 @@ function merge(items: readonly StoreItem[]): StoreItem[] {
   );
 }
 
+const OFFER_KINDS: readonly StoreKind[] = ['weapon', 'equipment'];
+
+function rotate<T>(items: readonly T[], offset: number): T[] {
+  if (items.length < 2) return [...items];
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
+function offerOffset(seed: RngSeed, label: string, length: number): number {
+  if (length < 2) return 0;
+  // Recovery rolls own the campaign stream. A field-keyed stream can rotate
+  // the loading list without moving any later casualty or salvage roll.
+  const field = typeof seed === 'number' ? `number:${seed}` : `text:${seed}`;
+  return createRng(`${field}:salvage-offer:${label}`).int(0, length);
+}
+
+/**
+ * Builds the capped loading list without letting a large weapon pile erase
+ * every recovered equipment type. Each present class gets one turn per round;
+ * the battle seed rotates both the class order and the first item in each one.
+ */
+export function selectSalvageOffers(
+  recovered: readonly StoreItem[],
+  battleSeed: RngSeed,
+): StoreItem[] {
+  const merged = merge(recovered);
+  const queues = new Map<StoreKind, StoreItem[]>();
+
+  for (const kind of OFFER_KINDS) {
+    const items = merged.filter((item) => item.kind === kind);
+    queues.set(kind, rotate(items, offerOffset(battleSeed, kind, items.length)));
+  }
+
+  const present = OFFER_KINDS.filter((kind) => (queues.get(kind)?.length ?? 0) > 0);
+  const order = rotate(present, offerOffset(battleSeed, 'classes', present.length));
+  const offered: StoreItem[] = [];
+
+  while (offered.length < SALVAGE_OFFERED) {
+    let found = false;
+    for (const kind of order) {
+      const item = queues.get(kind)?.shift();
+      if (item === undefined) continue;
+      offered.push(item);
+      found = true;
+      if (offered.length >= SALVAGE_OFFERED) break;
+    }
+    if (!found) break;
+  }
+
+  return offered;
+}
+
 export function resolveSalvage(
   catalog: Catalog,
   rng: Rng,
@@ -177,8 +229,8 @@ export function resolveSalvage(
     provenance.push(...fieldItems.provenance);
   }
 
-  // Everything cut loose is offered; the hold takes what the commander picks.
-  const offered = merge(items).slice(0, SALVAGE_OFFERED);
+  // Every recovered hull is already aboard. Crates compete only with crates.
+  const offered = selectSalvageOffers(items, result.seed);
   const offeredKeys = new Set(offered.map((item) => `${item.kind}:${item.itemId}`));
   return {
     candidates,

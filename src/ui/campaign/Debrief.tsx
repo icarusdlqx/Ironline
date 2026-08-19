@@ -200,8 +200,11 @@ export function Debrief({
               Salvage — {picks.length}/{SALVAGE_PICKS} picks · {cbills(selectedValue)} build value
             </h4>
             <p className="salvage-note">
-              Choose what comes home; one pick takes the full listed crate. Loose crates cannot be
-              sold. Mounted sale basis is what a part adds to an intact mech's yard valuation.
+              Recovered hulls are already in the yard. When the field yields more than five crate
+              types, weapons and equipment alternate; each list rotates from one field to the
+              next. Choose
+              what comes home; one pick takes the full listed crate. Loose crates cannot be sold.
+              Mounted sale basis is what a part adds to an intact mech's yard valuation.
             </p>
             <ul className="salvage-offer">
               {offered.map((item) => {

@@ -146,6 +146,7 @@ describe('campaign contracts', () => {
       repairAll(candidate);
       waitForCrew(candidate);
       fightNode(candidate, 'supply_line');
+      if (candidate.history[1]?.won !== true) continue;
       repairAll(candidate);
       waitForCrew(candidate);
       if (deployableLance(candidate).length === 0) continue;

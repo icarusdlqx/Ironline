@@ -52,7 +52,9 @@ describe('salvage terms copy', () => {
       }),
     );
 
-    expect(html).toContain('A rich field offers up to 5 crate types; the hold takes 3.');
+    expect(html).toContain('Recovered hulls are towed separately.');
+    expect(html).toContain('weapons and equipment alternate');
+    expect(html).toContain('The hold takes 3.');
     expect(html).not.toMatch(/eject|heat/i);
   });
 });
