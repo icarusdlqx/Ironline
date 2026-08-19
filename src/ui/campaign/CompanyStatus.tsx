@@ -26,7 +26,17 @@ function financeText(report: SolvencyReport, contractActive: boolean): string {
   if (plan.mechSource === 'yard' && plan.saleAfterPurchase === 0) {
     steps.push(`buy ${plan.mechName} for ${credits(plan.mechCost)}`);
   } else if (plan.mechNeedsRebuild) {
-    steps.push(`rebuild ${plan.mechName} for ${credits(plan.mechCost)}`);
+    steps.push(
+      `rebuild ${plan.mechName} for ${credits(plan.mechCost)} ` +
+      `(workshop ready day ${plan.mechReadyOnDay})`,
+    );
+  }
+  if (plan.mechNeedsWeapon && plan.weaponName !== null) {
+    steps.push(
+      plan.mechNeedsRebuild
+        ? `when it leaves the bay, fit ${plan.weaponName} to ${plan.mechName}`
+        : `fit ${plan.weaponName} to ${plan.mechName}`,
+    );
   }
 
   return `Recovery remains on the books: ${steps.join(', then ')}.`;
@@ -65,11 +75,18 @@ export function CompanyStatus({
 
   let text: string;
   if (report.action === 'wait') {
-    text = `Paid workshop work or injured crew can return the company to the field on day ${report.recoverOnDay ?? '?'}.`;
+    const fit = report.plan?.mechNeedsWeapon === true && report.plan.weaponName !== null
+      ? `${report.plan.mechName} leaves the workshop on day ${report.recoverOnDay ?? '?'}. ` +
+        `Fit ${report.plan.weaponName} before returning it to the field.`
+      : `Paid workshop work or injured crew can return the company to the field on day ${report.recoverOnDay ?? '?'}.`;
+    text = fit;
+  } else if (report.action === 'wait_booking') {
+    text = `A paid workshop booking makes the recovery executable on day ${report.recoverOnDay ?? '?'}. ` +
+      `Advance to that date, then reassess. ${financeText(report, false)}`;
   } else if (report.action === 'wait_yard') {
     text = `The current yard cannot finish a recovery. New stock arrives on day ${report.recoverOnDay ?? '?'}.`;
   } else if (report.action === 'withdraw') {
-    text = report.plan !== null && report.state === 'temporary'
+    text = report.plan?.needsSale === true && report.state === 'temporary'
       ? financeText(report, contractActive)
       : report.recoverOnDay === null
         ? terminalText(report, contractActive)
@@ -88,7 +105,7 @@ export function CompanyStatus({
     <div className="company-status" data-testid="company-status">
       <h3>Company status</h3>
       <p>{text}</p>
-      {(report.action === 'wait' || report.action === 'wait_yard') &&
+      {(report.action === 'wait' || report.action === 'wait_booking' || report.action === 'wait_yard') &&
       report.recoverOnDay !== null ? (
         <button
           type="button"

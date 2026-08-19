@@ -19,28 +19,19 @@ import {
 import type { CampaignState, ContractTermsId } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
-import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
 import { createCampaignSeed, startFreshCampaign } from '../../campaign/freshness';
 import { campaignOutcomeCount } from '../../campaign/history';
 import { assessSolvency, retireCompany } from '../../campaign/solvency';
-import {
-  employerDisplayName,
-  employerHistories,
-  type EmployerHistory,
-} from '../../campaign/employers';
+import { employerHistories } from '../../campaign/employers';
 import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
 import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
+import { CampaignPostBattle } from './CampaignPostBattle';
+import { resolveCurrentEmployer } from './campaignEmployer';
 import { ContractPanel } from './ContractPanel';
 import { CompanyStatus } from './CompanyStatus';
-import {
-  Debrief,
-  debriefedCount,
-  markDebriefed,
-  resetDebriefed,
-  revealLatestDebrief,
-} from './Debrief';
+import { debriefedCount, resetDebriefed, revealLatestDebrief } from './Debrief';
 import { FieldManual } from './FieldManual';
 import { Hangar } from './Hangar';
 import { HiringHall } from './HiringHall';
@@ -89,9 +80,8 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const options = node === null ? [] : negotiationOptions(catalog, node);
   const lance = deployableLance(state);
   const solvency = useMemo(() => assessSolvency(catalog, state), [state]);
-  const pendingDebrief = state.history[state.history.length - 1];
   const outcomeCount = campaignOutcomeCount(state);
-  const employer = currentEmployer();
+  const employer = resolveCurrentEmployer(campaign, state.contract, node, employers);
 
   // The machine on the gantry, if the player has opened one for a refit.
   const refitMech = refitting === null ? null : (state.mechs.find((m) => m.id === refitting) ?? null);
@@ -334,49 +324,15 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         </>
       )}
 
-      <footer className="camp-log" data-testid="camp-log">
-        <span className="camp-status" data-testid="camp-status">
-          {status ?? ''}
-        </span>
-        <ul>
-          {state.log.slice(0, 6).map((entry, index) => (
-            <li key={`${entry.day}-${index}`}>
-              day {entry.day}: {entry.text}
-            </li>
-          ))}
-        </ul>
-      </footer>
-
-      {outcomeCount <= debriefed || pendingDebrief === undefined ? null : (
-        <Debrief
-          catalog={catalog}
-          state={state}
-          outcome={pendingDebrief}
-          onChooseSalvage={(picks) => {
-            mutate((draft) => {
-              const record = draft.history[draft.history.length - 1];
-              if (record === undefined) return null;
-              // The report the debrief is choosing from lives on the record, so
-              // re-picking is a swap against what was already taken aboard.
-              const report = {
-                candidates: record.salvageCandidates ?? [],
-                chassisRecovered: record.salvagedChassis,
-                hulls: [],
-                offered: record.salvageOffered ?? [],
-                items: record.salvagedItems,
-                provenance: record.salvageProvenance ?? [],
-              };
-              rechooseSalvage(draft, report, picks);
-              record.salvagedItems = report.items;
-              return null;
-            });
-          }}
-          onClose={() => {
-            markDebriefed(outcomeCount);
-            setDebriefed(outcomeCount);
-          }}
-        />
-      )}
+      <CampaignPostBattle
+        catalog={catalog}
+        state={state}
+        status={status}
+        outcomeCount={outcomeCount}
+        debriefed={debriefed}
+        mutate={mutate}
+        onDebriefed={setDebriefed}
+      />
 
       {state.finished || prep !== 'bay' || refitting !== null ? null : (
         <Hangar
@@ -415,22 +371,6 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   function advanceDay(): void {
     mutate((draft) => advanceDays(catalog, draft, 1));
-  }
-
-  function currentEmployer(): EmployerHistory | null {
-    const employerId = state.contract?.employerId ?? node?.employerId;
-    if (employerId === undefined) return null;
-    return (
-      employers.find((record) => record.id === employerId) ?? {
-        id: employerId,
-        name: employerDisplayName(campaign, employerId, state.contract?.employerName),
-        completed: 0,
-        failed: 0,
-        withdrawn: 0,
-        expired: 0,
-        paid: 0,
-      }
-    );
   }
 
   function onExportSave(): void {

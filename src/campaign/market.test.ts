@@ -215,7 +215,7 @@ describe('the yard', () => {
     expect(saleValueOf(catalog, mech)).toBeLessThan(pristineSale);
   });
 
-  it('subtracts only the quoted rebuild cost from a hulk', () => {
+  it('makes the yard inherit a hulk\'s full rebuild and field-damage quote', () => {
     const mech = state.mechs[0];
     if (mech === undefined) throw new Error('the bay was empty');
     const fullSale = Math.round(
@@ -226,8 +226,9 @@ describe('the yard', () => {
     mech.condition = wreckedCondition(catalog, mech.design);
     mech.rebuildCost = Math.floor(fullSale / 3);
 
-    expect(estimateRepair(catalog, mech).cost).toBeGreaterThan(mech.rebuildCost);
-    expect(saleValueOf(catalog, mech)).toBe(fullSale - mech.rebuildCost);
+    const inherited = estimateRepair(catalog, mech);
+    expect(inherited.cost).toBeGreaterThan(mech.rebuildCost);
+    expect(saleValueOf(catalog, mech)).toBe(Math.max(0, fullSale - inherited.cost));
   });
 
   it('does not charge a repair bill twice after work has started', () => {

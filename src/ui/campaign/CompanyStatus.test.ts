@@ -17,6 +17,10 @@ const terminal: SolvencyReport = {
     mechCost: 500_000,
     mechSource: 'owned',
     mechNeedsRebuild: true,
+    mechNeedsWeapon: false,
+    weaponId: null,
+    weaponName: null,
+    mechReadyOnDay: 9,
     saleBeforePurchase: 0,
     saleAfterPurchase: 0,
     saleProceeds: 0,
@@ -68,6 +72,52 @@ describe('company recovery status', () => {
 
     expect(html).toContain('return the company to the field on day 12');
     expect(html).toContain('Advance to day 12');
+  });
+
+  it('names the stored weapon a rebuilt hull still needs', () => {
+    const report: SolvencyReport = {
+      state: 'temporary', action: 'wait', block: 'none', recoverOnDay: 12,
+      plan: {
+        ...terminal.plan!,
+        mechNeedsRebuild: false,
+        mechNeedsWeapon: true,
+        weaponId: 'medium_laser',
+        weaponName: 'Medium Laser',
+        mechReadyOnDay: 12,
+        mechCost: 0,
+        requiredCredits: 0,
+        availableCredits: 0,
+        needsSale: false,
+      },
+    };
+    const html = renderToStaticMarkup(createElement(CompanyStatus, {
+      report,
+      contractActive: false,
+      onAdvance: () => undefined,
+      onRetire: () => undefined,
+    }));
+
+    expect(html).toContain('Cairn leaves the workshop on day 12');
+    expect(html).toContain('Fit Medium Laser before returning it to the field');
+  });
+
+  it('waits for paid work before claiming its sale proceeds', () => {
+    const html = renderToStaticMarkup(createElement(CompanyStatus, {
+      report: {
+        ...terminal,
+        state: 'temporary',
+        action: 'wait_booking',
+        recoverOnDay: 15,
+      },
+      contractActive: false,
+      onAdvance: () => undefined,
+      onRetire: () => undefined,
+    }));
+
+    expect(html).toContain('paid workshop booking');
+    expect(html).toContain('executable on day 15');
+    expect(html).toContain('rebuild Cairn for 500,000 C');
+    expect(html).toContain('Advance to day 15');
   });
 
   it('distinguishes fresh yard stock from a contract-blocked wait', () => {

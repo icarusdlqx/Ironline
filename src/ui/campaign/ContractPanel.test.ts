@@ -160,9 +160,12 @@ describe('contract panel', () => {
     if (campaign === undefined) throw new Error('missing campaign');
     const identity = employerById(campaign, node.employerId);
     const employers = employerHistories(campaign, []);
+    const state = startCampaign(catalog, campaign.id, 'finished-contract');
     const terms = negotiationOptions(catalog, node).find((option) => option.id === 'standard');
     if (terms === undefined) throw new Error('missing standard terms');
     const html = renderToStaticMarkup(createElement(ContractPanel, {
+      catalog,
+      state,
       contract: {
         nodeId: node.id,
         missionId: node.missionId,

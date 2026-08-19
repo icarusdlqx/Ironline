@@ -317,7 +317,7 @@ describe('campaign contracts', () => {
     }
     expect(run.cbills).toBeGreaterThanOrEqual(retained.rebuildCost);
     expect(rebuildHulk(catalog, run, retained).ok).toBe(true);
-    advanceDays(catalog, run, catalog.rules.salvage.hulkRebuildDays);
+    advanceDays(catalog, run, retained.readyOnDay - run.day);
 
     expect(deployableLance(run)).toHaveLength(1);
     expect(assessSolvency(catalog, run).state).toBe('fieldable');
