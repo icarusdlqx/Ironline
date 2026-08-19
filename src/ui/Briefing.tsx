@@ -142,16 +142,18 @@ export function Briefing({
         </div>
       )}
 
-      <p className="briefing-rp">{resourcePoints} Resource Points on the books.</p>
-      <button
-        type="button"
-        onClick={onDeploy}
-        disabled={blocked}
-        title={reason}
-        data-testid="briefing-deploy"
-      >
-        {over ? 'Over tonnage' : 'Deploy'}
-      </button>
+      <footer className="briefing-actions" data-testid="briefing-actions">
+        <p className="briefing-rp">{resourcePoints} Resource Points on the books.</p>
+        <button
+          type="button"
+          onClick={onDeploy}
+          disabled={blocked}
+          title={reason}
+          data-testid="briefing-deploy"
+        >
+          {over ? 'Over tonnage' : 'Deploy'}
+        </button>
+      </footer>
     </div>
   );
 }

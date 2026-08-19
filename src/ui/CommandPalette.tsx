@@ -122,6 +122,7 @@ export function CommandPalette({
             type="button"
             className={`command ${active ? 'active' : ''} ${timed === null ? '' : 'timed'}`}
             disabled={disabled}
+            aria-pressed={active}
             title={title}
             onClick={() => onCommand(command)}
             data-testid={`command-${command.id}`}

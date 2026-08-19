@@ -18,6 +18,7 @@ describe('briefing deployment gate', () => {
     );
 
     expect(html).toContain('data-testid="briefing-deploy"');
+    expect(html).toContain('data-testid="briefing-actions"');
     expect(html).toContain('disabled=""');
     expect(html).toContain('title="Use at least three letters or numbers."');
   });

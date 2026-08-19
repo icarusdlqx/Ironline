@@ -48,6 +48,10 @@ describe('battle results screen', () => {
     expect(markup).toContain('Battle code <code>screen</code>');
     expect(markup).toContain('data-testid="result-mission-picker"');
     expect(markup).toContain('data-testid="choose-mission"');
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('aria-modal="true"');
+    expect(markup).toContain('aria-describedby="battle-results-reason"');
+    expect(markup).toContain('tabindex="-1"');
     expect(markup).not.toContain('data-testid="return-to-campaign"');
   });
 

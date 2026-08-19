@@ -1,5 +1,7 @@
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
+const TABLET = { width: 1024, height: 768 };
+const COMPACT_QUERY = '(max-width: 640px), (pointer: coarse) and (max-width: 1100px)';
 
 function same(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
@@ -50,6 +52,31 @@ async function fullyInViewport(page, selector) {
   return page.locator(selector).evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
+  });
+}
+
+async function briefingActionState(page) {
+  return page.locator('[data-testid="briefing-actions"]').evaluate((actions) => {
+    const briefing = actions.closest('[data-testid="briefing"]');
+    const deploy = actions.querySelector('[data-testid="briefing-deploy"]');
+    if (!(briefing instanceof HTMLElement) || !(deploy instanceof HTMLElement)) {
+      throw new Error('briefing actions are incomplete');
+    }
+    const panelRect = briefing.getBoundingClientRect();
+    const actionRect = actions.getBoundingClientRect();
+    const deployRect = deploy.getBoundingClientRect();
+    return {
+      position: getComputedStyle(actions).position,
+      contained:
+        actionRect.left >= panelRect.left &&
+        actionRect.right <= panelRect.right &&
+        actionRect.bottom <= panelRect.bottom + 1,
+      deployVisible:
+        deployRect.left >= 0 &&
+        deployRect.top >= 0 &&
+        deployRect.right <= innerWidth &&
+        deployRect.bottom <= innerHeight,
+    };
   });
 }
 
@@ -136,14 +163,33 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
       `${prefix} uses a coarse touch layout`,
       await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
     );
+    check(
+      `${prefix} matches the compact boundary`,
+      await page.evaluate((query) => matchMedia(query).matches, COMPACT_QUERY),
+    );
+
+    const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute('content');
+    check(
+      `${prefix} leaves browser zoom available`,
+      viewportMeta?.includes('viewport-fit=cover') === true &&
+        !viewportMeta.includes('user-scalable') &&
+        !viewportMeta.includes('maximum-scale'),
+      viewportMeta ?? 'viewport meta missing',
+    );
 
     const rootAtBriefing = await documentOverflow(page);
     const briefing = await overflowOf(page, '[data-testid="briefing"]');
+    const actions = await briefingActionState(page);
     check(
       `${prefix} briefing has no horizontal overflow`,
       rootAtBriefing.scrollWidth <= rootAtBriefing.clientWidth + 1 &&
         briefing.scrollWidth <= briefing.clientWidth + 1,
       `root ${rootAtBriefing.scrollWidth}/${rootAtBriefing.clientWidth}, briefing ${briefing.scrollWidth}/${briefing.clientWidth}`,
+    );
+    check(
+      `${prefix} keeps deploy pinned and reachable on the opening briefing`,
+      actions.position === 'sticky' && actions.contained && actions.deployVisible,
+      JSON.stringify(actions),
     );
     await page.screenshot({ path: `${shots}/11-mobile-${shotLabel}-briefing.png` });
 
@@ -162,7 +208,8 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     await firstLance.tap();
     check(
       `${prefix} first lance card accepts a touch`,
-      (await page.evaluate(() => globalThis.__ironline.useGame.getState().selection.length)) === 1,
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().selection.length)) === 1 &&
+        (await firstLance.getAttribute('aria-pressed')) === 'true',
     );
 
     await page.locator('[data-testid="mobile-select-all"]').tap();
@@ -188,12 +235,14 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     await page.locator('[data-testid="command-move"]').tap();
     check(
       `${prefix} order palette arms a move`,
-      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === 'move',
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === 'move' &&
+        (await page.locator('[data-testid="command-move"]').getAttribute('aria-pressed')) === 'true',
     );
     await page.locator('[data-testid="mobile-cancel"]').tap();
     check(
       `${prefix} cancel clears an armed order`,
-      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === null,
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().orderMode)) === null &&
+        (await page.locator('[data-testid="command-move"]').getAttribute('aria-pressed')) === 'false',
     );
 
     const beforeGesture = await orderSnapshot(page);
@@ -219,6 +268,15 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
       campaign.scrollWidth <= campaign.clientWidth + 1,
       `${campaign.scrollWidth}/${campaign.clientWidth}`,
     );
+    await page.locator('[data-testid="camp-manual-toggle"]').tap();
+    await page.waitForSelector('[data-testid="camp-manual"]');
+    check(
+      `${prefix} field manual puts touch controls first`,
+      (await page.locator('.manual-control-columns > section').first().getAttribute('data-testid')) ===
+        'manual-touch-controls',
+    );
+    await page.locator('[data-testid="camp-manual-close"]').tap();
+    await page.waitForSelector('[data-testid="camp-manual"]', { state: 'detached' });
     await page.locator('.camp-node.available').first().tap();
     await page.locator('[data-testid="camp-terms-salvage_first"]').tap();
     check(
@@ -283,4 +341,31 @@ export async function runMobilePlaythrough({ browser, url, shots, check }) {
     label: 'landscape',
     shotLabel: 'landscape',
   });
+  process.stdout.write('\ncoarse tablet\n');
+  await runOrientation({
+    browser,
+    url,
+    shots,
+    check,
+    viewport: TABLET,
+    label: 'tablet',
+    shotLabel: 'tablet',
+  });
+
+  // The coarse context above owns the touch contract. A separate context
+  // proves width alone does not turn an ordinary tablet-sized window into the
+  // finger layout.
+  const desktopContext = await browser.newContext({ viewport: TABLET });
+  const desktopPage = await desktopContext.newPage();
+  try {
+    await desktopPage.goto(url);
+    await desktopPage.waitForSelector('[data-testid="briefing"]');
+    check(
+      '1024px fine-pointer desktop keeps the desktop layout',
+      !(await desktopPage.evaluate((query) => matchMedia(query).matches, COMPACT_QUERY)) &&
+        (await desktopPage.locator('.mobile-topbar').count()) === 0,
+    );
+  } finally {
+    await desktopContext.close();
+  }
 }

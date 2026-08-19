@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import type { LoreEntry } from '../../schema/lore';
+import { useCompactLayout } from '../useCompactLayout';
+import { useDialogFocus } from '../useDialogFocus';
 import './fieldManual.css';
 
 interface Binding {
@@ -111,6 +113,28 @@ const SUPPORT_NOTES: readonly Binding[] = [
   { input: 'Reinforcement', action: 'Drops one unused mission reserve.' },
 ];
 
+interface ControlSection {
+  id: 'desktop' | 'touch';
+  heading: string;
+  entries: readonly Binding[];
+}
+
+const DESKTOP_SECTION: ControlSection = {
+  id: 'desktop',
+  heading: 'Mouse and keyboard',
+  entries: DESKTOP_BINDINGS,
+};
+
+const TOUCH_SECTION: ControlSection = {
+  id: 'touch',
+  heading: 'Touch',
+  entries: TOUCH_BINDINGS,
+};
+
+export function manualControlSections(compact: boolean): readonly ControlSection[] {
+  return compact ? [TOUCH_SECTION, DESKTOP_SECTION] : [DESKTOP_SECTION, TOUCH_SECTION];
+}
+
 function BindingList({ entries }: { entries: readonly Binding[] }) {
   return (
     <dl className="manual-bindings">
@@ -133,39 +157,8 @@ export function FieldManual({
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const priorFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const focusable = sheetRef.current?.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable === undefined || focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (first === undefined || last === undefined) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    closeRef.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      priorFocus?.focus();
-    };
-  }, [onClose]);
+  const compact = useCompactLayout();
+  useDialogFocus(sheetRef, closeRef, onClose);
 
   return (
     <div
@@ -195,14 +188,12 @@ export function FieldManual({
             readout.
           </p>
           <div className="manual-control-columns">
-            <section>
-              <h5>Mouse and keyboard</h5>
-              <BindingList entries={DESKTOP_BINDINGS} />
-            </section>
-            <section>
-              <h5>Touch</h5>
-              <BindingList entries={TOUCH_BINDINGS} />
-            </section>
+            {manualControlSections(compact).map((section) => (
+              <section key={section.id} data-testid={`manual-${section.id}-controls`}>
+                <h5>{section.heading}</h5>
+                <BindingList entries={section.entries} />
+              </section>
+            ))}
           </div>
           <section className="manual-support">
             <h5>Support calls</h5>

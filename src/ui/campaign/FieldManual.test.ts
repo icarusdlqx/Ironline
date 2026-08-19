@@ -2,7 +2,12 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { LoreEntry } from '../../schema/lore';
-import { DESKTOP_BINDINGS, FieldManual, TOUCH_BINDINGS } from './FieldManual';
+import {
+  DESKTOP_BINDINGS,
+  FieldManual,
+  manualControlSections,
+  TOUCH_BINDINGS,
+} from './FieldManual';
 
 const lore: LoreEntry[] = [
   {
@@ -29,6 +34,17 @@ describe('field manual controls', () => {
     expect(TOUCH_BINDINGS).toContainEqual(
       expect.objectContaining({ input: 'All / Queue / Cancel' }),
     );
+  });
+
+  it('puts the relevant input grammar first without changing desktop order', () => {
+    expect(manualControlSections(true).map((section) => section.heading)).toEqual([
+      'Touch',
+      'Mouse and keyboard',
+    ]);
+    expect(manualControlSections(false).map((section) => section.heading)).toEqual([
+      'Mouse and keyboard',
+      'Touch',
+    ]);
   });
 
   it('keeps supported controls ahead of the setting pages', () => {

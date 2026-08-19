@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { BattleResult } from '../sim/world';
 import { viewBattleResult } from './battleResultView';
 import { SalvageDrillResults } from './SalvageDrillResults';
+import { useDialogFocus } from './useDialogFocus';
 import './battleResults.css';
 
 export interface ResultMissionOption {
@@ -44,19 +45,24 @@ export function BattleResults({
 }: BattleResultsProps) {
   const report = viewBattleResult(result, playerTeam);
   const [nextMissionId, setNextMissionId] = useState(selectedMissionId);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef, dialogRef);
 
   return (
-    <div
-      className="battle-results-backdrop"
-      data-testid="outcome"
-      role="dialog"
-      aria-labelledby="battle-results-title"
-    >
-      <section className={`battle-results ${report.tone}`}>
+    <div className="battle-results-backdrop" data-testid="outcome">
+      <section
+        className={`battle-results ${report.tone}`}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="battle-results-title"
+        aria-describedby="battle-results-reason"
+        tabIndex={-1}
+      >
         <header className="battle-results-heading">
           <span>{missionName}</span>
           <h2 id="battle-results-title">{report.headline}</h2>
-          <p>{report.reason}</p>
+          <p id="battle-results-reason">{report.reason}</p>
           {campaignPending ? null : (
             <small className="battle-result-code" data-testid="battle-result-code">
               Battle code <code>{result.seed}</code>

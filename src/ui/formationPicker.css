@@ -39,7 +39,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+@media (max-width: 640px), (pointer: coarse) and (max-width: 1100px) {
   .mobile-tray .formation-picker {
     width: 116px;
     min-width: 116px;

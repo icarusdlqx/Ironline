@@ -91,7 +91,7 @@
   line-height: 1.45;
 }
 
-@media (max-width: 640px), (pointer: coarse) and (max-width: 940px) {
+@media (max-width: 640px), (pointer: coarse) and (max-width: 1100px) {
   .salvage-coach.mobile-training {
     width: min(300px, calc(100vw - 16px - var(--safe-left) - var(--safe-right)));
   }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 export const COMPACT_LAYOUT_QUERY =
-  '(max-width: 640px), (pointer: coarse) and (max-width: 940px)';
+  '(max-width: 640px), (pointer: coarse) and (max-width: 1100px)';
 
 function compactNow(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.(COMPACT_LAYOUT_QUERY).matches === true;

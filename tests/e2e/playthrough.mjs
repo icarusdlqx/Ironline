@@ -361,6 +361,7 @@ async function main() {
     );
 
     process.stdout.write('\nrun the battle to a conclusion\n');
+    await page.locator('[data-testid="feedback-link"]').focus();
     const outcome = await page.evaluate(async () => {
       const { engine } = globalThis.__ironline;
       const deadline = Date.now() + 25_000;
@@ -376,6 +377,30 @@ async function main() {
     check('battle reaches a conclusion', outcome.finished === true, JSON.stringify(outcome));
     await page.waitForSelector('[data-testid="outcome"]', { timeout: 5000 }).catch(() => {});
     check('battle debrief is shown', (await page.locator('.battle-results').count()) === 1);
+    await page.waitForFunction(() => document.activeElement?.classList.contains('battle-results'));
+    check(
+      'battle debrief receives focus without skipping its report',
+      await page.evaluate(() => document.activeElement?.classList.contains('battle-results')),
+    );
+    await page.keyboard.press('Tab');
+    check(
+      'battle debrief tabs into its first action',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'replay-mission',
+    );
+    await page.locator('[data-testid="choose-mission"]').focus();
+    await page.keyboard.press('Tab');
+    check(
+      'battle debrief traps forward focus',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'replay-mission',
+    );
+    await page.keyboard.press('Shift+Tab');
+    check(
+      'battle debrief traps reverse focus',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'choose-mission',
+    );
     check(
       'the debrief reports battle and lance statistics',
       (await page.locator('.battle-results-summary > div').count()) === 4 &&
@@ -394,6 +419,11 @@ async function main() {
     await page.locator('[data-testid="result-mission-picker"]').selectOption('base_capture_ridge');
     await page.locator('[data-testid="choose-mission"]').click();
     await page.waitForSelector('[data-testid="briefing"]');
+    check(
+      'closing the battle debrief returns focus',
+      (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+        'feedback-link',
+    );
     check(
       'switching mission shows its briefing',
       (await page.locator('[data-testid="briefing"] h2').innerText()).includes('Base Capture'),
