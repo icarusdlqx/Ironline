@@ -14,6 +14,7 @@ import {
 } from './campaign';
 import { storeItemSaleBasis, storeItemValueOf } from './market';
 import { employerHistories } from './employers';
+import { campaignOutcomeCount } from './history';
 import { fitFromStore, planFit } from './refit';
 import { estimateRepair, startRepair } from './repair';
 import {
@@ -189,7 +190,7 @@ describe('campaign contracts', () => {
 
     fightNode(run, 'pass_skirmish');
 
-    expect(run.history, 'three contracts were not fought').toHaveLength(3);
+    expect(campaignOutcomeCount(run), 'three contracts were not fought').toBe(3);
     expect(run.completedNodes.length, 'no contract was completed').toBeGreaterThanOrEqual(2);
     expect(
       host.design.mounts.some((mount) => mount.weaponId === weaponId),
@@ -232,7 +233,12 @@ describe('campaign contracts', () => {
     expect(run.completedNodes).toEqual(expect.arrayContaining(route));
     const campaign = catalog.campaigns.get(CAMPAIGN_ID);
     if (campaign === undefined) throw new Error('missing campaign');
-    const employers = employerHistories(campaign, run.history);
+    const employers = employerHistories(
+      campaign,
+      run.history,
+      run.employerFailures,
+      run.historyArchive.employers,
+    );
     expect(employers.find((record) => record.id === 'kestrel_combine')).toMatchObject({
       completed: 4,
       failed: 1,
@@ -242,7 +248,10 @@ describe('campaign contracts', () => {
       failed: 0,
     });
     expect(employers.reduce((paid, record) => paid + record.paid, 0)).toBe(
-      run.history.reduce((paid, outcome) => paid + outcome.payout, 0),
+      Object.values(run.historyArchive.employers).reduce(
+        (paid, summary) => paid + summary.paid,
+        run.history.reduce((paid, outcome) => paid + outcome.payout, 0),
+      ),
     );
     expect(run.finished).toBe(true);
     expect(run.won).toBe(true);
@@ -272,12 +281,15 @@ describe('campaign contracts', () => {
       fightNode(run, nodeId);
     }
 
-    expect(run.history.length).toBeGreaterThanOrEqual(2);
-    expect(run.history.map((outcome) => outcome.nodeId)).toEqual(route.slice(0, run.history.length));
-    expect(run.completedNodes).toHaveLength(run.history.filter((outcome) => outcome.won).length);
+    const fought = campaignOutcomeCount(run);
+    expect(fought).toBeGreaterThanOrEqual(2);
+    const last = run.history.at(-1);
+    expect(last?.nodeId).toBe(route[fought - 1]);
+    expect(run.completedNodes).toEqual(
+      route.slice(0, fought - (last?.won === false ? 1 : 0)),
+    );
     expect(run.failedNodes).toHaveLength(0);
 
-    const last = run.history[run.history.length - 1];
     if (last?.won === false) {
       expect(availableNodes(catalog, run).map((node) => node.id)).toContain(last.nodeId);
     }

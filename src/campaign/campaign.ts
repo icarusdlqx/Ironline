@@ -13,6 +13,7 @@ import { recoveredHulk } from './salvagedHull';
 import { negotiationOptions } from './contractTerms';
 import { dailyPayroll } from './ledger';
 import { employerById, recordEmployerFailure } from './employers';
+import { emptyHistoryArchive, pruneCampaignHistory } from './history';
 import { fillEmptySeats, PLAYER_TEAM, prepareDeployment, type DeployablePair } from './deployment';
 import {
   findMech, findPilot, type CampaignState, type MechRecord, type MissionOutcome, type PilotReport,
@@ -57,6 +58,7 @@ export function startCampaign(catalog: Catalog, campaignId: string, seed: string
     marketBought: [],
     contract: null,
     history: [],
+    historyArchive: emptyHistoryArchive(),
     employerFailures: [],
     log: [],
     finished: false,
@@ -289,7 +291,7 @@ export function resolveMission(
       state.mechs.push(mech);
       state.nextId += 1;
     }
-    state.completedNodes.push(contract.nodeId);
+    if (!isSideContract(contract.nodeId)) state.completedNodes.push(contract.nodeId);
   }
 
   const outcome: MissionOutcome = {
@@ -370,6 +372,7 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
 
   pruneSideOffers(catalog, state);
   pruneMarket(catalog, state);
+  pruneCampaignHistory(catalog, state);
 
   if (state.finished) return;
 

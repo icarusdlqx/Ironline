@@ -141,6 +141,18 @@ export interface MissionOutcome {
   pilotReports: PilotReport[];
 }
 
+export interface EmployerOutcomeSummary {
+  employerName: string;
+  completed: number;
+  failed: number;
+  paid: number;
+}
+
+export interface CampaignHistoryArchive {
+  outcomes: number;
+  employers: Record<string, EmployerOutcomeSummary>;
+}
+
 export interface CampaignState {
   campaignId: string;
   seed: string;
@@ -168,6 +180,8 @@ export interface CampaignState {
   marketBought: string[];
   contract: Contract | null;
   history: MissionOutcome[];
+  /** Old field reports reduced to the totals the campaign still shows. */
+  historyArchive: CampaignHistoryArchive;
   employerFailures: EmployerFailure[];
   log: CampaignLogEntry[];
   finished: boolean;

@@ -213,4 +213,8 @@ export function isSideContract(nodeId: string): boolean {
 export function pruneSideOffers(catalog: Catalog, state: CampaignState): void {
   const live = `side_${offerPeriod(catalog, state.day)}_`;
   state.sideTaken = state.sideTaken.filter((id) => id.startsWith(live));
+  // The derived board and its live taken list carry all renewable state. Old
+  // posting ids in the war ledgers cannot affect either board again.
+  state.completedNodes = state.completedNodes.filter((id) => !isSideContract(id));
+  state.failedNodes = state.failedNodes.filter((id) => !isSideContract(id));
 }

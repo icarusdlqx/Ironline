@@ -121,6 +121,7 @@ export function Debrief({
           outcome.employerId,
           outcome.employerName,
           state.employerFailures,
+          state.historyArchive.employers,
         );
   const offered = outcome.salvageOffered ?? [];
   const candidates = outcome.salvageCandidates ?? [];

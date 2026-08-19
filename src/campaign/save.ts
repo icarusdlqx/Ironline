@@ -12,7 +12,8 @@ import {
   UNKNOWN_EMPLOYER_NAME,
   type EmployerIdentity,
 } from './employers';
-import { sideEmployerIdFor } from './sidework';
+import { pruneSideOffers, sideEmployerIdFor } from './sidework';
+import { pruneCampaignHistory } from './history';
 import {
   campaignPersistenceStatus,
   holdInvalidCampaign,
@@ -164,6 +165,18 @@ const EmployerFailureSchema = z.strictObject({
   count: z.number().int().positive().default(1),
 });
 
+const EmployerOutcomeSummarySchema = z.strictObject({
+  employerName: z.string().min(1),
+  completed: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  paid: z.number().int(),
+});
+
+const CampaignHistoryArchiveSchema = z.strictObject({
+  outcomes: z.number().int().nonnegative(),
+  employers: z.record(IdSchema, EmployerOutcomeSummarySchema),
+});
+
 const RngStateSchema = z.strictObject({
   x: z.number().int().nonnegative(),
   y: z.number().int().nonnegative(),
@@ -191,6 +204,7 @@ export const CampaignStateSchema = z.strictObject({
   marketBought: z.array(IdSchema).default([]),
   contract: ContractSchema.nullable(),
   history: z.array(MissionOutcomeSchema),
+  historyArchive: CampaignHistoryArchiveSchema.default({ outcomes: 0, employers: {} }),
   employerFailures: z.array(EmployerFailureSchema).max(EMPLOYER_FAILURE_LIMIT).default([]),
   log: z.array(z.strictObject({ day: z.number().int(), text: z.string() })),
   finished: z.boolean(),
@@ -337,7 +351,10 @@ export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog(
     };
   }
 
-  return { state: parsed.data.state as CampaignState, error: null };
+  const state = parsed.data.state as CampaignState;
+  pruneSideOffers(catalog, state);
+  pruneCampaignHistory(catalog, state);
+  return { state, error: null };
 }
 
 export function saveCampaign(state: CampaignState, options: CampaignWriteOptions = {}): CampaignPersistenceResult {

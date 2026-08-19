@@ -22,6 +22,7 @@ import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
 import { createCampaignSeed, startFreshCampaign } from '../../campaign/freshness';
+import { campaignOutcomeCount } from '../../campaign/history';
 import {
   employerDisplayName,
   employerHistories,
@@ -72,8 +73,13 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   const campaign = campaignOf(catalog, state);
   const employers = useMemo(
-    () => employerHistories(campaign, state.history, state.employerFailures),
-    [campaign, state.history, state.employerFailures],
+    () => employerHistories(
+      campaign,
+      state.history,
+      state.employerFailures,
+      state.historyArchive.employers,
+    ),
+    [campaign, state.history, state.employerFailures, state.historyArchive.employers],
   );
   const open = useMemo(() => availableNodes(catalog, state), [state]);
   const posted = useMemo(() => open.filter((entry) => isSideContract(entry.id)), [open]);
@@ -81,6 +87,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const options = node === null ? [] : negotiationOptions(catalog, node);
   const lance = deployableLance(state);
   const pendingDebrief = state.history[state.history.length - 1];
+  const outcomeCount = campaignOutcomeCount(state);
   const employer = currentEmployer();
 
   // The machine on the gantry, if the player has opened one for a refit.
@@ -125,7 +132,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
 
   const restore = (restored: CampaignState, message: string, recover = false): void => {
     const saved = saveCampaign(restored, { recover });
-    setDebriefed(revealLatestDebrief(restored.history.length));
+    setDebriefed(revealLatestDebrief(campaignOutcomeCount(restored)));
     setState(restored);
     setPersistence(saved.status);
     setStatus(saved.ok ? message : 'Campaign opened in memory; the save was not written.');
@@ -294,7 +301,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         </ul>
       </footer>
 
-      {state.history.length <= debriefed || pendingDebrief === undefined ? null : (
+      {outcomeCount <= debriefed || pendingDebrief === undefined ? null : (
         <Debrief
           catalog={catalog}
           state={state}
@@ -319,8 +326,8 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
             });
           }}
           onClose={() => {
-            markDebriefed(state.history.length);
-            setDebriefed(state.history.length);
+            markDebriefed(outcomeCount);
+            setDebriefed(outcomeCount);
           }}
         />
       )}
