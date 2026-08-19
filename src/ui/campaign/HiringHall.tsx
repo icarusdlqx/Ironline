@@ -4,7 +4,9 @@ import type { Campaign } from '../../schema/campaign';
 import type { EmployerHistory } from '../../campaign/employers';
 import { employerDisplayName } from '../../campaign/employers';
 import { nextOfferDay, sideContractProfile } from '../../campaign/sidework';
+import { formatMissionClock } from '../../campaign/contractBriefing';
 import { employerHistoryText } from './EmployerLedger';
+import { negotiationOptions } from '../../campaign/contractTerms';
 
 function cbills(value: number): string {
   return `${Math.round(value).toLocaleString('en-GB')} C`;
@@ -41,6 +43,9 @@ export function HiringHall({
       <ul>
         {offers.map((offer) => {
           const profile = sideContractProfile(catalog, offer.missionId);
+          const options = negotiationOptions(catalog, offer);
+          const payouts = options.map((option) => option.payout);
+          const salvage = options.map((option) => Math.round(option.salvageShare * 100));
           const name = employerDisplayName(campaign, offer.employerId);
           const history = employers.find((employer) => employer.id === offer.employerId);
           return (
@@ -56,12 +61,15 @@ export function HiringHall({
                   {history === undefined ? '' : ` · ${employerHistoryText(history)}`}
                 </span>
                 <span className="hall-terms">
-                  {cbills(offer.basePayout)} · {offer.deadlineDays}d
+                  {cbills(Math.min(...payouts))}–{cbills(Math.max(...payouts))} on success ·{' '}
+                  {Math.min(...salvage)}%–{Math.max(...salvage)}% salvage · due day{' '}
+                  {day + offer.deadlineDays}
                 </span>
                 {profile === null ? null : (
                   <span className="hall-profile">
-                    {capitalise(profile.operation)} · {profile.battlefield} · {profile.dropTonnage}t
-                    drop / {profile.oppositionTonnage}t rated opposition
+                    {capitalise(profile.operation)} · {profile.battlefield} ·{' '}
+                    {formatMissionClock(profile.clockSeconds)} clock · {profile.dropTonnage}t drop /{' '}
+                    {profile.oppositionTonnage}t rated opposition
                     {profile.objectives.length === 0
                       ? ''
                       : ` · ${profile.objectives.join(' / ')}`}
@@ -73,8 +81,8 @@ export function HiringHall({
         })}
       </ul>
       <p className="hall-note">
-        New work arrives on day {nextOfferDay(catalog, day)}. Ground, objectives and tonnage
-        are the listed mission as written.
+        New work arrives on day {nextOfferDay(catalog, day)}. Rated opposition is a planning
+        weight, not a composition report.
       </p>
     </section>
   );

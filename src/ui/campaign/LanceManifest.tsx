@@ -5,6 +5,7 @@ import { mechIntegrity } from '../../campaign/integrity';
 import { assign } from '../../campaign/roster';
 import { isPilotAvailable, type CampaignState, type PilotRecord } from '../../campaign/types';
 import { PilotStats } from '../PilotStats';
+import { ContractBriefing } from './ContractBriefing';
 
 interface Props {
   catalog: Catalog;
@@ -93,6 +94,14 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
               <dd>{mission?.type.replace('_', ' ') ?? 'contract'}</dd>
             </div>
           </dl>
+          <ContractBriefing
+            catalog={catalog}
+            state={state}
+            missionId={contract.missionId}
+            deadlineDay={contract.deadlineDay}
+            nodeId={contract.nodeId}
+            terms={contract}
+          />
           {mission === undefined ? null : <p className="manifest-brief">{mission.briefing}</p>}
         </header>
 

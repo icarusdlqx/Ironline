@@ -163,6 +163,15 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
     patch({ campaignPending: true, screen: 'battle' });
   };
 
+  const revealPosting = (id: string): void => {
+    setSelectedNode(id);
+    globalThis.requestAnimationFrame?.(() => {
+      const panel = globalThis.document?.querySelector<HTMLElement>('[data-testid="camp-contract"]');
+      panel?.focus({ preventScroll: true });
+      panel?.scrollIntoView({ block: 'start' });
+    });
+  };
+
   return (
     <div className="camp" data-testid="campaign">
       <CampaignHeader
@@ -242,6 +251,8 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       />
 
       <ContractPanel
+        catalog={catalog}
+        state={state}
         contract={state.contract}
         node={node}
         options={options}
@@ -279,7 +290,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           offers={posted}
           employers={employers}
           selectedId={node?.id ?? null}
-          onSelect={setSelectedNode}
+          onSelect={revealPosting}
         />
       )}
 

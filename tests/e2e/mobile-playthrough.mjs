@@ -283,6 +283,21 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
       `${prefix} campaign contract controls accept touch`,
       await page.locator('[data-testid="camp-terms-salvage_first"]').isChecked(),
     );
+    const posting = page.locator('[data-testid="camp-hall"] button').first();
+    if ((await posting.count()) > 0) {
+      await posting.scrollIntoViewIfNeeded();
+      await posting.tap();
+      await page.waitForFunction(
+        () => document.activeElement?.getAttribute('data-testid') === 'camp-contract',
+      );
+      check(
+        `${prefix} side posting reveals its signable terms`,
+        await page.locator('[data-testid="camp-contract"]').evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return document.activeElement === element && bounds.top >= -1 && bounds.top < innerHeight;
+        }),
+      );
+    }
     await page.screenshot({ path: `${shots}/13-mobile-${shotLabel}-campaign.png` });
 
     await page.locator('[data-testid="camp-exit"]').tap();

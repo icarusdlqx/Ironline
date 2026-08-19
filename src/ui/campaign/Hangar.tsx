@@ -5,6 +5,7 @@ import { mechIntegrity } from '../../campaign/integrity';
 import { employerNameFor } from '../../campaign/employers';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
+import { ContractBriefing } from './ContractBriefing';
 
 interface Props {
   catalog: Catalog;
@@ -42,6 +43,16 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
             {employer === null ? '' : ` — ${employer}.`} Repair what is broken, refit
             what is mis-armed, then move on to the drop manifest.
           </p>
+          {contract === null ? null : (
+            <ContractBriefing
+              catalog={catalog}
+              state={state}
+              missionId={contract.missionId}
+              deadlineDay={contract.deadlineDay}
+              nodeId={contract.nodeId}
+              terms={contract}
+            />
+          )}
         </header>
 
         <ul className="manifest-list">

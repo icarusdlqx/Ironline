@@ -753,8 +753,9 @@ async function main() {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     const offerFor = async (termsId) => {
-      await page.locator(`[data-testid="camp-terms-${termsId}"]`).click();
-      return page.locator('[data-testid="camp-offer"]').innerText();
+      const choice = page.locator(`[data-testid="camp-terms-${termsId}"]`);
+      await choice.click();
+      return choice.evaluate((element) => element.closest('label')?.innerText ?? '');
     };
     const payoutHeavy = await offerFor('fee_first');
     const salvageHeavy = await offerFor('salvage_first');
@@ -767,8 +768,10 @@ async function main() {
       `${payoutHeavy} vs ${salvageHeavy}`,
     );
     check(
-      'contract terms name success pay and repair exposure',
-      selectedTermsText.includes('on success') && selectedTermsText.includes('Repair cover: none'),
+      'contract terms name success pay, field clock and wage exposure',
+      selectedTermsText.includes('on success only') &&
+        selectedTermsText.includes('clock') &&
+        selectedTermsText.includes('maximum through deadline'),
       selectedTermsText,
     );
     await page.screenshot({ path: `${SHOTS}/08-contract-terms.png` });

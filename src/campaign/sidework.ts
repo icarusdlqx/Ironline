@@ -52,6 +52,7 @@ export function sideEmployerIdFor(
 export interface SideContractProfile {
   operation: string;
   battlefield: string;
+  clockSeconds: number;
   dropTonnage: number;
   oppositionTonnage: number;
   objectives: string[];
@@ -192,6 +193,7 @@ export function sideContractProfile(
   return {
     operation: mission.type.replaceAll('_', ' '),
     battlefield: map?.name ?? mission.mapId,
+    clockSeconds: mission.maxDurationSeconds,
     dropTonnage: dropAllowance(catalog, missionId),
     oppositionTonnage: oppositionTonnage(catalog, missionId),
     objectives: mission.objectives

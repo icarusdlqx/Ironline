@@ -160,6 +160,7 @@ describe('the hiring hall', () => {
     expect(profile).toEqual({
       operation: mission?.type,
       battlefield: map?.name,
+      clockSeconds: mission?.maxDurationSeconds,
       dropTonnage: mission?.dropTonnage,
       oppositionTonnage: oppositionTonnage(catalog, 'causeway_night'),
       objectives: mission?.objectives
