@@ -13,10 +13,21 @@ import {
   type EmployerIdentity,
 } from './employers';
 import { sideEmployerIdFor } from './sidework';
+import {
+  campaignPersistenceStatus,
+  holdInvalidCampaign,
+  markCampaignStorageReady,
+  noteMissingCampaign,
+  readCampaignText,
+  removeCampaignText,
+  writeCampaignText,
+  type CampaignPersistenceResult,
+  type CampaignPersistenceState,
+  type CampaignWriteOptions,
+} from './storage';
 import type { CampaignState } from './types';
 
 const SAVE_VERSION = 1;
-const STORAGE_KEY = 'ironline.campaign';
 
 const LocationConditionSchema = z.strictObject({
   armour: z.number().nonnegative(),
@@ -190,9 +201,19 @@ export function serialiseCampaign(state: CampaignState): string {
   return `${JSON.stringify({ version: SAVE_VERSION, state }, null, 2)}\n`;
 }
 
-export interface LoadResult {
+export interface CampaignParseResult {
   state: CampaignState | null;
   error: string | null;
+}
+
+export interface LoadResult extends CampaignParseResult {
+  source: 'loaded' | 'memory' | 'missing' | 'invalid' | 'unavailable';
+  raw: string | null;
+  persistence: CampaignPersistenceState;
+}
+
+export interface CampaignLoadOptions {
+  storedOnly?: boolean;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -291,7 +312,7 @@ export function migrateEmployerSave(raw: unknown, catalog: Catalog): unknown {
   return { ...save, state: { ...state, contract, history } };
 }
 
-export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog()): LoadResult {
+export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog()): CampaignParseResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -311,20 +332,60 @@ export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog(
   return { state: parsed.data.state as CampaignState, error: null };
 }
 
-export function saveCampaign(state: CampaignState): void {
-  globalThis.localStorage?.setItem(STORAGE_KEY, serialiseCampaign(state));
+export function saveCampaign(state: CampaignState, options: CampaignWriteOptions = {}): CampaignPersistenceResult {
+  return writeCampaignText(serialiseCampaign(state), options);
 }
 
-export function loadCampaign(catalog: Catalog = getCatalog()): LoadResult {
-  const text = globalThis.localStorage?.getItem(STORAGE_KEY);
-  if (text === null || text === undefined) return { state: null, error: 'no saved campaign' };
-  return deserialiseCampaign(text, catalog);
+export function loadCampaign(catalog: Catalog = getCatalog(), options: CampaignLoadOptions = {}): LoadResult {
+  const stored = readCampaignText(options.storedOnly === true);
+  if (stored.kind === 'unavailable') {
+    return {
+      state: null,
+      error: `campaign storage unavailable: ${stored.error}`,
+      source: 'unavailable',
+      raw: null,
+      persistence: campaignPersistenceStatus(),
+    };
+  }
+  if (stored.kind === 'missing') {
+    return {
+      state: null,
+      error: 'no saved campaign',
+      source: 'missing',
+      raw: null,
+      persistence: noteMissingCampaign(),
+    };
+  }
+
+  const parsed = deserialiseCampaign(stored.text, catalog);
+  if (parsed.state === null) {
+    return {
+      ...parsed,
+      source: 'invalid',
+      raw: stored.text,
+      persistence: holdInvalidCampaign(stored.text, parsed.error ?? 'invalid save'),
+    };
+  }
+  return {
+    ...parsed,
+    source: stored.origin === 'memory' ? 'memory' : 'loaded',
+    raw: stored.text,
+    persistence:
+      stored.origin === 'memory' ? campaignPersistenceStatus() : markCampaignStorageReady(),
+  };
 }
 
-export function clearSavedCampaign(): void {
-  globalThis.localStorage?.removeItem(STORAGE_KEY);
+export function clearSavedCampaign(options: CampaignWriteOptions = {}): CampaignPersistenceResult {
+  return removeCampaignText(options);
 }
 
 export function campaignBlob(state: CampaignState): Blob {
   return new Blob([serialiseCampaign(state)], { type: 'application/json' });
 }
+
+export function rawCampaignBlob(raw: string): Blob {
+  return new Blob([raw], { type: 'text/plain' });
+}
+
+export { campaignPersistenceStatus } from './storage';
+export type { CampaignPersistenceResult, CampaignPersistenceState, CampaignStorageIssue, CampaignWriteOptions } from './storage';

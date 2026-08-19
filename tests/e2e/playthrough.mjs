@@ -7,6 +7,7 @@ import {
   checkDeployedInputSafety,
   clearControlFocus,
 } from './input-safety.mjs';
+import { runCampaignRecovery } from './campaign-recovery.mjs';
 import { runMobilePlaythrough } from './mobile-playthrough.mjs';
 
 const PORT = 5183;
@@ -686,6 +687,8 @@ async function main() {
     );
     check('restart rolls a fresh run code', restartedCode !== firstRunCode, restartedCode);
     check('the fresh run is saved immediately', restartedCode === `Run ${persistedRun}`);
+
+    await runCampaignRecovery({ page, shots: SHOTS, check });
 
     await page.locator('[data-testid="camp-manual-toggle"]').click();
     await page.waitForSelector('[data-testid="manual-controls"]');

@@ -1,13 +1,18 @@
+import type { CampaignPersistenceState } from '../../campaign/save';
+import { CampaignRecoveryNotice } from './CampaignRecoveryNotice';
+
 export interface CampaignHeaderProps {
   title: string;
   day: number;
   balance: string;
   seed: string;
   manualOpen: boolean;
+  persistence: CampaignPersistenceState;
   onAdvance: () => void;
   onSave: () => void;
   onLoad: () => void;
   onExport: () => void;
+  onExportRecovery: () => void;
   onImport: (text: string) => void;
   onRestart: () => void;
   onToggleManual: () => void;
@@ -20,10 +25,12 @@ export function CampaignHeader({
   balance,
   seed,
   manualOpen,
+  persistence,
   onAdvance,
   onSave,
   onLoad,
   onExport,
+  onExportRecovery,
   onImport,
   onRestart,
   onToggleManual,
@@ -86,6 +93,10 @@ export function CampaignHeader({
       >
         Feedback
       </a>
+      <CampaignRecoveryNotice
+        persistence={persistence}
+        onExportOriginal={onExportRecovery}
+      />
     </header>
   );
 }

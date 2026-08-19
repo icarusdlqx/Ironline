@@ -10,8 +10,10 @@ import {
 } from '../../campaign/campaign';
 import {
   campaignBlob,
+  campaignPersistenceStatus,
   deserialiseCampaign,
   loadCampaign,
+  rawCampaignBlob,
   saveCampaign,
 } from '../../campaign/save';
 import type { CampaignState, ContractTermsId } from '../../campaign/types';
@@ -19,7 +21,7 @@ import { getCatalog } from '../../schema/load';
 import { applyRefit, refitInventory } from '../../campaign/refit';
 import { rechooseSalvage } from '../../campaign/salvage';
 import { isSideContract } from '../../campaign/sidework';
-import { startFreshCampaign } from '../../campaign/freshness';
+import { createCampaignSeed, startFreshCampaign } from '../../campaign/freshness';
 import {
   employerDisplayName,
   employerHistories,
@@ -41,19 +43,17 @@ import { Hangar } from './Hangar';
 import { HiringHall } from './HiringHall';
 import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, cbills, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
-import { commitCampaignChange } from './campaignSession';
+import { commitCampaignChange, openCampaignSession } from './campaignSession';
+import { downloadCampaignFile } from './campaignDownload';
 import { useGame } from '../store';
 
 const catalog = getCatalog();
 const CAMPAIGN_ID = 'border_dispute';
 
 export function CampaignScreen({ onExit }: { onExit: () => void }) {
-  const [state, setState] = useState<CampaignState>(() => {
-    const saved = loadCampaign();
-    if (saved.state !== null) return saved.state;
-    resetDebriefed();
-    return startFreshCampaign(catalog, CAMPAIGN_ID);
-  });
+  const [initial] = useState(() => openCampaignSession(catalog, CAMPAIGN_ID, resetDebriefed));
+  const [state, setState] = useState<CampaignState>(initial.state);
+  const [persistence, setPersistence] = useState(initial.persistence);
   const [manualOpen, setManualOpen] = useState(false);
   /**
    * Where the drop preparation stands: the hangar first, then the manifest.
@@ -119,14 +119,16 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   ): void => {
     const committed = commitCampaignChange(state, change);
     setState(committed.state);
+    setPersistence(committed.persistence.status);
     setStatus(committed.message ?? message ?? null);
   };
 
-  const restore = (restored: CampaignState, message: string): void => {
-    saveCampaign(restored);
+  const restore = (restored: CampaignState, message: string, recover = false): void => {
+    const saved = saveCampaign(restored, { recover });
     setDebriefed(revealLatestDebrief(restored.history.length));
     setState(restored);
-    setStatus(message);
+    setPersistence(saved.status);
+    setStatus(saved.ok ? message : 'Campaign opened in memory; the save was not written.');
   };
 
   // Deploying walks the prep corridor rather than launching: the hangar for
@@ -145,7 +147,12 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       return;
     }
     setPrep(null);
-    saveCampaign(state);
+    const saved = saveCampaign(state);
+    setPersistence(saved.status);
+    if (!saved.ok) {
+      setStatus('Deployment held. Restart or import a valid campaign before deploying.');
+      return;
+    }
     patch({ campaignPending: true, screen: 'battle' });
   };
 
@@ -157,32 +164,58 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         balance={cbills(state.cbills)}
         seed={state.seed}
         manualOpen={manualOpen}
+        persistence={persistence}
         onAdvance={advanceDay}
-        onSave={() => { saveCampaign(state); setStatus('Campaign saved.'); }}
+        onSave={() => {
+          const saved = saveCampaign(state);
+          setPersistence(saved.status);
+          setStatus(saved.ok ? 'Campaign saved.' : 'Save not written; campaign is memory-only.');
+        }}
         onLoad={() => {
-          const loaded = loadCampaign();
+          const loaded = loadCampaign(catalog, { storedOnly: true });
+          setPersistence(loaded.persistence);
           if (loaded.state === null) setStatus(loaded.error ?? 'no save');
           else restore(loaded.state, 'Campaign loaded.');
         }}
         onExport={onExportSave}
+        onExportRecovery={onExportRecovery}
         onImport={(text) => {
           const loaded = deserialiseCampaign(text);
           if (loaded.state === null) setStatus(loaded.error ?? 'bad save');
-          else restore(loaded.state, 'Save imported.');
+          else restore(loaded.state, 'Save imported.', true);
         }}
         onRestart={() => {
           resetDebriefed();
           setDebriefed(0);
-          const fresh = startFreshCampaign(catalog, CAMPAIGN_ID);
+          let saved = campaignPersistenceStatus();
+          let stored = false;
+          const fresh = startFreshCampaign(catalog, CAMPAIGN_ID, createCampaignSeed, (next) => {
+            const result = saveCampaign(next, { recover: true });
+            saved = result.status;
+            stored = result.ok;
+          });
           setPrep(null);
           setRefitting(null);
           setSelectedNode(null);
           setSelectedTerms('standard');
           setState(fresh);
-          setStatus(`New campaign. Run ${fresh.seed}.`);
+          setPersistence(saved);
+          setStatus(
+            stored
+              ? `New campaign. Run ${fresh.seed}.`
+              : `New campaign opened in memory. Run ${fresh.seed}.`,
+          );
         }}
         onToggleManual={() => setManualOpen((open) => !open)}
-        onExit={() => { saveCampaign(state); onExit(); }}
+        onExit={() => {
+          const saved = saveCampaign(state);
+          setPersistence(saved.status);
+          if (!saved.ok) {
+            setStatus('Campaign remains open while its save is memory-only.');
+            return;
+          }
+          onExit();
+        }}
       />
 
       {!manualOpen ? null : (
@@ -347,12 +380,13 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   }
 
   function onExportSave(): void {
-    const url = URL.createObjectURL(campaignBlob(state));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${state.campaignId}-day${state.day}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadCampaignFile(campaignBlob(state), `${state.campaignId}-day${state.day}.json`);
     setStatus('Save exported.');
+  }
+
+  function onExportRecovery(): void {
+    if (persistence.recoveryRaw === null) return;
+    downloadCampaignFile(rawCampaignBlob(persistence.recoveryRaw), 'ironline-campaign-recovery.txt');
+    setStatus('Original save exported.');
   }
 }

@@ -19,17 +19,29 @@ const DEBRIEFED_KEY = 'ironline.campaign.debriefed';
 
 /** How many missions the player has already been shown a debrief for. */
 export function debriefedCount(): number {
-  const raw = globalThis.localStorage?.getItem(DEBRIEFED_KEY);
-  const value = raw === null || raw === undefined ? 0 : Number(raw);
-  return Number.isFinite(value) ? value : 0;
+  try {
+    const raw = globalThis.localStorage?.getItem(DEBRIEFED_KEY);
+    const value = raw === null || raw === undefined ? 0 : Number(raw);
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function markDebriefed(count: number): void {
-  globalThis.localStorage?.setItem(DEBRIEFED_KEY, String(count));
+  try {
+    globalThis.localStorage?.setItem(DEBRIEFED_KEY, String(count));
+  } catch {
+    // The campaign warning already carries the storage failure.
+  }
 }
 
 export function resetDebriefed(): void {
-  globalThis.localStorage?.removeItem(DEBRIEFED_KEY);
+  try {
+    globalThis.localStorage?.removeItem(DEBRIEFED_KEY);
+  } catch {
+    // A secondary receipt must not hide the recoverable campaign.
+  }
 }
 
 /** Restored campaigns show their latest report once, never an earlier run's place. */
