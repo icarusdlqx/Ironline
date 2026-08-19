@@ -56,8 +56,9 @@ export const DESKTOP_BINDINGS: readonly Binding[] = [
       'Pause or resume, lower or raise battle speed, or show performance. Orders work while paused.',
   },
   {
-    input: 'Arrow keys / middle drag',
-    action: 'Pan the map. The wheel zooms; clicking the minimap recentres the camera.',
+    input: 'Arrow keys / middle drag / Centre',
+    action:
+      'Pan the map or centre the selection. The wheel zooms under the pointer; clicking the minimap jumps the camera.',
   },
 ];
 
@@ -84,8 +85,9 @@ export const TOUCH_BINDINGS: readonly Binding[] = [
     action: 'Select the lance, build a route across successive taps, or clear the armed order.',
   },
   {
-    input: 'Drag / pinch',
-    action: 'Drag the ground to pan and pinch to zoom. Tap the minimap to jump the camera.',
+    input: 'Drag / pinch / Centre',
+    action:
+      'Drag the ground, pinch around the fingers, or centre the selection. Tap the minimap to jump the camera.',
   },
   {
     input: 'Tap a weapon badge',

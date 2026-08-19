@@ -1,11 +1,9 @@
+import { verifyTouchNavigation, verifyTouchOrders } from './touch-battle.mjs';
+
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
 const TABLET = { width: 1024, height: 768 };
 const COMPACT_QUERY = '(max-width: 640px), (pointer: coarse) and (max-width: 1100px)';
-
-function same(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
 
 async function mobilePage(browser, url, viewport) {
   const context = await browser.newContext({
@@ -86,74 +84,6 @@ async function openBattleMenu(page) {
   await sheet.waitFor({ state: 'visible' });
 }
 
-async function orderSnapshot(page) {
-  return page.evaluate(() => {
-    const { useGame, world } = globalThis.__ironline;
-    const state = useGame.getState();
-    return {
-      selection: [...state.selection],
-      orders: world.entities
-        .filter((entity) => entity.team === state.playerTeam)
-        .map((entity) => ({
-          id: entity.id,
-          move: entity.orders.move,
-          attack: entity.orders.attack,
-        })),
-    };
-  });
-}
-
-async function dispatchPinch(page) {
-  await page.evaluate(() => {
-    const canvas = document.querySelector('.viewport canvas:not(.perf-overlay)');
-    if (!(canvas instanceof HTMLCanvasElement)) throw new Error('battle canvas missing');
-    const bounds = canvas.getBoundingClientRect();
-    const dock = document.querySelector('[data-testid="mobile-dock"]')?.getBoundingClientRect();
-    const fieldBottom = dock?.top ?? bounds.bottom;
-    const y = Math.max(bounds.top + 90, (bounds.top + fieldBottom) / 2);
-    const point = (fraction) => bounds.left + bounds.width * fraction;
-    const emit = (type, pointerId, x, buttons) =>
-      canvas.dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          pointerId,
-          pointerType: 'touch',
-          clientX: x,
-          clientY: y,
-          button: 0,
-          buttons,
-        }),
-      );
-    emit('pointerdown', 41, point(0.42), 1);
-    emit('pointerdown', 42, point(0.58), 1);
-    emit('pointermove', 41, point(0.36), 1);
-    emit('pointermove', 42, point(0.64), 1);
-    emit('pointerup', 41, point(0.36), 0);
-    emit('pointerup', 42, point(0.64), 0);
-  });
-}
-
-async function dispatchCancel(page) {
-  await page.evaluate(() => {
-    const canvas = document.querySelector('.viewport canvas:not(.perf-overlay)');
-    if (!(canvas instanceof HTMLCanvasElement)) throw new Error('battle canvas missing');
-    const bounds = canvas.getBoundingClientRect();
-    const x = bounds.left + bounds.width * 0.5;
-    const y = bounds.top + bounds.height * 0.42;
-    const options = {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 51,
-      pointerType: 'touch',
-      clientX: x,
-      clientY: y,
-      button: 0,
-    };
-    canvas.dispatchEvent(new PointerEvent('pointerdown', { ...options, buttons: 1 }));
-    canvas.dispatchEvent(new PointerEvent('pointercancel', { ...options, buttons: 0 }));
-  });
-}
 
 async function runOrientation({ browser, url, shots, check, viewport, label, shotLabel }) {
   const { context, page, errors } = await mobilePage(browser, url, viewport);
@@ -245,13 +175,8 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
         (await page.locator('[data-testid="command-move"]').getAttribute('aria-pressed')) === 'false',
     );
 
-    const beforeGesture = await orderSnapshot(page);
-    await dispatchPinch(page);
-    const afterPinch = await orderSnapshot(page);
-    check(`${prefix} pinch does not select or order`, same(afterPinch, beforeGesture));
-    await dispatchCancel(page);
-    const afterCancel = await orderSnapshot(page);
-    check(`${prefix} pointer cancellation does not select or order`, same(afterCancel, afterPinch));
+    await verifyTouchNavigation({ page, check, prefix });
+    if (label === 'portrait') await verifyTouchOrders({ page, check, prefix });
     await page.screenshot({ path: `${shots}/12-mobile-${shotLabel}-battle.png` });
 
     await openBattleMenu(page);

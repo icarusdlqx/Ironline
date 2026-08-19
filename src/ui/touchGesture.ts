@@ -2,6 +2,8 @@ import type { Vec2 } from '../sim/types';
 
 export interface TouchMove {
   previous: Vec2 | null;
+  previousCentroid: Vec2 | null;
+  centroid: Vec2 | null;
   span: number;
 }
 
@@ -32,9 +34,17 @@ export class TouchGesture {
 
   move(pointerId: number, point: Vec2): TouchMove {
     const previous = this.points.get(pointerId) ?? null;
-    if (previous === null) return { previous, span: this.span() };
+    if (previous === null) {
+      return { previous, previousCentroid: null, centroid: this.centroid(), span: this.span() };
+    }
+    const previousCentroid = this.centroid();
     this.points.set(pointerId, point);
-    return { previous, span: this.span() };
+    return {
+      previous,
+      previousCentroid,
+      centroid: this.centroid(),
+      span: this.span(),
+    };
   }
 
   consume(): void {
@@ -65,5 +75,16 @@ export class TouchGesture {
     const [a, b] = [...this.points.values()];
     if (a === undefined || b === undefined) return 0;
     return Math.hypot(b.x - a.x, b.y - a.y);
+  }
+
+  centroid(): Vec2 | null {
+    if (this.points.size === 0) return null;
+    let x = 0;
+    let y = 0;
+    for (const point of this.points.values()) {
+      x += point.x;
+      y += point.y;
+    }
+    return { x: x / this.points.size, y: y / this.points.size };
   }
 }

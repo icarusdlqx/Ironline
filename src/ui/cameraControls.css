@@ -1,0 +1,15 @@
+.camera-lance-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.camera-lance-row > .lance {
+  flex: 1;
+  min-width: 0;
+}
+
+.camera-centre {
+  flex: none;
+  align-self: stretch;
+}

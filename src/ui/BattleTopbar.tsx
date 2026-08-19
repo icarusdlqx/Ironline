@@ -170,7 +170,7 @@ export function BattleTopbar({
       </a>
       <span className="hint">
         Space pauses · , . change speed · P perf graph · click an enemy to attack ·
-        right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms
+        right-click moves (shift queues) · A attack-moves · drag selects · arrows pan · wheel zooms · Centre recentres
       </span>
     </header>
   );

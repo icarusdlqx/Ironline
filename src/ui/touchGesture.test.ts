@@ -26,6 +26,19 @@ describe('touch gesture state', () => {
     expect(gesture.finish(3, { x: 0, y: 0 }).commitTap).toBe(true);
   });
 
+  it('tracks the live centre of the fingers', () => {
+    const gesture = new TouchGesture();
+    expect(gesture.centroid()).toBeNull();
+    gesture.start(1, { x: 10, y: 20 });
+    gesture.start(2, { x: 50, y: 60 });
+    expect(gesture.centroid()).toEqual({ x: 30, y: 40 });
+
+    const moved = gesture.move(2, { x: 70, y: 40 });
+    expect(moved.previousCentroid).toEqual({ x: 30, y: 40 });
+    expect(moved.centroid).toEqual({ x: 40, y: 30 });
+    expect(gesture.centroid()).toEqual({ x: 40, y: 30 });
+  });
+
   it('suppresses a pan and every remaining pointer after cancellation', () => {
     const gesture = new TouchGesture();
     gesture.start(1, { x: 0, y: 0 });

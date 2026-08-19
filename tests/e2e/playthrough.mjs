@@ -75,7 +75,10 @@ async function main() {
   // detached puts npx and vite in their own process group, so shutdown can
   // kill the group: signalling npx alone orphans vite, which keeps the stdio
   // pipes open and the finished script waiting forever to exit.
-  const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
+  // Worktrees share the dependency install during validation. Force Vite to
+  // rebuild its root-specific dep graph so a prior worktree cannot leave React
+  // optimized against a different source root.
+  const server = spawn('npx', ['vite', '--force', '--port', String(PORT), '--strictPort'], {
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   });
@@ -330,27 +333,81 @@ async function main() {
     check('called shot location is recorded', (await state(page)).calledShotLocation === 'left_leg');
 
     process.stdout.write('\ncamera\n');
-    const before = await page.evaluate(() => {
-      const { camera } = globalThis.__ironline.engine.renderer;
-      return { x: camera.target.x, distance: camera.distance };
-    });
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const zoomPointer = { x: box.width * 0.72, y: box.height * 0.46 };
+    const before = await page.evaluate((screen) => {
+      const { renderer } = globalThis.__ironline.engine;
+      return {
+        target: { ...renderer.camera.target },
+        distance: renderer.camera.distance,
+        anchor: renderer.camera.screenToWorld(
+          screen,
+          renderer.viewport,
+          renderer.groundMesh,
+        ),
+      };
+    }, zoomPointer);
+    await page.mouse.move(box.x + zoomPointer.x, box.y + zoomPointer.y);
     await page.mouse.wheel(0, -600);
+    const afterZoom = await page.evaluate((screen) => {
+      const { renderer } = globalThis.__ironline.engine;
+      return {
+        target: { ...renderer.camera.target },
+        distance: renderer.camera.distance,
+        anchor: renderer.camera.screenToWorld(
+          screen,
+          renderer.viewport,
+          renderer.groundMesh,
+        ),
+      };
+    }, zoomPointer);
     await clearControlFocus(page);
     await page.keyboard.down('ArrowRight');
     await sleep(400);
     await page.keyboard.up('ArrowRight');
     const after = await page.evaluate(() => {
       const { camera } = globalThis.__ironline.engine.renderer;
-      return { x: camera.target.x, distance: camera.distance };
+      return { target: { ...camera.target }, distance: camera.distance };
     });
     // Zooming in pulls the eye closer: wheel-up shrinks the camera distance.
     check(
       'wheel zooms the camera',
-      after.distance < before.distance,
-      `${before.distance} → ${after.distance}`,
+      afterZoom.distance < before.distance,
+      `${before.distance} → ${afterZoom.distance}`,
     );
-    check('arrow keys pan the camera', after.x !== before.x, `${before.x} → ${after.x}`);
+    check(
+      'wheel zoom keeps the ground under the pointer',
+      Math.hypot(
+        afterZoom.anchor.x - before.anchor.x,
+        afterZoom.anchor.y - before.anchor.y,
+      ) < 1,
+    );
+    check(
+      'arrow keys pan the camera',
+      after.target.x !== afterZoom.target.x,
+      `${afterZoom.target.x} → ${after.target.x}`,
+    );
+
+    const centreError = async () =>
+      page.evaluate(() => {
+        const { engine, useGame, world } = globalThis.__ironline;
+        const selected = new Set(useGame.getState().selection);
+        const units = world.entities.filter((entity) => selected.has(entity.id));
+        const sum = units.reduce(
+          (point, entity) => ({ x: point.x + entity.pos.x, y: point.y + entity.pos.y }),
+          { x: 0, y: 0 },
+        );
+        const expected = { x: sum.x / units.length, y: sum.y / units.length };
+        return {
+          error: Math.hypot(
+            engine.renderer.camera.target.x - expected.x,
+            engine.renderer.camera.target.y - expected.y,
+          ),
+          tolerance: world.terrain.tileSize * 4,
+        };
+      });
+    await page.locator('[data-testid="centre-selection"]').click();
+    const buttonCentre = await centreError();
+    check('centre button finds the selection', buttonCentre.error < buttonCentre.tolerance);
 
     process.stdout.write('\nfog of war\n');
     const fog = await sim(page);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CommandPalette, type Command } from './CommandPalette';
+import { CentreSelectionButton } from './CentreSelectionButton';
 import type { Engine } from './engine';
 import { FormationPicker } from './FormationPicker';
 import { Minimap } from './Minimap';
@@ -78,6 +79,7 @@ export function MobileBattleHud({ engine, supportOptions, onCommand }: MobileBat
             selection={state.selection}
             onSelect={(id) => state.setSelection([id])}
           />
+          <CentreSelectionButton engine={engine} className="mobile-lance-action" />
           <button
             type="button"
             className={`mobile-lance-action ${state.queueOrders ? 'active' : ''}`}

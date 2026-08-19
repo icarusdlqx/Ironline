@@ -11,6 +11,7 @@ interface TouchInputOptions {
   engine: Engine;
   pickAt: (screen: Vec2) => MechEntity | null;
   screenWorld: (screen: Vec2) => Vec2;
+  zoomBetween: (factor: number, from: Vec2, to: Vec2) => void;
   onPinchStart: () => void;
 }
 
@@ -56,8 +57,18 @@ export class TouchInput {
     }
 
     if (this.gesture.size >= 2) {
-      if (this.pinchFrom !== null && this.pinchFrom > 0 && moved.span > 0) {
-        engine.renderer.camera.zoomBy(moved.span / this.pinchFrom);
+      if (
+        moved.previousCentroid !== null &&
+        moved.centroid !== null &&
+        this.pinchFrom !== null &&
+        this.pinchFrom > 0 &&
+        moved.span > 0
+      ) {
+        this.options.zoomBetween(
+          moved.span / this.pinchFrom,
+          moved.previousCentroid,
+          moved.centroid,
+        );
         this.pinchFrom = moved.span;
       }
       return;

@@ -151,6 +151,14 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     engine,
     pickAt,
     screenWorld,
+    zoomBetween: (factor, from, to) =>
+      engine.renderer.camera.zoomBetween(
+        factor,
+        from,
+        to,
+        viewport(),
+        engine.renderer.groundMesh,
+      ),
     onPinchStart: () => {
       panning = false;
       lastPan = null;
@@ -416,7 +424,12 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
 
   const onWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    engine.renderer.camera.zoomBy(event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
+    engine.renderer.camera.zoomAt(
+      event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP,
+      pointerToScreen(canvas, event),
+      viewport(),
+      engine.renderer.groundMesh,
+    );
   };
 
   /**

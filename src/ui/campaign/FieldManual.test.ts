@@ -25,7 +25,10 @@ describe('field manual controls', () => {
       expect.objectContaining({ input: '1–9', action: expect.stringContaining('control group') }),
     );
     expect(DESKTOP_BINDINGS).toContainEqual(
-      expect.objectContaining({ input: 'Arrow keys / middle drag' }),
+      expect.objectContaining({
+        input: 'Arrow keys / middle drag / Centre',
+        action: expect.stringContaining('zooms under the pointer'),
+      }),
     );
     expect(DESKTOP_BINDINGS.some((binding) => binding.input.includes('WASD'))).toBe(false);
     expect(TOUCH_BINDINGS).toContainEqual(
@@ -33,6 +36,9 @@ describe('field manual controls', () => {
     );
     expect(TOUCH_BINDINGS).toContainEqual(
       expect.objectContaining({ input: 'All / Queue / Cancel' }),
+    );
+    expect(TOUCH_BINDINGS).toContainEqual(
+      expect.objectContaining({ input: 'Drag / pinch / Centre' }),
     );
   });
 

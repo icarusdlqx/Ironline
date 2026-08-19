@@ -131,6 +131,44 @@ export class TacticalCamera {
     this.clamp();
   }
 
+  /** Zoom should approach the ground being inspected, not pull it away. */
+  zoomAt(
+    factor: number,
+    screen: Vec2,
+    viewport: Viewport,
+    terrain: Object3D | null = null,
+  ): void {
+    this.zoomBetween(factor, screen, screen, viewport, terrain);
+  }
+
+  /** Keep the old finger centre under the new one while a pinch changes scale. */
+  zoomBetween(
+    factor: number,
+    from: Vec2,
+    to: Vec2,
+    viewport: Viewport,
+    terrain: Object3D | null = null,
+  ): void {
+    const anchor = this.screenToWorld(from, viewport, terrain);
+    this.zoomBy(factor);
+
+    // Translating over a slope changes where the ray meets that slope, so one
+    // correction is only exact on flat ground. A few bounded refinements keep
+    // the inspected terrain still without turning a wheel event into an
+    // unbounded solver; flat ground exits on the first pass.
+    for (let pass = 0; pass < 4; pass += 1) {
+      const shifted = this.screenToWorld(to, viewport, terrain);
+      const dx = anchor.x - shifted.x;
+      const dy = anchor.y - shifted.y;
+      if (Math.hypot(dx, dy) < 0.01) break;
+      const before = { ...this.target };
+      this.target.x += dx;
+      this.target.y += dy;
+      this.clamp();
+      if (this.target.x === before.x && this.target.y === before.y) break;
+    }
+  }
+
   /** Where the camera sits, given its target, bearing and tilt. */
   private eye(): Vector3 {
     // Squared, so the descent is fast at the top and slow at the bottom: the
