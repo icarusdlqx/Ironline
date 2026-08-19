@@ -1,7 +1,7 @@
-import { LOCATIONS } from '../../schema/common';
 import type { Catalog } from '../../schema/load';
 import { rebuildHulk } from '../../campaign/refit';
 import { estimateRepair, startRepair } from '../../campaign/repair';
+import { mechIntegrity } from '../../campaign/integrity';
 import { employerNameFor } from '../../campaign/employers';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
@@ -14,20 +14,6 @@ interface Props {
   onRefit: (mechId: string) => void;
   onContinue: () => void;
   onCancel: () => void;
-}
-
-/** How much of a mech is still there, as a fraction of what it should have. */
-function integrity(state: CampaignState, mechId: string): number {
-  const mech = state.mechs.find((entry) => entry.id === mechId);
-  if (mech === undefined) return 0;
-  let have = 0;
-  let want = 0;
-  for (const location of LOCATIONS) {
-    const condition = mech.condition[location];
-    have += condition.armour + condition.rearArmour + condition.internal;
-    want += mech.design.armour[location] + condition.internal;
-  }
-  return want === 0 ? 1 : Math.max(0, Math.min(1, have / want));
 }
 
 /**
@@ -62,7 +48,8 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
           {state.mechs.map((mech) => {
             const estimate = estimateRepair(catalog, mech);
             const ready = isMechAvailable(state, mech) && mech.status !== 'hulk';
-            const health = integrity(state, mech.id);
+            const integrity = mechIntegrity(catalog, mech);
+            const health = integrity.fraction;
             const status =
               mech.status === 'hulk'
                 ? `Wreck — rebuild for ${cbills(mech.rebuildCost)}`
@@ -80,7 +67,15 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
                 </div>
 
                 <div className="manifest-mech">
-                  <div className="manifest-health" title={`${Math.round(health * 100)}% intact`}>
+                  <div
+                    className="manifest-health"
+                    title={`${Math.round(health * 100)}% intact · ${integrity.current}/${integrity.maximum} armour and structure`}
+                    role="progressbar"
+                    aria-label={`${mech.design.name} integrity`}
+                    aria-valuemin={0}
+                    aria-valuemax={integrity.maximum}
+                    aria-valuenow={integrity.current}
+                  >
                     <span style={{ width: `${Math.round(health * 100)}%` }} />
                   </div>
                   <div className="manifest-buttons">
