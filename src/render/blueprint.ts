@@ -1,4 +1,5 @@
 import type { Silhouette } from './shape';
+import { signatureDetails } from './blueprint/details';
 import { emplacementPlan, trackedPlan, wheeledPlan } from './blueprint/plans-ground';
 import { battlePlan, siegePlan } from './blueprint/plans-heavy';
 import { birdPlan, scoutPlan } from './blueprint/plans-light';
@@ -95,7 +96,7 @@ export function chassisBlueprint(
   const stanceReach = Math.hypot(bones.hip - ankleHeight, ankleForward);
 
   return {
-    parts: built.parts,
+    parts: [...built.parts, ...signatureDetails(identity, bones)],
     hardpoints: built.hardpoints,
     torsoY,
     height: torsoY + built.crown,

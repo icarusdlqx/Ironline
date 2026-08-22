@@ -3,8 +3,7 @@ import { LOCATIONS } from '../schema/common';
 import { teamColour, UI } from '../render/palette';
 import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
 import { angleDifference } from '../sim/math';
-import { jumpHeight } from '../sim/movement';
-import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../sim/types';
+import type { EntityId, MechEntity, Vec2, World } from '../sim/types';
 import type { Weapon } from '../schema/weapon';
 import type { SimEvent } from '../sim/events';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
@@ -17,6 +16,13 @@ import { advanceHullRecoil, triggerHullRecoil } from './machineCulture';
 import { modelDamageSignature, sealedTargetOffset, writeInterpolatedPose } from './unitVisualState';
 import { advanceStartupSequence, setStartupPowered } from './startupLights';
 import { presentMachinePowerEvent } from './unitCultureEvents';
+import { UnitPicking } from './unitPicking';
+import { applyModelDetail } from './modelDetail';
+import {
+  battlefieldDetailForDistance,
+  type ModelDetail,
+} from './renderQuality';
+import { setMachineMotionLowFx } from './machineMotion';
 
 export interface Interpolated {
   x: number;
@@ -38,7 +44,6 @@ export interface EntityView {
   anchors: LocationAnchors;
 }
 
-const PICK_DELTA = new Vector3();
 const DEFAULT_VISUAL: Weapon['visual'] = {
   style: 'beam',
   colour: '#ffffff',
@@ -55,13 +60,17 @@ export class UnitViews {
   private readonly placed = new Set<EntityId>();
   private readonly placedAt = new Map<EntityId, Interpolated>();
   private readonly shadows: ContactShadowLayer;
+  private readonly picking: UnitPicking;
+  private detail: ModelDetail = 'structure';
+  private lowFx = false;
 
   constructor(
     private readonly scene: Scene,
-    private readonly heightAt: (x: number, y: number) => number,
+    heightAt: (x: number, y: number) => number,
     private readonly reducedMotion = false,
   ) {
     this.shadows = new ContactShadowLayer(heightAt);
+    this.picking = new UnitPicking(heightAt, (entity) => this.at(entity), (id) => this.views.get(id));
     scene.add(this.shadows.mesh);
   }
 
@@ -81,7 +90,20 @@ export class UnitViews {
     for (const view of this.views.values()) {
       advanceHullRecoil(view.model.hullRecoil, deltaSeconds);
       if (view.model.root.visible) advanceStartupSequence(view.model, deltaSeconds, this.reducedMotion);
-      for (const weapon of view.model.weapons) advanceWeaponRecoil(weapon, deltaSeconds);
+      for (const weapon of view.model.weapons) {
+        advanceWeaponRecoil(weapon, deltaSeconds, this.reducedMotion, this.lowFx);
+      }
+    }
+  }
+
+  setRenderQuality(distance: number, lowFx: boolean): void {
+    const detail = battlefieldDetailForDistance(distance, lowFx, this.detail);
+    if (detail === this.detail && lowFx === this.lowFx) return;
+    this.detail = detail;
+    this.lowFx = lowFx;
+    for (const view of this.views.values()) {
+      applyModelDetail(view.model.root, detail);
+      setMachineMotionLowFx(view.model.machineMotion, lowFx);
     }
   }
 
@@ -212,9 +234,9 @@ export class UnitViews {
         continue;
       }
       rig.muzzle.getWorldPosition(muzzle);
-      if (breech !== undefined) rig.slide.getWorldPosition(breech);
+      if (breech !== undefined) rig.breech.getWorldPosition(breech);
+      triggerWeaponRecoil(rig);
       if (view.model.faction === 'linewrought') {
-        triggerWeaponRecoil(rig);
         if (!this.reducedMotion) triggerHullRecoil(view.model.hullRecoil, view.model.culture, rig.travel);
       }
       this.mountCycles.set(key, (wanted + 1) % count);
@@ -266,6 +288,8 @@ export class UnitViews {
       wear,
       faction,
     );
+    applyModelDetail(model.root, this.detail);
+    setMachineMotionLowFx(model.machineMotion, this.lowFx);
     if (faction === 'aurelian') setStartupPowered(model, entity.shutdownRemaining <= 0);
 
     const radius = radiusFor(entity.tonnage);
@@ -290,12 +314,7 @@ export class UnitViews {
     camera: TacticalCamera,
     viewport: Viewport,
   ): { x: number; y: number; radius: number } {
-    const at = this.at(entity);
-    const ground = this.heightAt(at.x, at.y);
-    const size = radiusFor(entity.tonnage);
-    const centre = camera.worldToScreen(at, viewport, ground + size);
-    const top = camera.worldToScreen(at, viewport, ground + size * 2);
-    return { x: centre.x, y: centre.y, radius: Math.abs(top.y - centre.y) };
+    return this.picking.screenBodyOf(entity, camera, viewport);
   }
 
   entityAtScreen(
@@ -306,70 +325,7 @@ export class UnitViews {
     viewport: Viewport,
     wanted: (entity: MechEntity) => boolean,
   ): MechEntity | null {
-    const visible = (entity: MechEntity): boolean =>
-      (world.vision === null ||
-        entity.team === world.vision.team ||
-        world.vision.visible.has(entity.id)) &&
-      wanted(entity);
-
-    const ray = camera.rayAt(screen, viewport);
-    let bodyHit: MechEntity | null = null;
-    let bodyAlong = Infinity;
-    for (const entity of world.entities) {
-      if (!visible(entity) || !isOperational(entity)) continue;
-      const view = this.views.get(entity.id);
-      if (view === undefined || !view.model.root.visible) continue;
-
-      const at = this.at(entity);
-      const height = view.model.height;
-      const radius = radiusFor(entity.tonnage) * 1.2;
-      const lift = jumpHeight(entity) * radiusFor(entity.tonnage) * 2.2;
-      const footY = this.heightAt(at.x, at.y) + lift;
-
-      PICK_DELTA.set(at.x - ray.origin.x, footY - ray.origin.y, at.y - ray.origin.z);
-      const d = ray.direction;
-      const dDotUp = d.y;
-      const denominator = 1 - dDotUp * dDotUp;
-      let along: number;
-      let up: number;
-      if (denominator < 1e-6) {
-        along = PICK_DELTA.dot(d);
-        up = 0;
-      } else {
-        const deltaDotD = PICK_DELTA.dot(d);
-        const deltaDotUp = PICK_DELTA.y;
-        along = (deltaDotD - dDotUp * deltaDotUp) / denominator;
-        up = Math.max(0, Math.min(height, along * dDotUp - deltaDotUp));
-        along = deltaDotD + up * dDotUp;
-      }
-      if (along < 0 || along >= bodyAlong) continue;
-
-      const gapX = PICK_DELTA.x - along * d.x;
-      const gapY = PICK_DELTA.y + up - along * d.y;
-      const gapZ = PICK_DELTA.z - along * d.z;
-      if (gapX * gapX + gapY * gapY + gapZ * gapZ > radius * radius) continue;
-      bodyHit = entity;
-      bodyAlong = along;
-    }
-    if (bodyHit !== null) return bodyHit;
-
-    let best: MechEntity | null = null;
-    let bestRange = radiusPixels;
-    for (const entity of world.entities) {
-      if (!visible(entity)) continue;
-      const at = this.at(entity);
-      const body = camera.worldToScreen(
-        at,
-        viewport,
-        this.heightAt(at.x, at.y) + radiusFor(entity.tonnage),
-      );
-      const range = Math.hypot(body.x - screen.x, body.y - screen.y);
-      if (range < bestRange) {
-        best = entity;
-        bestRange = range;
-      }
-    }
-    return best;
+    return this.picking.entityAtScreen(world, screen, radiusPixels, camera, viewport, wanted);
   }
 
   private selectionRing(

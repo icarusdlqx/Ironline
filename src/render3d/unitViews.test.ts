@@ -136,6 +136,8 @@ describe('rendered weapon mounts', () => {
     expect(origins[0]?.equals(origins[1] ?? muzzle)).toBe(false);
     expect(origins[1]?.equals(origins[2] ?? muzzle)).toBe(false);
     expect(origins[3]?.equals(origins[0] ?? muzzle)).toBe(true);
+    expect(rigs.every((rig) => rig.nativeFaction === 'aurelian')).toBe(true);
+    expect(rigs.every((rig) => rig.kick === 0 && rig.cycle === 1)).toBe(true);
     units.dispose();
   });
 
@@ -173,8 +175,30 @@ describe('rendered weapon mounts', () => {
     units.beginFrame();
     units.markPlaced(entity.id);
     expect(units.fireMount(entity.id, 'ac5', new Vector3())).toBe(true);
-    expect(rig.kick).toBe(0);
+    expect(rig.nativeFaction).toBe('linewrought');
+    expect(rig.kick).toBe(rig.travel);
     expect(view.model.hullRecoil.kick).toBe(0);
+    units.dispose();
+  });
+
+  it('reveals close surface detail and strips optional motion under low FX', () => {
+    const world = testWorld('unit-detail-quality');
+    const entity = unitOf(world, 'hornet_spotter');
+    const units = new UnitViews(new Scene(), () => 0);
+    const view = units.viewFor(world, entity);
+    const surface: Object3D[] = [];
+    view.model.root.traverse((node) => {
+      if (node.userData.blueprintDetail === 'surface') surface.push(node);
+    });
+
+    expect(surface).toHaveLength(4);
+    expect(surface.every((node) => !node.visible)).toBe(true);
+    units.setRenderQuality(250, false);
+    expect(surface.every((node) => node.visible)).toBe(true);
+    expect(view.model.machineMotion.pistons?.visible).toBe(true);
+    units.setRenderQuality(250, true);
+    expect(surface.every((node) => !node.visible)).toBe(true);
+    expect(view.model.machineMotion.pistons?.visible).toBe(false);
     units.dispose();
   });
 

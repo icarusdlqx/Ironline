@@ -1,5 +1,6 @@
 import {
   Group,
+  InstancedMesh,
   Material,
   Mesh,
   MeshStandardMaterial,
@@ -35,6 +36,7 @@ import type { LoosePanelRig } from './damagedPanels';
 import { castsMechShadow, geometryForBlueprintPart } from './mechGeometry';
 import { applyModelDetail, markBlueprintDetail } from './modelDetail';
 import { TACTICAL_MECH_RENDER, type MechRenderOptions } from './renderQuality';
+import { createMachineMotion, type MachineMotionRig } from './machineMotion';
 
 export type { MountArt } from './weaponModels';
 
@@ -78,6 +80,7 @@ export interface MechModel {
   motion: MotionProfile | null;
   /** Authored mounts keep their own muzzle and recoil travel after construction. */
   weapons: WeaponRig[];
+  machineMotion: MachineMotionRig;
   faction: Faction;
   culture: Readonly<MachineCultureProfile>;
   hullRecoil: HullRecoil;
@@ -174,6 +177,7 @@ export function buildMechModel(
   };
 
   for (const part of plan.parts) {
+    if (options.geometry === 'tactical' && part.detail === 'hero') continue;
     // An arm or a head that has been blown off is gone: nothing tells a player
     // a mech has stopped being dangerous like watching the arm leave. A torso
     // or a leg stays — the machine is standing on it — but it stays burnt.
@@ -283,7 +287,14 @@ export function buildMechModel(
     const material = createWeaponMaterial(mount.type);
     ownedMaterials.push(material);
     const heft = 0.5 + Math.min(1, mount.tonnage / 14);
-    const weapon = buildWeaponModel(mount, heft, scale, material, boreMaterial);
+    const weapon = buildWeaponModel(
+      mount,
+      heft,
+      scale,
+      material,
+      boreMaterial,
+      options.geometry,
+    );
     weapon.root.traverse((child) => {
       if (child instanceof Mesh) child.castShadow = castsMechShadow(child);
     });
@@ -301,6 +312,8 @@ export function buildMechModel(
 
   torso.position.y = plan.torsoY * scale;
   root.add(torso);
+  const legs = [...rigs.values()];
+  const machineMotion = createMachineMotion(faction, root, legs, scale, tones.trim);
   applyModelDetail(root, options.detail);
   root.userData.ownedMaterials = ownedMaterials;
 
@@ -308,7 +321,7 @@ export function buildMechModel(
     root,
     torso,
     height: plan.height * scale,
-    legs: [...rigs.values()],
+    legs,
     torsoRestY: plan.torsoY * scale,
     strideLength: motion === null
       ? 0
@@ -319,6 +332,7 @@ export function buildMechModel(
     turnRadius: plan.legs.stanceWidth * scale,
     motion,
     weapons,
+    machineMotion,
     faction,
     culture,
     hullRecoil: { kick: 0, travel: scale * 0.018 },
@@ -342,10 +356,14 @@ function jointWorld(joint: Group, rig: LegRig): import('three').Vector3 {
 
 /** Frees the geometry and materials a model owns. */
 export function disposeModel(root: Object3D): void {
+  if (root.userData.modelDisposed === true) return;
+  root.userData.modelDisposed = true;
   const geometries = new Set<BufferGeometry>();
   const materials = new Set<Material>();
+  const instances = new Set<InstancedMesh>();
   root.traverse((child) => {
     if (!(child instanceof Mesh)) return;
+    if (child instanceof InstancedMesh) instances.add(child);
     geometries.add(child.geometry);
     if (Array.isArray(child.material)) child.material.forEach((entry) => materials.add(entry));
     else materials.add(child.material);
@@ -354,6 +372,7 @@ export function disposeModel(root: Object3D): void {
   if (Array.isArray(owned)) {
     for (const entry of owned) if (entry instanceof Material) materials.add(entry);
   }
+  instances.forEach((instance) => instance.dispose());
   geometries.forEach((geometry) => geometry.dispose());
   materials.forEach((material) => material.dispose());
 }

@@ -10,7 +10,7 @@ function blueprintTopology(root: Group): { meshes: number; triangles: number } {
   let meshes = 0;
   let triangles = 0;
   root.traverse((node) => {
-    if (!(node instanceof Mesh) || typeof node.userData.blueprintDetail !== 'string') return;
+    if (!(node instanceof Mesh) || node.userData.blueprintDetail !== 'structure') return;
     meshes += 1;
     triangles += node.geometry.index === null
       ? node.geometry.getAttribute('position').count / 3
