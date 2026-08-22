@@ -1,6 +1,8 @@
 # Work board: presentation layer
 
 This is the standing brief for graphics, environment, sound, and content work.
+`FACTION_PLAN.md` holds the staged faction rebuild — the larger piece of work,
+and the one to follow first when it is live.
 **Read `AGENTS.md` first** — it holds the architecture rules, the commands, and
 the branch/deploy workflow, and none of it is optional. This file says *what*
 to work on and *how to know it worked*.
@@ -33,10 +35,17 @@ For anything the harness does not reach, `npm run dev` serves the game and
 
 Breaking one of these wastes a review cycle, so they are worth reading twice.
 
-- **Never edit `src/sim/**`.** It is pure, deterministic, and gated by a
-  thirteen-minute balance suite that is not your job to run. If a task appears
-  to require a simulation change, stop and say so in the pull request instead
-  of reaching in. Rendering and audio read the world; they never write it.
+- **Never edit `src/sim/**`.** It is pure and deterministic, and nothing on
+  either board requires changing it. If a task appears to, stop and say so in
+  the pull request instead of reaching in. Rendering and audio read the world;
+  they never write it.
+- **Changing statistics means running the balance gate.** Weapon, chassis,
+  equipment and mission-tuning data feed the simulation, so editing any of it
+  puts the 200-battle suite on you:
+  `npx vitest run src/sim/balance.test.ts` (~13 min) and
+  `npx vitest run src/campaign/acceptance.test.ts`. Run them **after your last
+  edit**, never alongside further editing — a gate run against a state you then
+  changed has told you nothing. Say the result in the pull request.
 - **Never edit `src/data/missions/mirror_ridge.json`.** It is the balance
   fixture. Its `startingResourcePoints` stays `0`.
 - **No new npm dependencies.** The single-file build inlines everything and
@@ -51,8 +60,8 @@ Breaking one of these wastes a review cycle, so they are worth reading twice.
   URI, so mind the file size) or drawn procedurally.
 - **Do not rename the `ironline.*` localStorage keys.** Renaming them silently
   destroys every existing player's save and settings.
-- Files stay under ~400 lines. `src/render3d/scene.ts` is already at 1096 and
-  wants splitting, not growing.
+- Files stay under ~400 lines. `src/ui/mechbay/Mechbay.tsx` is at 700 and wants
+  splitting, not growing.
 - Comments explain **why**, never what. Match the prose voice already in the
   files — it is dry and concrete, not chatty.
 - Never name an AI model in code, comments, data, or docs.
@@ -74,6 +83,11 @@ button.
 ---
 
 # The board, in priority order
+
+**Much of this board is already done** — atmospheres, ground clutter, the sound
+pass, the team-colour rework and the training flow all landed. Check the current
+state of a task before starting it, and skip what is finished. `FACTION_PLAN.md`
+is the live work.
 
 ## 1. Weather and light: four new atmospheres
 

@@ -12,9 +12,11 @@ A browser real-time-with-pause tactical mech game. TypeScript (strict, with
 The design document is `IRONLINE_DESIGN.md`; the setting bible and all game
 content live under `src/data`.
 
-`CODEX_BRIEF.md` is the standing work board for graphics, environment, sound,
-and content tasks, including how to screenshot your own work. Start there
-unless you were given a specific task.
+`FACTION_PLAN.md` is the staged faction rebuild: two machine cultures, a
+halved weapon catalogue, the campaign, and the mechbay. `CODEX_BRIEF.md` is
+the standing board for graphics, environment, sound and content work, and
+covers how to screenshot your own changes. Start with the plan unless you were
+given a specific task.
 
 ## Architecture — not negotiable
 
