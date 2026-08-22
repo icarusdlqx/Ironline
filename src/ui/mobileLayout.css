@@ -170,8 +170,9 @@
     width: 20px;
     height: 20px;
   }
-  /* A capped shelf keeps pick-then-place from becoming a thousand-pixel trip.
-     Stores precede the loadout, so placement continues in the scroll direction. */
+  /* Hardpoints precede the shelf so a touch player chooses where the part goes
+     before browsing the compatible stock. Arming a part returns focus to that
+     location, avoiding a second hunt through the page. */
   .bay-top {
     gap: 8px;
     order: 0;
@@ -192,7 +193,7 @@
     height: clamp(180px, 30dvh, 260px);
   }
   .bay-side {
-    order: 2;
+    order: 3;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -201,12 +202,12 @@
 
   .bay-side > .bay-stocks {
     flex: none;
-    max-height: min(46dvh, 420px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
   }
   .bay-grid {
-    order: 3;
+    order: 2;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas: none;
     overflow: visible;
@@ -214,6 +215,9 @@
 
   .bay-grid > * {
     grid-area: auto;
+  }
+  .bay-grid > .bay-armed-banner {
+    grid-column: 1 / -1;
   }
   .bay-actions {
     order: 4;

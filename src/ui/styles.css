@@ -658,7 +658,7 @@ button {
   /* Three columns and one job each: what the machine is, what is bolted to it,
      what there is to bolt on. The old layout had five panels competing for the
      same attention, which is what made the bay feel like paperwork. */
-  grid-template-columns: 290px 1fr 300px;
+  grid-template-columns: 320px minmax(480px, 1fr) 390px;
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
     'top     top   top'
@@ -3279,4 +3279,524 @@ button {
   pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px;
+}
+
+/* ------------------------------------------------------- Phase 6 mech bay */
+
+.mech-preview {
+  position: relative;
+  height: clamp(220px, 31vh, 330px);
+  margin: 8px 0 5px;
+  overflow: hidden;
+  border: 1px solid rgba(140, 224, 255, 0.22);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 64%, rgba(140, 224, 255, 0.12), transparent 42%),
+    linear-gradient(rgba(140, 224, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 224, 255, 0.035) 1px, transparent 1px),
+    #090d11;
+  background-size: auto, 24px 24px, 24px 24px, auto;
+  cursor: crosshair;
+}
+
+.mech-preview::after {
+  content: '';
+  position: absolute;
+  right: 12%;
+  bottom: 10%;
+  left: 12%;
+  height: 1px;
+  background: rgba(140, 224, 255, 0.2);
+  pointer-events: none;
+}
+
+.mech-preview canvas {
+  position: relative;
+  z-index: 1;
+}
+
+.mech-preview .chassis-silhouette {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 12px;
+}
+
+.bay-preview-help {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.bay-location {
+  transition: border-color 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+}
+
+.bay-location.selected {
+  border-color: var(--warn);
+  box-shadow: inset 0 0 0 1px rgba(255, 192, 97, 0.24);
+  background: rgba(255, 192, 97, 0.055);
+}
+
+.bay-location.hovered {
+  border-color: var(--accent);
+  background: rgba(140, 224, 255, 0.07);
+}
+
+.bay-location.compatible:not(.selected):not(.hovered) {
+  border-color: rgba(143, 212, 154, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(143, 212, 154, 0.08);
+}
+
+.bay-location.armed-target.compatible {
+  border-style: solid;
+  border-color: #8fd49a;
+  box-shadow: inset 0 0 0 1px rgba(143, 212, 154, 0.2);
+  background: rgba(143, 212, 154, 0.08);
+  cursor: copy;
+}
+
+.bay-location-name {
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.bay-location-name[aria-pressed='true'] {
+  color: var(--warn);
+}
+
+.bay-location-name:disabled {
+  cursor: default;
+}
+
+.bay-location-name:focus-visible,
+.weapon-card__pick:focus-visible,
+.bay-stock > button:focus-visible,
+.bay-shelf-tabs button:focus-visible,
+.bay-location-filter button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.bay-shelf-head {
+  display: grid;
+  gap: 5px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.bay-location-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 192, 97, 0.42);
+  border-radius: 4px;
+  background: rgba(255, 192, 97, 0.07);
+  color: var(--warn);
+  text-transform: capitalize;
+}
+
+.bay-location-filter button {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font-size: 9px;
+}
+
+.weapon-category {
+  margin: 0;
+  padding: 7px 2px 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.weapon-category:last-child {
+  border-bottom: 0;
+}
+
+.weapon-category > h4 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.weapon-category > ul,
+.bay-simple-stocks {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weapon-card {
+  --weapon-faction: #e2b56b;
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 8px 8px 9px 11px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 181, 107, 0.28);
+  border-left: 3px solid var(--weapon-faction);
+  border-radius: 5px;
+  background: linear-gradient(110deg, rgba(226, 181, 107, 0.075), rgba(255, 255, 255, 0.018) 58%);
+  color: var(--text);
+}
+
+.weapon-card.faction-aurelian {
+  --weapon-faction: #8edfd1;
+  border-color: rgba(142, 223, 209, 0.3);
+  border-left-color: var(--weapon-faction);
+  background: linear-gradient(110deg, rgba(142, 223, 209, 0.08), rgba(255, 255, 255, 0.018) 58%);
+}
+
+.weapon-card.is-selected {
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 12px rgba(140, 224, 255, 0.08);
+}
+
+.weapon-card.is-unavailable {
+  opacity: 0.48;
+}
+
+.weapon-card__pick {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.weapon-card__heading {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.weapon-glyph {
+  width: 64px;
+  height: 40px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--weapon-faction) 38%, transparent);
+  border-radius: 4px;
+  background: rgba(5, 8, 11, 0.48);
+  color: var(--weapon-faction);
+}
+
+.weapon-card__identity {
+  display: grid;
+  min-width: 0;
+}
+
+.weapon-card__identity strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weapon-card__category,
+.weapon-card__stock {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.weapon-card__stock {
+  color: var(--weapon-faction);
+  font-variant-numeric: tabular-nums;
+}
+
+.weapon-card__badges,
+.weapon-card__traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.weapon-card__faction-badge,
+.weapon-card__foreign-badge,
+.weapon-card__trait {
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--weapon-faction) 42%, transparent);
+  border-radius: 999px;
+  color: var(--weapon-faction);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.weapon-card__foreign-badge {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.weapon-card__meters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.weapon-card__meter {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 4px;
+  min-width: 0;
+  font-size: 8px;
+}
+
+.weapon-card__meter-label {
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.weapon-card__meter-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.weapon-card__meter-track {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.weapon-card__meter-track > span {
+  display: block;
+  height: 100%;
+  background: var(--weapon-faction);
+}
+
+.weapon-card__meter.is-warning .weapon-card__meter-value {
+  color: var(--warn);
+}
+
+.weapon-card__meter.is-warning .weapon-card__meter-track > span {
+  background: var(--warn);
+}
+
+.weapon-card__cost,
+.weapon-card__operating-line,
+.weapon-card__unavailable-reason {
+  display: block;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.weapon-card__cost {
+  color: var(--text);
+}
+
+.weapon-card__operating-line {
+  color: var(--muted);
+}
+
+.weapon-card__unavailable-reason {
+  color: var(--warn);
+}
+
+.weapon-range-strip {
+  position: relative;
+  display: grid;
+  grid-template-rows: 17px 7px auto;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.weapon-range-strip__candidate,
+.weapon-range-strip__mounted {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.weapon-range-strip__candidate {
+  height: 6px;
+  margin-top: 5px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.weapon-range-strip__segment,
+.weapon-range-strip__envelope {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.weapon-range-strip__segment.is-minimum {
+  background: repeating-linear-gradient(135deg, rgba(255, 192, 97, 0.18) 0 2px, transparent 2px 4px);
+}
+
+.weapon-range-strip__segment.is-short {
+  background: var(--weapon-faction);
+}
+
+.weapon-range-strip__segment.is-medium {
+  background: color-mix(in srgb, var(--weapon-faction) 62%, transparent);
+}
+
+.weapon-range-strip__segment.is-long {
+  background: color-mix(in srgb, var(--weapon-faction) 30%, transparent);
+}
+
+.weapon-range-strip__tick {
+  position: absolute;
+  top: 7px;
+  color: var(--muted);
+  font-size: 7px;
+  line-height: 1;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.weapon-range-strip__tick.is-long {
+  transform: translateX(-100%);
+}
+
+.weapon-range-strip__mounted {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.weapon-range-strip__envelope {
+  border-right: 1px solid var(--accent);
+  background: rgba(140, 224, 255, 0.12);
+}
+
+.weapon-range-strip__mounted-mark {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: 9px;
+  background: var(--accent);
+  color: var(--accent);
+  font-size: 7px;
+  transform: translateX(-1px);
+}
+
+.weapon-range-strip__comparison {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.bay-simple-stocks {
+  padding: 7px 2px;
+}
+
+.bay-stock {
+  padding: 0;
+}
+
+.bay-stock > button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.stock-name {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bay-shelf-empty {
+  margin: 12px 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1280px) and (pointer: fine) {
+  .bay {
+    grid-template-columns: 286px minmax(430px, 1fr) 350px;
+  }
+
+  .weapon-card__heading {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+  }
+
+  .weapon-glyph {
+    width: 54px;
+  }
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 1100px) {
+  .mech-preview {
+    width: 100%;
+    max-width: 560px;
+    height: min(56vh, 330px);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .bay-machine,
+  .bay-side {
+    overflow: visible;
+  }
+
+  .bay-side {
+    display: block;
+  }
+
+  .bay-side > .bay-stocks {
+    overflow: visible;
+  }
+
+  .bay-grid {
+    overflow: visible;
+  }
+
+  .bay-shelf-tabs button,
+  .bay-location-filter button,
+  .bay-show-all,
+  .bay-location-name,
+  .bay-stock > button,
+  .weapon-card__pick,
+  .bay-armed-banner button {
+    min-height: 44px;
+  }
+
+  .weapon-card__pick {
+    display: grid;
+  }
+
+  .bay-show-all {
+    margin: 0;
+  }
+
+  .weapon-category > ul {
+    gap: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bay-location {
+    transition: none;
+  }
 }
