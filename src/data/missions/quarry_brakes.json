@@ -1,0 +1,194 @@
+{
+  "id": "quarry_brakes",
+  "name": "Recovery — Blackglass Quarry",
+  "type": "base_capture",
+  "mapId": "blackglass_quarry",
+  "briefing": "Sarn’s lift register shows Kestrel moved a bone-white wreck through Blackglass under a plate number assigned to slag. Take the west brake, lift table and east brake, then hold all three for thirty seconds while the receipt copies. The rim has the sightlines; the floor has the controls.",
+  "maxDurationSeconds": 600,
+  "startingResourcePoints": 700,
+  "dropTonnage": 240,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Sarn Receipt Lance",
+      "units": [
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 84, "y": 1260 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 156, "y": 1260 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 84, "y": 1188 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 156, "y": 1188 },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Lift Section",
+      "units": [
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "anja_verrin",
+          "spawn": { "x": 708, "y": 636 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "falchion_duellist",
+          "pilotId": "suri_kell",
+          "spawn": { "x": 1092, "y": 516 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "warden_lancer",
+          "pilotId": "corin_dast",
+          "spawn": { "x": 1164, "y": 156 },
+          "facingDegrees": 135
+        }
+      ]
+    }
+  ],
+  "reserves": [],
+  "zones": [
+    {
+      "id": "west_brake",
+      "name": "West Brake",
+      "x": 252,
+      "y": 828,
+      "radius": 68,
+      "owner": 1,
+      "captureSeconds": 8,
+      "resourcePoints": 75
+    },
+    {
+      "id": "lift_table",
+      "name": "Lift Table",
+      "x": 684,
+      "y": 684,
+      "radius": 76,
+      "owner": 1,
+      "captureSeconds": 12,
+      "resourcePoints": 100
+    },
+    {
+      "id": "east_brake",
+      "name": "East Brake",
+      "x": 1116,
+      "y": 540,
+      "radius": 68,
+      "owner": 1,
+      "captureSeconds": 8,
+      "resourcePoints": 75
+    }
+  ],
+  "objectives": [
+    {
+      "id": "stop_hoist",
+      "label": "Lock all three brake cabinets",
+      "type": "capture_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": ["west_brake", "lift_table", "east_brake"],
+      "resourcePoints": 250
+    },
+    {
+      "id": "copy_receipt",
+      "label": "Hold all three cabinets for 30 seconds",
+      "type": "hold_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": ["west_brake", "lift_table", "east_brake"],
+      "holdSeconds": 30,
+      "resourcePoints": 200
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "receipt_order",
+      "when": { "type": "elapsed", "seconds": 3 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "The brake cabinets are on the quarry floor; the rim owns the sightlines. Take west, lift and east."
+        },
+        {
+          "type": "reveal",
+          "x": 684,
+          "y": 684,
+          "radius": 280,
+          "seconds": 28
+        }
+      ]
+    },
+    {
+      "id": "relief_on_register",
+      "when": { "type": "objective_complete", "objectiveId": "stop_hoist" },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Kestrel relief on the north-east rim. Hold the brake cabinets while the receipt copies."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "halberd_prime",
+              "pilotId": "tomas_arvel",
+              "spawn": { "x": 1260, "y": 84 },
+              "facingDegrees": 135
+            },
+            {
+              "designId": "votive_picket",
+              "pilotId": "oksana_valev",
+              "spawn": { "x": 1188, "y": 84 },
+              "facingDegrees": 135
+            }
+          ]
+        },
+        {
+          "type": "reveal",
+          "x": 1224,
+          "y": 84,
+          "radius": 220,
+          "seconds": 24
+        }
+      ]
+    },
+    {
+      "id": "receipt_copied",
+      "when": { "type": "objective_complete", "objectiveId": "copy_receipt" },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Receipt copied. Sarn has the plate record; finish the field account."
+        }
+      ]
+    }
+  ]
+}

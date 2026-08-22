@@ -1,6 +1,6 @@
 import { useRef, useState, type MutableRefObject } from 'react';
 import type { GameState } from './store';
-import { storeDifficulty } from './store';
+import { battleRemountState, storeDifficulty } from './store';
 import {
   engineSetupFor,
   isBattleSetupLocked,
@@ -43,18 +43,19 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
   const selectMission = (missionId: string): void => {
     if (locked || options.campaignPending) return;
     setDeployed(null);
-    options.patch({ skirmishMissionId: missionId });
+    options.patch({ ...battleRemountState(), skirmishMissionId: missionId });
   };
 
   const selectDifficulty = (difficulty: string): void => {
     if (locked) return;
     setDeployed(null);
     storeDifficulty(difficulty);
-    options.patch({ difficulty });
+    options.patch({ ...battleRemountState(), difficulty });
   };
 
   const restart = (): void => {
     nextStart.current = 'deploy';
+    options.patch(battleRemountState());
     setDeployed(engine);
     setRevision((current) => current + 1);
   };
@@ -62,7 +63,7 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
   const newField = (battleCode: string): void => {
     nextStart.current = 'deploy';
     const next = setupForNewField(engine, battleCode);
-    options.patch({ battleCode });
+    options.patch({ ...battleRemountState(), battleCode });
     setDeployed(next);
     setRevision((current) => current + 1);
   };
@@ -70,7 +71,11 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
   const chooseMission = (missionId = engine.missionId): void => {
     nextStart.current = 'briefing';
     storeDifficulty(engine.difficulty);
-    options.patch({ skirmishMissionId: missionId, difficulty: engine.difficulty });
+    options.patch({
+      ...battleRemountState(),
+      skirmishMissionId: missionId,
+      difficulty: engine.difficulty,
+    });
     setDeployed(null);
     setRevision((current) => current + 1);
   };
@@ -84,6 +89,7 @@ export function useBattleSetup(options: SetupLifecycleOptions): SetupLifecycle {
     selectDifficulty,
     deploy: (next) => {
       nextStart.current = 'deploy';
+      options.patch(battleRemountState());
       setDeployed(next);
       setRevision((current) => current + 1);
     },

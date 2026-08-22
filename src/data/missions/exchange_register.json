@@ -1,0 +1,191 @@
+{
+  "id": "exchange_register",
+  "name": "Recovery — Cutbank Exchange",
+  "type": "base_capture",
+  "mapId": "cutbank_exchange",
+  "briefing": "Cutbank Exchange is three route cabinets and a kilometre of sidings compressed into one yard. Kestrel locked the registers and left a guard on the raised line. Key south, sorting and north; expect relief through the east gate.",
+  "maxDurationSeconds": 540,
+  "startingResourcePoints": 600,
+  "dropTonnage": 225,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Halloran Register Lance",
+      "units": [
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 84, "y": 1260 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 156, "y": 1260 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 84, "y": 1188 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 156, "y": 1188 },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Exchange Guard",
+      "units": [
+        {
+          "designId": "redoubt_emplacement",
+          "pilotId": "corin_dast",
+          "spawn": { "x": 780, "y": 660 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "drover_carrier",
+          "pilotId": "dario_senn",
+          "spawn": { "x": 1260, "y": 156 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "courser_patrol",
+          "pilotId": "leda_morcant",
+          "spawn": { "x": 1260, "y": 84 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "bram_nyen",
+          "spawn": { "x": 1188, "y": 84 },
+          "facingDegrees": 135
+        }
+      ]
+    }
+  ],
+  "reserves": [],
+  "zones": [
+    {
+      "id": "south_register",
+      "name": "South Register",
+      "x": 276,
+      "y": 996,
+      "radius": 68,
+      "owner": 1,
+      "captureSeconds": 9,
+      "resourcePoints": 100
+    },
+    {
+      "id": "sorting_register",
+      "name": "Sorting Register",
+      "x": 636,
+      "y": 636,
+      "radius": 68,
+      "owner": 1,
+      "captureSeconds": 9,
+      "resourcePoints": 100
+    },
+    {
+      "id": "north_register",
+      "name": "North Register",
+      "x": 996,
+      "y": 276,
+      "radius": 68,
+      "owner": 1,
+      "captureSeconds": 9,
+      "resourcePoints": 100
+    }
+  ],
+  "objectives": [
+    {
+      "id": "key_registers",
+      "label": "Key all three route registers",
+      "type": "capture_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": ["south_register", "sorting_register", "north_register"],
+      "resourcePoints": 250
+    },
+    {
+      "id": "clear_exchange",
+      "label": "Clear the exchange guard",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one mech operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "opening_register",
+      "when": { "type": "elapsed", "seconds": 3 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Command: south register, sorting register, north register. Key all three and clear the exchange."
+        },
+        {
+          "type": "reveal",
+          "x": 636,
+          "y": 636,
+          "radius": 260,
+          "seconds": 24
+        }
+      ]
+    },
+    {
+      "id": "east_gate_relief",
+      "when": { "type": "elapsed", "seconds": 0 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "East gate traffic: Kestrel relief is already entering the exchange."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "rampart_breaker",
+              "pilotId": "tomas_arvel",
+              "spawn": { "x": 1308, "y": 636 },
+              "facingDegrees": 180
+            }
+          ]
+        },
+        {
+          "type": "reveal",
+          "x": 1308,
+          "y": 636,
+          "radius": 190,
+          "seconds": 22
+        }
+      ]
+    },
+    {
+      "id": "register_green",
+      "when": { "type": "objective_complete", "objectiveId": "key_registers" },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "All three registers are keyed. Clear the remaining guard and leave the book intact."
+        }
+      ]
+    }
+  ]
+}

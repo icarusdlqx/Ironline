@@ -1049,6 +1049,72 @@ async function main() {
     await page.waitForSelector('[data-testid="briefing"]');
     check('returning to the skirmish remounts the battle', (await page.locator('.viewport canvas:not(.perf-overlay)').count()) === 1);
 
+    process.stdout.write('\nlarge battlefield navigation\n');
+    await page.locator('[data-testid="briefing-mission-picker"]').selectOption('exchange_register');
+    check(
+      'Cutbank is available from the visible mission picker',
+      (await page.locator('[data-testid="briefing"] h2').innerText()).includes('Cutbank Exchange'),
+    );
+    await page.locator('[data-testid="briefing-deploy"]').click();
+    await page.waitForFunction(
+      () => globalThis.__ironline.world.mission.id === 'exchange_register',
+    );
+    const largeField = await page.evaluate(() => {
+      const { engine, world } = globalThis.__ironline;
+      const width = world.terrain.width * world.terrain.tileSize;
+      const height = world.terrain.height * world.terrain.tileSize;
+      engine.renderer.camera.panBy(-100_000, -100_000);
+      const first = { ...engine.renderer.camera.target };
+      engine.renderer.camera.panBy(200_000, 200_000);
+      const second = { ...engine.renderer.camera.target };
+      return {
+        cells: world.terrain.width * world.terrain.height,
+        width,
+        height,
+        first,
+        second,
+      };
+    });
+    check(
+      'Cutbank loads the complete 56 by 56 field',
+      largeField.cells === 3136 && largeField.width === 1344 && largeField.height === 1344,
+      JSON.stringify(largeField),
+    );
+    check(
+      'large-map panning clamps without exposing an unbounded void',
+      largeField.first.x > 0 &&
+        largeField.first.y > 0 &&
+        largeField.second.x < largeField.width &&
+        largeField.second.y < largeField.height,
+      JSON.stringify(largeField),
+    );
+    const largeArrowShifts = {
+      ArrowLeft: await arrowCameraShift(page, 'ArrowLeft'),
+      ArrowRight: await arrowCameraShift(page, 'ArrowRight'),
+      ArrowUp: await arrowCameraShift(page, 'ArrowUp'),
+      ArrowDown: await arrowCameraShift(page, 'ArrowDown'),
+    };
+    check(
+      'large-map arrows preserve browser reading direction',
+      largeArrowShifts.ArrowLeft.x > 5 &&
+        largeArrowShifts.ArrowRight.x < -5 &&
+        largeArrowShifts.ArrowUp.y > 5 &&
+        largeArrowShifts.ArrowDown.y < -5,
+      JSON.stringify(largeArrowShifts),
+    );
+    check(
+      'the large field remains represented on the minimap',
+      (await page.locator('canvas.minimap').count()) === 1,
+    );
+    await page.screenshot({ path: `${SHOTS}/15-cutbank-large-field.png` });
+    await page.evaluate(() => globalThis.__ironline.useGame.getState().pushLog('old field marker'));
+    await page.locator('[data-testid="choose-mission"]').click();
+    await page.waitForSelector('[data-testid="briefing"]');
+    check(
+      'choosing another field clears the previous mission log',
+      (await page.evaluate(() => globalThis.__ironline.useGame.getState().log.length)) === 0,
+    );
+
     process.stdout.write('\ncampaign\n');
     await page.evaluate(() => localStorage.clear());
     await page.locator('[data-testid="open-campaign"]').click();
@@ -1074,9 +1140,11 @@ async function main() {
       'shale_overwatch_node',
       'depot_burn',
       'depot_take',
+      'cutbank_register',
+      'blackglass_receipt',
     ];
     check(
-      'campaign map draws the four-act route and both depot endings',
+      'campaign map draws the four-act route, both recoveries and both depot endings',
       campaignNodeIds.length === expectedCampaignNodeIds.length &&
         expectedCampaignNodeIds.every((id) => campaignNodeIds.includes(id)),
       campaignNodeIds.join(', '),

@@ -206,6 +206,40 @@
         "x": 0.93,
         "y": 0.46
       }
+    },
+    {
+      "id": "cutbank_register",
+      "name": "Cutbank Register",
+      "missionId": "exchange_register",
+      "employerId": "halloran_freight",
+      "brief": "Halloran's relay is back, but Cutbank still routes its freight against a Kestrel register. Key the south, sorting and north cabinets before the next ore train enters the exchange. Halloran wants the book intact and leaves the guard's machines to the company.",
+      "requires": [
+        "supply_line"
+      ],
+      "basePayout": 1150000,
+      "maxSalvageShare": 0.7,
+      "deadlineDays": 26,
+      "position": {
+        "x": 0.25,
+        "y": 0.91
+      }
+    },
+    {
+      "id": "blackglass_receipt",
+      "name": "Blackglass Receipt",
+      "missionId": "quarry_brakes",
+      "employerId": "sarn_foundry",
+      "brief": "A Sarn lift register shows Kestrel moved one white wreck through Blackglass under a plate number assigned to slag. Lock the three brake cabinets while Sarn pulls the receipt. The wreck is yours; the register is not.",
+      "requires": [
+        "foundry_sweep_node"
+      ],
+      "basePayout": 1650000,
+      "maxSalvageShare": 0.9,
+      "deadlineDays": 28,
+      "position": {
+        "x": 0.52,
+        "y": 0.12
+      }
     }
   ]
 }
