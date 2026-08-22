@@ -192,7 +192,7 @@ describe('salvage field ledger', () => {
       { kind: 'weapon', itemId: 'srm6', count: 1 },
       { kind: 'weapon', itemId: 'large_laser', count: 2 },
       { kind: 'weapon', itemId: 'lrm10', count: 2 },
-      { kind: 'weapon', itemId: 'lrm15', count: 2 },
+      { kind: 'weapon', itemId: 'mrm20', count: 2 },
       { kind: 'equipment', itemId: 'case', count: 2 },
       { kind: 'equipment', itemId: 'active_probe', count: 1 },
       { kind: 'equipment', itemId: 'jump_jet', count: 2 },

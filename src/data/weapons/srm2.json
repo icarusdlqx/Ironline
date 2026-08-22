@@ -5,10 +5,10 @@
   "type": "missile",
   "tonnage": 1,
   "slots": 1,
-  "damage": 3.1,
+  "damage": 2.3,
   "projectiles": 2,
-  "heat": 2,
-  "cooldown": 3.0,
+  "heat": 1.5,
+  "cooldown": 3.5,
   "velocity": 180,
   "range": {
     "min": 0,
@@ -17,7 +17,7 @@
     "long": 150
   },
   "ammoPerTon": 50,
-  "cost": 10000,
+  "cost": 30000,
   "recoil": 0.05,
   "accuracy": 1.0,
   "criticalChance": 0.09,
@@ -27,5 +27,5 @@
     "width": 2.2,
     "arc": 8
   },
-  "summary": "Two short-range tubes, no minimum arming distance. Common as dirt and half the price of anything else."
+  "summary": "Two short-range tubes with no minimum arming distance. Cheap to carry and slow to cycle, built for scouts that cannot spare another tonne."
 }

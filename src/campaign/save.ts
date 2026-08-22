@@ -24,6 +24,7 @@ import {
 } from './storage';
 import type { CampaignState } from './types';
 import { CampaignStateSchema, SAVE_VERSION, SaveFileSchema } from './saveSchema';
+import { coalesceMigratedWeaponItems, migrateWeaponSave } from './weaponSaveMigration';
 
 export { CampaignStateSchema, SaveFileSchema };
 export type { SaveFile } from './saveSchema';
@@ -151,7 +152,9 @@ export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog(
     return { state: null, error: `not valid JSON: ${(error as Error).message}` };
   }
 
-  const parsed = SaveFileSchema.safeParse(migrateEmployerSave(raw, catalog));
+  const parsed = SaveFileSchema.safeParse(
+    migrateWeaponSave(migrateEmployerSave(raw, catalog)),
+  );
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     return {
@@ -161,6 +164,7 @@ export function deserialiseCampaign(text: string, catalog: Catalog = getCatalog(
   }
 
   const state = parsed.data.state as CampaignState;
+  coalesceMigratedWeaponItems(state);
   pruneSideOffers(catalog, state);
   pruneCampaignHistory(catalog, state);
   return { state, error: null };

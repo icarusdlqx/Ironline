@@ -2,6 +2,7 @@ import type { MechLocation } from '../../schema/common';
 import { LOCATIONS } from '../../schema/common';
 import { DesignSchema, type Design } from '../../schema/design';
 import type { Catalog } from '../../schema/load';
+import { migrateDesignWeaponIds } from '../../schema/weaponMigration';
 import { computeLoadout, maximiseArmour as fitArmour } from '../../sim/loadout';
 
 const STORAGE_PREFIX = 'ironline.design.';
@@ -198,7 +199,7 @@ export function parseDesign(text: string): ParseResult {
     return { design: null, error: `not valid JSON: ${(error as Error).message}` };
   }
 
-  const parsed = DesignSchema.safeParse(raw);
+  const parsed = DesignSchema.safeParse(migrateDesignWeaponIds(raw));
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     return {

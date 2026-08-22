@@ -16,11 +16,11 @@
   "heatSinks": 13,
   "mounts": [
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "left_torso"
     },
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "right_torso"
     },
     {
@@ -38,12 +38,12 @@
   ],
   "ammo": [
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "left_torso",
       "tons": 1
     },
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "right_torso",
       "tons": 1
     }

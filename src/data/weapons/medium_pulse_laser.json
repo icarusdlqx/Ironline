@@ -5,10 +5,10 @@
   "type": "energy",
   "tonnage": 2,
   "slots": 2,
-  "damage": 5.5,
+  "damage": 7,
   "projectiles": 1,
-  "heat": 7,
-  "cooldown": 2.0,
+  "heat": 8,
+  "cooldown": 2.5,
   "velocity": null,
   "range": {
     "min": 0,

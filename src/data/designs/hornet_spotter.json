@@ -24,13 +24,13 @@
       "location": "right_arm"
     },
     {
-      "weaponId": "lrm5",
+      "weaponId": "srm2",
       "location": "left_torso"
     }
   ],
   "ammo": [
     {
-      "weaponId": "lrm5",
+      "weaponId": "srm2",
       "location": "left_torso",
       "tons": 1
     }

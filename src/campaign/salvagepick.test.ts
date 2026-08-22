@@ -23,8 +23,8 @@ const countOf = (state: CampaignState, itemId: string): number =>
 describe('choosing what comes home', () => {
   it('swaps the take for a different pick out of the same offer', () => {
     const state = stubState();
-    const offered = offer('medium_laser', 'ac10', 'srm6', 'ppc', 'lrm15');
-    const taken = offer('medium_laser', 'ac10');
+    const offered = offer('medium_laser', 'lbx_ac10', 'srm6', 'ppc', 'mrm20');
+    const taken = offer('medium_laser', 'lbx_ac10');
     for (const item of taken) addToStore(state, item.kind, item.itemId, item.count);
 
     rechooseSalvage(state, report(taken, offered), offer('ppc', 'srm6'));
@@ -32,30 +32,30 @@ describe('choosing what comes home', () => {
     expect(countOf(state, 'ppc')).toBe(1);
     expect(countOf(state, 'srm6')).toBe(1);
     expect(countOf(state, 'medium_laser')).toBe(0);
-    expect(countOf(state, 'ac10')).toBe(0);
+    expect(countOf(state, 'lbx_ac10')).toBe(0);
   });
 
   it('keeps an overlapping pick without double-counting it', () => {
     const state = stubState();
-    const offered = offer('medium_laser', 'ac10', 'ppc');
-    const taken = offer('medium_laser', 'ac10');
+    const offered = offer('medium_laser', 'lbx_ac10', 'ppc');
+    const taken = offer('medium_laser', 'lbx_ac10');
     for (const item of taken) addToStore(state, item.kind, item.itemId, item.count);
 
     rechooseSalvage(state, report(taken, offered), offer('medium_laser', 'ppc'));
 
     expect(countOf(state, 'medium_laser')).toBe(1);
     expect(countOf(state, 'ppc')).toBe(1);
-    expect(countOf(state, 'ac10')).toBe(0);
+    expect(countOf(state, 'lbx_ac10')).toBe(0);
   });
 
   it('refuses anything that was not on the offer, and never overfills the hold', () => {
     const state = stubState();
-    const offered = offer('medium_laser', 'ac10', 'ppc');
+    const offered = offer('medium_laser', 'lbx_ac10', 'ppc');
     const record = report([], offered);
 
     const picked = rechooseSalvage(state, record, [
       ...offer('gauss_rifle'),
-      ...offer('medium_laser', 'ac10', 'ppc'),
+      ...offer('medium_laser', 'lbx_ac10', 'ppc'),
     ]);
 
     expect(picked).toHaveLength(SALVAGE_PICKS);
@@ -77,9 +77,9 @@ describe('choosing what comes home', () => {
 
   it('refuses the whole editable swap when any prior crate is missing', () => {
     const state = stubState();
-    const taken = offer('medium_laser', 'ac10');
+    const taken = offer('medium_laser', 'lbx_ac10');
     addToStore(state, 'weapon', 'medium_laser');
-    const record = report(taken, offer('medium_laser', 'ac10', 'ppc'));
+    const record = report(taken, offer('medium_laser', 'lbx_ac10', 'ppc'));
 
     expect(rechooseSalvage(state, record, offer('ppc'))).toEqual(taken);
     expect(record.items).toEqual(taken);

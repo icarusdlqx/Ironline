@@ -11,6 +11,7 @@ import {
   InvalidBuildError,
   listStoredDesigns,
   loadFromStorage,
+  parseDesign,
   removeMount,
   saveToStorage,
   setName,
@@ -100,31 +101,48 @@ describe('saving to storage', () => {
     expect(() => saveToStorage(catalog, blank)).toThrow(InvalidBuildError);
     expect(listStoredDesigns()).toHaveLength(0);
   });
+
+  it('migrates retired weapon ids in imported and browser-stored builds', () => {
+    const legacy = stock('sentinel_brawler');
+    const mount = legacy.mounts.find((entry) => entry.weaponId === 'ac5');
+    const ammo = legacy.ammo.find((entry) => entry.weaponId === 'ac5');
+    if (mount === undefined || ammo === undefined) throw new Error('missing migration fixture');
+    mount.weaponId = 'light_gauss';
+    ammo.weaponId = 'light_gauss';
+
+    const imported = parseDesign(JSON.stringify(legacy)).design;
+    expect(imported?.mounts.some((entry) => entry.weaponId === 'ac5')).toBe(true);
+    expect(imported?.ammo.some((entry) => entry.weaponId === 'ac5')).toBe(true);
+    expect(imported === null ? null : designIssues(catalog, imported)).toEqual([]);
+
+    globalThis.localStorage.setItem(`ironline.design.${legacy.id}`, JSON.stringify(legacy));
+    expect(loadFromStorage(legacy.id).design).toEqual(imported);
+  });
 });
 
 describe('mounting and ammunition', () => {
   it('takes the ammunition off with the last gun that fed from it', () => {
     let design = stock('sentinel_brawler');
     const mounts = design.mounts.length;
-    design = addMount(design, 'ac2', 'left_torso');
-    design = addAmmo(design, 'ac2', 'left_torso');
+    design = addMount(design, 'machine_gun', 'left_torso');
+    design = addAmmo(design, 'machine_gun', 'left_torso');
 
     design = removeMount(design, design.mounts.length - 1);
     expect(design.mounts).toHaveLength(mounts);
     expect(
-      design.ammo.some((bin) => bin.weaponId === 'ac2'),
+      design.ammo.some((bin) => bin.weaponId === 'machine_gun'),
       'the bin outlived its gun',
     ).toBe(false);
   });
 
   it('keeps a shared bin while a second gun still feeds from it', () => {
     let design = stock('sentinel_brawler');
-    design = addMount(design, 'ac2', 'left_torso');
-    design = addMount(design, 'ac2', 'left_torso');
-    design = addAmmo(design, 'ac2', 'left_torso');
+    design = addMount(design, 'machine_gun', 'left_torso');
+    design = addMount(design, 'machine_gun', 'left_torso');
+    design = addAmmo(design, 'machine_gun', 'left_torso');
 
     design = removeMount(design, design.mounts.length - 1);
-    expect(design.ammo.some((bin) => bin.weaponId === 'ac2')).toBe(true);
+    expect(design.ammo.some((bin) => bin.weaponId === 'machine_gun')).toBe(true);
   });
 });
 

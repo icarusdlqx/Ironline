@@ -219,11 +219,11 @@ Jump jets: 1 ton each, grants a jump of `30m × jetCount`, ignores terrain, gene
 }
 ```
 
-Required weapon families for launch content:
+Current weapon families for launch content:
 
-- **Energy** — Small / Medium / Large Laser; Focused variants (longer range); Burst variants (higher accuracy, higher heat); Arc Projector; Extended Arc Projector; Flamer. No ammo, high heat.
-- **Ballistic** — Machine Gun; Light / Field / Heavy / Siege Autocannon; Canister Cannon (spread, anti-armour); Gauss Rifle (huge damage, low heat, explodes when destroyed). Ammo-dependent, low heat.
-- **Missile** — Shortbow 2/4/6 (short, high damage, spreads); Longshot 5/10/15/20 (indirect fire with spotter, minimum range); Seeker racks (fire only on lock, higher cost); Volley racks (unguided saturation).
+- **Energy** — Small / Medium / Large Laser; Focused Medium / Large variants (longer range, slower cycle); Small / Medium / Large Burst variants (higher accuracy, shorter reach); Arc Projector; Extended Arc Projector; Plasma Rifle; Smelter Laser; Flamer. No ammo, high heat, except the fuel-fed Flamer.
+- **Ballistic** — Machine Gun; Field / Siege Autocannon; Canister Cannon (spread, anti-armour); Gauss Rifle (huge damage, low heat, explodes when destroyed). Ammo-dependent, low heat.
+- **Missile** — Shortbow 2/6 (short, high damage); Longshot 10/20 (long reach and minimum range); Seeker 6 (high accuracy, higher cost); Volley 20 (unguided saturation).
 - **Equipment** — Heat Sink, Compound Heat Sink, Jump Jet, ECM Suite, Deep Scanner, Target Designator, Limpet Beacon, AMS, Blowout Cell, Targeting Computer.
 
 Design intent: **no strictly dominant weapon.** The Gauss Rifle is superb but heavy, expensive, and volatile. The Siege Autocannon hits like a truck at knife range only. Large Lasers are ammo-free but will cook you. Force trade-offs.

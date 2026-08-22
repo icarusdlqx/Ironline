@@ -33,9 +33,7 @@ describe('weapon construction families', () => {
     expect(
       weaponModelFamily(mount({ weaponId: 'flamer', visual: { style: 'flame', colour: '#ffffff', width: 6, arc: 0 } })),
     ).toBe('flame');
-    expect(weaponModelFamily(mount({ weaponId: 'ac10', type: 'ballistic' }))).toBe('cannon');
-    expect(weaponModelFamily(mount({ weaponId: 'rotary_ac2', type: 'ballistic' }))).toBe('rotary-cannon');
-    expect(weaponModelFamily(mount({ weaponId: 'ultra_ac5', type: 'ballistic' }))).toBe('rapid-cannon');
+    expect(weaponModelFamily(mount({ weaponId: 'ac5', type: 'ballistic' }))).toBe('cannon');
     expect(weaponModelFamily(mount({ weaponId: 'lbx_ac10', type: 'ballistic' }))).toBe('scatter-cannon');
     expect(
       weaponModelFamily(mount({ weaponId: 'gauss_rifle', type: 'ballistic', visual: { style: 'slug', colour: '#ffffff', width: 3, arc: 0 } })),
@@ -49,9 +47,6 @@ describe('weapon construction families', () => {
     expect(
       weaponModelFamily(mount({ weaponId: 'srm6', type: 'missile', projectiles: 6 })),
     ).toBe('missile-flat');
-    expect(
-      weaponModelFamily(mount({ weaponId: 'thunderbolt15', type: 'missile', projectiles: 1 })),
-    ).toBe('missile-heavy');
   });
 
   it('draws a rack of tubes as one instance batch', () => {

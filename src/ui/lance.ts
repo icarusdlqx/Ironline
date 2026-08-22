@@ -1,6 +1,7 @@
 import type { Design } from '../schema/design';
 import { DesignSchema } from '../schema/design';
 import type { Catalog } from '../schema/load';
+import { migrateDesignWeaponIds } from '../schema/weaponMigration';
 import type { LanceEntry } from '../sim/world';
 
 /**
@@ -58,7 +59,7 @@ export function loadLance(catalog: Catalog, missionId: string): SkirmishBerth[] 
       }
       // An inline design is player data from an older session: validate it the
       // way a save file is validated, and fall back rather than crash the boot.
-      const design = DesignSchema.safeParse(entry.design);
+      const design = DesignSchema.safeParse(migrateDesignWeaponIds(entry.design));
       if (!design.success) return fallback;
       berths.push({ designId: null, design: design.data, pilotId: entry.pilotId });
     }
