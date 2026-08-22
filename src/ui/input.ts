@@ -4,6 +4,7 @@ import type { Engine } from './engine';
 import { useGame } from './store';
 import { TouchInput } from './touchInput';
 import { isInteractiveKeyTarget, shouldIgnoreBattleKey } from './battleKeyboard';
+import { arrowPanDelta } from './cameraNavigation';
 
 /** How far off a mech, in screen pixels, a click still counts as hitting it. */
 const PICK_RADIUS = 34;
@@ -656,19 +657,11 @@ export function attachInput(engine: Engine, canvas: HTMLCanvasElement): () => vo
     // A is an order key now (attack-move), so panning lives on the arrows
     // alone: half of WASD stealing the map while the other half gives orders
     // would be worse than either scheme.
-    let dx = 0;
-    let dy = 0;
-    if (held.has('ArrowLeft')) dx -= 1;
-    if (held.has('ArrowRight')) dx += 1;
-    if (held.has('ArrowUp')) dy -= 1;
-    if (held.has('ArrowDown')) dy += 1;
-
     if (battleFinished()) held.clear();
-    if (!battleFinished() && (dx !== 0 || dy !== 0)) {
-      const speed = PAN_SPEED * delta * (engine.renderer.camera.distance / 620);
-      // Screen-space directions, so the keys keep meaning the same thing on
-      // screen after the camera has been swung round.
-      engine.renderer.camera.panBy(dx * speed, -dy * speed);
+    const speed = PAN_SPEED * delta * (engine.renderer.camera.distance / 620);
+    const pan = arrowPanDelta(held, speed);
+    if (!battleFinished() && (pan.x !== 0 || pan.y !== 0)) {
+      engine.renderer.camera.panBy(pan.x, pan.y);
     }
 
     // Hover and the cursor's ground point, once per frame from wherever the

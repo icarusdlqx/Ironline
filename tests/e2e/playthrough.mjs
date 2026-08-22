@@ -69,6 +69,34 @@ const sim = (page) =>
     };
   });
 
+async function arrowCameraShift(page, key) {
+  const before = await page.evaluate(() => {
+    const { engine, world } = globalThis.__ironline;
+    const { camera, viewport } = engine.renderer;
+    camera.centreOn({
+      x: (world.terrain.width * world.terrain.tileSize) / 2,
+      y: (world.terrain.height * world.terrain.tileSize) / 2,
+    });
+    camera.update(viewport);
+    return { ...camera.target };
+  });
+
+  await clearControlFocus(page);
+  await page.keyboard.down(key);
+  await sleep(220);
+  await page.keyboard.up(key);
+
+  return page.evaluate((previousTarget) => {
+    const { camera, viewport } = globalThis.__ironline.engine.renderer;
+    camera.update(viewport);
+    const previousOnScreen = camera.worldToScreen(previousTarget, viewport);
+    return {
+      x: previousOnScreen.x - viewport.width / 2,
+      y: previousOnScreen.y - viewport.height / 2,
+    };
+  }, before);
+}
+
 async function main() {
   mkdirSync(SHOTS, { recursive: true });
 
@@ -360,14 +388,6 @@ async function main() {
         ),
       };
     }, zoomPointer);
-    await clearControlFocus(page);
-    await page.keyboard.down('ArrowRight');
-    await sleep(400);
-    await page.keyboard.up('ArrowRight');
-    const after = await page.evaluate(() => {
-      const { camera } = globalThis.__ironline.engine.renderer;
-      return { target: { ...camera.target }, distance: camera.distance };
-    });
     // Zooming in pulls the eye closer: wheel-up shrinks the camera distance.
     check(
       'wheel zooms the camera',
@@ -381,10 +401,31 @@ async function main() {
         afterZoom.anchor.y - before.anchor.y,
       ) < 1,
     );
+    const arrowShifts = {
+      ArrowLeft: await arrowCameraShift(page, 'ArrowLeft'),
+      ArrowRight: await arrowCameraShift(page, 'ArrowRight'),
+      ArrowUp: await arrowCameraShift(page, 'ArrowUp'),
+      ArrowDown: await arrowCameraShift(page, 'ArrowDown'),
+    };
     check(
-      'arrow keys pan the camera',
-      after.target.x !== afterZoom.target.x,
-      `${afterZoom.target.x} → ${after.target.x}`,
+      'left arrow moves the view left',
+      arrowShifts.ArrowLeft.x > 5 && Math.abs(arrowShifts.ArrowLeft.y) < 1,
+      JSON.stringify(arrowShifts.ArrowLeft),
+    );
+    check(
+      'right arrow moves the view right',
+      arrowShifts.ArrowRight.x < -5 && Math.abs(arrowShifts.ArrowRight.y) < 1,
+      JSON.stringify(arrowShifts.ArrowRight),
+    );
+    check(
+      'up arrow moves the view up',
+      arrowShifts.ArrowUp.y > 5 && Math.abs(arrowShifts.ArrowUp.x) < 1,
+      JSON.stringify(arrowShifts.ArrowUp),
+    );
+    check(
+      'down arrow moves the view down',
+      arrowShifts.ArrowDown.y < -5 && Math.abs(arrowShifts.ArrowDown.x) < 1,
+      JSON.stringify(arrowShifts.ArrowDown),
     );
 
     const centreError = async () =>
