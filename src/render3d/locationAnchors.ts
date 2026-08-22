@@ -1,11 +1,13 @@
 import { Mesh, Object3D, Vector3 } from 'three';
 import { LOCATIONS, type MechLocation } from '../schema/common';
+import { blueprintDetailOf } from './modelDetail';
 
 export type LocationAnchors = Partial<Record<MechLocation, Mesh[]>>;
 
 const PART_AT = new Vector3();
 
 function damageLocation(node: Object3D): MechLocation | null {
+  if (blueprintDetailOf(node) !== 'structure') return null;
   const value = node.userData.damageLocation;
   if (typeof value !== 'string') return null;
   return LOCATIONS.includes(value as MechLocation) ? (value as MechLocation) : null;

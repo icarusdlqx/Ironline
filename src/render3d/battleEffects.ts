@@ -10,6 +10,7 @@ import { JetLayer, ScarLayer, SmokeLayer } from './effects';
 import { measureReadoutLayout } from './readoutSafeArea';
 import { TracerLayer } from './tracers';
 import { MechanicalDischargeLayer } from './mechanicalEffects';
+import { disposeObjectResources } from './sceneResources';
 
 interface MuzzleFlash {
   light: PointLight;
@@ -61,6 +62,7 @@ export class BattleEffects {
   private readonly canLocate: BattleFeedbackBindings['canLocate'];
   private readonly currentPositionOf: (id: EntityId) => Vec2 | null;
   private readonly readouts: CombatReadouts | null;
+  private destroyed = false;
 
   constructor(
     private readonly scene: Scene,
@@ -234,9 +236,28 @@ export class BattleEffects {
   }
 
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.readouts?.destroy();
-    this.scene.remove(this.mechanical.casings, this.mechanical.vents);
+    this.scene.remove(
+      this.tracers.group,
+      this.jets.group,
+      this.smoke.mesh,
+      this.scars.mesh,
+      this.mechanical.casings,
+      this.mechanical.vents,
+    );
+    this.tracers.dispose();
+    this.jets.dispose();
+    this.smoke.dispose();
+    this.scars.dispose();
     this.mechanical.dispose();
+    for (const flash of this.flashes) {
+      this.scene.remove(flash.light);
+      disposeObjectResources(flash.light);
+    }
+    this.flashes.length = 0;
+    this.camera.shake.set(0, 0, 0);
   }
 
   private locationOf(id: EntityId, location: MechLocation, out: Vector3): boolean {

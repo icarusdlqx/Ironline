@@ -20,6 +20,7 @@ import {
   type ProjectileTrack,
   type ShotStyle,
 } from './projectilePresentation';
+import { disposeObjectResources } from './sceneResources';
 
 interface Effect {
   mesh: Mesh | InstancedMesh;
@@ -372,6 +373,12 @@ export class TracerLayer {
       }
       effect.material.opacity = effect.opacity * (1 - spent);
     }
+  }
+
+  dispose(): void {
+    disposeObjectResources(this.group);
+    this.group.clear();
+    this.live.length = 0;
   }
 }
 

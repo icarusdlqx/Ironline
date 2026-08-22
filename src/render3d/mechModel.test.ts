@@ -4,6 +4,20 @@ import { catalog } from '../../tests/support';
 import { buildMechModel, disposeModel } from './mechModel';
 import { advanceStartupSequence } from './startupLights';
 import { poseLoosePanels } from './damagedPanels';
+import { HERO_MECH_RENDER } from './renderQuality';
+
+function blueprintTopology(root: Group): { meshes: number; triangles: number } {
+  let meshes = 0;
+  let triangles = 0;
+  root.traverse((node) => {
+    if (!(node instanceof Mesh) || typeof node.userData.blueprintDetail !== 'string') return;
+    meshes += 1;
+    triangles += node.geometry.index === null
+      ? node.geometry.getAttribute('position').count / 3
+      : node.geometry.index.count / 3;
+  });
+  return { meshes, triangles };
+}
 
 describe('mech model resources', () => {
   it('disposes shared and unattached owned resources once', () => {
@@ -53,6 +67,38 @@ describe('mech model resources', () => {
       expect(leg.ankle.children.length).toBeGreaterThan(0);
     }
     disposeModel(model.root);
+  });
+
+  it('preserves tactical topology while the inspection model spends more triangles', () => {
+    const chassis = catalog.chassis.get('sentinel_snl2');
+    expect(chassis).toBeDefined();
+    if (chassis === undefined) return;
+    const build = (hero: boolean) => buildMechModel(
+      chassis.silhouette,
+      chassis.traits,
+      chassis.tonnage,
+      0x78c9ff,
+      false,
+      [],
+      new Set(),
+      chassis.hardpoints,
+      chassis.id,
+      {},
+      chassis.faction,
+      hero ? HERO_MECH_RENDER : undefined,
+    );
+    const tactical = build(false);
+    const hero = build(true);
+
+    try {
+      expect(blueprintTopology(tactical.root)).toEqual({ meshes: 19, triangles: 1628 });
+      expect(tactical.root.userData.modelDetail).toBe('structure');
+      expect(blueprintTopology(hero.root)).toEqual({ meshes: 19, triangles: 2996 });
+      expect(hero.root.userData.modelDetail).toBe('hero');
+    } finally {
+      disposeModel(tactical.root);
+      disposeModel(hero.root);
+    }
   });
 
   it('pulls one coarse welded panel loose at a breached location', () => {

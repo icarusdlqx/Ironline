@@ -7,6 +7,7 @@ import type { Blueprint, Bones, HardpointMap, Plan } from './blueprint/types';
 
 export type {
   Blueprint,
+  BlueprintDetail,
   BlueprintPart,
   HardpointCount,
   HardpointMap,

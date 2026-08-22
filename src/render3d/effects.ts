@@ -13,6 +13,7 @@ import {
   Vector3,
 } from 'three';
 import type { Vec2 } from '../sim/types';
+import { disposeObjectResources } from './sceneResources';
 
 /** Parked off-screen by being scaled to nothing, the way the prop layer hides. */
 const HIDDEN = new Matrix4().makeScale(0, 0, 0);
@@ -97,6 +98,14 @@ export class JetLayer {
       const slot = this.slots[index];
       if (slot !== undefined) slot.mesh.visible = false;
     }
+  }
+
+  dispose(): void {
+    disposeObjectResources(this.group);
+    this.group.clear();
+    this.slots.length = 0;
+    this.phase.length = 0;
+    this.used.clear();
   }
 }
 
@@ -195,6 +204,13 @@ export class SmokeLayer {
     this.mesh.instanceMatrix.needsUpdate = true;
     if (this.mesh.instanceColor !== null) this.mesh.instanceColor.needsUpdate = true;
   }
+
+  dispose(): void {
+    disposeObjectResources(this.mesh);
+    this.columns.length = 0;
+    this.age.length = 0;
+    this.mesh.count = 0;
+  }
 }
 
 /**
@@ -238,5 +254,10 @@ export class ScarLayer {
 
     this.mesh.instanceMatrix.needsUpdate = true;
     if (this.mesh.instanceColor !== null) this.mesh.instanceColor.needsUpdate = true;
+  }
+
+  dispose(): void {
+    disposeObjectResources(this.mesh);
+    this.mesh.count = 0;
   }
 }

@@ -1,9 +1,7 @@
 import {
-  ACESFilmicToneMapping,
   Mesh,
   MeshBasicMaterial,
   Object3D,
-  PCFSoftShadowMap,
   PlaneGeometry,
   Scene,
   Vector3,
@@ -25,6 +23,13 @@ import { FogLayer } from './fog';
 import { Locomotion } from './locomotion';
 import { MarkerLayer, type MarkerViewState } from './markerLayer';
 import { PropLayer } from './props';
+import {
+  configureRenderer,
+  disposeObjectResources,
+  disposeRenderer,
+  rendererStats,
+  type RendererStats,
+} from './sceneResources';
 import { buildTerrain, type TerrainMesh } from './terrain';
 import { UnitViews } from './unitViews';
 
@@ -58,6 +63,7 @@ export class Renderer {
   private readonly markers: MarkerLayer;
   private readonly host: HTMLElement;
   private visionTick = -1;
+  private destroyed = false;
 
   lowFx = readLowFx();
 
@@ -65,10 +71,7 @@ export class Renderer {
     this.mapData = mapData;
     this.host = host;
     this.renderer = new WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(this.lowFx ? 1 : Math.min(1.5, globalThis.devicePixelRatio ?? 1));
-    this.renderer.shadowMap.enabled = !this.lowFx;
-    this.renderer.shadowMap.type = PCFSoftShadowMap;
-    this.renderer.toneMapping = ACESFilmicToneMapping;
+    configureRenderer(this.renderer, this.lowFx, globalThis.devicePixelRatio ?? 1);
 
     const mapWidth = world.terrain.width * world.terrain.tileSize;
     const mapHeight = world.terrain.height * world.terrain.tileSize;
@@ -148,7 +151,11 @@ export class Renderer {
   }
 
   get drawCalls(): number {
-    return this.renderer.info.render.calls;
+    return this.renderStats.calls;
+  }
+
+  get renderStats(): RendererStats {
+    return rendererStats(this.renderer.info);
   }
 
   get viewport(): Viewport {
@@ -174,8 +181,7 @@ export class Renderer {
     } catch {
       // Private browsing; the preference lasts for the session.
     }
-    this.renderer.shadowMap.enabled = !low;
-    this.renderer.setPixelRatio(low ? 1 : Math.min(1.5, globalThis.devicePixelRatio ?? 1));
+    configureRenderer(this.renderer, low, globalThis.devicePixelRatio ?? 1);
     this.resize();
     this.scene.traverse((node) => {
       const mesh = node as Mesh;
@@ -192,10 +198,20 @@ export class Renderer {
   }
 
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
     this.effects.destroy();
     this.units.dispose();
     this.markers.dispose();
-    this.renderer.dispose();
+    this.scene.remove(this.markers.group, this.fog.mesh, this.props.group);
+    this.fog.dispose();
+    this.props.dispose();
+    disposeObjectResources(this.scene);
+    this.scene.clear();
+    this.scene.background = null;
+    this.scene.environment = null;
+    this.scene.fog = null;
+    disposeRenderer(this.renderer);
     this.renderer.domElement.remove();
   }
 

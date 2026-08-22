@@ -8,6 +8,7 @@ import {
 } from 'three';
 import type { TerrainGrid } from '../sim/terrain';
 import type { TeamVision } from '../sim/sensors';
+import { disposeObjectResources } from './sceneResources';
 
 /** How far above the ground the shroud floats, to keep it off the terrain. */
 const LIFT = 0.6;
@@ -127,5 +128,9 @@ export class FogLayer {
       }
     }
     if (changed) this.colours.needsUpdate = true;
+  }
+
+  dispose(): void {
+    disposeObjectResources(this.mesh);
   }
 }

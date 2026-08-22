@@ -1,17 +1,15 @@
 import {
-  BufferGeometry,
-  CylinderGeometry,
   Group,
   Material,
   Mesh,
   MeshStandardMaterial,
   Object3D,
   SphereGeometry,
+  type BufferGeometry,
 } from 'three';
-import { armourShell, chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
 import type { Faction } from '../schema/faction';
-import { chassisBlueprint, type BlueprintPart, type HardpointMap } from '../render/blueprint';
+import { chassisBlueprint, type HardpointMap } from '../render/blueprint';
 import type { Silhouette } from '../render/shape';
 import { radiusFor } from '../render/shape';
 import type { DamageWearTier } from './damageLedger';
@@ -34,6 +32,9 @@ import {
 } from './machineCulture';
 import type { StartupLightRig } from './startupLights';
 import type { LoosePanelRig } from './damagedPanels';
+import { castsMechShadow, geometryForBlueprintPart } from './mechGeometry';
+import { applyModelDetail, markBlueprintDetail } from './modelDetail';
+import { TACTICAL_MECH_RENDER, type MechRenderOptions } from './renderQuality';
 
 export type { MountArt } from './weaponModels';
 
@@ -85,45 +86,6 @@ export interface MechModel {
 }
 
 /**
- * Whether a part is worth a place in the shadow pass. A mech is dozens of
- * plates, and every caster is another draw call when the sun renders its
- * map — but the shadow a fist-sized greeble throws is invisible at tactical
- * zoom. Only the slabs that make the silhouette pay their way.
- */
-const SHADOW_CASTER_MIN_RADIUS = 2.4;
-
-function castsShadow(mesh: Mesh): boolean {
-  const geometry = mesh.geometry;
-  if (geometry.boundingSphere === null) geometry.computeBoundingSphere();
-  return (geometry.boundingSphere?.radius ?? 0) >= SHADOW_CASTER_MIN_RADIUS;
-}
-
-function geometryFor(part: BlueprintPart, scale: number): BufferGeometry {
-  const [w, h, d] = part.size;
-  // A shaped plate is cut to its own outline. Everything else falls back to
-  // the primitives, so a part only pays for a profile when it earns one.
-  if (part.profile !== undefined && part.transverse !== undefined) {
-    return armourShell(
-      part.profile.map(([x, y]) => [x * w * scale, y * h * scale] as [number, number]),
-      d * scale,
-      part.transverse,
-    );
-  }
-  if (part.profile !== undefined) {
-    return hullSlab(
-      part.profile.map(([x, y]) => [x * w * scale, y * h * scale] as [number, number]),
-      d * scale,
-    );
-  }
-  if (part.shape === 'cylinder') {
-    return new CylinderGeometry((w * scale) / 2, (w * scale) / 2, h * scale, 12);
-  }
-  if (part.shape === 'sphere') return new SphereGeometry((w * scale) / 2, 16, 12);
-  if (part.shape === 'limb') return taperedLimb((w * scale) / 2, (d * scale) / 2, h * scale);
-  return chamferedBox(w * scale, h * scale, d * scale);
-}
-
-/**
  * The mech as the blueprint describes it, at battlefield scale. The blueprint
  * is shared with the mechbay, so the machine the player kits out in the bay is
  * the same shape as the one that walks onto the field.
@@ -145,6 +107,7 @@ export function buildMechModel(
   identity: string | null = null,
   wear: Readonly<Partial<Record<MechLocation, DamageWearTier>>> = {},
   faction: Faction = 'linewrought',
+  options: Readonly<MechRenderOptions> = TACTICAL_MECH_RENDER,
 ): MechModel {
   const scale = radiusFor(tonnage);
   const plan = chassisBlueprint(shape, traits, fit, identity);
@@ -224,7 +187,10 @@ export function buildMechModel(
       : tier === 1 && worn !== null
         ? worn
         : tones;
-    const mesh = new Mesh(geometryFor(part, scale), gone ? burnt[part.tone] : finish[part.tone]);
+    const mesh = new Mesh(
+      geometryForBlueprintPart(part, scale, options.geometry),
+      gone ? burnt[part.tone] : finish[part.tone],
+    );
     mesh.userData.damageLocation = part.location;
     mesh.position.set(part.at[0] * scale, part.at[1] * scale, part.at[2] * scale);
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
@@ -248,7 +214,8 @@ export function buildMechModel(
       });
       loosened.add(part.location);
     }
-    mesh.castShadow = castsShadow(mesh);
+    mesh.castShadow = castsMechShadow(mesh);
+    markBlueprintDetail(mesh, part.detail);
 
     const running = part.location === 'left_leg' || part.location === 'right_leg';
 
@@ -318,7 +285,7 @@ export function buildMechModel(
     const heft = 0.5 + Math.min(1, mount.tonnage / 14);
     const weapon = buildWeaponModel(mount, heft, scale, material, boreMaterial);
     weapon.root.traverse((child) => {
-      if (child instanceof Mesh) child.castShadow = castsShadow(child);
+      if (child instanceof Mesh) child.castShadow = castsMechShadow(child);
     });
 
     const hardpoint = new Group();
@@ -334,6 +301,7 @@ export function buildMechModel(
 
   torso.position.y = plan.torsoY * scale;
   root.add(torso);
+  applyModelDetail(root, options.detail);
   root.userData.ownedMaterials = ownedMaterials;
 
   return {
