@@ -1,0 +1,38 @@
+{
+  "id": "obsequy_vigil",
+  "name": "Obsequy OBQ-3 'Vigil'",
+  "chassisId": "obsequy_obq3",
+  "armour": {
+    "head": 26,
+    "centre_torso": 180,
+    "left_torso": 120,
+    "right_torso": 120,
+    "left_arm": 60,
+    "right_arm": 60,
+    "left_leg": 77,
+    "right_leg": 77
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 29,
+  "mounts": [
+    {
+      "weaponId": "er_ppc",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "ppc",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "ppc",
+      "location": "centre_torso"
+    }
+  ],
+  "ammo": [],
+  "equipment": [
+    {
+      "equipmentId": "active_probe",
+      "location": "right_torso"
+    }
+  ]
+}

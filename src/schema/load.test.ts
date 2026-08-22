@@ -49,6 +49,38 @@ describe('content catalog', () => {
     expect(factions).toEqual({ aurelian: 12, linewrought: 12 });
   });
 
+  it('fields two chassis per class in each machine culture', () => {
+    const classes = ['light', 'medium', 'heavy', 'assault'] as const;
+    for (const faction of FactionSchema.options) {
+      const roster = [...catalog.chassis.values()].filter((chassis) => chassis.faction === faction);
+      expect(roster, faction).toHaveLength(8);
+      expect(
+        Object.fromEntries(
+          classes.map((chassisClass) => [
+            chassisClass,
+            roster.filter((chassis) => chassis.class === chassisClass).length,
+          ]),
+        ),
+      ).toEqual({ light: 2, medium: 2, heavy: 2, assault: 2 });
+    }
+  });
+
+  it('makes captured weapons the awkward hardpoint choice', () => {
+    for (const chassis of catalog.chassis.values()) {
+      const totals = Object.values(chassis.hardpoints).reduce(
+        (sum, location) => ({
+          energy: sum.energy + location.energy,
+          shopwork: sum.shopwork + location.ballistic + location.missile,
+        }),
+        { energy: 0, shopwork: 0 },
+      );
+      const native = chassis.faction === 'aurelian' ? totals.energy : totals.shopwork;
+      const captured = chassis.faction === 'aurelian' ? totals.shopwork : totals.energy;
+      expect(native, chassis.id).toBeGreaterThan(captured);
+      expect(captured, chassis.id).toBeGreaterThan(0);
+    }
+  });
+
   it('assigns weapon source by construction', () => {
     for (const weapon of catalog.weapons.values()) {
       const expected = weapon.type === 'energy' && weapon.id !== 'flamer' ? 'aurelian' : 'linewrought';

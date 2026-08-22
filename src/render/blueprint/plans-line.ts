@@ -1,4 +1,7 @@
 import { PROFILES } from './profiles';
+import { obsequyPlan, pallvaultPlan } from './plans-aurelian-assault';
+import { wardenSealedPlan } from './plans-aurelian-heavy';
+import { falchionSealedPlan, sentinelSealedPlan } from './plans-aurelian-medium';
 import {
   aerials,
   armoured,
@@ -15,6 +18,10 @@ import type { BlueprintPart, Plan } from './types';
 
 /** The baseline soldier stays plain enough that the specialists read against it. */
 export const humanoidPlan: Plan = (b, has, fit, identity) => {
+  if (identity === 'sentinel_snl2') return sentinelSealedPlan(b, has, fit, identity);
+  if (identity === 'falchion_fal2') return falchionSealedPlan(b, has, fit, identity);
+  if (identity === 'obsequy_obq3') return obsequyPlan(b, has, fit, identity);
+
   const sentinel = identity === 'sentinel_snl2';
   const parts: BlueprintPart[] = [];
   for (const side of [-1, 1]) walkerLeg(parts, b, side, sentinel ? 0.66 : 0.5);
@@ -102,7 +109,9 @@ export const humanoidPlan: Plan = (b, has, fit, identity) => {
 };
 
 /** A sunk visor and short arms keep the brawler's weight in its chest. */
-export const brawlerPlan: Plan = (b, has, fit) => {
+export const brawlerPlan: Plan = (b, has, fit, identity) => {
+  if (identity === 'warden_wrd5') return wardenSealedPlan(b, has, fit, identity);
+
   const parts: BlueprintPart[] = [];
   for (const side of [-1, 1]) walkerLeg(parts, b, side, 0.56);
   hips(parts, b, 1.05);
@@ -152,7 +161,9 @@ export const brawlerPlan: Plan = (b, has, fit) => {
 };
 
 /** The walking bunker carries its weapons in a turret instead of arms. */
-export const bastionPlan: Plan = (b, has, fit) => {
+export const bastionPlan: Plan = (b, has, fit, identity) => {
+  if (identity === 'pallvault_plv1') return pallvaultPlan(b, has, fit, identity);
+
   const parts: BlueprintPart[] = [];
   for (const side of [-1, 1]) walkerLeg(parts, b, side, 0.72);
   hips(parts, b, 1.3);

@@ -1,0 +1,37 @@
+{
+  "id": "pallvault_procession",
+  "name": "Pallvault PLV-1 'Procession'",
+  "chassisId": "pallvault_plv1",
+  "armour": {
+    "head": 29,
+    "centre_torso": 175,
+    "left_torso": 119,
+    "right_torso": 119,
+    "left_arm": 46,
+    "right_arm": 46,
+    "left_leg": 83,
+    "right_leg": 83
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 27,
+  "mounts": [
+    {
+      "weaponId": "large_pulse_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "large_pulse_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "medium_pulse_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "medium_pulse_laser",
+      "location": "right_arm"
+    }
+  ],
+  "ammo": [],
+  "equipment": []
+}

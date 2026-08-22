@@ -1,4 +1,5 @@
 import { PROFILES } from './profiles';
+import { halberdSealedPlan } from './plans-aurelian-heavy';
 import {
   aerials,
   fittingFor,
@@ -72,7 +73,9 @@ export const siegePlan: Plan = (b, has, fit) => {
 };
 
 /** The shoulder pods have to dominate a carrier even when it is standing still. */
-export const battlePlan: Plan = (b, has, fit) => {
+export const battlePlan: Plan = (b, has, fit, identity) => {
+  if (identity === 'halberd_hlb4') return halberdSealedPlan(b, has, fit, identity);
+
   const parts: BlueprintPart[] = [];
   for (const side of [-1, 1]) birdLeg(parts, b, side, 0.66);
   hips(parts, b, 0.9);

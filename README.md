@@ -89,7 +89,7 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   called shots at the legs to leave salvage on the field, withdrawal and
   disengagement, and four difficulty tiers that change behaviour and pilot skill
   but never hit points or damage. Torso twist so guns bear independently of the
-  hull. Content pass to twenty-four weapons, ten equipment items and thirteen
+  hull. Content pass to twenty-four weapons, ten equipment items and sixteen
   chassis spanning 25 to 100 tons. `npm run sim` reports damage-per-ton-per-heat
   against each class median.
 - **Setting.** IRONLINE is set on Tessell, where a departed colonial Compact left

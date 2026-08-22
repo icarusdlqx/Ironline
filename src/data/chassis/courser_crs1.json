@@ -19,14 +19,14 @@
     },
     "centre_torso": {
       "energy": 1,
-      "ballistic": 1,
+      "ballistic": 2,
       "missile": 0,
       "slots": 4,
       "size": 2
     },
     "left_torso": {
       "energy": 1,
-      "ballistic": 0,
+      "ballistic": 1,
       "missile": 0,
       "slots": 3,
       "size": 1
@@ -34,7 +34,7 @@
     "right_torso": {
       "energy": 1,
       "ballistic": 0,
-      "missile": 0,
+      "missile": 1,
       "slots": 3,
       "size": 1
     },

@@ -31,7 +31,7 @@
       "size": 3
     },
     "right_torso": {
-      "energy": 0,
+      "energy": 2,
       "ballistic": 1,
       "missile": 0,
       "slots": 6,
@@ -94,7 +94,7 @@
     "legLength": 1.0,
     "stance": 1.0
   },
-  "summary": "The line's workhorse medium. Balanced, unremarkable, and everywhere.",
-  "lore": "The SNL frame was Compact garrison equipment, built in numbers that mean there is still a Sentinel in every bay on the continent. Nothing about it is exceptional, which is precisely the appeal: parts are cheap, the hardpoints take almost anything, and a lance commander who loses one can usually replace it inside a month. Two Sentinels of the same mark can be completely different machines, and usually are.",
+  "summary": "The common sealed medium. Balanced outside, inaccessible within and never quite replaceable.",
+  "lore": "More SNL bays have been opened than any other Aurelian store, which is why the Sentinel is mistaken for an ordinary machine. It is not. Six flat interfaces accept clamps and cable trunks without opening the hull, so shops hang local weapons around a shell they cannot service. That makes two Sentinels look different while the machine beneath remains exactly the same. When an internal part fails, a common Sentinel becomes a common source of parts.",
   "traits": []
 }
