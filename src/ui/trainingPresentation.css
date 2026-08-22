@@ -1,0 +1,108 @@
+.training-briefing-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  background: rgba(71, 190, 180, 0.08);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.briefing-actions.training-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.briefing-actions.training-actions .secondary {
+  border-color: var(--edge);
+  color: var(--muted);
+}
+
+.training-bottombar {
+  right: 12px;
+}
+
+.training-topbar .mission {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-heat {
+  width: min(360px, 100%);
+  padding: 9px 11px;
+  border: 1px solid var(--warn);
+  border-radius: 5px;
+  background: rgba(9, 12, 16, 0.94);
+}
+
+.training-heat > span,
+.training-heat > strong,
+.training-heat > small {
+  display: block;
+}
+
+.training-heat > span {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.training-heat > strong {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.training-heat-track {
+  height: 6px;
+  margin: 7px 0 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.training-heat-track i {
+  display: block;
+  height: 100%;
+  background: var(--warn);
+}
+
+.training-heat > small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .mobile-topbar.training-topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .mobile-dock.training-progressive {
+    grid-template-rows: 58px 44px minmax(0, 1fr);
+  }
+
+  .mobile-dock.training-select {
+    height: 58px;
+    grid-template-rows: 58px;
+  }
+
+  .mobile-dock-tabs.training-tabs-1 {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-dock-tabs.training-tabs-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-dock-tabs.training-tabs-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobile-tray .training-heat {
+    width: auto;
+    height: 100%;
+    box-sizing: border-box;
+    border: 0;
+  }
+}

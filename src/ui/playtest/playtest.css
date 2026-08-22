@@ -1,0 +1,226 @@
+.playtest-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 7, 10, 0.84);
+  pointer-events: auto;
+}
+
+.playtest-dialog {
+  width: min(720px, 100%);
+  max-height: min(860px, calc(100dvh - 48px));
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  background: rgba(13, 17, 21, 0.98);
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.56);
+  color: var(--text);
+}
+
+.playtest-dialog > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.playtest-dialog h2 {
+  margin: 3px 0 0;
+  color: var(--accent);
+  font-size: 22px;
+}
+
+.playtest-dialog button,
+.playtest-dialog textarea {
+  font: inherit;
+}
+
+.playtest-dialog button {
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: rgba(17, 25, 31, 0.98);
+  color: var(--text);
+}
+
+.playtest-dialog button:hover,
+.playtest-dialog button:focus-visible {
+  border-color: var(--accent);
+}
+
+.playtest-dialog button.secondary {
+  color: var(--muted);
+}
+
+.playtest-dialog button.danger {
+  border-color: rgba(255, 138, 107, 0.66);
+  color: var(--danger);
+}
+
+.playtest-consent {
+  width: min(560px, 100%);
+}
+
+.playtest-kicker,
+.playtest-note-preview > span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.playtest-privacy {
+  margin: 16px 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  background: rgba(140, 224, 255, 0.06);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.playtest-warning {
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 192, 97, 0.4);
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.playtest-rating,
+.playtest-choices,
+.playtest-confusion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 15px 0;
+  padding: 12px;
+  border: 1px solid var(--edge);
+}
+
+.playtest-rating legend,
+.playtest-choices legend,
+.playtest-confusion legend {
+  padding: 0 5px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.playtest-rating label,
+.playtest-choices label,
+.playtest-confusion label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid rgba(140, 224, 255, 0.11);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.playtest-rating label:has(input:checked),
+.playtest-choices label:has(input:checked),
+.playtest-confusion label:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(140, 224, 255, 0.08);
+}
+
+.playtest-scale-label {
+  align-self: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.playtest-note,
+.playtest-copy-fallback {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+.playtest-note textarea,
+.playtest-copy-fallback textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 9px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: rgba(5, 8, 11, 0.9);
+  color: var(--text);
+  user-select: text;
+}
+
+.playtest-note-preview {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.playtest-note-preview p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.playtest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.playtest-status {
+  margin: 12px 0 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-width: 1100px) {
+  .playtest-backdrop {
+    align-items: stretch;
+    padding: calc(8px + env(safe-area-inset-top))
+      calc(8px + env(safe-area-inset-right))
+      calc(8px + env(safe-area-inset-bottom))
+      calc(8px + env(safe-area-inset-left));
+  }
+
+  .playtest-dialog {
+    max-height: 100%;
+    padding: 15px;
+  }
+
+  .playtest-dialog button,
+  .playtest-rating label,
+  .playtest-choices label,
+  .playtest-confusion label {
+    min-height: 44px;
+  }
+
+  .playtest-rating,
+  .playtest-choices,
+  .playtest-confusion {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .playtest-rating legend,
+  .playtest-choices legend,
+  .playtest-confusion legend {
+    grid-column: 1 / -1;
+  }
+
+  .playtest-scale-label {
+    display: none;
+  }
+
+  .playtest-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

@@ -73,6 +73,7 @@ interface Props {
   /** The standing order the selected mech is following. */
   posture: string;
   leading?: ReactNode;
+  visibleCommandIds?: ReadonlySet<string> | null;
   onCommand: (command: Command) => void;
 }
 
@@ -93,12 +94,18 @@ export function CommandPalette({
   jump,
   posture,
   leading,
+  visibleCommandIds = null,
   onCommand,
 }: Props) {
+  const commands =
+    visibleCommandIds === null
+      ? COMMANDS
+      : COMMANDS.filter((command) => visibleCommandIds.has(command.id));
+
   return (
     <div className="palette" data-testid="command-palette">
       {leading}
-      {COMMANDS.map((command) => {
+      {commands.map((command) => {
         const timed =
           command.id === 'ability' ? ability : command.id === 'alpha_strike' ? alpha : null;
         const active =

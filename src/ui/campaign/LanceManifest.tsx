@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import type { Catalog } from '../../schema/load';
 import { dropTeam, dropTonnageFor, missionSlots } from '../../campaign/campaign';
 import { employerNameFor } from '../../campaign/employers';
@@ -6,6 +7,7 @@ import { assign } from '../../campaign/roster';
 import { isPilotAvailable, type CampaignState, type PilotRecord } from '../../campaign/types';
 import { PilotStats } from '../PilotStats';
 import { ContractBriefing } from './ContractBriefing';
+import { useDialogFocus } from '../useDialogFocus';
 
 interface Props {
   catalog: Catalog;
@@ -27,6 +29,11 @@ interface Props {
  * the campaign is actually about.
  */
 export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRefit }: Props) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
+  const close = useCallback(() => cancelRef.current(), []);
+  useDialogFocus(dialogRef, dialogRef, close);
   const contract = state.contract;
   if (contract === null) return null;
 
@@ -68,9 +75,16 @@ export function LanceManifest({ catalog, state, mutate, onLaunch, onCancel, onRe
 
   return (
     <div className="manifest-backdrop" data-testid="lance-manifest">
-      <section className="manifest">
+      <section
+        className="manifest"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manifest-title"
+        tabIndex={-1}
+      >
         <header>
-          <h3>Dropship manifest</h3>
+          <h3 id="manifest-title">Dropship manifest</h3>
           <p>
             {mission?.name ?? contract.missionId} — {employer}.
           </p>

@@ -11,6 +11,7 @@ import { briefingLanceFor } from './briefingLance';
 import { createEngine, type Engine } from './engine';
 import {
   berthDesign,
+  defaultLance,
   lanceEntries,
   loadLance,
   storeLance,
@@ -20,21 +21,29 @@ import { Mechbay, type BayCommission } from './mechbay/Mechbay';
 import { ObjectiveList } from './ObjectiveList';
 import { BriefingSetup } from './BattleSetup';
 import { difficultyChoices, type BattleSetupKey } from './battleSetupState';
+import { usePlaytest } from './playtest';
 import { useGame } from './store';
 import { buildSupportOptions } from './supportOptions';
 import { BattleCoach } from './BattleCoach';
-import {
-  completeTraining,
-  skipTraining,
-  TRAINING_MISSION_ID,
-} from './trainingProgress';
+import { TrainingCoach, useTrainingPresentation } from './TrainingCoach';
+import { skipTraining, TRAINING_MISSION_ID } from './trainingProgress';
+import { battleStartsPaused, trainingShowsFullHud } from './trainingPresentation';
 import { useBattleSetup } from './useBattleSetup';
 import { checkBattleCode, createNewBattleCode, resultWithBattleCode } from './battleCode';
+import './trainingPresentation.css';
 
-export function Battle() {
+interface BattleProps {
+  onSkipTraining?: () => void;
+  onTrainingComplete?: () => void;
+  onTrainingContinueAnyway?: () => void;
+}
+
+export function Battle(props: BattleProps = {}) {
+  const { onSkipTraining, onTrainingComplete, onTrainingContinueAnyway } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const state = useGame();
+  const { record } = usePlaytest();
   const battleSeedRef = useRef(state.battleCode);
 
   const [resolved, setResolved] = useState(false);
@@ -60,10 +69,14 @@ export function Battle() {
   );
   const difficulties = useMemo(() => difficultyChoices(catalog.rules.difficulty), [catalog]);
   const lance = useMemo(
-    () => lanceEdits[missionId] ?? loadLance(catalog, missionId),
+    () =>
+      missionId === TRAINING_MISSION_ID
+        ? defaultLance(catalog, missionId)
+        : lanceEdits[missionId] ?? loadLance(catalog, missionId),
     [lanceEdits, catalog, missionId],
   );
   const setLance = (next: SkirmishBerth[]): void => {
+    if (missionId === TRAINING_MISSION_ID) return;
     setLanceEdits((edits) => ({ ...edits, [missionId]: next }));
     storeLance(missionId, next);
   };
@@ -80,6 +93,14 @@ export function Battle() {
     patch: state.patch,
   });
   const [outfitting, setOutfitting] = useState<number | null>(null);
+  const activeTraining = !state.campaignPending && missionId === TRAINING_MISSION_ID;
+  const training = useTrainingPresentation({
+    active: activeTraining,
+    onSkip: onSkipTraining,
+    onComplete: onTrainingComplete,
+    onContinueAnyway: onTrainingContinueAnyway,
+    onFallback: () => state.patch({ campaignPending: false, screen: 'campaign' }),
+  });
 
   useEffect(() => {
     const host = hostRef.current;
@@ -133,7 +154,10 @@ export function Battle() {
         engineRef.current = engine;
         if (deployOnReady) {
           engine.renderer.camera.beginDropIn();
-          useGame.getState().patch({ briefingSeen: true, paused: false });
+          useGame.getState().patch({
+            briefingSeen: true,
+            paused: battleStartsPaused(useGame.getState().campaignPending, setup.engine.missionId),
+          });
         }
       })
       .catch((error: unknown) => {
@@ -160,6 +184,7 @@ export function Battle() {
   const chooseMission = (nextMissionId = setup.engine.missionId): void => {
     if (setup.engine.missionId === TRAINING_MISSION_ID && nextMissionId !== TRAINING_MISSION_ID) {
       skipTraining();
+      record({ name: 'training_skipped' });
     }
     setup.chooseMission(nextMissionId);
     setResolved(false);
@@ -168,6 +193,7 @@ export function Battle() {
   const selectMission = (nextMissionId: string): void => {
     if (missionId === TRAINING_MISSION_ID && nextMissionId !== TRAINING_MISSION_ID) {
       skipTraining();
+      record({ name: 'training_skipped' });
     }
     setup.selectMission(nextMissionId);
   };
@@ -198,19 +224,15 @@ export function Battle() {
     setLowFx(engineRef.current?.renderer.lowFx ?? false);
   }, [state.ready]);
 
-  const deployed = setup.locked;
+  const briefingLance = state.campaignPending || activeTraining ? null : briefingLanceFor(catalog, missionId, lance, setLance, setOutfitting);
 
-  const briefingLance = state.campaignPending
-    ? null
-    : briefingLanceFor(catalog, missionId, lance, setLance, setOutfitting);
-
-  // The berth open in the bay, as a commission whose commit rewrites it.
   const outfitBerth = outfitting === null ? null : (lance[outfitting] ?? null);
   const outfitBay: BayCommission | null =
     outfitting === null || outfitBerth === null
       ? null
       : {
           title: `Berth ${outfitting + 1}`,
+          cancelLabel: 'Back to briefing',
           design: berthDesign(catalog, outfitBerth) ?? (catalog.designs.get('sentinel_brawler') as Design),
           onCancel: () => setOutfitting(null),
           onCommit: (design) => {
@@ -259,7 +281,8 @@ export function Battle() {
         setupDifficultyId={setup.engine.difficulty}
         missions={missions}
         difficulties={difficulties}
-        locked={deployed}
+        locked={setup.locked}
+        trainingStep={training.presentedStep}
         onMuted={setMuted}
         onLowFx={setLowFx}
         onMission={selectMission}
@@ -288,23 +311,23 @@ export function Battle() {
             />
           }
           {...(briefingLance === null ? {} : { lance: briefingLance })}
-          deployDisabled={!state.campaignPending && !battleCodeCheck.ok}
-          deployReason={state.campaignPending ? null : battleCodeCheck.reason}
+          {...(activeTraining ? { training: { onSkip: training.skip } } : {})}
+          deployDisabled={!state.campaignPending && !activeTraining && !battleCodeCheck.ok}
+          deployReason={state.campaignPending || activeTraining ? null : battleCodeCheck.reason}
           onDeploy={() => {
-            if (!state.campaignPending && !battleCodeCheck.ok) return;
-            const battleCode = state.campaignPending
+            if (!state.campaignPending && !activeTraining && !battleCodeCheck.ok) return;
+            if (activeTraining) record({ name: 'training_deployed' });
+            const battleCode = state.campaignPending || activeTraining
               ? setup.engine.battleCode
               : battleCodeCheck.ok
                 ? battleCodeCheck.code
                 : setup.engine.battleCode;
-            if (!state.campaignPending) state.patch({ battleCode });
+            if (!state.campaignPending && !activeTraining) state.patch({ battleCode });
             setup.deploy({ ...setup.engine, battleCode });
           }}
         />
       ) : null}
 
-      {/* The bay, opened on one berth of the skirmish lance. Commits replace
-          that berth's design; the engine rebuilds with the new machine. */}
       {outfitBay === null ? null : (
         <div className="manifest-backdrop" data-testid="outfit-bay">
           <div className="refit-bay">
@@ -313,8 +336,16 @@ export function Battle() {
         </div>
       )}
 
-      {state.briefingSeen ? <ObjectiveList objectives={state.objectives} zones={state.zones} /> : null}
-      {state.briefingSeen && !state.campaignPending ? <BattleCoach missionId={missionId} /> : null}
+      {state.briefingSeen && trainingShowsFullHud(training.presentedStep) ? (
+        <ObjectiveList objectives={state.objectives} zones={state.zones} />
+      ) : null}
+      {state.briefingSeen && !state.campaignPending ? (
+        activeTraining ? (
+          <TrainingCoach active step={training.step} onStep={training.onStep} />
+        ) : (
+          <BattleCoach missionId={missionId} />
+        )
+      ) : null}
 
       {state.briefingSeen && state.paused && !state.finished ? (
         <div className="paused-banner" data-testid="paused-banner">
@@ -338,11 +369,13 @@ export function Battle() {
           onNewField={newField}
           onChooseMission={chooseMission}
           onReturnToCampaign={onReturnToCampaign}
-          {...(missionId === TRAINING_MISSION_ID && state.missionStatus === 'success'
+          {...(activeTraining
             ? {
-                onContinueToCampaign: () => {
-                  completeTraining();
-                  state.patch({ screen: 'campaign' });
+                trainingActions: {
+                  onStartCampaign: training.complete,
+                  onReplay: restartBattle,
+                  onRetry: restartBattle,
+                  onContinueAnyway: training.continueAnyway,
                 },
               }
             : {})}
@@ -355,7 +388,13 @@ export function Battle() {
         </div>
       ) : null}
 
-      {state.briefingSeen ? <BattleHud engine={engineRef.current} supportOptions={supportOptions} /> : null}
+      {state.briefingSeen ? (
+        <BattleHud
+          engine={engineRef.current}
+          supportOptions={supportOptions}
+          trainingStep={training.presentedStep}
+        />
+      ) : null}
     </div>
   );
 }

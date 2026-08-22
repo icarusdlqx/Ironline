@@ -34,6 +34,7 @@ interface BriefingProps {
   lance?: BriefingLance;
   deployDisabled?: boolean;
   deployReason?: string | null;
+  training?: { onSkip: () => void };
   onDeploy: () => void;
 }
 
@@ -46,9 +47,10 @@ export function Briefing({
   lance,
   deployDisabled = false,
   deployReason = null,
+  training,
   onDeploy,
 }: BriefingProps) {
-  const over = lance !== undefined && lance.total > lance.allowance;
+  const over = training === undefined && lance !== undefined && lance.total > lance.allowance;
   const blocked = over || deployDisabled;
   const reason = over
     ? 'The lance is over the drop tonnage — lighten it first.'
@@ -70,9 +72,16 @@ export function Briefing({
         ))}
       </ul>
 
-      {setup}
+      {training === undefined ? (
+        setup
+      ) : (
+        <p className="training-briefing-note">
+          Range control has assigned the machines and marked the course. No loadout or
+          contract decisions are made here.
+        </p>
+      )}
 
-      {lance === undefined ? null : (
+      {training !== undefined || lance === undefined ? null : (
         <div className="briefing-lance" data-testid="briefing-lance">
           <h4>
             Lance
@@ -142,8 +151,13 @@ export function Briefing({
         </div>
       )}
 
-      <footer className="briefing-actions" data-testid="briefing-actions">
-        <p className="briefing-rp">{resourcePoints} Resource Points on the books.</p>
+      <footer
+        className={`briefing-actions${training === undefined ? '' : ' training-actions'}`}
+        data-testid="briefing-actions"
+      >
+        {training === undefined ? (
+          <p className="briefing-rp">{resourcePoints} Resource Points on the books.</p>
+        ) : null}
         <button
           type="button"
           onClick={onDeploy}
@@ -151,8 +165,18 @@ export function Briefing({
           title={reason}
           data-testid="briefing-deploy"
         >
-          {over ? 'Over tonnage' : 'Deploy'}
+          {over ? 'Over tonnage' : training === undefined ? 'Deploy' : 'Begin range walk'}
         </button>
+        {training === undefined ? null : (
+          <button
+            type="button"
+            className="secondary"
+            onClick={training.onSkip}
+            data-testid="training-skip"
+          >
+            Skip to campaign
+          </button>
+        )}
       </footer>
     </div>
   );

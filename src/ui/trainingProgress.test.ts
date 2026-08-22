@@ -7,6 +7,7 @@ import {
   completeTraining,
   initialSkirmishMission,
   skipTraining,
+  startTraining,
   STANDARD_MISSION_ID,
   storeTrainingStep,
   TRAINING_MISSION_ID,
@@ -43,6 +44,11 @@ describe('the first training offer', () => {
     expect(initialSkirmishMission()).toBe(STANDARD_MISSION_ID);
   });
 
+  it('does not mistake playtest bookkeeping for prior play', () => {
+    localStorage.setItem('ironline.playtest.v1', '{"opened":1}');
+    expect(initialSkirmishMission()).toBe(TRAINING_MISSION_ID);
+  });
+
   it('resumes an active lesson but respects a skip or completion', () => {
     storeTrainingStep(2);
     expect(initialSkirmishMission()).toBe(TRAINING_MISSION_ID);
@@ -53,6 +59,39 @@ describe('the first training offer', () => {
     storeTrainingStep(4);
     completeTraining();
     expect(initialSkirmishMission()).toBe(STANDARD_MISSION_ID);
+  });
+
+  it('does not downgrade completed training when another route is opened', () => {
+    completeTraining();
+    skipTraining();
+
+    expect(JSON.parse(localStorage.getItem('ironline.training') ?? '{}')).toMatchObject({
+      step: 4,
+      status: 'complete',
+    });
+  });
+
+  it('resumes active progress and starts skipped or completed lessons from the beginning', () => {
+    storeTrainingStep(3);
+    startTraining();
+    expect(JSON.parse(localStorage.getItem('ironline.training') ?? '{}')).toMatchObject({
+      step: 3,
+      status: 'active',
+    });
+
+    skipTraining();
+    startTraining();
+    expect(JSON.parse(localStorage.getItem('ironline.training') ?? '{}')).toMatchObject({
+      step: 0,
+      status: 'active',
+    });
+
+    completeTraining();
+    startTraining();
+    expect(JSON.parse(localStorage.getItem('ironline.training') ?? '{}')).toMatchObject({
+      step: 0,
+      status: 'active',
+    });
   });
 });
 

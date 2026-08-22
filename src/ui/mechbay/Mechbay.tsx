@@ -35,6 +35,7 @@ const catalog = getCatalog();
 export interface BayCommission {
   title: string;
   design: Design;
+  cancelLabel?: string;
   /** Omitted for the unlimited skirmish workshop. */
   inventory?: ReadonlyMap<string, number>;
   onCommit: (design: Design) => { ok: boolean; reason: string | null };
@@ -226,7 +227,10 @@ export function Mechbay({
       <BayChrome
         catalog={catalog}
         design={design}
-        {...(commission === undefined ? {} : { commissionTitle: commission.title })}
+        {...(commission === undefined ? {} : {
+          commissionTitle: commission.title,
+          commissionCancelLabel: commission.cancelLabel,
+        })}
         stored={stored}
         saveable={saveable}
         status={status}

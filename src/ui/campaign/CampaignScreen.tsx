@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   abandonContract,
   acceptContract,
@@ -24,7 +24,7 @@ import { createCampaignSeed, startFreshCampaign } from '../../campaign/freshness
 import { campaignOutcomeCount } from '../../campaign/history';
 import { assessSolvency, retireCompany } from '../../campaign/solvency';
 import { employerHistories } from '../../campaign/employers';
-import { Mechbay, type BayCommission } from '../mechbay/Mechbay';
+import type { BayCommission } from '../mechbay/Mechbay';
 import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
 import { CampaignPostBattle } from './CampaignPostBattle';
@@ -34,13 +34,15 @@ import { ContractPanel } from './ContractPanel';
 import { CompanyStatus } from './CompanyStatus';
 import { debriefedCount, resetDebriefed, revealLatestDebrief } from './Debrief';
 import { FieldManual } from './FieldManual';
-import { Hangar } from './Hangar';
 import { HiringHall } from './HiringHall';
-import { LanceManifest } from './LanceManifest';
 import { BarracksPanel, cbills, MarketPanel, MechBayPanel, StoresPanel } from './Panels';
 import { commitCampaignChange, openCampaignSession } from './campaignSession';
 import { downloadCampaignFile } from './campaignDownload';
 import { useGame } from '../store';
+import { usePlaytest } from '../playtest';
+import { CampaignGuide } from './CampaignGuide';
+import { CampaignPrep } from './CampaignPrep';
+import { firstDropStage, type FirstDropPrep } from './firstDropGuide';
 
 const catalog = getCatalog();
 const CAMPAIGN_ID = 'border_dispute';
@@ -50,20 +52,20 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const [state, setState] = useState<CampaignState>(initial.state);
   const [persistence, setPersistence] = useState(initial.persistence);
   const [manualOpen, setManualOpen] = useState(false);
+  const [guideDismissed, setGuideDismissed] = useState(false);
   /**
    * Where the drop preparation stands: the hangar first, then the manifest.
    * Prep is a corridor, not a pop-up — campaign map → mechbay → deployment →
    * battle — so the bay stops being a side door most players never find.
    */
-  const [prep, setPrep] = useState<null | 'bay' | 'manifest'>(null);
+  const [prep, setPrep] = useState<FirstDropPrep>(null);
   const [refitting, setRefitting] = useState<string | null>(null);
-  // Missions fought but not yet debriefed. Counted rather than flagged so the
-  // screen can be reopened without the debrief coming back each time.
   const [debriefed, setDebriefed] = useState(() => debriefedCount());
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedTerms, setSelectedTerms] = useState<ContractTermsId>('standard');
   const [status, setStatus] = useState<string | null>(null);
-  const patch = useGame((game) => game.patch);
+  const enterBattle = useGame((game) => game.enterBattle);
+  const { record } = usePlaytest();
 
   const campaign = campaignOf(catalog, state);
   const employers = useMemo(
@@ -83,14 +85,25 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   const solvency = useMemo(() => assessSolvency(catalog, state), [state]);
   const outcomeCount = campaignOutcomeCount(state);
   const employer = resolveCurrentEmployer(campaign, state.contract, node, employers);
+  const firstDrop = firstDropStage({
+    outcomeCount,
+    finished: state.finished,
+    contractActive: state.contract !== null,
+    prep,
+  });
+  const guidedFirstDrop = guideDismissed ? 'done' : firstDrop;
 
-  // The machine on the gantry, if the player has opened one for a refit.
+  useEffect(() => {
+    record({ name: 'campaign_opened' });
+  }, [record]);
+
   const refitMech = refitting === null ? null : (state.mechs.find((m) => m.id === refitting) ?? null);
   const refitBay: BayCommission | null =
     refitMech === null
       ? null
       : {
           title: refitMech.design.name,
+          cancelLabel: prep === 'bay' ? 'Back to hangar' : 'Back to manifest',
           design: refitMech.design,
           inventory: refitInventory(state, refitMech),
           onCancel: () => setRefitting(null),
@@ -145,6 +158,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       setStatus('Accept a contract first.');
       return;
     }
+    record({ name: 'drop_prep_opened' });
     setPrep('bay');
   };
 
@@ -166,7 +180,8 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       setStatus('Deployment held. Restart or import a valid campaign before deploying.');
       return;
     }
-    patch({ campaignPending: true, screen: 'battle' });
+    record({ name: 'contract_launched' });
+    enterBattle({ campaignPending: true });
   };
 
   const revealPosting = (id: string): void => {
@@ -179,7 +194,11 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
   };
 
   return (
-    <div className="camp" data-testid="campaign">
+    <div
+      className="camp"
+      data-testid="campaign"
+      data-first-drop-stage={guidedFirstDrop === 'done' ? undefined : guidedFirstDrop}
+    >
       <CampaignHeader
         title={campaign.name}
         day={state.day}
@@ -218,6 +237,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
             stored = result.ok;
           });
           setPrep(null);
+          setGuideDismissed(false);
           setRefitting(null);
           setSelectedNode(null);
           setSelectedTerms('standard');
@@ -240,13 +260,13 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           onExit();
         }}
       />
-
       {!manualOpen ? null : (
         <FieldManual
           lore={visibleCampaignLore([...catalog.lore.values()], state.completedNodes)}
           onClose={() => setManualOpen(false)}
         />
       )}
+      <CampaignGuide stage={guidedFirstDrop} onDismiss={() => setGuideDismissed(true)} />
 
       <CampaignMap
         campaign={campaign}
@@ -289,12 +309,22 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
           />
         }
         onSelectTerms={setSelectedTerms}
-        onAccept={(termsId) =>
+        onAccept={(termsId) => {
+          let signed = false;
           mutate((draft) => {
             const result = acceptContract(catalog, draft, node?.id ?? '', termsId);
+            signed = result.ok;
             return result.ok ? null : result.reason;
-          }, 'Contract signed.')
-        }
+          }, 'Contract signed.');
+          if (signed) {
+            record({ name: 'contract_signed' });
+            globalThis.requestAnimationFrame?.(() => {
+              globalThis.document
+                ?.querySelector<HTMLElement>('[data-testid="camp-deploy"]')
+                ?.focus();
+            });
+          }
+        }}
         onDeploy={onDeploy}
         onAbandon={() =>
           mutate(
@@ -304,7 +334,7 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         }
       />
 
-      {state.finished ? null : (
+      {state.finished || guidedFirstDrop !== 'done' ? null : (
         <>
           {/* The map draws the war. Side work is posted on a board, so it gets a
               list — and it is marked as side work, because taking it is a decision
@@ -338,38 +368,18 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
         onDebriefed={setDebriefed}
       />
 
-      {state.finished || prep !== 'bay' || refitting !== null ? null : (
-        <Hangar
-          catalog={catalog}
-          state={state}
-          mutate={mutate}
-          onRefit={setRefitting}
-          onContinue={() => setPrep('manifest')}
-          onCancel={() => setPrep(null)}
-        />
-      )}
-
-      {state.finished || prep !== 'manifest' || refitting !== null ? null : (
-        <LanceManifest
-          catalog={catalog}
-          state={state}
-          mutate={mutate}
-          onLaunch={onLaunch}
-          onCancel={() => setPrep('bay')}
-          onRefit={setRefitting}
-        />
-      )}
-
-      {/* The bay, opened on one machine out of the company's own, with the
-          shelves limited to what it actually owns. Mission prep is: who
-          drops, in what, carrying what. */}
-      {state.finished || refitBay === null ? null : (
-        <div className="manifest-backdrop" data-testid="refit-bay">
-          <div className="refit-bay">
-            <Mechbay onExit={() => setRefitting(null)} commission={refitBay} />
-          </div>
-        </div>
-      )}
+      <CampaignPrep
+        catalog={catalog}
+        state={state}
+        prep={prep}
+        refitting={refitting}
+        refitBay={refitBay}
+        mutate={mutate}
+        onPrep={setPrep}
+        onRefit={setRefitting}
+        onManifest={() => record({ name: 'manifest_opened' })}
+        onLaunch={onLaunch}
+      />
     </div>
   );
 

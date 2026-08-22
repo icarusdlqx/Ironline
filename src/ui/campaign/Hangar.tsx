@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import type { Catalog } from '../../schema/load';
 import { rebuildHulk } from '../../campaign/refit';
 import { mechIntegrity } from '../../campaign/integrity';
@@ -12,6 +13,7 @@ import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
 import { ContractBriefing } from './ContractBriefing';
 import { workshopFactionLine } from './factionEconomy';
+import { useDialogFocus } from '../useDialogFocus';
 
 interface Props {
   catalog: Catalog;
@@ -32,6 +34,11 @@ interface Props {
  * battle, rather than the bay being a side door most players never find.
  */
 export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }: Props) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
+  const close = useCallback(() => cancelRef.current(), []);
+  useDialogFocus(dialogRef, dialogRef, close);
   const contract = state.contract;
   const mission = contract === null ? null : catalog.missions.get(contract.missionId);
   const employer =
@@ -43,9 +50,16 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
 
   return (
     <div className="manifest-backdrop" data-testid="hangar-stage">
-      <section className="manifest hangar">
+      <section
+        className="manifest hangar"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hangar-title"
+        tabIndex={-1}
+      >
         <header>
-          <h3>Mechbay — prepare the machines</h3>
+          <h3 id="hangar-title">Mechbay — prepare the machines</h3>
           <p>
             {mission?.name ?? 'Contract'}
             {employer === null ? '' : ` — ${employer}.`} Repair what is broken, refit

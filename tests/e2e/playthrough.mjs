@@ -97,6 +97,77 @@ async function arrowCameraShift(page, key) {
   }, before);
 }
 
+async function freshHomePage(browser, url) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.clear());
+  await page.goto(url);
+  await page.waitForSelector('[data-testid="home-screen"]');
+  return { context, page };
+}
+
+async function forceTrainingResult(page, status) {
+  await page.evaluate((nextStatus) => {
+    const { useGame, world } = globalThis.__ironline;
+    const winner = nextStatus === 'success' ? useGame.getState().playerTeam : 1;
+    world.finished = true;
+    world.winner = winner;
+    world.missionStatus = nextStatus;
+    world.missionReason = nextStatus === 'success' ? 'range certified' : 'range failed';
+    useGame.getState().patch({
+      finished: true,
+      winner,
+      missionStatus: nextStatus,
+      missionReason: world.missionReason,
+    });
+  }, status);
+  await page.waitForSelector('[data-testid="training-result-actions"]');
+}
+
+async function verifyAlternateTrainingRoutes(browser, url) {
+  const skipped = await freshHomePage(browser, url);
+  try {
+    await skipped.page.locator('[data-testid="home-learn"]').click();
+    await skipped.page.waitForSelector('[data-testid="briefing"]');
+    await skipped.page.locator('[data-testid="training-skip"]').click();
+    await skipped.page.waitForSelector('[data-testid="campaign"]');
+    check(
+      'training briefing skip opens the campaign explicitly',
+      (await skipped.page.locator('[data-testid="home-screen"]').count()) === 0 &&
+        (await skipped.page.evaluate(() =>
+          JSON.parse(localStorage.getItem('ironline.training') ?? '{}').status,
+        )) === 'skipped',
+    );
+  } finally {
+    await skipped.context.close();
+  }
+
+  const failed = await freshHomePage(browser, url);
+  try {
+    await failed.page.locator('[data-testid="home-learn"]').click();
+    await failed.page.waitForSelector('[data-testid="briefing"]');
+    await failed.page.locator('[data-testid="briefing-deploy"]').click();
+    await failed.page.waitForSelector('[data-testid="training-coach"]');
+    await forceTrainingResult(failed.page, 'failure');
+    check(
+      'failed training offers retry first and a campaign exit',
+      (await failed.page.locator('[data-testid="training-retry"]').count()) === 1 &&
+        (await failed.page.locator('[data-testid="training-continue-anyway"]').count()) === 1 &&
+        (await failed.page.locator('[data-testid="new-field"]').count()) === 0,
+    );
+    await failed.page.locator('[data-testid="training-continue-anyway"]').click();
+    await failed.page.waitForSelector('[data-testid="campaign"]');
+    check(
+      'continue anyway records the training exit',
+      (await failed.page.evaluate(() =>
+        JSON.parse(localStorage.getItem('ironline.training') ?? '{}').status,
+      )) === 'skipped',
+    );
+  } finally {
+    await failed.context.close();
+  }
+}
+
 async function main() {
   mkdirSync(SHOTS, { recursive: true });
 
@@ -130,22 +201,136 @@ async function main() {
       if (message.type() === 'error') pageErrors.push(message.text());
     });
 
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('ironline.e2e.initialised') !== null) return;
+      localStorage.clear();
+      sessionStorage.setItem('ironline.e2e.initialised', 'true');
+    });
     await page.goto(URL);
-    await page.waitForFunction(() => globalThis.__ironline !== undefined, { timeout: 30_000 });
-
+    await page.waitForSelector('[data-testid="home-screen"]');
     check(
-      'a fresh profile opens on training',
-      (await page.evaluate(() => globalThis.__ironline.world.mission.id)) === 'training_ground',
+      'a fresh profile opens on Home without mounting the engine',
+      (await page.locator('.viewport canvas').count()) === 0 &&
+        (await page.evaluate(() => globalThis.__ironline === undefined)),
+    );
+    check(
+      'Home offers learn, campaign, and skirmish routes',
+      (await page.locator('[data-testid="home-learn"]').count()) === 1 &&
+        (await page.locator('[data-testid="home-campaign"]').count()) === 1 &&
+        (await page.locator('[data-testid="home-skirmish"]').count()) === 1,
+    );
+    await page.locator('[data-testid="home-learn"]').click();
+    await page.waitForFunction(() => globalThis.__ironline !== undefined, { timeout: 30_000 });
+    await page.waitForSelector('[data-testid="briefing"]');
+    check(
+      'Learn the Line opens the authored training field',
+      (await page.evaluate(() => globalThis.__ironline.world.mission.id)) === 'training_ground' &&
+        (await page.evaluate(() =>
+          globalThis.__ironline.world.entities.filter((entity) => entity.team === 0).length,
+        )) === 2,
+    );
+    const trainingBriefingText = await page.locator('[data-testid="briefing"]').innerText();
+    check(
+      'training briefing is fixed and omits skirmish setup',
+      trainingBriefingText.includes('Begin range walk') &&
+        trainingBriefingText.includes('Skip to campaign') &&
+        (await page.locator('[data-testid="mission-picker"]').count()) === 0 &&
+        (await page.locator('[data-testid="briefing-battle-code"]').count()) === 0 &&
+        (await page.locator('[data-testid="briefing-lance"]').count()) === 0 &&
+        !trainingBriefingText.includes('Resource Points'),
     );
     await page.screenshot({ path: `${SHOTS}/00-training-briefing.png` });
     await page.locator('[data-testid="briefing-deploy"]').click();
     await page.waitForSelector('[data-testid="training-coach"]');
     await page.waitForSelector('[data-testid="lance-bar"]');
+    const trainingPausedAt = (await sim(page)).tick;
+    await sleep(500);
+    check(
+      'range walk deploys paused',
+      (await state(page)).paused && (await sim(page)).tick === trainingPausedAt,
+    );
+    check(
+      'selection lesson starts with only lance and camera affordances',
+      (await page.locator('[data-testid="training-coach"]').innerText()).includes('1 · Select') &&
+        (await page.locator('[data-testid="command-palette"]').count()) === 0 &&
+        (await page.locator('[data-testid="hostile-bar"]').count()) === 0,
+    );
+
+    await page.locator('[data-testid="lance-bar"] button').first().click();
+    await page.waitForSelector('[data-testid="command-move"]');
+    check(
+      'move lesson exposes Move but not combat orders',
+      (await page.locator('[data-testid="command-attack"]').count()) === 0 &&
+        (await page.locator('[data-testid="command-hold_fire"]').count()) === 0,
+    );
+    const trainingCanvas = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
+    await page.mouse.click(
+      trainingCanvas.x + trainingCanvas.width * 0.48,
+      trainingCanvas.y + trainingCanvas.height * 0.55,
+      { button: 'right' },
+    );
+    await page.waitForSelector('[data-testid="command-attack"]');
+    check(
+      'engage lesson adds contacts and Attack',
+      (await page.locator('[data-testid="hostile-bar"]').count()) === 1 &&
+        (await page.locator('[data-testid="command-hold_fire"]').count()) === 0,
+    );
+    await page.evaluate(() => {
+      const { engine, world } = globalThis.__ironline;
+      const target = world.entities.find((entity) => entity.team !== world.playerTeam);
+      if (target === undefined) throw new Error('training field has no target');
+      engine.orderAttack(target.id, null);
+    });
+    await page.waitForSelector('[data-testid="training-heat-readout"]');
+    check(
+      'heat lesson adds the heat readout and safety controls',
+      (await page.locator('[data-testid="command-hold_fire"]').count()) === 1 &&
+        (await page.locator('[data-testid="command-heat_safety"]').count()) === 1 &&
+        (await page.locator('[data-testid="command-run"]').count()) === 0,
+    );
+    await page.evaluate(() => {
+      const { useGame } = globalThis.__ironline;
+      const current = useGame.getState();
+      const selected = new Set(current.selection);
+      current.patch({
+        units: current.units.map((unit) =>
+          selected.has(unit.id) ? { ...unit, heat: Math.max(1, unit.heat) } : unit,
+        ),
+      });
+    });
+    await page.waitForSelector('[data-testid="command-run"]');
+    check(
+      'range drill restores the complete battle interface',
+      (await page.locator('[data-testid="minimap"]').count()) === 1 &&
+        (await page.locator('[data-testid="sidebar"]').count()) === 1 &&
+        (await page.locator('[data-testid="objective-list"]').count()) === 1 &&
+        (await page.locator('[data-testid="resource-points"]').count()) === 1 &&
+        (await page.locator('[data-testid="speed-controls"]').count()) === 1,
+    );
     await page.screenshot({ path: `${SHOTS}/00-training-coach.png` });
-    await page.locator('[data-testid="choose-mission"]').click();
-    await page.waitForSelector('[data-testid="briefing"]');
-    await page.locator('[data-testid="mission-picker"]').selectOption('skirmish_ridge');
-    await page.waitForFunction(() => globalThis.__ironline.world.mission.id === 'skirmish_ridge');
+    await forceTrainingResult(page, 'success');
+    check(
+      'successful training offers campaign first and range replay second',
+      (await page.locator('[data-testid="training-start-campaign"]').count()) === 1 &&
+        (await page.locator('[data-testid="training-replay"]').count()) === 1 &&
+        (await page.locator('[data-testid="result-mission-picker"]').count()) === 0,
+    );
+    await page.locator('[data-testid="training-start-campaign"]').click();
+    await page.waitForSelector('[data-testid="campaign"]');
+    check(
+      'successful training reaches first-contract guidance',
+      (await page.locator('[data-testid="campaign-guide"]').innerText()).includes(
+        '1 · Choose the job',
+      ),
+    );
+    await page.locator('[data-testid="camp-exit"]').click();
+    await page.waitForSelector('[data-testid="home-screen"]');
+    await page.locator('[data-testid="home-skirmish"]').click();
+    await page.waitForFunction(
+      () => globalThis.__ironline?.world.mission.id === 'skirmish_ridge',
+      { timeout: 30_000 },
+    );
+    await verifyAlternateTrainingRoutes(browser, URL);
 
     process.stdout.write('\nboot\n');
     const canvas = await page.locator('.viewport canvas:not(.perf-overlay)').boundingBox();
@@ -201,6 +386,26 @@ async function main() {
         'ridge-touch-0000002a',
     );
     await checkDeployedInputSafety({ page, check, state });
+
+    const pausedBeforeFeedback = (await state(page)).paused;
+    await page.locator('[data-testid="feedback-link"]').click();
+    await page.waitForSelector('[data-testid="playtest-feedback"]');
+    check(
+      'Feedback opens from a pointer click',
+      (await page.locator('[data-testid="playtest-feedback"]').count()) === 1 &&
+        (await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))) ===
+          'playtest-close',
+    );
+    await page.locator('[data-testid="playtest-enable"]').click();
+    await page.waitForFunction(
+      () => document.activeElement?.getAttribute('data-testid') === 'playtest-close',
+    );
+    await page.keyboard.press('Space');
+    await page.waitForSelector('[data-testid="playtest-feedback"]', { state: 'detached' });
+    check(
+      'Space after enabling feedback closes the dialog without toggling battle',
+      (await state(page)).paused === pausedBeforeFeedback,
+    );
 
     process.stdout.write('\nselection\n');
     await page.locator('[data-testid="lance-bar"] button').first().click();
@@ -877,14 +1082,22 @@ async function main() {
       campaignNodeIds.join(', '),
     );
     check('only the opening node is available', (await page.locator('.camp-node.available').count()) === 1);
-    check('the lance is on the books', (await page.locator('[data-testid="camp-bay"] li').count()) === 4);
-    // Count the company's own pilots, not every row in the section — the
-    // hiring hall lives under the same panel and lists whoever is signable.
-    check(
-      'the barracks lists four pilots',
-      (await page.locator('li[data-testid^="camp-pilot-"]').count()) === 4,
+    const openingCompany = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('ironline.campaign')).state,
     );
-    check('stores start empty', (await page.locator('[data-testid="camp-store"] .empty').count()) === 1);
+    check(
+      'the opening company has four machines and four pilots on its books',
+      openingCompany.mechs.length === 4 && openingCompany.pilots.length === 4,
+    );
+    check('stores start empty', openingCompany.store.length === 0);
+    check(
+      'first-drop guidance begins at choosing the job',
+      (await page.locator('[data-testid="campaign"]').getAttribute('data-first-drop-stage')) ===
+        'choose' &&
+        (await page.locator('[data-testid="campaign-guide"]').innerText()).includes(
+          '1 · Choose the job',
+        ),
+    );
 
     const firstRunCode = await page.locator('[data-testid="camp-seed"]').innerText();
     check(
@@ -958,33 +1171,6 @@ async function main() {
     );
     await page.screenshot({ path: `${SHOTS}/08-contract-terms.png` });
 
-    const posted = await page.locator('[data-testid="camp-hall"] li').count();
-    check('the hiring hall is posting work', posted > 0, `${posted} postings`);
-    const postingFacts = await page.locator('[data-testid="camp-hall"] button').first().innerText();
-    check(
-      'a posting states its battlefield and rated opposition',
-      postingFacts.includes('drop /') && postingFacts.includes('rated opposition'),
-      postingFacts,
-    );
-    check(
-      'the board states when it renews',
-      (await page.locator('[data-testid="camp-hall"] .hall-note').innerText()).includes(
-        'New work arrives on day',
-      ),
-    );
-
-    // Selecting a posting has to drive the same contract panel the map does,
-    // or side work would be visible and unsignable.
-    const hallName = await page.locator('[data-testid="camp-hall"] .hall-name').first().innerText();
-    await page.locator('[data-testid="camp-hall"] button').first().click();
-    const shown = await page.locator('[data-testid="camp-contract"] h3').innerText();
-    // Case-insensitive: the panel heading is uppercased in CSS, not in the DOM.
-    check(
-      'a posting drives the contract panel',
-      shown.toLowerCase() === hallName.toLowerCase(),
-      `${shown} vs ${hallName}`,
-    );
-
     const dayBefore = await day();
     await page.locator('[data-testid="camp-advance"]').click();
     check('advancing a day moves the clock', (await day()) === dayBefore + 1);
@@ -996,6 +1182,15 @@ async function main() {
     await page.locator('[data-testid="camp-terms-salvage_first"]').click();
     await page.locator('[data-testid="camp-accept"]').click();
     check('signing shows the active contract', (await page.locator('[data-testid="camp-deploy"]').count()) === 1);
+    check(
+      'signing advances first-drop guidance to Prepare drop',
+      (await page.locator('[data-testid="campaign"]').getAttribute('data-first-drop-stage')) ===
+        'prepare' &&
+        (await page.locator('[data-testid="campaign-guide"]').innerText()).includes(
+          '2 · Prepare the drop',
+        ) &&
+        (await page.locator('[data-testid="camp-deploy"]').innerText()).includes('Prepare drop'),
+    );
     check(
       'the active contract preserves its named package',
       (await page.locator('[data-testid="camp-active-terms"]').textContent()) === 'Salvage first',
@@ -1011,12 +1206,25 @@ async function main() {
     await page.locator('[data-testid="camp-deploy"]').click();
     await page.waitForSelector('[data-testid="hangar-stage"]');
     check(
-      'the hangar stage lists the company machines',
-      (await page.locator('[data-testid^="hangar-"][data-testid*="mech_"]').count()) > 0 ||
-        (await page.locator('.hangar .manifest-row').count()) > 0,
+      'Prepare drop opens the guided hangar stage with the company machines',
+      (await page.locator('[data-testid="campaign"]').getAttribute('data-first-drop-stage')) ===
+        'bay' &&
+        (await page.locator('[data-testid="campaign-guide"]').innerText()).includes(
+          '3 · Check the machines',
+        ) &&
+        ((await page.locator('[data-testid^="hangar-"][data-testid*="mech_"]').count()) > 0 ||
+          (await page.locator('.hangar .manifest-row').count()) > 0),
     );
     await page.locator('[data-testid="hangar-continue"]').click();
     await page.waitForSelector('[data-testid="lance-manifest"]');
+    check(
+      'hangar continue opens the guided manifest stage',
+      (await page.locator('[data-testid="campaign"]').getAttribute('data-first-drop-stage')) ===
+        'manifest' &&
+        (await page.locator('[data-testid="campaign-guide"]').innerText()).includes(
+          '4 · Launch the lance',
+        ),
+    );
     // Five rated bars per pilot, not three lines of prose: what the player
     // needs off this screen is to be able to tell two pilots apart.
     const rated = page.locator('.manifest-row [data-testid="pilot-stats"]').first();
@@ -1146,6 +1354,42 @@ async function main() {
       (await page.locator('[data-testid="debrief"] header').innerText()).includes('Salvage first'),
     );
     await page.locator('[data-testid="debrief-close"]').click();
+
+    check(
+      'first-drop guidance retires after the opening outcome',
+      (await page.locator('[data-testid="campaign-guide"]').count()) === 0 &&
+        (await page.locator('[data-testid="campaign"]').getAttribute('data-first-drop-stage')) ===
+          null,
+    );
+    check('the lance is visible on the company books', (await page.locator('[data-testid="camp-bay"] li').count()) >= 4);
+    check(
+      'the barracks lists the company pilots',
+      (await page.locator('li[data-testid^="camp-pilot-"]').count()) >= 4,
+    );
+
+    const posted = await page.locator('[data-testid="camp-hall"] li').count();
+    check('the hiring hall is posting work', posted > 0, `${posted} postings`);
+    const postingFacts = await page.locator('[data-testid="camp-hall"] button').first().innerText();
+    check(
+      'a posting states its battlefield and rated opposition',
+      postingFacts.includes('drop /') && postingFacts.includes('rated opposition'),
+      postingFacts,
+    );
+    check(
+      'the board states when it renews',
+      (await page.locator('[data-testid="camp-hall"] .hall-note').innerText()).includes(
+        'New work arrives on day',
+      ),
+    );
+
+    const hallName = await page.locator('[data-testid="camp-hall"] .hall-name').first().innerText();
+    await page.locator('[data-testid="camp-hall"] button').first().click();
+    const shown = await page.locator('[data-testid="camp-contract"] h3').innerText();
+    check(
+      'a posting drives the contract panel',
+      shown.toLowerCase() === hallName.toLowerCase(),
+      `${shown} vs ${hallName}`,
+    );
 
     const resolvedState = await page.evaluate(() =>
       JSON.parse(localStorage.getItem('ironline.campaign')).state,

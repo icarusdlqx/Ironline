@@ -4,8 +4,8 @@ export async function runCampaignRecovery({ page, shots, check }) {
   const damaged = '{"version":1,"state":{"campaignId":"border_dispute"}';
   await page.evaluate((raw) => localStorage.setItem('ironline.campaign', raw), damaged);
   await page.reload();
-  await page.waitForSelector('[data-testid="open-campaign"]');
-  await page.locator('[data-testid="open-campaign"]').click();
+  await page.waitForSelector('[data-testid="home-screen"]');
+  await page.locator('[data-testid="home-campaign"]').click();
   await page.waitForSelector('[data-testid="camp-recovery"]');
 
   const retained = await page.evaluate(() => localStorage.getItem('ironline.campaign'));
