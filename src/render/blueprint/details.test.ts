@@ -25,22 +25,22 @@ const DETAIL_BUDGETS: Record<string, { surface: number; hero: number }> = {
 // These signatures predate inspection geometry, so any change points back to
 // load-bearing plans rather than merely accepting a new mesh count.
 const STRUCTURAL_DIGESTS: Record<string, string> = {
-  bulwark_bwk3: '063f398bcfe5b27f5215b807631e558fedea3a9e5541bbf836c7edd19815b368',
-  cairn_crn3: 'daab51ffac2ac334057676221d66e97974e386fed3f115063711dde8f30a7772',
-  colossus_cls1: 'ddee8c5adcf4933e5876bba4150e8fa26bef8e82d5eecde6c0bff17c9cd102f5',
-  courser_crs1: 'a45ec68eb0d4a6099c1029a972f53b3e7d8edfa36dee328e20e81242e6083556',
-  drover_dvr2: 'de24b7a42837a88b29456953b5acb58e6f2fa03767b03871c58240443ceac641',
-  falchion_fal2: 'ed378ea5bd222abd45c0337d98bedd9016208d9989dcaae2bf214296c121f857',
-  halberd_hlb4: '568d6e9a20528da5fe2936eb859f5acdd4786380bc511d65746be4e9746a3300',
-  hornet_hnt2: '199f53970b31627697952ac56804b38d84186974f9e117b348ca46b393de344d',
-  obsequy_obq3: 'c0ea1e0ee5ce70f3f24772d5f8e8003b57320979f5775f17346daa18e6fe364b',
-  pallvault_plv1: 'd47fcbd0942c63f71e50f56d9dc422f98a40c72bfe20301fc17d8b3f9ef674f8',
-  rampart_rmp4: '150af3d4fffb72c116988e8b7adefdc87737f91fef8c5f253f1d0af285f7128f',
-  redoubt_rdt1: '1901b83565f26de604120b14ae579cb76ef37999874972fcea1b0a16a98a6b33',
-  sentinel_snl2: '3f950041612c4a87d43f59e2fc757e7f3c700de7db8a0a5ef2fa6f4878546cbf',
-  votive_vtv2: '08e86fee48d0ebfbba8d02d1e86aafffde24c3c3494894d7ccd71c40f3d51ee4',
-  warden_wrd5: '9080e658924da4af14b33a82ff3051ced4ddf63c89ace130fc590d191011a998',
-  wisp_wsp1: '0cf6a4058197ec7751abd32683c7ba44479ce2273ff1fe53ca9d97938d78993e',
+  bulwark_bwk3: '42d94f524489315e8fc06e4f771c869b0cbdb97a77b034996576156d2867a408',
+  cairn_crn3: 'f7c8aa5c5397c559cf22478bf9c7e4e3969a22736c10bd406218f314b2188e11',
+  colossus_cls1: 'd4e967429e3a56421f8706c941b1eb85c6bd384c2d7af2969b4d323ba43552d5',
+  courser_crs1: '6d9749a0372967fa3f9edeff60abfc8be5de15cfe4e9cbfbc881e7d3c30bc223',
+  drover_dvr2: 'a9410a92262b4741841f0d9735b21515935c4c94e10922f104004dac7398d45e',
+  falchion_fal2: 'f16c2bdbe28f9ebb5a4d31f3879839d0fae76322489de49dae5bee4fe9f8f4b7',
+  halberd_hlb4: 'a69f79f645f19aae51a56d703388b2ec95918fa712fb1905eb70001b7305cfcf',
+  hornet_hnt2: '6dee0e7f7b85fd2767f75a0d40fd2f6eb1e18046d79392206ce30a0776bfc055',
+  obsequy_obq3: '87c96538a3b9ffebfeb10dcd29dcc588e2e125dbe6d902b305975a1032cd260c',
+  pallvault_plv1: '405bb5174da702940558ceccc26274621a85356607b07268c2ec72257637731a',
+  rampart_rmp4: 'df75e2df70c334436f6b2004493c949849ed659b99201337b5f3bf28a1b09ddf',
+  redoubt_rdt1: 'd18e3107d8f14bed36c61656e478b11826bcb80e4cfbff66ac47d69995562adf',
+  sentinel_snl2: 'a80764d50d9d1712343e3212440e9712519ab37a3d652c9107fc7b4c5615b558',
+  votive_vtv2: '5d3d83261c04015074e69d8f0c0d4bdb71e857d372f484dcdeeccec69166a99a',
+  warden_wrd5: '3c0a716ccfa1874f471b604d7d5b31ece4bf8b0e73f9e28c65e8d01370ab3b6b',
+  wisp_wsp1: 'aabe3487c8a706146840f3dbf02263f2084fa7e806036c58b44fd6ecfd55529e',
 };
 
 const MIRRORED_LOCATION: Partial<Record<MechLocation, MechLocation>> = {
@@ -63,7 +63,24 @@ function structuralDigest(plan: Blueprint): string {
     ...plan,
     parts: plan.parts.filter((part) => part.detail === 'structure'),
   };
-  return createHash('sha256').update(JSON.stringify(structural)).digest('hex');
+  return createHash('sha256').update(JSON.stringify(canonical(structural))).digest('hex');
+}
+
+function canonical(value: unknown): unknown {
+  // Libm implementations may differ by an ulp for derived joint lengths.
+  // Stable key ordering and ten-decimal rounding keep this structural lock portable.
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return value;
+    return Object.is(value, -0) ? 0 : Number(value.toFixed(10));
+  }
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record).sort().map((key) => [key, canonical(record[key])]),
+    );
+  }
+  return value;
 }
 
 function cleanZero(value: number): number {
