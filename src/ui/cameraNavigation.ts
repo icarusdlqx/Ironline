@@ -12,6 +12,13 @@ export interface CameraNavigationEngine {
   selectedEntities: () => EntityId[];
 }
 
+/** Arrow keys name the view's destination; panBy takes the counter-motion used by dragging. */
+export function arrowPanDelta(held: ReadonlySet<string>, distance: number): Vec2 {
+  const horizontal = Number(held.has('ArrowRight')) - Number(held.has('ArrowLeft'));
+  const vertical = Number(held.has('ArrowDown')) - Number(held.has('ArrowUp'));
+  return { x: horizontal === 0 ? 0 : -horizontal * distance, y: vertical * distance };
+}
+
 export function selectedCentre(engine: CameraNavigationEngine): Vec2 | null {
   let x = 0;
   let y = 0;

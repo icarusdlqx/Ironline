@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { playerWorld } from '../../tests/support';
 import {
+  arrowPanDelta,
   centreOnSelection,
   selectedCentre,
   type CameraNavigationEngine,
@@ -23,6 +24,24 @@ function harness(ids: number[]): {
 }
 
 describe('camera selection navigation', () => {
+  it.each([
+    ['ArrowLeft', { x: 12, y: 0 }],
+    ['ArrowRight', { x: -12, y: 0 }],
+    ['ArrowUp', { x: 0, y: -12 }],
+    ['ArrowDown', { x: 0, y: 12 }],
+  ] as const)('maps %s to the drag-space pan that moves the view the same way', (key, expected) => {
+    expect(arrowPanDelta(new Set([key]), 12)).toEqual(expected);
+  });
+
+  it('cancels opposing arrow keys without adding camera drift', () => {
+    expect(
+      arrowPanDelta(
+        new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']),
+        12,
+      ),
+    ).toEqual({ x: 0, y: 0 });
+  });
+
   it('centres on the operational selection rather than the whole lance', () => {
     const { engine, centreOn } = harness([1, 2]);
     const [first, second] = engine.world.entities;
