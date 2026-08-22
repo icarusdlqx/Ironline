@@ -226,6 +226,7 @@ export class Renderer {
 
   draw(world: World, alpha: number, deltaSeconds: number, view: ViewState): void {
     this.units.interpolate(world, alpha);
+    this.units.setRenderQuality(this.camera.distance, this.lowFx);
     this.units.beginFrame(deltaSeconds);
     this.effects.beginFrame(deltaSeconds);
 

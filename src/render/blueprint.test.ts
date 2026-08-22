@@ -150,7 +150,8 @@ describe('body plans', () => {
       const baseline = planFor(id, null);
       const identified = planFor(id);
       expect(identified.hardpoints, id).toEqual(baseline.hardpoints);
-      expect(Math.abs(identified.parts.length - baseline.parts.length), id).toBeLessThanOrEqual(1);
+      const structure = identified.parts.filter((part) => part.detail === 'structure');
+      expect(Math.abs(structure.length - baseline.parts.length), id).toBeLessThanOrEqual(1);
     }
   });
 

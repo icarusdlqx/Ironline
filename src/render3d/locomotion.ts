@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { radiusFor } from '../render/shape';
-import { angleDifference } from '../sim/math';
+import { angleDifference, clamp } from '../sim/math';
 import type { EntityId, MechEntity, Vec2 } from '../sim/types';
 import type { BattleEffects } from './battleEffects';
 import { createFootContactState, resetFootContact, settleFootContact,
@@ -18,6 +18,7 @@ import type { Interpolated } from './unitViews';
 import { idleWeightCorrection, legPhaseFor } from './machineCulture';
 import { localTilt, sampleGround, type GroundSample } from './locomotionGround';
 import { poseLoosePanels } from './damagedPanels';
+import { poseMachineMotion } from './machineMotion';
 
 export { advanceGait, gaitForTerrain, responseBlend, type GaitProfile } from './terrainGait';
 export { localTilt, sampleGround, type GroundSample } from './locomotionGround';
@@ -88,6 +89,7 @@ export class Locomotion {
     model.torso.rotation.y = -at.torso;
 
     this.animate(entity, model, at, deltaSeconds, tilt, this.terrainAt(at));
+    poseMachineMotion(model.machineMotion);
     if (entity.jump !== null) this.burn(entity, model);
   }
 
@@ -392,8 +394,4 @@ export class Locomotion {
     this.states.set(id, fresh);
     return fresh;
   }
-}
-
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.max(minimum, Math.min(maximum, value));
 }
