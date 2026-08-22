@@ -1,6 +1,7 @@
 {
   "id": "gauss_rifle",
   "name": "Gauss Rifle",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 15,
   "slots": 7,

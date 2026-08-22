@@ -1,6 +1,7 @@
 {
   "id": "flamer",
   "name": "Flamer",
+  "faction": "linewrought",
   "type": "energy",
   "tonnage": 1,
   "slots": 1,

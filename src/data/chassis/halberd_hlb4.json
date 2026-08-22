@@ -1,6 +1,7 @@
 {
   "id": "halberd_hlb4",
   "name": "Halberd HLB-4",
+  "faction": "aurelian",
   "class": "heavy",
   "tonnage": 75,
   "baseCost": 13400000,

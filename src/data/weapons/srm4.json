@@ -1,6 +1,7 @@
 {
   "id": "srm4",
   "name": "Shortbow 4",
+  "faction": "linewrought",
   "type": "missile",
   "tonnage": 2,
   "slots": 1,

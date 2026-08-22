@@ -1,6 +1,7 @@
 {
   "id": "warden_wrd5",
   "name": "Warden WRD-5",
+  "faction": "aurelian",
   "class": "heavy",
   "tonnage": 60,
   "baseCost": 4900000,

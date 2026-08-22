@@ -1,6 +1,7 @@
 {
   "id": "medium_pulse_laser",
   "name": "Medium Burst Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 2,
   "slots": 2,

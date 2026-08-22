@@ -1,6 +1,7 @@
 {
   "id": "rampart_rmp4",
   "name": "Rampart RMP-4",
+  "faction": "linewrought",
   "class": "assault",
   "tonnage": 85,
   "baseCost": 14200000,

@@ -1,6 +1,7 @@
 {
   "id": "mrm20",
   "name": "Volley 20",
+  "faction": "linewrought",
   "type": "missile",
   "tonnage": 7,
   "slots": 3,

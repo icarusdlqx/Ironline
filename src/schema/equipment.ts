@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, NameSchema } from './common';
+import { FactionSchema } from './faction';
 
 export const EquipmentCategorySchema = z.enum([
   'heat_sink',
@@ -14,6 +15,7 @@ export type EquipmentCategory = z.infer<typeof EquipmentCategorySchema>;
 export const EquipmentSchema = z.strictObject({
   id: IdSchema,
   name: NameSchema,
+  faction: FactionSchema,
   category: EquipmentCategorySchema,
   tonnage: z.number().nonnegative().max(20),
   slots: z.number().int().nonnegative().max(24),

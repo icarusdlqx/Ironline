@@ -1,6 +1,7 @@
 {
   "id": "narc",
   "name": "Limpet Beacon",
+  "faction": "linewrought",
   "category": "targeting",
   "tonnage": 3,
   "slots": 2,

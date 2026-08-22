@@ -1,6 +1,7 @@
 {
   "id": "light_gauss",
   "name": "Gauss Carbine",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 12,
   "slots": 5,

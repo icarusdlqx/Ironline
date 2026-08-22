@@ -1,6 +1,7 @@
 {
   "id": "redoubt_rdt1",
   "name": "Redoubt RDT-1",
+  "faction": "linewrought",
   "frame": "turret",
   "class": "medium",
   "tonnage": 40,

@@ -1,6 +1,7 @@
 {
   "id": "ac2",
   "name": "Light Autocannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 6,
   "slots": 2,

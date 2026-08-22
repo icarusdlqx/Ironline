@@ -1,6 +1,7 @@
 {
   "id": "ac10",
   "name": "Heavy Autocannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 12,
   "slots": 7,

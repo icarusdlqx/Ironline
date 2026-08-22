@@ -1,6 +1,7 @@
 {
   "id": "small_laser",
   "name": "Small Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 0.5,
   "slots": 1,

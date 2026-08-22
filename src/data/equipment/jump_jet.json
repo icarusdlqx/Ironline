@@ -1,6 +1,7 @@
 {
   "id": "jump_jet",
   "name": "Jump Jet",
+  "faction": "linewrought",
   "category": "jump_jet",
   "tonnage": 1,
   "slots": 1,

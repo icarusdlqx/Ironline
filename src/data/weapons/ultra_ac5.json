@@ -1,6 +1,7 @@
 {
   "id": "ultra_ac5",
   "name": "Rapid Autocannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 9,
   "slots": 5,

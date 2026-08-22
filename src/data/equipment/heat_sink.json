@@ -1,6 +1,7 @@
 {
   "id": "heat_sink",
   "name": "Heat Sink",
+  "faction": "linewrought",
   "category": "heat_sink",
   "tonnage": 1,
   "slots": 1,

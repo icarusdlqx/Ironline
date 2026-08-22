@@ -1,6 +1,7 @@
 {
   "id": "inferno_srm4",
   "name": "Scorcher 4",
+  "faction": "linewrought",
   "type": "missile",
   "tonnage": 2,
   "slots": 1,

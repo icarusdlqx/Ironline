@@ -1,6 +1,7 @@
 {
   "id": "ams",
   "name": "Anti-Missile System",
+  "faction": "linewrought",
   "category": "defensive",
   "tonnage": 1.5,
   "slots": 1,

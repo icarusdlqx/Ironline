@@ -1,6 +1,7 @@
 {
   "id": "machine_gun",
   "name": "Machine Gun",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 0.5,
   "slots": 1,

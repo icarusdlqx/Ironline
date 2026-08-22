@@ -1,6 +1,7 @@
 {
   "id": "active_probe",
   "name": "Deep Scanner",
+  "faction": "aurelian",
   "category": "electronics",
   "tonnage": 1.5,
   "slots": 2,

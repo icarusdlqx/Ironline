@@ -1,6 +1,7 @@
 {
   "id": "thunderbolt15",
   "name": "Longspear 15",
+  "faction": "linewrought",
   "type": "missile",
   "tonnage": 11,
   "slots": 4,

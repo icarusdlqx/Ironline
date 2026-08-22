@@ -1,6 +1,7 @@
 {
   "id": "colossus_cls1",
   "name": "Colossus CLS-1",
+  "faction": "linewrought",
   "class": "assault",
   "tonnage": 100,
   "baseCost": 9200000,

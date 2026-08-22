@@ -1,6 +1,7 @@
 {
   "id": "targeting_computer",
   "name": "Targeting Computer",
+  "faction": "aurelian",
   "category": "targeting",
   "tonnage": 3,
   "slots": 3,
