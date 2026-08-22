@@ -1,6 +1,7 @@
 {
   "id": "courser_crs1",
   "name": "Courser CRS-1",
+  "faction": "linewrought",
   "frame": "vehicle",
   "class": "light",
   "tonnage": 30,

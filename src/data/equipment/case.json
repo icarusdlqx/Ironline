@@ -1,6 +1,7 @@
 {
   "id": "case",
   "name": "Blowout Cell",
+  "faction": "linewrought",
   "category": "defensive",
   "tonnage": 0.5,
   "slots": 1,

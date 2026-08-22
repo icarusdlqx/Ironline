@@ -1,6 +1,7 @@
 {
   "id": "er_medium_laser",
   "name": "Focused Medium Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 1,
   "slots": 1,

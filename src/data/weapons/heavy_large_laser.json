@@ -1,6 +1,7 @@
 {
   "id": "heavy_large_laser",
   "name": "Smelter Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 8,
   "slots": 3,

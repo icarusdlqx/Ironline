@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, NameSchema } from './common';
+import { FactionSchema } from './faction';
 
 export const WeaponTypeSchema = z.enum(['energy', 'ballistic', 'missile']);
 export type WeaponType = z.infer<typeof WeaponTypeSchema>;
@@ -24,6 +25,7 @@ export const WeaponSchema = z
   .strictObject({
     id: IdSchema,
     name: NameSchema,
+    faction: FactionSchema,
     type: WeaponTypeSchema,
     tonnage: z.number().positive().max(30),
     slots: z.number().int().positive().max(24),

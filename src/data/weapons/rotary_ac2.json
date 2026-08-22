@@ -1,6 +1,7 @@
 {
   "id": "rotary_ac2",
   "name": "Rotary Cannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 8,
   "slots": 4,

@@ -1,6 +1,7 @@
 {
   "id": "plasma_rifle",
   "name": "Plasma Rifle",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 6,
   "slots": 2,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ChassisSchema } from './chassis';
 import { LOCATIONS } from './common';
 import { EquipmentSchema } from './equipment';
+import { FactionSchema } from './faction';
 import { loadCatalog } from './load';
 import { RangeBandsSchema, WeaponSchema } from './weapon';
 
@@ -38,11 +39,19 @@ describe('content catalog', () => {
     const families = new Set([...catalog.weapons.values()].map((weapon) => weapon.type));
     expect([...families].sort()).toEqual(['ballistic', 'energy', 'missile']);
   });
+
+  it('assigns weapon source by construction', () => {
+    for (const weapon of catalog.weapons.values()) {
+      const expected = weapon.type === 'energy' && weapon.id !== 'flamer' ? 'aurelian' : 'linewrought';
+      expect(weapon.faction, weapon.id).toBe(expected);
+    }
+  });
 });
 
 const VALID_CHASSIS = {
   id: 'probe_pb1',
   name: 'Probe PB-1',
+  faction: 'linewrought' as const,
   class: 'medium',
   tonnage: 45,
   baseCost: 3400000,
@@ -88,6 +97,7 @@ describe('chassis schema', () => {
 const VALID_WEAPON = {
   id: 'probe_gun',
   name: 'Probe Gun',
+  faction: 'linewrought' as const,
   type: 'ballistic',
   tonnage: 8,
   slots: 4,
@@ -101,6 +111,40 @@ const VALID_WEAPON = {
   cost: 125000,
   recoil: 0.12,
 };
+
+const VALID_EQUIPMENT = {
+  id: 'probe_sink',
+  name: 'Probe Sink',
+  faction: 'linewrought' as const,
+  category: 'heat_sink' as const,
+  tonnage: 1,
+  slots: 1,
+  cost: 2000,
+};
+
+describe('faction schema', () => {
+  it('accepts the two machine cultures', () => {
+    expect(FactionSchema.options).toEqual(['linewrought', 'aurelian']);
+  });
+
+  it('is required on chassis, weapons and equipment', () => {
+    const { faction: _chassisFaction, ...chassis } = VALID_CHASSIS;
+    const { faction: _weaponFaction, ...weapon } = VALID_WEAPON;
+    const { faction: _equipmentFaction, ...equipment } = VALID_EQUIPMENT;
+
+    expect(ChassisSchema.safeParse(chassis).success).toBe(false);
+    expect(WeaponSchema.safeParse(weapon).success).toBe(false);
+    expect(EquipmentSchema.safeParse(equipment).success).toBe(false);
+  });
+
+  it('rejects an unsupported source', () => {
+    expect(ChassisSchema.safeParse({ ...VALID_CHASSIS, faction: 'compact' }).success).toBe(false);
+    expect(WeaponSchema.safeParse({ ...VALID_WEAPON, faction: 'compact' }).success).toBe(false);
+    expect(EquipmentSchema.safeParse({ ...VALID_EQUIPMENT, faction: 'compact' }).success).toBe(
+      false,
+    );
+  });
+});
 
 describe('weapon schema', () => {
   it('defaults accuracy and tags', () => {
@@ -134,14 +178,7 @@ describe('weapon schema', () => {
 
 describe('equipment schema', () => {
   it('accepts a well-formed item and defaults its stat block', () => {
-    const parsed = EquipmentSchema.parse({
-      id: 'probe_sink',
-      name: 'Probe Sink',
-      category: 'heat_sink',
-      tonnage: 1,
-      slots: 1,
-      cost: 2000,
-    });
+    const parsed = EquipmentSchema.parse(VALID_EQUIPMENT);
     expect(parsed.stats).toEqual({});
     expect(parsed.tags).toEqual([]);
   });
@@ -149,12 +186,8 @@ describe('equipment schema', () => {
   it('rejects an unknown category', () => {
     expect(
       EquipmentSchema.safeParse({
-        id: 'probe_sink',
-        name: 'Probe Sink',
+        ...VALID_EQUIPMENT,
         category: 'reactor',
-        tonnage: 1,
-        slots: 1,
-        cost: 2000,
       }).success,
     ).toBe(false);
   });

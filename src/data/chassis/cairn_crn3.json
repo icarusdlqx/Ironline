@@ -1,6 +1,7 @@
 {
   "id": "cairn_crn3",
   "name": "Cairn CRN-3",
+  "faction": "linewrought",
   "class": "heavy",
   "tonnage": 65,
   "baseCost": 5200000,

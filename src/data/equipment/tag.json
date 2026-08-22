@@ -1,6 +1,7 @@
 {
   "id": "tag",
   "name": "Target Designator",
+  "faction": "aurelian",
   "category": "targeting",
   "tonnage": 1,
   "slots": 1,

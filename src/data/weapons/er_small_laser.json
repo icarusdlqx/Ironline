@@ -1,6 +1,7 @@
 {
   "id": "er_small_laser",
   "name": "Focused Small Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 0.5,
   "slots": 1,

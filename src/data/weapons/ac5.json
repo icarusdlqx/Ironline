@@ -1,6 +1,7 @@
 {
   "id": "ac5",
   "name": "Field Autocannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 8,
   "slots": 4,

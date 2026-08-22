@@ -1,6 +1,7 @@
 {
   "id": "drover_dvr2",
   "name": "Drover DVR-2",
+  "faction": "linewrought",
   "frame": "vehicle",
   "class": "medium",
   "tonnage": 50,

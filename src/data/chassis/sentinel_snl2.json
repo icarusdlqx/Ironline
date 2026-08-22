@@ -1,6 +1,7 @@
 {
   "id": "sentinel_snl2",
   "name": "Sentinel SNL-2",
+  "faction": "aurelian",
   "class": "medium",
   "tonnage": 45,
   "baseCost": 3400000,

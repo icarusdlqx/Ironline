@@ -1,6 +1,7 @@
 {
   "id": "large_pulse_laser",
   "name": "Large Burst Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 7,
   "slots": 3,

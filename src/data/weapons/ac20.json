@@ -1,6 +1,7 @@
 {
   "id": "ac20",
   "name": "Siege Autocannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 14,
   "slots": 10,

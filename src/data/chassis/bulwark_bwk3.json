@@ -1,6 +1,7 @@
 {
   "id": "bulwark_bwk3",
   "name": "Bulwark BWK-3",
+  "faction": "linewrought",
   "class": "heavy",
   "tonnage": 70,
   "baseCost": 8900000,

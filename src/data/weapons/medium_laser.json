@@ -1,6 +1,7 @@
 {
   "id": "medium_laser",
   "name": "Medium Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 1,
   "slots": 1,

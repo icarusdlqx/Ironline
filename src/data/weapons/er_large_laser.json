@@ -1,6 +1,7 @@
 {
   "id": "er_large_laser",
   "name": "Focused Large Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 5,
   "slots": 2,

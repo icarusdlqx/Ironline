@@ -1,6 +1,7 @@
 {
   "id": "lbx_ac10",
   "name": "Canister Cannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 11,
   "slots": 6,

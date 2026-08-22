@@ -1,6 +1,7 @@
 {
   "id": "ppc",
   "name": "Arc Projector",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 7,
   "slots": 3,

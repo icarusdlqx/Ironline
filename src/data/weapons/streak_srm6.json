@@ -1,6 +1,7 @@
 {
   "id": "streak_srm6",
   "name": "Seeker 6",
+  "faction": "linewrought",
   "type": "missile",
   "tonnage": 4.5,
   "slots": 2,

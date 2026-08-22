@@ -1,6 +1,7 @@
 {
   "id": "wisp_wsp1",
   "name": "Vesper VES-1",
+  "faction": "aurelian",
   "class": "light",
   "tonnage": 25,
   "baseCost": 1800000,

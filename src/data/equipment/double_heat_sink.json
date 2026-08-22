@@ -1,6 +1,7 @@
 {
   "id": "double_heat_sink",
   "name": "Compound Heat Sink",
+  "faction": "aurelian",
   "category": "heat_sink",
   "tonnage": 1,
   "slots": 3,

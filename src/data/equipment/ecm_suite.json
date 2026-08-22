@@ -1,6 +1,7 @@
 {
   "id": "ecm_suite",
   "name": "ECM Suite",
+  "faction": "aurelian",
   "category": "electronics",
   "tonnage": 1.5,
   "slots": 2,

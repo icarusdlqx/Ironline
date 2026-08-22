@@ -1,6 +1,7 @@
 {
   "id": "lrm20",
   "name": "Longshot 20",
+  "faction": "linewrought",
   "type": "missile",
   "tonnage": 10,
   "slots": 5,

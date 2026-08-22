@@ -1,6 +1,7 @@
 {
   "id": "hornet_hnt2",
   "name": "Gadfly GAD-2",
+  "faction": "linewrought",
   "class": "light",
   "tonnage": 35,
   "baseCost": 2600000,

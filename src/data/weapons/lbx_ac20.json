@@ -1,6 +1,7 @@
 {
   "id": "lbx_ac20",
   "name": "Heavy Canister Cannon",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 15,
   "slots": 11,

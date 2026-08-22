@@ -1,6 +1,7 @@
 {
   "id": "falchion_fal2",
   "name": "Falchion FAL-2",
+  "faction": "aurelian",
   "class": "medium",
   "tonnage": 50,
   "baseCost": 3800000,

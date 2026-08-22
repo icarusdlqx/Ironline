@@ -1,6 +1,7 @@
 {
   "id": "small_pulse_laser",
   "name": "Small Burst Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 1,
   "slots": 1,

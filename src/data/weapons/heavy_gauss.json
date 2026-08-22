@@ -1,6 +1,7 @@
 {
   "id": "heavy_gauss",
   "name": "Gauss Howitzer",
+  "faction": "linewrought",
   "type": "ballistic",
   "tonnage": 18,
   "slots": 9,

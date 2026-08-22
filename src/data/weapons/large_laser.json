@@ -1,6 +1,7 @@
 {
   "id": "large_laser",
   "name": "Large Laser",
+  "faction": "aurelian",
   "type": "energy",
   "tonnage": 5,
   "slots": 2,

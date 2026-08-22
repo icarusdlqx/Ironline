@@ -1,6 +1,9 @@
 export { LOCATIONS, MechLocationSchema, IdSchema, NameSchema, perLocation } from './common';
 export type { MechLocation } from './common';
 
+export { FactionSchema } from './faction';
+export type { Faction } from './faction';
+
 export { ChassisSchema, ChassisClassSchema, HardpointsSchema } from './chassis';
 export type { Chassis, Hardpoints } from './chassis';
 

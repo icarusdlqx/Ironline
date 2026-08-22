@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, LOCATIONS, NameSchema, perLocation } from './common';
+import { FactionSchema } from './faction';
 import { FrameSchema } from './rules';
 
 export const HardpointsSchema = z.strictObject({
@@ -24,6 +25,7 @@ export const ChassisSchema = z
   .strictObject({
     id: IdSchema,
     name: NameSchema,
+    faction: FactionSchema,
     /**
      * What kind of machine this is. Absent means a mech, so the hulls that
      * were here before frames existed never had to be told they are mechs.
