@@ -14,7 +14,7 @@ function meshCount(root: Object3D): number {
 describe('rendered weapon mounts', () => {
   it('rebuilds scorch only when a location crosses a damage tier', () => {
     const world = testWorld('location-scorch');
-    const entity = unitOf(world, 'sentinel_brawler');
+    const entity = unitOf(world, 'hornet_spotter');
     const units = new UnitViews(new Scene(), () => 0);
     const clean = units.viewFor(world, entity);
     const cleanMeshes = meshCount(clean.model.root);
@@ -43,17 +43,34 @@ describe('rendered weapon mounts', () => {
 
   it('rebuilds a critical mount out of the visible loadout', () => {
     const world = testWorld('critical-mount-signature');
-    const entity = unitOf(world, 'sentinel_brawler');
+    const entity = unitOf(world, 'hornet_spotter');
     const units = new UnitViews(new Scene(), () => 0);
     const armed = units.viewFor(world, entity);
-    const mount = entity.weapons.find((candidate) => candidate.weaponId === 'ac5');
+    const mount = entity.weapons.find((candidate) => candidate.weaponId === 'flamer');
     expect(mount).toBeDefined();
     if (mount === undefined) return;
 
     mount.destroyed = true;
     const struck = units.viewFor(world, entity);
     expect(struck.model.root).not.toBe(armed.model.root);
-    expect(struck.model.weapons.some((weapon) => weapon.weaponId === 'ac5')).toBe(false);
+    expect(struck.model.weapons.some((weapon) => weapon.weaponId === 'flamer')).toBe(false);
+    units.dispose();
+  });
+
+  it('keeps sealed damage inside the shell until the terminal drop', () => {
+    const world = testWorld('sealed-damage-signature');
+    const entity = unitOf(world, 'sentinel_brawler');
+    const units = new UnitViews(new Scene(), () => 0);
+    const clean = units.viewFor(world, entity);
+    entity.locations.left_arm.armour = 0;
+    entity.locations.left_arm.internal = 0;
+    entity.locations.left_arm.destroyed = true;
+    const mount = entity.weapons.find((candidate) => candidate.weaponId === 'ac5');
+    if (mount !== undefined) mount.destroyed = true;
+
+    expect(units.viewFor(world, entity).model.root).toBe(clean.model.root);
+    entity.destroyed = true;
+    expect(units.viewFor(world, entity).model.root).not.toBe(clean.model.root);
     units.dispose();
   });
 
@@ -124,7 +141,7 @@ describe('rendered weapon mounts', () => {
 
   it('drives recoil from the catalogue value', () => {
     const world = testWorld('weapon-recoil');
-    const entity = unitOf(world, 'sentinel_brawler');
+    const entity = unitOf(world, 'bulwark_assault');
     const units = new UnitViews(new Scene(), () => 0);
     const rig = units.viewFor(world, entity).model.weapons.find((candidate) => candidate.weaponId === 'ac5');
     expect(rig).toBeDefined();
@@ -132,12 +149,124 @@ describe('rendered weapon mounts', () => {
 
     units.beginFrame();
     units.markPlaced(entity.id);
-    expect(units.fireMount(entity.id, 'ac5', new Vector3())).toBe(true);
+    const muzzle = new Vector3();
+    const breech = new Vector3();
+    expect(units.fireMount(entity.id, 'ac5', muzzle, breech)).toBe(true);
+    expect(muzzle.distanceTo(breech)).toBeGreaterThan(0);
     expect(rig.kick).toBe(rig.travel);
+    expect(units.viewFor(world, entity).model.hullRecoil.kick).toBeGreaterThan(0);
     units.beginFrame(1 / 30);
     expect(rig.slide.position.x).toBeLessThan(0);
     expect(rig.kick).toBeLessThan(rig.travel);
     units.dispose();
+  });
+
+  it('absorbs captured ballistic recoil inside a sealed hull', () => {
+    const world = testWorld('sealed-weapon-recoil');
+    const entity = unitOf(world, 'sentinel_brawler');
+    const units = new UnitViews(new Scene(), () => 0);
+    const view = units.viewFor(world, entity);
+    const rig = view.model.weapons.find((candidate) => candidate.weaponId === 'ac5');
+    expect(rig).toBeDefined();
+    if (rig === undefined) return;
+
+    units.beginFrame();
+    units.markPlaced(entity.id);
+    expect(units.fireMount(entity.id, 'ac5', new Vector3())).toBe(true);
+    expect(rig.kick).toBe(0);
+    expect(view.model.hullRecoil.kick).toBe(0);
+    units.dispose();
+  });
+
+  it('tracks a sealed target bearing while the sim torso is still stale', () => {
+    const world = testWorld('culture-torso-tracking');
+    const sealed = unitOf(world, 'sentinel_brawler');
+    const welded = unitOf(world, 'hornet_spotter');
+    const target = unitOf(world, 'halberd_prime');
+    const units = new UnitViews(new Scene(), () => 0);
+    sealed.pos = { x: 100, y: 100 };
+    welded.pos = { x: 200, y: 100 };
+    target.pos = { x: 300, y: 100 };
+    sealed.facing = 0;
+    welded.facing = 0;
+    sealed.torsoOffset = 0;
+    welded.torsoOffset = 0;
+    sealed.targetId = target.id;
+    welded.targetId = target.id;
+    units.snapshot(world);
+    target.pos = { x: 100, y: 300 };
+    units.snapshot(world);
+    units.interpolate(world, 0.25);
+
+    expect(sealed.torsoOffset).toBe(0);
+    expect(units.at(sealed).torso).toBeCloseTo(Math.min(Math.PI / 2, sealed.twistLimit));
+    expect(units.at(welded).torso).toBe(0);
+
+    sealed.targetId = null;
+    sealed.torsoOffset = 0.3;
+    units.interpolate(world, 0.25);
+    expect(units.at(sealed).torso).toBe(0.3);
+    units.dispose();
+  });
+
+  it('starts sealed lights on reveal and sequences them again after a restart', () => {
+    const world = testWorld('sealed-startup-events');
+    const entity = unitOf(world, 'sentinel_brawler');
+    const units = new UnitViews(new Scene(), () => 0);
+    const view = units.viewFor(world, entity);
+    expect(view.model.startup?.lights).toHaveLength(3);
+    view.model.root.visible = false;
+    units.beginFrame(2);
+    expect(view.model.startup?.lights.some((light) => light.visible)).toBe(false);
+
+    view.model.root.visible = true;
+    units.beginFrame(0.17);
+    expect(view.model.startup?.lights.filter((light) => light.visible)).toHaveLength(2);
+    units.consumeEvents([{ type: 'shutdown', tick: 4, entityId: entity.id, forced: false }]);
+    units.beginFrame(2);
+    expect(view.model.startup?.lights.some((light) => light.visible)).toBe(false);
+    units.consumeEvents([{ type: 'restart', tick: 8, entityId: entity.id }]);
+    units.beginFrame(0);
+    expect(view.model.startup?.lights.filter((light) => light.visible)).toHaveLength(1);
+    units.dispose();
+  });
+
+  it('keeps a late-created shutdown sealed view dark until its restart event', () => {
+    const world = testWorld('sealed-late-shutdown');
+    const entity = unitOf(world, 'sentinel_brawler');
+    entity.shutdownRemaining = 2;
+    const units = new UnitViews(new Scene(), () => 0);
+    const view = units.viewFor(world, entity);
+    units.beginFrame(2);
+    expect(view.model.startup?.lights.some((light) => light.visible)).toBe(false);
+    units.consumeEvents([{ type: 'restart', tick: 8, entityId: entity.id }]);
+    units.beginFrame(0);
+    expect(view.model.startup?.lights.filter((light) => light.visible)).toHaveLength(1);
+    units.dispose();
+  });
+
+  it('shudders a welded restart without adding hull motion under reduced motion', () => {
+    const world = testWorld('welded-restart-shudder');
+    const entity = unitOf(world, 'bulwark_assault');
+    const active = new UnitViews(new Scene(), () => 0);
+    const activeView = active.viewFor(world, entity);
+    active.consumeEvents([{ type: 'restart', tick: 8, entityId: entity.id }]);
+    expect(activeView.model.hullRecoil.kick).toBeGreaterThan(0);
+
+    const reduced = new UnitViews(new Scene(), () => 0, true);
+    const reducedView = reduced.viewFor(world, entity);
+    const rig = reducedView.model.weapons.find((candidate) => candidate.weaponId === 'ac5');
+    expect(rig).toBeDefined();
+    if (rig === undefined) return;
+    reduced.beginFrame();
+    reduced.markPlaced(entity.id);
+    expect(reduced.fireMount(entity.id, 'ac5', new Vector3())).toBe(true);
+    expect(rig.kick).toBe(rig.travel);
+    expect(reducedView.model.hullRecoil.kick).toBe(0);
+    reduced.consumeEvents([{ type: 'restart', tick: 8, entityId: entity.id }]);
+    expect(reducedView.model.hullRecoil.kick).toBe(0);
+    active.dispose();
+    reduced.dispose();
   });
 
   it('rejects hidden, unplaced and previous-frame transforms', () => {

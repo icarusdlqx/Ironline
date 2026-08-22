@@ -2,20 +2,21 @@ import { Mesh, MeshBasicMaterial, RingGeometry, Scene, Vector3 } from 'three';
 import { LOCATIONS } from '../schema/common';
 import { teamColour, UI } from '../render/palette';
 import { DEFAULT_SILHOUETTE, radiusFor } from '../render/shape';
-import { angleDifference, normaliseAngle } from '../sim/math';
+import { angleDifference } from '../sim/math';
 import { jumpHeight } from '../sim/movement';
 import { isOperational, type EntityId, type MechEntity, type Vec2, type World } from '../sim/types';
 import type { Weapon } from '../schema/weapon';
+import type { SimEvent } from '../sim/events';
 import { buildMechModel, disposeModel, type MechModel } from './mechModel';
 import type { TacticalCamera, Viewport } from './camera';
 import { ContactShadowLayer } from './contactShadows';
 import { damageWearTier } from './damageLedger';
-import {
-  collectLocationAnchors,
-  locationWorldAnchor,
-  type LocationAnchors,
-} from './locationAnchors';
+import { collectLocationAnchors, locationWorldAnchor, type LocationAnchors } from './locationAnchors';
 import { advanceWeaponRecoil, triggerWeaponRecoil } from './weaponModels';
+import { advanceHullRecoil, triggerHullRecoil } from './machineCulture';
+import { modelDamageSignature, sealedTargetOffset, writeInterpolatedPose } from './unitVisualState';
+import { advanceStartupSequence, setStartupPowered } from './startupLights';
+import { presentMachinePowerEvent } from './unitCultureEvents';
 
 export interface Interpolated {
   x: number;
@@ -45,21 +46,6 @@ const DEFAULT_VISUAL: Weapon['visual'] = {
   arc: 0,
 };
 
-function damageSignature(entity: MechEntity): number {
-  let bits = (entity.destroyed ? 17 : 7) ^ (entity.team + 1);
-  for (let index = 0; index < LOCATIONS.length; index += 1) {
-    const location = LOCATIONS[index];
-    if (location === undefined) continue;
-    const state = entity.locations[location];
-    const mark = damageWearTier(state) + (state.destroyed ? 4 : 0);
-    bits = Math.imul(bits ^ ((index + 1) * 11 + mark), 16777619);
-  }
-  for (let index = 0; index < entity.weapons.length; index += 1) {
-    if (entity.weapons[index]?.destroyed === true) bits = Math.imul(bits ^ (index + 17), 16777619);
-  }
-  return bits >>> 0;
-}
-
 /** Owns model rebuilds and the two sim samples used for smooth rendering. */
 export class UnitViews {
   private readonly views = new Map<EntityId, EntityView>();
@@ -73,6 +59,7 @@ export class UnitViews {
   constructor(
     private readonly scene: Scene,
     private readonly heightAt: (x: number, y: number) => number,
+    private readonly reducedMotion = false,
   ) {
     this.shadows = new ContactShadowLayer(heightAt);
     scene.add(this.shadows.mesh);
@@ -92,6 +79,8 @@ export class UnitViews {
     this.shadows.begin();
     this.placed.clear();
     for (const view of this.views.values()) {
+      advanceHullRecoil(view.model.hullRecoil, deltaSeconds);
+      if (view.model.root.visible) advanceStartupSequence(view.model, deltaSeconds, this.reducedMotion);
       for (const weapon of view.model.weapons) advanceWeaponRecoil(weapon, deltaSeconds);
     }
   }
@@ -110,6 +99,14 @@ export class UnitViews {
 
   finishFrame(): void {
     this.shadows.commit();
+  }
+
+  consumeEvents(events: readonly SimEvent[]): void {
+    for (const event of events) {
+      if (event.type !== 'shutdown' && event.type !== 'restart') continue;
+      const view = this.views.get(event.entityId);
+      presentMachinePowerEvent(view?.model, event.type, this.reducedMotion);
+    }
   }
 
   snapshot(world: World): void {
@@ -153,12 +150,9 @@ export class UnitViews {
         slot.torso = entity.torsoOffset;
         continue;
       }
-      slot.x = sample.prev.x + (sample.cur.x - sample.prev.x) * alpha;
-      slot.y = sample.prev.y + (sample.cur.y - sample.prev.y) * alpha;
-      slot.facing = normaliseAngle(
-        sample.prev.facing + angleDifference(sample.prev.facing, sample.cur.facing) * alpha,
-      );
-      slot.torso = sample.prev.torso + (sample.cur.torso - sample.prev.torso) * alpha;
+      const faction = world.catalog.chassis.get(entity.chassisId)?.faction ?? 'linewrought';
+      writeInterpolatedPose(slot, sample, alpha, faction);
+      if (faction === 'aurelian') slot.torso = sealedTargetOffset(world, entity, slot);
     }
   }
 
@@ -200,7 +194,7 @@ export class UnitViews {
   }
 
   /** Chooses the physical copy that fired when a design carries duplicate weapon ids. */
-  fireMount(id: EntityId, weaponId: string, muzzle: Vector3): boolean {
+  fireMount(id: EntityId, weaponId: string, muzzle: Vector3, breech?: Vector3): boolean {
     const view = this.views.get(id);
     if (view === undefined || !view.model.root.visible || !this.placed.has(id)) return false;
 
@@ -218,7 +212,11 @@ export class UnitViews {
         continue;
       }
       rig.muzzle.getWorldPosition(muzzle);
-      triggerWeaponRecoil(rig);
+      if (breech !== undefined) rig.slide.getWorldPosition(breech);
+      if (view.model.faction === 'linewrought') {
+        triggerWeaponRecoil(rig);
+        if (!this.reducedMotion) triggerHullRecoil(view.model.hullRecoil, view.model.culture, rig.travel);
+      }
       this.mountCycles.set(key, (wanted + 1) % count);
       return true;
     }
@@ -226,7 +224,9 @@ export class UnitViews {
   }
 
   viewFor(world: World, entity: MechEntity): EntityView {
-    const signature = damageSignature(entity);
+    const chassis = world.catalog.chassis.get(entity.chassisId);
+    const faction = chassis?.faction ?? 'linewrought';
+    const signature = modelDamageSignature(entity, faction);
     const existing = this.views.get(entity.id);
     if (existing !== undefined && existing.signature === signature) return existing;
 
@@ -236,11 +236,10 @@ export class UnitViews {
       this.disposeRings(existing);
     }
 
-    const chassis = world.catalog.chassis.get(entity.chassisId);
     const wear = {} as Partial<Record<(typeof LOCATIONS)[number], ReturnType<typeof damageWearTier>>>;
     for (const location of LOCATIONS) wear[location] = damageWearTier(entity.locations[location]);
     const mounts = entity.weapons
-      .filter((mount) => !mount.destroyed)
+      .filter((mount) => faction === 'aurelian' || !mount.destroyed)
       .map((mount) => {
         const weapon = world.catalog.weapons.get(mount.weaponId);
         return {
@@ -265,7 +264,9 @@ export class UnitViews {
       chassis?.hardpoints,
       chassis?.id ?? null,
       wear,
+      faction,
     );
+    if (faction === 'aurelian') setStartupPowered(model, entity.shutdownRemaining <= 0);
 
     const radius = radiusFor(entity.tonnage);
     const ring = this.selectionRing(radius, UI.selection, 1.2, 1.42, 0.9);

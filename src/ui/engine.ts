@@ -1,6 +1,7 @@
 import type { MechLocation } from '../schema/common';
 import { loadCatalog } from '../schema/load';
 import { missionTickBudget } from '../schema/missionClock';
+import { machineCulture } from '../render3d/machineCulture';
 import { Renderer } from '../render3d/scene';
 import { restoreIntent } from '../sim/governor';
 import {
@@ -356,6 +357,9 @@ export class Engine {
         const vent = this.renderer.positionOf(entity.id);
         if (vent !== null) this.renderer.spawnSmoke(vent);
       }
+
+      const faction = this.world.catalog.chassis.get(entity.chassisId)?.faction ?? 'linewrought';
+      if (!machineCulture(faction).revealsFieldDamage) continue;
 
       // Front and back together, so a mech stripped from behind smokes too.
       const damaged = Object.values(entity.locations).some(
@@ -796,7 +800,7 @@ export async function createEngine(host: HTMLElement, options: EngineOptions = {
 
   const renderer = new Renderer(host, world, mapData, atmosphere);
   const engine = new Engine(world, renderer, missionTickBudget(catalog, missionId));
-  renderer.onFootfall = (at, tonnage) => engine.audio.footfall(at, tonnage);
+  renderer.onFootfall = (at, tonnage, faction) => engine.audio.footfall(at, tonnage, faction);
   engine.audio.setTerrain(mapData);
   engine.audio.setAmbient(atmosphereId);
   engine.perf = new PerfOverlay(host);

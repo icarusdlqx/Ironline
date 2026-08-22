@@ -1,3 +1,4 @@
+import type { Faction } from '../schema/faction';
 import type { AbilityVoice, FootfallSurface, HeatCue } from './audioCues';
 import {
   blip,
@@ -20,6 +21,24 @@ export function playPowerSweep(
   const frame = bus.begin(placement);
   if (frame === null) return;
   oscillator(frame, frame.now, seconds, from, to, 0.25, 'sawtooth');
+}
+
+export function playRestart(
+  bus: VoiceBus,
+  faction: Faction,
+  placement: VoicePlacement,
+): void {
+  if (faction === 'aurelian') return;
+
+  const frame = bus.begin(placement);
+  if (frame === null) return;
+  body(frame, frame.now, 0.38, 780, 110, 0.34, 2.4);
+  noiseSweep(frame, frame.now + 0.02, 0.34, 1_400, 190, 0.26, 'bandpass', 0.7);
+  for (let i = 0; i < 3; i += 1) {
+    const at = frame.now + [0, 0.065, 0.15][i]! + frame.random() * 0.012;
+    crack(frame, at, 0.26 - i * 0.04, 950 + i * 220);
+    thump(frame, at, 0.1, 92 + i * 12, 34, 0.26);
+  }
 }
 
 export function playJets(bus: VoiceBus, placement: VoicePlacement): void {
@@ -67,6 +86,7 @@ export function playCollapse(
 
 export function playFootfall(
   bus: VoiceBus,
+  faction: Faction,
   surface: FootfallSurface,
   placement: VoicePlacement,
   tonnage: number,
@@ -74,7 +94,15 @@ export function playFootfall(
   const frame = bus.begin(placement);
   if (frame === null) return;
   const mass = Math.max(0.3, Math.min(1.2, tonnage / 90));
-  thump(frame, frame.now, 0.16, 78 - mass * 20, 30, 0.38 + mass * 0.18);
+  if (faction === 'linewrought') {
+    const transfer = frame.now + 0.018 + frame.random() * 0.026;
+    thump(frame, frame.now, 0.18, 82 - mass * 20, 28, 0.42 + mass * 0.2);
+    noiseSweep(frame, transfer, 0.16, 1_100, 180, 0.2, 'bandpass', 0.6);
+    crack(frame, transfer + 0.025, 0.11 + mass * 0.05, 1_050);
+  } else {
+    thump(frame, frame.now, 0.13, 70 - mass * 16, 32, 0.3 + mass * 0.14);
+    oscillator(frame, frame.now, 0.09, 210, 125, 0.045, 'sine');
+  }
 
   switch (surface) {
     case 'road':

@@ -10,6 +10,7 @@ import {
 } from 'three';
 import { armourShell, chamferedBox, hullSlab, taperedLimb } from './panels';
 import type { MechLocation } from '../schema/common';
+import type { Faction } from '../schema/faction';
 import { chassisBlueprint, type BlueprintPart, type HardpointMap } from '../render/blueprint';
 import type { Silhouette } from '../render/shape';
 import { radiusFor } from '../render/shape';
@@ -26,6 +27,13 @@ import {
   type MotionProfile,
 } from './motionProfiles';
 import { buildWeaponModel, type MountArt, type WeaponRig } from './weaponModels';
+import {
+  machineCulture,
+  type HullRecoil,
+  type MachineCultureProfile,
+} from './machineCulture';
+import type { StartupLightRig } from './startupLights';
+import type { LoosePanelRig } from './damagedPanels';
 
 export type { MountArt } from './weaponModels';
 
@@ -69,6 +77,11 @@ export interface MechModel {
   motion: MotionProfile | null;
   /** Authored mounts keep their own muzzle and recoil travel after construction. */
   weapons: WeaponRig[];
+  faction: Faction;
+  culture: Readonly<MachineCultureProfile>;
+  hullRecoil: HullRecoil;
+  startup: StartupLightRig | null;
+  loosePanels: LoosePanelRig[];
 }
 
 /**
@@ -131,16 +144,20 @@ export function buildMechModel(
   /** Render-only construction key; combat continues to care about the chassis id elsewhere. */
   identity: string | null = null,
   wear: Readonly<Partial<Record<MechLocation, DamageWearTier>>> = {},
+  faction: Faction = 'linewrought',
 ): MechModel {
   const scale = radiusFor(tonnage);
   const plan = chassisBlueprint(shape, traits, fit, identity);
   const motion = motionProfileFor(shape.form, tonnage);
+  const culture = machineCulture(faction);
+  const shownWear = culture.revealsFieldDamage ? wear : {};
+  const shownLost = culture.revealsFieldDamage ? lost : new Set<MechLocation>();
   const tones = createMechMaterials(identity, team, destroyed);
   const burnt = createMechMaterials(identity, team, true);
-  const worn = Object.values(wear).some((tier) => tier === 1)
+  const worn = Object.values(shownWear).some((tier) => tier === 1)
     ? createDamageWearMaterials(tones, 1)
     : null;
-  const scorched = Object.values(wear).some((tier) => tier === 2)
+  const scorched = Object.values(shownWear).some((tier) => tier === 2)
     ? createDamageWearMaterials(tones, 2)
     : null;
 
@@ -165,6 +182,8 @@ export function buildMechModel(
   // Explicit pivots survive changes to boot and shin proportions; height-based
   // guesses made the same chassis change joints when its armour was revised.
   const rigs = new Map<'left_leg' | 'right_leg', LegRig>();
+  const loosened = new Set<MechLocation>();
+  const loosePanels: LoosePanelRig[] = [];
   const footprint: Footprint = { minForward: 0, maxForward: 0, halfWidth: 0 };
   let ankleClearance = plan.legs.ankleHeight * scale;
   const rigFor = (side: 'left_leg' | 'right_leg', z: number): LegRig => {
@@ -195,11 +214,11 @@ export function buildMechModel(
     // An arm or a head that has been blown off is gone: nothing tells a player
     // a mech has stopped being dangerous like watching the arm leave. A torso
     // or a leg stays — the machine is standing on it — but it stays burnt.
-    const gone = part.location !== null && lost.has(part.location);
+    const gone = part.location !== null && shownLost.has(part.location);
     const shed = gone && (part.location === 'left_arm' || part.location === 'right_arm' || part.location === 'head');
     if (shed) continue;
 
-    const tier = part.location === null ? 0 : (wear[part.location] ?? 0);
+    const tier = part.location === null ? 0 : (shownWear[part.location] ?? 0);
     const finish = tier === 2 && scorched !== null
       ? scorched
       : tier === 1 && worn !== null
@@ -209,6 +228,26 @@ export function buildMechModel(
     mesh.userData.damageLocation = part.location;
     mesh.position.set(part.at[0] * scale, part.at[1] * scale, part.at[2] * scale);
     if (part.tilt !== undefined) mesh.rotation.z = part.tilt;
+    if (
+      tier === 2 &&
+      part.location !== null &&
+      part.location !== 'left_leg' &&
+      part.location !== 'right_leg' &&
+      !loosened.has(part.location)
+    ) {
+      const direction = part.location.startsWith('left') ? 1 : -1;
+      mesh.rotation.x = direction * 0.16;
+      mesh.rotation.z += direction * 0.12;
+      mesh.position.y -= scale * 0.045;
+      mesh.userData.loosePanel = true;
+      loosePanels.push({
+        mesh,
+        restX: mesh.rotation.x,
+        restZ: mesh.rotation.z,
+        phase: loosePanels.length * 1.83 + scale * 0.07,
+      });
+      loosened.add(part.location);
+    }
     mesh.castShadow = castsShadow(mesh);
 
     const running = part.location === 'left_leg' || part.location === 'right_leg';
@@ -235,6 +274,33 @@ export function buildMechModel(
       root.add(mesh);
     } else {
       torso.add(mesh);
+    }
+  }
+
+  const startupLights: Mesh[] = [];
+  if (faction === 'aurelian' && !destroyed) {
+    const head = plan.parts.find((part) => part.location === 'head');
+    if (head !== undefined) {
+      const geometry = new SphereGeometry(scale * 0.042, 8, 6);
+      const material = new MeshStandardMaterial({
+        color: 0xb9fff2,
+        emissive: 0x72e8d7,
+        emissiveIntensity: 2.4,
+        roughness: 0.24,
+      });
+      ownedMaterials.push(material);
+      for (let index = 0; index < 3; index += 1) {
+        const light = new Mesh(geometry, material);
+        light.name = `startup-light:${index}`;
+        light.position.set(
+          (head.at[0] + head.size[0] * 0.52) * scale,
+          head.at[1] * scale,
+          (head.at[2] + (index - 1) * head.size[2] * 0.22) * scale,
+        );
+        light.visible = false;
+        torso.add(light);
+        startupLights.push(light);
+      }
     }
   }
 
@@ -285,6 +351,13 @@ export function buildMechModel(
     turnRadius: plan.legs.stanceWidth * scale,
     motion,
     weapons,
+    faction,
+    culture,
+    hullRecoil: { kick: 0, travel: scale * 0.018 },
+    startup: startupLights.length === 0
+      ? null
+      : { lights: startupLights, elapsed: 0, running: true },
+    loosePanels,
   };
 }
 

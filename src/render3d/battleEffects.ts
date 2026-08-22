@@ -2,13 +2,14 @@ import { Color, PointLight, Scene, Vector3 } from 'three';
 import type { Weapon } from '../schema/weapon';
 import type { MechLocation } from '../schema/common';
 import type { SimEvent } from '../sim/events';
-import type { EntityId, Vec2, World } from '../sim/types';
+import { findEntity, type EntityId, type Vec2, type World } from '../sim/types';
 import type { TacticalCamera } from './camera';
 import type { Viewport } from './camera';
 import { canPresentEntity, CombatReadouts } from './combatReadouts';
 import { JetLayer, ScarLayer, SmokeLayer } from './effects';
 import { measureReadoutLayout } from './readoutSafeArea';
 import { TracerLayer } from './tracers';
+import { MechanicalDischargeLayer } from './mechanicalEffects';
 
 interface MuzzleFlash {
   light: PointLight;
@@ -47,11 +48,13 @@ export class BattleEffects {
   private readonly jets = new JetLayer();
   private readonly smoke: SmokeLayer;
   private readonly scars = new ScarLayer();
+  private readonly mechanical = new MechanicalDischargeLayer();
   private readonly flashes: MuzzleFlash[] = [];
   private shakeAmplitude = 0;
   private shakeTime = 0;
   private elapsed = 0;
   private readonly muzzle = new Vector3();
+  private readonly breech = new Vector3();
   private readonly effectPoint = new Vector3();
   private readonly effectAt: Vec2 = { x: 0, y: 0 };
   private readonly anchorOf: BattleFeedbackBindings['anchorOf'] | null;
@@ -65,7 +68,12 @@ export class BattleEffects {
     private readonly camera: TacticalCamera,
     private readonly heightAt: (x: number, y: number) => number,
     private readonly positionOf: (id: EntityId) => Vec2 | null,
-    private readonly muzzleOf: (id: EntityId, weaponId: string, out: Vector3) => boolean,
+    private readonly muzzleOf: (
+      id: EntityId,
+      weaponId: string,
+      out: Vector3,
+      breech: Vector3,
+    ) => boolean,
     feedback: BattleFeedbackBindings | null = null,
   ) {
     this.smoke = new SmokeLayer(fogColour);
@@ -88,7 +96,14 @@ export class BattleEffects {
           undefined,
           () => measureReadoutLayout(readouts.host),
         );
-    scene.add(this.tracers.group, this.jets.group, this.smoke.mesh, this.scars.mesh);
+    scene.add(
+      this.tracers.group,
+      this.jets.group,
+      this.smoke.mesh,
+      this.scars.mesh,
+      this.mechanical.casings,
+      this.mechanical.vents,
+    );
   }
 
   beginFrame(deltaSeconds: number): void {
@@ -121,6 +136,7 @@ export class BattleEffects {
 
     this.jets.commit();
     this.tracers.update(deltaSeconds);
+    this.mechanical.update(deltaSeconds);
     this.smoke.update(deltaSeconds);
     this.readouts?.advance(deltaSeconds);
   }
@@ -173,10 +189,12 @@ export class BattleEffects {
       const target = this.positionOf(event.targetId);
       if (target === null) continue;
 
-      if (!this.muzzleOf(event.shooterId, event.weaponId, this.muzzle)) {
+      this.breech.set(Number.NaN, Number.NaN, Number.NaN);
+      if (!this.muzzleOf(event.shooterId, event.weaponId, this.muzzle, this.breech)) {
         if (shooter === null) continue;
         this.muzzle.set(shooter.x, this.heightAt(shooter.x, shooter.y) + 14, shooter.y);
       }
+      if (!Number.isFinite(this.breech.x)) this.breech.copy(this.muzzle);
 
       this.tracers.fire(
         this.muzzle,
@@ -187,6 +205,17 @@ export class BattleEffects {
         colour,
         this.heightAt,
       );
+      if (weapon?.type === 'ballistic' && !this.camera.reducedMotion) {
+        const shooterEntity = findEntity(world, event.shooterId);
+        const heft = 0.5 + Math.min(1, weapon.tonnage / 14);
+        this.mechanical.fire(
+          this.breech,
+          (shooterEntity?.facing ?? 0) + (shooterEntity?.torsoOffset ?? 0),
+          heft,
+          weapon.visual.style !== 'slug',
+          this.heightAt(this.breech.x, this.breech.z),
+        );
+      }
       this.muzzleLight(this.muzzle, colour, weapon?.damage ?? 5);
     }
   }
@@ -206,6 +235,8 @@ export class BattleEffects {
 
   destroy(): void {
     this.readouts?.destroy();
+    this.scene.remove(this.mechanical.casings, this.mechanical.vents);
+    this.mechanical.dispose();
   }
 
   private locationOf(id: EntityId, location: MechLocation, out: Vector3): boolean {
