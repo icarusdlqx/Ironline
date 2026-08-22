@@ -774,7 +774,26 @@ async function main() {
         (await page.locator('[data-testid="camp-cbills"]').innerText()).replace(/[^0-9-]/g, ''),
       );
 
-    check('campaign map draws every node', (await page.locator('.camp-node').count()) === 7);
+    const campaignNodeIds = await page.locator('.camp-node').evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-testid')?.replace('camp-node-', '') ?? ''),
+    );
+    const expectedCampaignNodeIds = [
+      'militia_raid',
+      'pass_skirmish',
+      'supply_line',
+      'ridge_hold',
+      'causeway_push',
+      'foundry_sweep_node',
+      'shale_overwatch_node',
+      'depot_burn',
+      'depot_take',
+    ];
+    check(
+      'campaign map draws the four-act route and both depot endings',
+      campaignNodeIds.length === expectedCampaignNodeIds.length &&
+        expectedCampaignNodeIds.every((id) => campaignNodeIds.includes(id)),
+      campaignNodeIds.join(', '),
+    );
     check('only the opening node is available', (await page.locator('.camp-node.available').count()) === 1);
     check('the lance is on the books', (await page.locator('[data-testid="camp-bay"] li').count()) === 4);
     // Count the company's own pilots, not every row in the section — the
@@ -953,24 +972,42 @@ async function main() {
       'the refit bay opens on the company mech',
       (await page.locator('[data-testid="bay-commission"]').innerText()).startsWith('Refit'),
     );
-    const shelved = await page.locator('.bay-side .bay-stock').count();
+    const shelvedWeapons = await page
+      .locator('.bay-side [data-testid^="stock-weapon-"]')
+      .evaluateAll((entries) => entries.map((entry) => entry.getAttribute('data-testid') ?? ''));
     check(
-      'the shelves hold only what the company owns',
-      shelved > 0 && shelved < 12,
-      `${shelved} entries on the shelf`,
+      'the campaign shelf holds the selected welded mech\'s own weapons',
+      shelvedWeapons.length === 2 &&
+        shelvedWeapons.includes('stock-weapon-flamer') &&
+        shelvedWeapons.includes('stock-weapon-srm2') &&
+        !shelvedWeapons.includes('stock-weapon-medium_laser'),
+      shelvedWeapons.join(', '),
+    );
+    const coolingOptions = await page.locator('[data-testid="heat-sink-type"] option').evaluateAll(
+      (options) => options.map((option) => ({ value: option.value, label: option.textContent ?? '' })),
+    );
+    check(
+      'campaign cooling offers only the sink technology the company owns',
+      coolingOptions.length === 1 && coolingOptions[0]?.value === 'heat_sink',
+      JSON.stringify(coolingOptions),
     );
     check(
       'every location draws its slots',
       (await page.locator('.slot-block').count()) > 8,
       `${await page.locator('.slot-block').count()} slot blocks`,
     );
-    await page.locator('[data-testid="stock-weapon-medium_laser"]').first().click();
+    await page.locator('[data-testid="stock-weapon-flamer"]').click();
     check(
       'the dossier explains the weapon',
       (await page.locator('[data-testid="bay-dossier-card"]').innerText()).includes('FIREPOWER'),
     );
-    await page.locator('[data-testid="bay-exit"]').click();
+    await page.locator('[data-testid="bay-save"]').click();
     await page.waitForSelector('[data-testid="lance-manifest"]');
+    check(
+      'a company-owned no-change refit returns to the manifest',
+      (await page.locator('[data-testid="refit-bay"]').count()) === 0 &&
+        (await page.locator('[data-testid="lance-manifest"]').count()) === 1,
+    );
 
     await page.locator('[data-testid="manifest-launch"]').click();
     await page.waitForSelector('[data-testid="briefing"]');
@@ -986,7 +1023,11 @@ async function main() {
         playerMechs: world.entities.filter((e) => e.team === 0).map((e) => e.name),
       };
     });
-    check('the mission is the one under contract', deployed.mission === 'raid_ridge', deployed.mission);
+    check(
+      'the mission is the opening Linewrought contract',
+      deployed.mission === 'line_maintenance',
+      deployed.mission,
+    );
     check('the campaign lance deployed', deployed.playerMechs.length === 4, deployed.playerMechs.join(', '));
 
     await page.evaluate(async () => {

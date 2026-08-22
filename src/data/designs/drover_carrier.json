@@ -13,7 +13,7 @@
     "right_leg": 26
   },
   "heatSinkId": "heat_sink",
-  "heatSinks": 12,
+  "heatSinks": 13,
   "mounts": [
     {
       "weaponId": "lrm20",
@@ -28,7 +28,7 @@
       "location": "centre_torso"
     },
     {
-      "weaponId": "medium_laser",
+      "weaponId": "flamer",
       "location": "right_torso"
     }
   ],

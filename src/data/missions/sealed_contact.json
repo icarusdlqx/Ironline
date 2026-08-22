@@ -1,0 +1,119 @@
+{
+  "id": "sealed_contact",
+  "name": "Contact — Ridge Pass",
+  "type": "ambush",
+  "mapId": "ridge_pass",
+  "briefing": "Three ordinary Kestrel machines are escorting one white hull through the pass. The fourth has no shop stamp, hatch seam or exhaust. Break the escort, put the white machine down, and hold the ground until Halloran's recovery crews arrive.",
+  "maxDurationSeconds": 360,
+  "startingResourcePoints": 500,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Halloran Intercept Lance",
+      "units": [
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 108, "y": 852 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 156, "y": 876 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 204, "y": 828 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 132, "y": 780 },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Recovery Train",
+      "units": [
+        {
+          "designId": "votive_picket",
+          "pilotId": "anja_verrin",
+          "spawn": { "x": 852, "y": 108 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "corin_dast",
+          "spawn": { "x": 804, "y": 132 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "leda_morcant",
+          "spawn": { "x": 876, "y": 180 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "drover_carrier",
+          "pilotId": "tomas_arvel",
+          "spawn": { "x": 828, "y": 84 },
+          "facingDegrees": 135
+        }
+      ]
+    }
+  ],
+  "objectives": [
+    {
+      "id": "stop_recovery_train",
+      "label": "Bring down the Kestrel recovery train",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one machine operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "cold_contact",
+      "when": { "type": "elapsed", "seconds": 3 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Sensors: fourth contact is cold at the vents and carrying no ammunition signature. No registry match."
+        },
+        {
+          "type": "reveal",
+          "x": 852,
+          "y": 108,
+          "radius": 190,
+          "seconds": 24
+        }
+      ]
+    },
+    {
+      "id": "recovery_order",
+      "when": { "type": "team_losses", "team": 1, "count": 2 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Halloran: hold the field at dusk. Whatever that white hull leaves behind is yours."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 205
+}

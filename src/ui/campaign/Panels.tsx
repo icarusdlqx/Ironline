@@ -14,6 +14,7 @@ import {
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { getCatalog } from '../../schema/load';
 import { computeLoadout } from '../../sim/loadout';
+import { workshopFactionLine, yardStockLine } from './factionEconomy';
 
 const catalog = getCatalog();
 
@@ -49,6 +50,7 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
         <ul>
           {state.mechs.map((mech) => {
             const estimate = estimateRepair(catalog, mech);
+            const chassis = catalog.chassis.get(mech.design.chassisId);
             const ready = isMechAvailable(state, mech) && mech.status !== 'hulk';
             const projected = projectedRepairWindow(catalog, state, estimate.days);
             const booking = queueByMech.get(mech.id);
@@ -61,19 +63,26 @@ export function MechBayPanel({ state, mutate }: PanelProps) {
               <li key={mech.id} data-testid={`camp-mech-${mech.id}`}>
                 <span className="bay-mech-name">{mech.design.name}</span>
                 <span className="bay-mech-state">
-                  {mech.status === 'hulk'
-                    ? `wreck — ${cbills(estimate.cost)} now · ${projectedTiming} · ${cbills(payrollThrough(catalog, state, calendarDays))} wages`
-                    : ready
-                      ? mech.design.mounts.length === 0
-                        ? 'rebuilt — fit a weapon before deployment'
-                        : estimate.days === 0
-                          ? 'ready'
-                          : `damaged — ${cbills(estimate.cost)} now · ${projectedTiming} · ${cbills(payrollThrough(catalog, state, calendarDays))} wages`
-                      : booking?.status === 'active'
-                        ? `on a lift · ready day ${mech.readyOnDay} · ${cbills(payrollThrough(catalog, state, mech.readyOnDay - state.day))} wages left`
-                        : booking?.status === 'inherited'
-                          ? `inherited concurrent booking · ready day ${mech.readyOnDay}`
-                          : `queued ${booking?.queuePosition ?? 1} · starts day ${booking?.startsOnDay ?? state.day} · ready day ${mech.readyOnDay}`}
+                  {chassis === undefined ? null : (
+                    <small className="faction-economy" data-faction={chassis.faction}>
+                      {workshopFactionLine(catalog, chassis.faction)}
+                    </small>
+                  )}
+                  <span>
+                    {mech.status === 'hulk'
+                      ? `wreck — ${cbills(estimate.cost)} now · ${projectedTiming} · ${cbills(payrollThrough(catalog, state, calendarDays))} wages`
+                      : ready
+                        ? mech.design.mounts.length === 0
+                          ? 'rebuilt — fit a weapon before deployment'
+                          : estimate.days === 0
+                            ? 'ready'
+                            : `damaged — ${cbills(estimate.cost)} now · ${projectedTiming} · ${cbills(payrollThrough(catalog, state, calendarDays))} wages`
+                        : booking?.status === 'active'
+                          ? `on a lift · ready day ${mech.readyOnDay} · ${cbills(payrollThrough(catalog, state, mech.readyOnDay - state.day))} wages left`
+                          : booking?.status === 'inherited'
+                            ? `inherited concurrent booking · ready day ${mech.readyOnDay}`
+                            : `queued ${booking?.queuePosition ?? 1} · starts day ${booking?.startsOnDay ?? state.day} · ready day ${mech.readyOnDay}`}
+                  </span>
                 </span>
                 {mech.status === 'hulk' ? (
                   <button
@@ -215,6 +224,9 @@ export function MarketPanel({ state, mutate }: PanelProps) {
   return (
     <section className="camp-market" data-testid="camp-market">
       <h3>Yard</h3>
+      <p className="yard-stock-note" data-testid="yard-stock-note">
+        {yardStockLine(catalog)}
+      </p>
 
       <h4>On the lot</h4>
       <ul className="market-stock">

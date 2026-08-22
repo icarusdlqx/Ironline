@@ -1,0 +1,11 @@
+{
+  "id": "anja_verrin",
+  "name": "Anja Verrin",
+  "gunnery": 3,
+  "piloting": 3,
+  "sensors": 3,
+  "traits": [
+    "veteran"
+  ],
+  "bio": "Verrin keeps Kestrel's oldest contract marks in a paper ledger. She has outlived enough of them to know which promises survive contact."
+}

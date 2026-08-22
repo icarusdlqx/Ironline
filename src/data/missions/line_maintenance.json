@@ -1,103 +1,95 @@
 {
-  "id": "raid_ridge",
-  "name": "Raid — Ridge Pass",
+  "id": "line_maintenance",
+  "name": "Maintenance — Marker Eleven",
   "type": "skirmish",
   "mapId": "ridge_pass",
+  "briefing": "Halloran's splice crew is waiting below marker eleven. Kestrel locked the shed and posted three machines across the right-of-way. Clear the guard without firing into the conduit trench. The crew goes in after the guns stop.",
   "maxDurationSeconds": 300,
+  "startingResourcePoints": 400,
   "lances": [
     {
       "team": 0,
-      "name": "Ironline Lance",
+      "name": "Halloran Contract Lance",
       "units": [
         {
           "designId": "hornet_spotter",
           "pilotId": "kessa_vale",
-          "spawn": {
-            "x": 108,
-            "y": 852
-          },
+          "spawn": { "x": 108, "y": 852 },
           "facingDegrees": -45
         },
         {
           "designId": "bulwark_assault",
           "pilotId": "dorn_hess",
-          "spawn": {
-            "x": 156,
-            "y": 876
-          },
+          "spawn": { "x": 156, "y": 876 },
           "facingDegrees": -45
         },
         {
           "designId": "hornet_spotter",
           "pilotId": "marek_sud",
-          "spawn": {
-            "x": 204,
-            "y": 828
-          },
+          "spawn": { "x": 204, "y": 828 },
           "facingDegrees": -45
         },
         {
           "designId": "cairn_battery",
           "pilotId": "ilse_brant",
-          "spawn": {
-            "x": 132,
-            "y": 780
-          },
+          "spawn": { "x": 132, "y": 780 },
           "facingDegrees": -45
         }
       ]
     },
     {
       "team": 1,
-      "name": "Ridge Militia",
+      "name": "Kestrel Track Guard",
       "units": [
         {
           "designId": "courser_patrol",
           "pilotId": "leda_morcant",
-          "spawn": {
-            "x": 852,
-            "y": 108
-          },
+          "spawn": { "x": 852, "y": 108 },
           "facingDegrees": 135
         },
         {
           "designId": "hornet_spotter",
           "pilotId": "corin_dast",
-          "spawn": {
-            "x": 804,
-            "y": 132
-          },
+          "spawn": { "x": 804, "y": 132 },
           "facingDegrees": 135
         },
         {
           "designId": "drover_carrier",
           "pilotId": "tomas_arvel",
-          "spawn": {
-            "x": 876,
-            "y": 180
-          },
+          "spawn": { "x": 876, "y": 180 },
           "facingDegrees": 135
         }
       ]
     }
   ],
-  "briefing": "Militia irregulars are dug in at the pass. Break them and withdraw.",
-  "startingResourcePoints": 600,
   "objectives": [
     {
-      "id": "wipe_them_out",
-      "label": "Destroy the opposing lance",
+      "id": "clear_right_of_way",
+      "label": "Clear Kestrel from marker eleven",
       "type": "destroy_all",
       "team": 0,
       "required": true
     },
     {
       "id": "lance_survives",
-      "label": "Keep at least one mech operational",
+      "label": "Keep at least one machine operational",
       "type": "survive",
       "team": 0,
       "required": true
     }
   ],
-  "dropTonnage": 215
+  "triggers": [
+    {
+      "id": "maintenance_order",
+      "when": { "type": "elapsed", "seconds": 3 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Halloran: the buried conduit is marked by yellow posts. It is not part of the contract and it is not a target."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 205
 }

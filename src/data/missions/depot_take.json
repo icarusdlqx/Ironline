@@ -1,0 +1,148 @@
+{
+  "id": "depot_take",
+  "name": "Depot — Take",
+  "type": "assault",
+  "mapId": "foundry_district",
+  "briefing": "Halloran's fee ends at the depot doors. Take the command key intact and clear Kestrel's guard. The key controls the storage lifts, the manifest and every sealed machine below them. Put it under your own seal.",
+  "maxDurationSeconds": 480,
+  "startingResourcePoints": 800,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Depot Entry Lance",
+      "units": [
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 36, "y": 36 },
+          "facingDegrees": 45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 108, "y": 36 },
+          "facingDegrees": 45
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 180, "y": 36 },
+          "facingDegrees": 45
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 252, "y": 36 },
+          "facingDegrees": 45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Depot Guard",
+      "units": [
+        {
+          "designId": "votive_picket",
+          "pilotId": "anja_verrin",
+          "spawn": { "x": 636, "y": 636 },
+          "facingDegrees": -135
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "corin_dast",
+          "spawn": { "x": 708, "y": 636 },
+          "facingDegrees": -135
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "leda_morcant",
+          "spawn": { "x": 852, "y": 636 },
+          "facingDegrees": -135
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "depot_key",
+      "name": "Depot Command Key",
+      "x": 492,
+      "y": 492,
+      "radius": 76,
+      "owner": 1,
+      "captureSeconds": 10,
+      "resourcePoints": 250
+    }
+  ],
+  "objectives": [
+    {
+      "id": "take_command_key",
+      "label": "Take the depot command key",
+      "type": "capture_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "depot_key"
+      ],
+      "resourcePoints": 200
+    },
+    {
+      "id": "clear_depot_guard",
+      "label": "Destroy the Kestrel depot guard",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one machine operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "vault_opens",
+      "when": { "type": "elapsed", "seconds": 2 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Vault door moving. One hundred-tonne sealed contact coming out of storage."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "pallvault_procession",
+              "pilotId": "tomas_arvel",
+              "spawn": { "x": 780, "y": 660 },
+              "facingDegrees": -135
+            }
+          ]
+        },
+        {
+          "type": "reveal",
+          "x": 780,
+          "y": 660,
+          "radius": 180,
+          "seconds": 24
+        }
+      ]
+    },
+    {
+      "id": "key_taken",
+      "when": { "type": "zone_captured", "zoneId": "depot_key", "team": 0 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Command key accepted. The storage lifts answer to this lance now. Clear the remaining guard."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 255
+}

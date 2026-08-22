@@ -16,12 +16,12 @@
   "heatSinks": 11,
   "mounts": [
     {
-      "weaponId": "medium_laser",
+      "weaponId": "flamer",
       "location": "left_arm"
     },
     {
-      "weaponId": "medium_laser",
-      "location": "right_arm"
+      "weaponId": "srm2",
+      "location": "left_torso"
     },
     {
       "weaponId": "srm2",
@@ -37,11 +37,11 @@
   ],
   "equipment": [
     {
-      "equipmentId": "tag",
+      "equipmentId": "narc",
       "location": "centre_torso"
     },
     {
-      "equipmentId": "active_probe",
+      "equipmentId": "jump_jet",
       "location": "right_torso"
     },
     {

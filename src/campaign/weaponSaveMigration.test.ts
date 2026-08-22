@@ -51,8 +51,10 @@ function legacyOutcome(sourceDesignId: string): MissionOutcome {
 describe('campaign weapon id migration', () => {
   it('repairs embedded designs and coalesces every persisted crate ledger', () => {
     const state = startCampaign(catalog, 'border_dispute', 'legacy-weapons');
-    const mech = state.mechs.find((entry) => entry.design.id === 'sentinel_brawler');
-    if (mech === undefined) throw new Error('missing migration fixture mech');
+    const mech = state.mechs[0];
+    const fixture = catalog.designs.get('bulwark_assault');
+    if (mech === undefined || fixture === undefined) throw new Error('missing migration fixture');
+    mech.design = structuredClone(fixture);
 
     const mount = mech.design.mounts.find((entry) => entry.weaponId === 'ac5');
     const ammo = mech.design.ammo.find((entry) => entry.weaponId === 'ac5');

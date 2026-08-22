@@ -11,6 +11,7 @@ import { employerNameFor } from '../../campaign/employers';
 import { isMechAvailable, type CampaignState } from '../../campaign/types';
 import { cbills } from './Panels';
 import { ContractBriefing } from './ContractBriefing';
+import { workshopFactionLine } from './factionEconomy';
 
 interface Props {
   catalog: Catalog;
@@ -65,6 +66,7 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
         <ul className="manifest-list">
           {state.mechs.map((mech) => {
             const estimate = estimateRepair(catalog, mech);
+            const chassis = catalog.chassis.get(mech.design.chassisId);
             const ready = isMechAvailable(state, mech) && mech.status !== 'hulk';
             const integrity = mechIntegrity(catalog, mech);
             const health = integrity.fraction;
@@ -93,6 +95,11 @@ export function Hangar({ catalog, state, mutate, onRefit, onContinue, onCancel }
               <li key={mech.id} className="manifest-row" data-testid={`hangar-${mech.id}`}>
                 <div className="manifest-pilot">
                   <span className="pilot-name">{mech.design.name}</span>
+                  {chassis === undefined ? null : (
+                    <small className="faction-economy" data-faction={chassis.faction}>
+                      {workshopFactionLine(catalog, chassis.faction)}
+                    </small>
+                  )}
                   <small className="manifest-status">{status}</small>
                 </div>
 

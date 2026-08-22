@@ -1,0 +1,12 @@
+{
+  "id": "oksana_valev",
+  "name": "Oksana Valev",
+  "gunnery": 3,
+  "piloting": 3,
+  "sensors": 2,
+  "traits": [
+    "hard_to_kill",
+    "veteran"
+  ],
+  "bio": "Valev came back alone from the north cut and never corrected the official account. Nobody at Kestrel asks her to."
+}

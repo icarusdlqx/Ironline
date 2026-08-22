@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
+import type { Faction } from '../schema/faction';
 import type { Catalog } from '../schema/load';
 import { EconomyRulesSchema } from '../schema/rules';
 import { advanceDays, startCampaign } from './campaign';
@@ -31,6 +32,14 @@ function withBayCapacity(bayCapacity: number): Catalog {
   };
 }
 
+function withChassisFaction(mech: MechRecord, faction: Faction): Catalog {
+  const chassis = catalog.chassis.get(mech.design.chassisId);
+  if (chassis === undefined) throw new Error('test mech has no chassis');
+  const chassisById = new Map(catalog.chassis);
+  chassisById.set(chassis.id, { ...chassis, faction });
+  return { ...catalog, chassis: chassisById };
+}
+
 function damage(mech: MechRecord, amount = 1): void {
   mech.condition.centre_torso.armour = Math.max(
     0,
@@ -47,6 +56,24 @@ function firstThree(state: CampaignState): [MechRecord, MechRecord, MechRecord] 
 }
 
 describe('single repair bay', () => {
+  it('applies the authored Sealed cost and workshop-time premium', () => {
+    const mech = start().mechs[0];
+    if (mech === undefined) throw new Error('campaign has no test mech');
+    damage(mech, 20);
+
+    const line = estimateRepair(withChassisFaction(mech, 'linewrought'), mech);
+    const sealed = estimateRepair(withChassisFaction(mech, 'aurelian'), mech);
+    const factors = catalog.rules.economy.repair.factionFactors;
+
+    expect(factors.linewrought).toEqual({ cost: 1, days: 1 });
+    expect(factors.aurelian.cost).toBeGreaterThanOrEqual(2);
+    expect(factors.aurelian.cost).toBeLessThanOrEqual(3);
+    expect(factors.aurelian.days).toBeGreaterThanOrEqual(2);
+    expect(factors.aurelian.days).toBeLessThanOrEqual(3);
+    expect(sealed.cost).toBe(Math.round(line.cost * factors.aurelian.cost));
+    expect(sealed.days).toBe(Math.ceil(line.days * factors.aurelian.days));
+  });
+
   it('defaults older economy packs to one repair lift', () => {
     const legacyRepair = Object.fromEntries(
       Object.entries(catalog.rules.economy.repair).filter(([key]) => key !== 'bayCapacity'),

@@ -1,4 +1,4 @@
-import type { CampaignNode } from '../schema/campaign';
+import type { Campaign, CampaignNode } from '../schema/campaign';
 import type { Catalog } from '../schema/load';
 import { missionTickBudget } from '../schema/missionClock';
 import { pruneMarket } from './market';
@@ -36,6 +36,14 @@ function withRng<T>(state: CampaignState, use: (rng: Rng) => T): T {
   const value = use(rng);
   state.rng = rng.save();
   return value;
+}
+
+function isVictoryNode(campaign: Campaign, nodeId: string): boolean {
+  return campaign.victoryNodeId === nodeId || campaign.alternateVictoryNodeIds.includes(nodeId);
+}
+
+function completedVictory(campaign: Campaign, completedNodes: readonly string[]): boolean {
+  return completedNodes.some((nodeId) => isVictoryNode(campaign, nodeId));
 }
 
 export function startCampaign(catalog: Catalog, campaignId: string, seed: string): CampaignState {
@@ -329,7 +337,7 @@ export function resolveMission(
   );
 
   const campaign = campaignOf(catalog, state);
-  if (won && contract.nodeId === campaign.victoryNodeId) {
+  if (won && isVictoryNode(campaign, contract.nodeId)) {
     state.finished = true;
     state.won = true;
     log(state, `${campaign.name} won.`);
@@ -384,7 +392,7 @@ export function advanceDays(catalog: Catalog, state: CampaignState, days: number
   // asking whether anything at all is on offer would never be false again.
   if (campaignNodes(catalog, state).length === 0 && state.contract === null) {
     state.finished = true;
-    state.won = state.completedNodes.includes(campaignOf(catalog, state).victoryNodeId);
+    state.won = completedVictory(campaignOf(catalog, state), state.completedNodes);
     log(state, state.won ? 'Campaign won.' : 'No contracts remain. Campaign over.');
   }
 }

@@ -3,10 +3,12 @@ import { catalog } from '../../tests/support';
 import { acceptContract, advanceDays, startCampaign } from './campaign';
 import {
   buyMech,
+  designMarketAvailable,
   marketListings,
   marketPeriod,
   saleValueOf,
   sellMech,
+  storeItemMarketAvailable,
   storeItemSaleBasis,
   storeItemValueOf,
   valueOf,
@@ -34,6 +36,37 @@ function firstListing(current: CampaignState) {
 }
 
 describe('the yard', () => {
+  it('offers only machines whose hull and fitted parts can be sourced locally', () => {
+    expect(catalog.rules.economy.market.availableFactions).toEqual(['linewrought']);
+    expect(marketListings(catalog, state)).not.toHaveLength(0);
+    expect(marketListings(catalog, state).every((listing) =>
+      designMarketAvailable(catalog, listing.design),
+    )).toBe(true);
+
+    expect(
+      storeItemMarketAvailable(catalog, { kind: 'weapon', itemId: 'gauss_rifle', count: 1 }),
+    ).toBe(true);
+    expect(
+      storeItemMarketAvailable(catalog, { kind: 'equipment', itemId: 'case', count: 1 }),
+    ).toBe(true);
+    expect(
+      storeItemMarketAvailable(catalog, { kind: 'weapon', itemId: 'medium_laser', count: 1 }),
+    ).toBe(false);
+    expect(
+      storeItemMarketAvailable(catalog, { kind: 'equipment', itemId: 'active_probe', count: 1 }),
+    ).toBe(false);
+    expect(
+      storeItemMarketAvailable(catalog, {
+        kind: 'equipment',
+        itemId: 'double_heat_sink',
+        count: 1,
+      }),
+    ).toBe(false);
+    expect(
+      storeItemMarketAvailable(catalog, { kind: 'equipment', itemId: 'missing_part', count: 1 }),
+    ).toBe(false);
+  });
+
   it('prices a machine off the hull and everything bolted to it', () => {
     const design = catalog.designs.get('colossus_siege');
     const light = catalog.designs.get('wisp_scout');
@@ -91,13 +124,22 @@ describe('the yard', () => {
   });
 
   it('spreads the lot across the weight classes', () => {
-    // A uniform draw can put four assault mechs in front of a company that
-    // cannot afford one of them. Every week the yard has something light.
+    const availableFactions = new Set(catalog.rules.economy.market.availableFactions);
+    const availableClasses = new Set(
+      [...catalog.designs.values()]
+        .filter((design) => designMarketAvailable(catalog, design))
+        .map((design) => catalog.chassis.get(design.chassisId))
+        .filter((chassis) => chassis?.frame === 'mech' && availableFactions.has(chassis.faction))
+        .map((chassis) => chassis?.class),
+    );
+
+    // The yard has no Linewrought medium mech to sell. It still shows every
+    // class it can source before a heavier class gets the spare fourth slot.
     for (let week = 0; week < 8; week += 1) {
       const classes = marketListings(catalog, state).map(
         (entry) => catalog.chassis.get(entry.design.chassisId)?.class,
       );
-      expect(new Set(classes).size, `week ${week}`).toBe(classes.length);
+      expect(new Set(classes), `week ${week}`).toEqual(availableClasses);
       expect(classes, `week ${week}`).toContain('light');
       advanceDays(catalog, state, catalog.rules.economy.market.refreshDays);
     }

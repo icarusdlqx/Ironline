@@ -1,0 +1,12 @@
+{
+  "id": "dario_senn",
+  "name": "Dario Senn",
+  "gunnery": 4,
+  "piloting": 3,
+  "sensors": 2,
+  "traits": [
+    "marksman",
+    "cool_hand"
+  ],
+  "bio": "Senn quotes the Rules of the Line before every deployment. He has become selective about which paragraphs he finishes."
+}

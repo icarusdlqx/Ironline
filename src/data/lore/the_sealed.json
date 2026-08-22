@@ -1,0 +1,13 @@
+{
+  "id": "the_sealed",
+  "title": "The Sealed",
+  "order": 5,
+  "unlockNodeId": "pass_skirmish",
+  "summary": "Aurelian Stock was built to return to depots that stayed shut for ninety years.",
+  "body": [
+    "The Aurelian Compact did not build field machines for Tessell. It built them for a workforce expected to leave. Their reactors were sealed, their weapons drew from capacitors, and their shells carried no access panels because maintenance belonged inside a depot, not beside a road.",
+    "When the charter lapsed, the Compact shipped what it could and closed the rest behind coded doors. The doors stayed shut for ninety years. Machines found outside them were opened with torches, rebuilt in grade shops and made Linewrought. Machines found inside still carry the factory seals. They are Aurelian Stock: the sealed, or coldstock when nobody from Sarn is listening.",
+    "They have no ammunition to exhaust and more armour than their weight should carry. Their heat stores deep, then arrives all at once. A pilot can fire through the warning marks and discover that a machine which never seemed hot has stopped answering.",
+    "Nobody on Tessell can make a sealed capacitor or open a reactor case and close it alive. Damage that takes days on a welded machine takes weeks on coldstock, if it can be repaired at all. There is no market for the parts. The only spare for one Aurelian machine is another Aurelian machine."
+  ]
+}

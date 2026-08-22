@@ -13,6 +13,10 @@ const VICTORY_LINE = [
   'ridge_hold',
 ];
 
+function victoryNodes(data: Campaign): string[] {
+  return [data.victoryNodeId, ...data.alternateVictoryNodeIds];
+}
+
 function openNodes(data: Campaign, completedIds: readonly string[]): string[] {
   const completed = new Set(completedIds);
   return data.nodes
@@ -25,6 +29,7 @@ function openNodes(data: Campaign, completedIds: readonly string[]): string[] {
 
 function enumerateVictoryRoutes(data: Campaign): string[][] {
   const routes: string[][] = [];
+  const endings = new Set(victoryNodes(data));
 
   function visit(completed: Set<string>, route: string[]): void {
     for (const node of data.nodes) {
@@ -32,7 +37,7 @@ function enumerateVictoryRoutes(data: Campaign): string[][] {
       if (!node.requires.every((required) => completed.has(required))) continue;
 
       const nextRoute = [...route, node.id];
-      if (node.id === data.victoryNodeId) {
+      if (endings.has(node.id)) {
         routes.push(nextRoute);
         continue;
       }
@@ -59,10 +64,12 @@ function mapIds(data: Campaign, route: readonly string[]): string[] {
 describe('Border Dispute route', () => {
   it('keeps every victory route on at least three distinct battlefields', () => {
     const routes = enumerateVictoryRoutes(campaign);
+    const endings = victoryNodes(campaign);
 
     expect(routes.length).toBeGreaterThan(1);
+    expect(new Set(routes.map((route) => route.at(-1)))).toEqual(new Set(endings));
     for (const route of routes) {
-      expect(route[route.length - 1]).toBe(campaign.victoryNodeId);
+      expect(endings).toContain(route.at(-1));
       const positions = VICTORY_LINE.map((nodeId) => route.indexOf(nodeId));
       expect(
         positions.every(

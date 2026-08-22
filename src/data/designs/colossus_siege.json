@@ -13,18 +13,22 @@
     "right_leg": 83
   },
   "heatSinkId": "heat_sink",
-  "heatSinks": 25,
+  "heatSinks": 18,
   "mounts": [
     {
       "weaponId": "gauss_rifle",
       "location": "left_arm"
     },
     {
-      "weaponId": "large_laser",
+      "weaponId": "gauss_rifle",
+      "location": "right_torso"
+    },
+    {
+      "weaponId": "flamer",
       "location": "right_arm"
     },
     {
-      "weaponId": "large_laser",
+      "weaponId": "flamer",
       "location": "right_arm"
     },
     {
@@ -36,7 +40,12 @@
     {
       "weaponId": "gauss_rifle",
       "location": "right_torso",
-      "tons": 2
+      "tons": 3
+    },
+    {
+      "weaponId": "gauss_rifle",
+      "location": "centre_torso",
+      "tons": 1
     },
     {
       "weaponId": "lrm10",
@@ -47,11 +56,15 @@
   "equipment": [
     {
       "equipmentId": "case",
-      "location": "left_torso"
+      "location": "right_torso"
     },
     {
       "equipmentId": "case",
-      "location": "right_torso"
+      "location": "centre_torso"
+    },
+    {
+      "equipmentId": "case",
+      "location": "left_torso"
     }
   ]
 }

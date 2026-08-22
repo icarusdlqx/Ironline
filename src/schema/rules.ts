@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, MechLocationSchema, perLocation } from './common';
+import { FactionSchema } from './faction';
 
 const Factor = z.number().positive().max(4);
 const NameLike = z.string().min(1).max(60);
@@ -583,6 +584,10 @@ export const EconomyRulesSchema = z.strictObject({
     internalPointsPerDay: z.number().positive(),
     locationReplaceDays: z.number().nonnegative(),
     minimumDays: z.number().int().nonnegative(),
+    factionFactors: z.strictObject({
+      linewrought: z.strictObject({ cost: Factor, days: Factor }),
+      aurelian: z.strictObject({ cost: Factor, days: Factor }),
+    }),
   }),
   pilot: z.strictObject({
     hireCostBase: z.number().nonnegative(),
@@ -616,6 +621,8 @@ export const EconomyRulesSchema = z.strictObject({
     /** Odds a listing is somebody's tired machine rather than a refurbished one. */
     wornChance: Probability,
     wornDiscount: z.number().positive().max(1),
+    /** The yard can only source machines and loose parts made by these shops. */
+    availableFactions: z.array(FactionSchema).min(1),
   }),
   /**
    * Work the hiring hall is posting this week. Side contracts exist so a

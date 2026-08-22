@@ -12,7 +12,7 @@
       "name": "Ironline Lance",
       "units": [
         {
-          "designId": "sentinel_brawler",
+          "designId": "hornet_spotter",
           "pilotId": "kessa_vale",
           "spawn": {
             "x": 108,
@@ -30,7 +30,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "wisp_scout",
+          "designId": "hornet_spotter",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 204,
@@ -54,8 +54,8 @@
       "name": "Pass Garrison",
       "units": [
         {
-          "designId": "sentinel_brawler",
-          "pilotId": "cato_ferrin",
+          "designId": "hornet_spotter",
+          "pilotId": "corin_dast",
           "spawn": {
             "x": 500,
             "y": 468
@@ -63,8 +63,8 @@
           "facingDegrees": 135
         },
         {
-          "designId": "wisp_scout",
-          "pilotId": "juno_reyes",
+          "designId": "cairn_battery",
+          "pilotId": "leda_morcant",
           "spawn": {
             "x": 660,
             "y": 300
@@ -73,7 +73,7 @@
         },
         {
           "designId": "redoubt_emplacement",
-          "pilotId": "willem_torrance",
+          "pilotId": "tomas_arvel",
           "spawn": {
             "x": 708,
             "y": 336
@@ -86,7 +86,7 @@
   "reserves": [
     {
       "designId": "bulwark_assault",
-      "pilotId": "nadia_ostrow",
+      "pilotId": "mira_solvang",
       "spawn": {
         "x": 156,
         "y": 876
@@ -168,8 +168,8 @@
           "team": 1,
           "units": [
             {
-              "designId": "bulwark_assault",
-              "pilotId": "teodor_krysa",
+              "designId": "hornet_spotter",
+              "pilotId": "oksana_valev",
               "spawn": {
                 "x": 876,
                 "y": 180
@@ -177,8 +177,8 @@
               "facingDegrees": 135
             },
             {
-              "designId": "sentinel_brawler",
-              "pilotId": "silas_okonkwo",
+              "designId": "drover_carrier",
+              "pilotId": "dario_senn",
               "spawn": {
                 "x": 828,
                 "y": 84

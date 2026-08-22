@@ -165,6 +165,7 @@ function billOfMaterials(design: Design): Map<string, number> {
   const add = (id: string, count = 1): void => {
     bill.set(id, (bill.get(id) ?? 0) + count);
   };
+  add(design.heatSinkId, design.heatSinks);
   for (const mount of design.mounts) add(mount.weaponId);
   for (const fit of design.equipment) add(fit.equipmentId);
   return bill;

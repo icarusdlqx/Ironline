@@ -4,9 +4,9 @@
   "startingCbills": 3200000,
   "startingDay": 0,
   "startingDesignIds": [
-    "sentinel_brawler",
+    "hornet_spotter",
     "bulwark_assault",
-    "wisp_scout",
+    "hornet_spotter",
     "cairn_battery"
   ],
   "startingPilotIds": [
@@ -21,11 +21,15 @@
     "juno_reyes",
     "willem_torrance"
   ],
-  "victoryNodeId": "ridge_hold",
+  "victoryNodeId": "depot_burn",
+  "alternateVictoryNodeIds": [
+    "depot_take"
+  ],
   "employers": [
     { "id": "kestrel_combine", "name": "Kestrel Combine" },
     { "id": "halloran_freight", "name": "Halloran Freight" },
     { "id": "sarn_foundry", "name": "Sarn Foundry" },
+    { "id": "ridgeward_assembly", "name": "Ridgeward Assembly" },
     { "id": "halloran_combine", "name": "Halloran Combine" },
     { "id": "vasi_reclamation", "name": "Vasi Reclamation" },
     { "id": "ferrous_guild", "name": "the Ferrous Guild" },
@@ -35,12 +39,10 @@
   ],
   "sideWork": {
     "missionIds": [
-      "skirmish_ridge",
       "raid_ridge",
-      "standoff_ridge",
+      "base_capture_ridge",
+      "causeway_crossing",
       "causeway_night",
-      "shale_overwatch",
-      "foundry_sweep",
       "switchyard_watch",
       "relay_chain"
     ],
@@ -56,10 +58,10 @@
   "nodes": [
     {
       "id": "militia_raid",
-      "name": "Militia Raid",
-      "missionId": "raid_ridge",
-      "employerId": "kestrel_combine",
-      "brief": "A militia detachment is dug in at the pass. Light opposition, and the Combine is happy to trade salvage rights for a smaller cheque.",
+      "name": "Marker Eleven",
+      "missionId": "line_maintenance",
+      "employerId": "halloran_freight",
+      "brief": "Halloran has a splice crew waiting below marker eleven. Kestrel locked the shed and posted a track guard. Clear the right-of-way without touching the conduit; the crew will do the work after dusk.",
       "requires": [],
       "basePayout": 850000,
       "maxSalvageShare": 0.75,
@@ -71,15 +73,15 @@
     },
     {
       "id": "pass_skirmish",
-      "name": "Contested Pass",
-      "missionId": "skirmish_ridge",
-      "employerId": "kestrel_combine",
-      "brief": "A regular lance holds the crossing. The Combine wants it cleared and is paying properly for it.",
+      "name": "Cold Contact",
+      "missionId": "sealed_contact",
+      "employerId": "halloran_freight",
+      "brief": "A Halloran plate camera caught Kestrel moving one bone-white machine with no shop stamp, hatch seam or exhaust. Bring the escort down and hold the ground. Halloran waives its claim on whatever comes off the white hull.",
       "requires": [
         "militia_raid"
       ],
       "basePayout": 1450000,
-      "maxSalvageShare": 0.5,
+      "maxSalvageShare": 1,
       "deadlineDays": 24,
       "position": {
         "x": 0.5,
@@ -105,10 +107,10 @@
     },
     {
       "id": "ridge_hold",
-      "name": "Ridge Hold",
-      "missionId": "standoff_ridge",
-      "employerId": "kestrel_combine",
-      "brief": "The Slag Legion has moved a reinforced company onto the ridge. This is the one that decides the border.",
+      "name": "Depot Road",
+      "missionId": "depot_road",
+      "employerId": "halloran_freight",
+      "brief": "The cut conduit exposed an Aurelian service address in the fault traffic. Kestrel has the same address and a rearguard on the ridge. Hold the survey key long enough to resolve the depot approach.",
       "requires": [
         "shale_overwatch_node"
       ],
@@ -139,10 +141,10 @@
     },
     {
       "id": "foundry_sweep_node",
-      "name": "Foundry District",
-      "missionId": "foundry_sweep",
+      "name": "Broken Rule",
+      "missionId": "rules_break",
       "employerId": "sarn_foundry",
-      "brief": "A Combine detachment slipped into the outer works and went quiet. Sarn will not shell its own district, so somebody walks in and sweeps it block by block. Knife work; bring brawlers.",
+      "brief": "A Sarn yard camera recorded a Kestrel machine following an ejection seat with its guns. Kestrel came back for the recording and locked the outer works. Sarn wants the detachment removed and the camera left standing.",
       "requires": [
         "pass_skirmish"
       ],
@@ -156,10 +158,10 @@
     },
     {
       "id": "shale_overwatch_node",
-      "name": "Shale Steps",
-      "missionId": "shale_overwatch",
-      "employerId": "kestrel_combine",
-      "brief": "Kestrel's survey post on the top terrace has a Combine column coming up the steps after it. Hold the height until the data is away. Five machines against the climb — the climb is on your side.",
+      "name": "The Dark Towns",
+      "missionId": "conduit_breach",
+      "employerId": "ridgeward_assembly",
+      "brief": "Kestrel cutters opened the western conduit and six Ridgeward towns went dark. The east breaker can carry the pumps if it stays in Assembly hands for ninety seconds. Hold the terrace while the load transfers.",
       "requires": [
         "foundry_sweep_node"
       ],
@@ -169,6 +171,40 @@
       "position": {
         "x": 0.75,
         "y": 0.34
+      }
+    },
+    {
+      "id": "depot_burn",
+      "name": "Burn the Depot",
+      "missionId": "depot_burn",
+      "employerId": "halloran_freight",
+      "brief": "Halloran's contract gets the company through the doors. What happens behind them is your account. Arm the purge train, clear Kestrel's guard, and leave no sealed stock for the next employer to own.",
+      "requires": [
+        "ridge_hold"
+      ],
+      "basePayout": 2200000,
+      "maxSalvageShare": 0.7,
+      "deadlineDays": 30,
+      "position": {
+        "x": 0.93,
+        "y": 0.2
+      }
+    },
+    {
+      "id": "depot_take",
+      "name": "Take the Depot",
+      "missionId": "depot_take",
+      "employerId": "halloran_freight",
+      "brief": "Halloran's contract gets the company through the doors. What happens behind them is your account. Take the command key intact, clear Kestrel's guard, and put the depot manifest under your own seal.",
+      "requires": [
+        "ridge_hold"
+      ],
+      "basePayout": 2200000,
+      "maxSalvageShare": 0.7,
+      "deadlineDays": 30,
+      "position": {
+        "x": 0.93,
+        "y": 0.46
       }
     }
   ]

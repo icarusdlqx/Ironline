@@ -1,8 +1,44 @@
 import type { Design } from '../schema/design';
+import type { Faction } from '../schema/faction';
 import type { Catalog } from '../schema/load';
 import { createRng } from '../sim/rng';
 import { estimateRepair, pristineCondition } from './repair';
 import type { CampaignState, MechRecord, StoreItem } from './types';
+
+function factionAvailable(catalog: Catalog, faction: Faction | undefined): boolean {
+  return faction !== undefined && catalog.rules.economy.market.availableFactions.includes(faction);
+}
+
+/** Loose Sealed parts enter stores through salvage, never across the yard counter. */
+export function storeItemMarketAvailable(catalog: Catalog, item: StoreItem): boolean {
+  const faction =
+    item.kind === 'weapon'
+      ? catalog.weapons.get(item.itemId)?.faction
+      : catalog.equipment.get(item.itemId)?.faction;
+  return factionAvailable(catalog, faction);
+}
+
+export function designMarketAvailable(catalog: Catalog, design: Design): boolean {
+  const chassis = catalog.chassis.get(design.chassisId);
+  return (
+    factionAvailable(catalog, chassis?.faction) &&
+    design.mounts.every((mount) =>
+      storeItemMarketAvailable(catalog, { kind: 'weapon', itemId: mount.weaponId, count: 1 }),
+    ) &&
+    design.equipment.every((fit) =>
+      storeItemMarketAvailable(catalog, {
+        kind: 'equipment',
+        itemId: fit.equipmentId,
+        count: 1,
+      }),
+    ) &&
+    storeItemMarketAvailable(catalog, {
+      kind: 'equipment',
+      itemId: design.heatSinkId,
+      count: design.heatSinks,
+    })
+  );
+}
 
 /** Which week of stock the yard is showing. */
 export function marketPeriod(catalog: Catalog, day: number): number {
@@ -92,7 +128,10 @@ export function marketListings(catalog: Catalog, state: CampaignState): Listing[
   // to load in. Mechs only: a yard that sold emplacements would be selling
   // something the company cannot drop from a dropship.
   const designs = [...catalog.designs.values()]
-    .filter((design) => catalog.chassis.get(design.chassisId)?.frame === 'mech')
+    .filter((design) => {
+      const chassis = catalog.chassis.get(design.chassisId);
+      return chassis?.frame === 'mech' && designMarketAvailable(catalog, design);
+    })
     .sort((a, b) => a.id.localeCompare(b.id));
   const pools = CLASSES.map((weight) =>
     rng.shuffle(designs.filter((design) => catalog.chassis.get(design.chassisId)?.class === weight)),

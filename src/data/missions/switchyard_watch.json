@@ -55,7 +55,7 @@
       "units": [
         {
           "designId": "courser_patrol",
-          "pilotId": "juno_reyes",
+          "pilotId": "leda_morcant",
           "spawn": {
             "x": 36,
             "y": 36
@@ -135,8 +135,8 @@
           "team": 1,
           "units": [
             {
-              "designId": "wisp_scout",
-              "pilotId": "roz_havel",
+              "designId": "courser_patrol",
+              "pilotId": "suri_kell",
               "spawn": {
                 "x": 876,
                 "y": 36
@@ -145,7 +145,7 @@
             },
             {
               "designId": "hornet_spotter",
-              "pilotId": "bo_ferrant",
+              "pilotId": "bram_nyen",
               "spawn": {
                 "x": 924,
                 "y": 84
@@ -180,8 +180,8 @@
           "team": 1,
           "units": [
             {
-              "designId": "sentinel_brawler",
-              "pilotId": "teodor_krysa",
+              "designId": "courser_patrol",
+              "pilotId": "oksana_valev",
               "spawn": {
                 "x": 36,
                 "y": 876
@@ -189,8 +189,8 @@
               "facingDegrees": -45
             },
             {
-              "designId": "falchion_duellist",
-              "pilotId": "nadia_ostrow",
+              "designId": "drover_carrier",
+              "pilotId": "anja_verrin",
               "spawn": {
                 "x": 84,
                 "y": 924
@@ -225,8 +225,8 @@
           "team": 1,
           "units": [
             {
-              "designId": "warden_lancer",
-              "pilotId": "cato_ferrin",
+              "designId": "cairn_battery",
+              "pilotId": "corin_dast",
               "spawn": {
                 "x": 876,
                 "y": 876

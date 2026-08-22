@@ -1,0 +1,112 @@
+{
+  "id": "rules_break",
+  "name": "Sweep — Broken Rule",
+  "type": "assault",
+  "mapId": "foundry_district",
+  "briefing": "A Sarn yard camera recorded a Kestrel machine following an ejection seat with its guns. Kestrel came back for the recording and shut the outer works behind it. Clear the detachment. The camera and its copy stay with Sarn.",
+  "maxDurationSeconds": 420,
+  "startingResourcePoints": 600,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Sarn Contract Lance",
+      "units": [
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 36, "y": 36 },
+          "facingDegrees": 45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 108, "y": 36 },
+          "facingDegrees": 45
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 180, "y": 36 },
+          "facingDegrees": 45
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 252, "y": 36 },
+          "facingDegrees": 45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Retrieval Section",
+      "units": [
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "anja_verrin",
+          "spawn": { "x": 636, "y": 636 },
+          "facingDegrees": -135
+        },
+        {
+          "designId": "falchion_duellist",
+          "pilotId": "suri_kell",
+          "spawn": { "x": 708, "y": 636 },
+          "facingDegrees": -135
+        },
+        {
+          "designId": "votive_picket",
+          "pilotId": "bram_nyen",
+          "spawn": { "x": 852, "y": 636 },
+          "facingDegrees": -135
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "oksana_valev",
+          "spawn": { "x": 780, "y": 660 },
+          "facingDegrees": -135
+        }
+      ]
+    }
+  ],
+  "objectives": [
+    {
+      "id": "clear_retrieval_section",
+      "label": "Clear the Kestrel retrieval section",
+      "type": "destroy_all",
+      "team": 0,
+      "required": true
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one machine operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "camera_record",
+      "when": { "type": "elapsed", "seconds": 4 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Sarn control: the record is clean. Seat under canopy, Kestrel fire following it. Keep the copy."
+        }
+      ]
+    },
+    {
+      "id": "no_surrender",
+      "when": { "type": "team_losses", "team": 1, "count": 2 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Two Kestrel machines down. No surrender traffic. That is new too."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 205
+}
