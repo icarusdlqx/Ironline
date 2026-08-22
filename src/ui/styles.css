@@ -1549,6 +1549,26 @@ button {
   font-size: 10px;
 }
 
+.bay-mech-state {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.faction-economy {
+  display: block;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.faction-economy[data-faction='aurelian'] {
+  color: var(--warn);
+}
+
 .pilot-skills {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
@@ -2991,7 +3011,7 @@ button {
 .camp-hall button {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px 10px;
   text-align: left;
   padding: 6px 8px;
@@ -3043,12 +3063,15 @@ button {
 }
 
 .hall-terms {
-  grid-row: 1 / span 2;
-  grid-column: 2;
+  grid-row: auto;
+  grid-column: 1;
   align-self: center;
+  justify-self: start;
+  min-width: 0;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
-  font-size: 12px;
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 .hall-note {
@@ -3129,6 +3152,14 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.yard-stock-note {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .camp-market ul {

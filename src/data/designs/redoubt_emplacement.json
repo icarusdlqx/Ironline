@@ -13,30 +13,39 @@
     "right_leg": 3
   },
   "heatSinkId": "heat_sink",
-  "heatSinks": 12,
+  "heatSinks": 14,
   "mounts": [
     {
       "weaponId": "lbx_ac10",
       "location": "centre_torso"
     },
     {
-      "weaponId": "large_laser",
+      "weaponId": "flamer",
       "location": "left_torso"
     },
     {
-      "weaponId": "large_laser",
+      "weaponId": "flamer",
       "location": "right_torso"
     },
     {
-      "weaponId": "medium_laser",
+      "weaponId": "flamer",
       "location": "head"
+    },
+    {
+      "weaponId": "ac5",
+      "location": "right_torso"
     }
   ],
   "ammo": [
     {
       "weaponId": "lbx_ac10",
       "location": "centre_torso",
-      "tons": 2
+      "tons": 1
+    },
+    {
+      "weaponId": "ac5",
+      "location": "centre_torso",
+      "tons": 1
     }
   ],
   "equipment": [

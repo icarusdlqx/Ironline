@@ -123,14 +123,14 @@ describe('campaign contracts', () => {
     // a particular lance survives a particular pair of fights. Any change to
     // the simulation reshuffles which campaigns leave a ready mech standing by
     // mission three, so the fixture scans seeds for one where the pipeline can
-    // be exercised — and if no seed out of eight can, the game has become too
+    // be exercised — and if no seed in this bounded set can, the game has become too
     // brutal to play and the test should fail loudly.
     let run: CampaignState | null = null;
     let match: { weaponId: string; host: CampaignState['mechs'][number] } | null = null;
 
     for (const seed of [
-      'withdrawal-4', 'workshop', 'acceptance', 'salvage', 'refit', 'bay', 'depot', 'pipeline',
-      'quartermaster',
+      'phase4-pipeline-6', 'withdrawal-4', 'workshop', 'acceptance', 'salvage', 'refit', 'bay',
+      'depot', 'pipeline', 'quartermaster',
     ]) {
       const candidate = start(seed);
       fightNode(candidate, 'militia_raid');
@@ -176,7 +176,7 @@ describe('campaign contracts', () => {
       }
     }
 
-    expect(match, 'no seed of eight left a ready mech that could take its salvage').not.toBeNull();
+    expect(match, 'no bounded seed left a ready mech that could take its salvage').not.toBeNull();
     if (run === null || match === null) return;
     const { weaponId, host } = match;
     const held = storeCount(run, 'weapon', weaponId);
@@ -225,6 +225,7 @@ describe('campaign contracts', () => {
       'foundry_sweep_node',
       'shale_overwatch_node',
       'ridge_hold',
+      'depot_burn',
     ];
     for (const nodeId of route) {
       expect(acceptContract(catalog, run, nodeId, 'fee_first').ok).toBe(true);
@@ -240,11 +241,15 @@ describe('campaign contracts', () => {
       run.employerFailures,
       run.historyArchive.employers,
     );
-    expect(employers.find((record) => record.id === 'kestrel_combine')).toMatchObject({
+    expect(employers.find((record) => record.id === 'halloran_freight')).toMatchObject({
       completed: 4,
       failed: 1,
     });
     expect(employers.find((record) => record.id === 'sarn_foundry')).toMatchObject({
+      completed: 1,
+      failed: 0,
+    });
+    expect(employers.find((record) => record.id === 'ridgeward_assembly')).toMatchObject({
       completed: 1,
       failed: 0,
     });
@@ -273,6 +278,7 @@ describe('campaign contracts', () => {
       'foundry_sweep_node',
       'shale_overwatch_node',
       'ridge_hold',
+      'depot_burn',
     ];
 
     for (const nodeId of route) {

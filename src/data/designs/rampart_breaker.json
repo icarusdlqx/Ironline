@@ -13,7 +13,7 @@
     "right_leg": 72
   },
   "heatSinkId": "heat_sink",
-  "heatSinks": 19,
+  "heatSinks": 14,
   "mounts": [
     {
       "weaponId": "ac20",
@@ -24,12 +24,8 @@
       "location": "right_torso"
     },
     {
-      "weaponId": "medium_laser",
-      "location": "left_arm"
-    },
-    {
-      "weaponId": "medium_laser",
-      "location": "left_arm"
+      "weaponId": "lrm10",
+      "location": "left_torso"
     }
   ],
   "ammo": [
@@ -42,6 +38,11 @@
       "weaponId": "ac20",
       "location": "left_torso",
       "tons": 2
+    },
+    {
+      "weaponId": "lrm10",
+      "location": "left_torso",
+      "tons": 1
     }
   ],
   "equipment": [
@@ -52,6 +53,10 @@
     {
       "equipmentId": "case",
       "location": "left_torso"
+    },
+    {
+      "equipmentId": "ams",
+      "location": "centre_torso"
     }
   ]
 }

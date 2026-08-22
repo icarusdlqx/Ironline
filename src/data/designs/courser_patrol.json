@@ -13,10 +13,10 @@
     "right_leg": 18
   },
   "heatSinkId": "heat_sink",
-  "heatSinks": 8,
+  "heatSinks": 9,
   "mounts": [
     {
-      "weaponId": "medium_laser",
+      "weaponId": "flamer",
       "location": "centre_torso"
     },
     {
@@ -24,11 +24,11 @@
       "location": "centre_torso"
     },
     {
-      "weaponId": "small_laser",
+      "weaponId": "machine_gun",
       "location": "left_torso"
     },
     {
-      "weaponId": "small_laser",
+      "weaponId": "flamer",
       "location": "right_torso"
     }
   ],

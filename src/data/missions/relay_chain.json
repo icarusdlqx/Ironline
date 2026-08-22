@@ -31,7 +31,7 @@
         },
         {
           "designId": "hornet_spotter",
-          "pilotId": "willem_torrance",
+        "pilotId": "willem_torrance",
           "spawn": {
             "x": 540,
             "y": 924
@@ -54,8 +54,8 @@
       "name": "Relay Patrol",
       "units": [
         {
-          "designId": "wisp_scout",
-          "pilotId": "roz_havel",
+          "designId": "courser_patrol",
+          "pilotId": "suri_kell",
           "spawn": {
             "x": 492,
             "y": 708
@@ -64,7 +64,7 @@
         },
         {
           "designId": "courser_patrol",
-          "pilotId": "juno_reyes",
+          "pilotId": "leda_morcant",
           "spawn": {
             "x": 156,
             "y": 492
@@ -72,8 +72,8 @@
           "facingDegrees": 0
         },
         {
-          "designId": "sentinel_brawler",
-          "pilotId": "teodor_krysa",
+          "designId": "drover_carrier",
+          "pilotId": "oksana_valev",
           "spawn": {
             "x": 492,
             "y": 228
@@ -82,7 +82,7 @@
         },
         {
           "designId": "hornet_spotter",
-          "pilotId": "bo_ferrant",
+          "pilotId": "bram_nyen",
           "spawn": {
             "x": 756,
             "y": 444

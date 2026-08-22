@@ -50,6 +50,15 @@ export interface CampaignLoadOptions {
 
 type JsonObject = Record<string, unknown>;
 
+const LEGACY_AUTHORED_EMPLOYERS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  border_dispute: {
+    militia_raid: 'kestrel_combine',
+    pass_skirmish: 'kestrel_combine',
+    ridge_hold: 'kestrel_combine',
+    shale_overwatch_node: 'kestrel_combine',
+  },
+};
+
 function object(value: unknown): JsonObject | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as JsonObject)
@@ -69,6 +78,13 @@ function inferredEmployer(
   if (employerId !== null && campaign !== undefined) return employerById(campaign, employerId);
 
   const nodeId = typeof record.nodeId === 'string' ? record.nodeId : null;
+  const legacyAuthoredId =
+    nodeId === null ? undefined : LEGACY_AUTHORED_EMPLOYERS[campaign?.id ?? '']?.[nodeId];
+  // Historical records without identity fields must not change client when
+  // the live campaign rewrites that node for a later story revision.
+  if (legacyAuthoredId !== undefined && campaign !== undefined) {
+    return employerById(campaign, legacyAuthoredId);
+  }
   const node = campaign?.nodes.find((entry) => entry.id === nodeId);
   if (node !== undefined && campaign !== undefined) return employerById(campaign, node.employerId);
   if (recoveredEmployerId !== null && campaign !== undefined) {

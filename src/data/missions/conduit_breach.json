@@ -1,0 +1,142 @@
+{
+  "id": "conduit_breach",
+  "name": "Hold — The Dark Towns",
+  "type": "defend",
+  "mapId": "shale_steps",
+  "briefing": "Kestrel cutters opened the western conduit at marker 311. Six Ridgeward towns are dark. The east breaker can carry the pumps if it remains under Assembly control for ninety seconds while the load transfers. The Kestrel column is already climbing.",
+  "maxDurationSeconds": 420,
+  "startingResourcePoints": 500,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Assembly Breaker Guard",
+      "units": [
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 636, "y": 36 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 708, "y": 36 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 780, "y": 36 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 852, "y": 36 },
+          "facingDegrees": 135
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Cutters",
+      "units": [
+        {
+          "designId": "votive_picket",
+          "pilotId": "anja_verrin",
+          "spawn": { "x": 36, "y": 636 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "sentinel_brawler",
+          "pilotId": "oksana_valev",
+          "spawn": { "x": 108, "y": 636 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "falchion_duellist",
+          "pilotId": "tomas_arvel",
+          "spawn": { "x": 180, "y": 636 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "warden_lancer",
+          "pilotId": "corin_dast",
+          "spawn": { "x": 252, "y": 636 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "wisp_scout",
+          "pilotId": "suri_kell",
+          "spawn": { "x": 348, "y": 636 },
+          "facingDegrees": -45
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "east_breaker",
+      "name": "East Breaker",
+      "x": 792,
+      "y": 96,
+      "radius": 80,
+      "owner": 0,
+      "captureSeconds": 12,
+      "resourcePoints": 0
+    }
+  ],
+  "objectives": [
+    {
+      "id": "hold_breaker",
+      "label": "Hold the east breaker for 90 seconds",
+      "type": "hold_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "east_breaker"
+      ],
+      "holdSeconds": 90,
+      "resourcePoints": 300
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one machine operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "breach_report",
+      "when": { "type": "elapsed", "seconds": 5 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Assembly: western conductor is open to air. Kestrel cut the Line. Pump reserves are under forty minutes."
+        },
+        {
+          "type": "reveal",
+          "x": 192,
+          "y": 624,
+          "radius": 200,
+          "seconds": 25
+        }
+      ]
+    },
+    {
+      "id": "load_transferred",
+      "when": { "type": "objective_complete", "objectiveId": "hold_breaker" },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Assembly: east breaker has the load. Pumps are turning again. The western towns stay dark."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 240
+}

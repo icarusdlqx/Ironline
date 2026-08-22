@@ -15,7 +15,7 @@ describe('salvage item facts', () => {
     expect(facts.name).toBe('Medium Laser');
     expect(facts.kind).toBe('Weapon');
     expect(facts.specification).toBe('light energy hardpoint · 1t · 1 slot');
-    expect(facts.fit).toContain('Sentinel SNL-2');
+    expect(facts.fit).toContain('Bulwark BWK-3');
     expect(facts.ownedBefore).toBe(1);
     expect(facts.buildValue).toBe(80_000);
     expect(facts.saleBasis).toBe(36_000);

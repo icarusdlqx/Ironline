@@ -32,6 +32,7 @@ export const CampaignSchema = z
     startingPilotIds: z.array(IdSchema).min(1).max(12),
     hiringPoolPilotIds: z.array(IdSchema).max(12).default([]),
     victoryNodeId: IdSchema,
+    alternateVictoryNodeIds: z.array(IdSchema).max(3).default([]),
     employers: z.array(CampaignEmployerSchema).min(1).max(40),
     /**
      * The pool the hiring hall draws side work from: missions that can be
@@ -70,11 +71,21 @@ export const CampaignSchema = z
       });
     }
 
-    if (!ids.has(campaign.victoryNodeId)) {
+    const victoryIds = [campaign.victoryNodeId, ...campaign.alternateVictoryNodeIds];
+    if (new Set(victoryIds).size !== victoryIds.length) {
       ctx.addIssue({
         code: 'custom',
-        path: ['victoryNodeId'],
-        message: `"${campaign.victoryNodeId}" is not a node in this campaign`,
+        path: ['alternateVictoryNodeIds'],
+        message: 'victory node ids must be unique',
+      });
+    }
+    for (const [index, victoryId] of victoryIds.entries()) {
+      if (ids.has(victoryId)) continue;
+      const path = index === 0 ? ['victoryNodeId'] : ['alternateVictoryNodeIds', index - 1];
+      ctx.addIssue({
+        code: 'custom',
+        path,
+        message: `"${victoryId}" is not a node in this campaign`,
       });
     }
 

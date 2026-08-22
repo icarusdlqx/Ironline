@@ -171,7 +171,7 @@ export function estimateRepair(
   }
 
   const chassisCost = chassis?.baseCost ?? 0;
-  const cost =
+  const baseCost =
     armourPoints * rules.armourCostPerPoint +
     internalPoints * rules.internalCostPerPoint +
     destroyedLocations.length * chassisCost * rules.locationReplaceCostFraction +
@@ -184,13 +184,19 @@ export function estimateRepair(
     (mech.rebuildCost > 0 ? catalog.rules.salvage.hulkRebuildDays : 0);
 
   const needsWork = armourPoints > 0 || internalPoints > 0 || mech.rebuildCost > 0;
-  const days = needsWork ? Math.max(rules.minimumDays, Math.ceil(rawDays)) : 0;
+  const baseDays = needsWork ? Math.max(rules.minimumDays, Math.ceil(rawDays)) : 0;
+  const factors =
+    chassis === undefined
+      ? rules.factionFactors.linewrought
+      : rules.factionFactors[chassis.faction];
+  const cost = Math.round(baseCost * factors.cost);
+  const days = baseDays === 0 ? 0 : Math.ceil(baseDays * factors.days);
 
   return {
     armourPoints,
     internalPoints,
     destroyedLocations,
-    cost: Math.round(cost),
+    cost,
     days,
   };
 }

@@ -143,10 +143,10 @@ describe('refit', () => {
 
     expect(mech.condition.left_arm?.destroyed, 'the refit rebuilt a destroyed arm').toBe(true);
     expect(mech.condition.centre_torso?.armour).toBeLessThanOrEqual(1);
-    expect(
-      estimateRepair(catalog, mech).cost,
-      'the refit wiped out the repair bill',
-    ).toBeGreaterThanOrEqual(wounded.cost);
+    const after = estimateRepair(catalog, mech);
+    expect(after.destroyedLocations).toContain('left_arm');
+    expect(after.internalPoints).toBeGreaterThanOrEqual(wounded.internalPoints);
+    expect(after.cost, 'the refit wiped out the repair bill').toBeGreaterThan(0);
   });
 
   it('books a whole rebuilt design through stores in one go', () => {
@@ -197,6 +197,32 @@ describe('refit', () => {
     // Taking a gun off puts it in the player's hand, not on a shelf, so the
     // bay works from one list rather than two.
     expect(inventory.get('medium_laser')).toBe(2 + mounted);
+  });
+
+  it('books heat-sink changes through stores like every other component', () => {
+    const mech = state.mechs.find((entry) => {
+      const candidate = JSON.parse(JSON.stringify(entry.design)) as typeof entry.design;
+      candidate.heatSinkId = 'double_heat_sink';
+      return computeLoadout(catalog, candidate).valid;
+    });
+    expect(mech, 'starting lance has no legal Compound Heat Sink refit').toBeDefined();
+    if (mech === undefined) return;
+
+    const inventory = refitInventory(state, mech);
+    expect(inventory.get(mech.design.heatSinkId)).toBe(mech.design.heatSinks);
+    expect(inventory.get('double_heat_sink')).toBeUndefined();
+
+    const next = JSON.parse(JSON.stringify(mech.design)) as typeof mech.design;
+    next.heatSinkId = 'double_heat_sink';
+    const refused = applyRefit(catalog, state, mech, next);
+    expect(refused.ok).toBe(false);
+    expect(refused.reason).toMatch(/Compound Heat Sink/);
+
+    addToStore(state, 'equipment', 'double_heat_sink', next.heatSinks);
+    const accepted = applyRefit(catalog, state, mech, next);
+    expect(accepted.ok, accepted.reason ?? '').toBe(true);
+    expect(storeCount(state, 'equipment', 'double_heat_sink')).toBe(0);
+    expect(storeCount(state, 'equipment', 'heat_sink')).toBe(next.heatSinks);
   });
 
   it('refuses to strip the last weapon off a mech', () => {

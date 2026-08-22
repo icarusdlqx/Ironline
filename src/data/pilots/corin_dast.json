@@ -1,0 +1,11 @@
+{
+  "id": "corin_dast",
+  "name": "Corin Dast",
+  "gunnery": 4,
+  "piloting": 2,
+  "sensors": 2,
+  "traits": [
+    "butcher"
+  ],
+  "bio": "Dast learned where machines come apart before he learned how they move. He still aims for the bolts nobody else notices."
+}

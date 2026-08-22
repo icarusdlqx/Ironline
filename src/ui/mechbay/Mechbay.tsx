@@ -411,7 +411,11 @@ export function Mechbay({
               data-testid="heat-sink-type"
             >
               {[...catalog.equipment.values()]
-                .filter((entry) => entry.category === 'heat_sink')
+                .filter(
+                  (entry) =>
+                    entry.category === 'heat_sink' &&
+                    (entry.id === design.heatSinkId || onShelf(entry.id)),
+                )
                 .map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.name}

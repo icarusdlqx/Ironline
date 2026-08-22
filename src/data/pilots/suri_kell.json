@@ -1,0 +1,12 @@
+{
+  "id": "suri_kell",
+  "name": "Suri Kell",
+  "gunnery": 2,
+  "piloting": 2,
+  "sensors": 3,
+  "traits": [
+    "green",
+    "quick_study"
+  ],
+  "bio": "Kell signed after one live-fire circuit and asked for another. The instructors disagreed about whether that was courage."
+}

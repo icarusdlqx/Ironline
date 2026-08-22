@@ -1,0 +1,11 @@
+{
+  "id": "tomas_arvel",
+  "name": "Tomas Arvel",
+  "gunnery": 2,
+  "piloting": 4,
+  "sensors": 3,
+  "traits": [
+    "snap_shot"
+  ],
+  "bio": "Arvel fires while the ground is still moving under him. The misses are expensive. The hits are why Kestrel keeps paying."
+}

@@ -5,8 +5,8 @@ import { acceptContract, runMission, startCampaign } from './campaign';
 
 describe('campaign mission clock', () => {
   it('auto-resolves against the active mission budget', () => {
-    const mission = catalog.missions.get('standoff_ridge');
-    if (mission === undefined) throw new Error('missing standoff mission');
+    const mission = catalog.missions.get('depot_road');
+    if (mission === undefined) throw new Error('missing depot-road mission');
     const missions = new Map(catalog.missions);
     missions.set(mission.id, { ...mission, maxDurationSeconds: 5 });
     const shortCatalog = { ...catalog, missions };

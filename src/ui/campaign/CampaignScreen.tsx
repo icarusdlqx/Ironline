@@ -29,6 +29,7 @@ import { CampaignHeader } from './CampaignHeader';
 import { CampaignMap, type NodeState } from './CampaignMap';
 import { CampaignPostBattle } from './CampaignPostBattle';
 import { resolveCurrentEmployer } from './campaignEmployer';
+import { visibleCampaignLore } from './campaignLore';
 import { ContractPanel } from './ContractPanel';
 import { CompanyStatus } from './CompanyStatus';
 import { debriefedCount, resetDebriefed, revealLatestDebrief } from './Debrief';
@@ -241,7 +242,10 @@ export function CampaignScreen({ onExit }: { onExit: () => void }) {
       />
 
       {!manualOpen ? null : (
-        <FieldManual lore={[...catalog.lore.values()]} onClose={() => setManualOpen(false)} />
+        <FieldManual
+          lore={visibleCampaignLore([...catalog.lore.values()], state.completedNodes)}
+          onClose={() => setManualOpen(false)}
+        />
       )}
 
       <CampaignMap

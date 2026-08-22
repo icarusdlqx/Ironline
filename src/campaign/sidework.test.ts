@@ -109,7 +109,7 @@ describe('the hiring hall', () => {
   });
 
   it('counts timed waves in a defence posting', () => {
-    expect(oppositionTonnage(catalog, 'switchyard_watch')).toBe(245);
+    expect(oppositionTonnage(catalog, 'switchyard_watch')).toBe(240);
   });
 
   it('posts the two objective-led jobs without inventing a destroy requirement', () => {

@@ -13,7 +13,7 @@
       "name": "Crossing Force",
       "units": [
         {
-          "designId": "sentinel_brawler",
+          "designId": "hornet_spotter",
           "pilotId": "kessa_vale",
           "spawn": {
             "x": 36,
@@ -31,7 +31,7 @@
           "facingDegrees": -45
         },
         {
-          "designId": "wisp_scout",
+          "designId": "hornet_spotter",
           "pilotId": "marek_sud",
           "spawn": {
             "x": 180,
@@ -55,8 +55,8 @@
       "name": "Far Bank Garrison",
       "units": [
         {
-          "designId": "bulwark_assault",
-          "pilotId": "nadia_ostrow",
+          "designId": "cairn_battery",
+          "pilotId": "anja_verrin",
           "spawn": {
             "x": 756,
             "y": 36
@@ -65,7 +65,7 @@
         },
         {
           "designId": "hornet_spotter",
-          "pilotId": "willem_torrance",
+          "pilotId": "tomas_arvel",
           "spawn": {
             "x": 732,
             "y": 108
@@ -74,7 +74,7 @@
         },
         {
           "designId": "cairn_battery",
-          "pilotId": "cato_ferrin",
+          "pilotId": "corin_dast",
           "spawn": {
             "x": 924,
             "y": 108
@@ -82,8 +82,8 @@
           "facingDegrees": 135
         },
         {
-          "designId": "wisp_scout",
-          "pilotId": "juno_reyes",
+          "designId": "courser_patrol",
+          "pilotId": "leda_morcant",
           "spawn": {
             "x": 684,
             "y": 156

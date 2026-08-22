@@ -1,0 +1,11 @@
+{
+  "id": "leda_morcant",
+  "name": "Leda Morcant",
+  "gunnery": 3,
+  "piloting": 2,
+  "sensors": 3,
+  "traits": [
+    "cool_hand"
+  ],
+  "bio": "Morcant treats every warning light as a negotiation. Kestrel's technicians have stopped asking how often she wins."
+}

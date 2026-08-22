@@ -17,7 +17,17 @@
     "armourPointsPerDay": 90,
     "internalPointsPerDay": 20,
     "locationReplaceDays": 4,
-    "minimumDays": 1
+    "minimumDays": 1,
+    "factionFactors": {
+      "linewrought": {
+        "cost": 1,
+        "days": 1
+      },
+      "aurelian": {
+        "cost": 2.5,
+        "days": 2.5
+      }
+    }
   },
   "pilot": {
     "hireCostBase": 120000,
@@ -47,7 +57,10 @@
     ],
     "priceRounding": 25000,
     "wornChance": 0.4,
-    "wornDiscount": 0.72
+    "wornDiscount": 0.72,
+    "availableFactions": [
+      "linewrought"
+    ]
   },
   "sideContracts": {
     "refreshDays": 7,

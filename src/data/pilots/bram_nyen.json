@@ -1,0 +1,11 @@
+{
+  "id": "bram_nyen",
+  "name": "Bram Nyen",
+  "gunnery": 2,
+  "piloting": 3,
+  "sensors": 3,
+  "traits": [
+    "green"
+  ],
+  "bio": "Nyen drove ore crawlers before Kestrel gave him a cockpit. He still measures a good day by what reaches the far gate."
+}

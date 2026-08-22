@@ -1,0 +1,134 @@
+{
+  "id": "depot_road",
+  "name": "Hold — Depot Road",
+  "type": "defend",
+  "mapId": "ridge_pass",
+  "briefing": "The conduit fault carried an Aurelian service address before the breakers closed. Halloran can resolve the approach if the survey key stays live for two minutes. Kestrel has the same address and a rearguard above the key.",
+  "maxDurationSeconds": 300,
+  "startingResourcePoints": 650,
+  "lances": [
+    {
+      "team": 0,
+      "name": "Depot Survey Lance",
+      "units": [
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "kessa_vale",
+          "spawn": { "x": 108, "y": 852 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "bulwark_assault",
+          "pilotId": "dorn_hess",
+          "spawn": { "x": 156, "y": 876 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "hornet_spotter",
+          "pilotId": "marek_sud",
+          "spawn": { "x": 204, "y": 828 },
+          "facingDegrees": -45
+        },
+        {
+          "designId": "cairn_battery",
+          "pilotId": "ilse_brant",
+          "spawn": { "x": 132, "y": 780 },
+          "facingDegrees": -45
+        }
+      ]
+    },
+    {
+      "team": 1,
+      "name": "Kestrel Rearguard",
+      "units": [
+        {
+          "designId": "falchion_duellist",
+          "pilotId": "corin_dast",
+          "spawn": { "x": 804, "y": 132 },
+          "facingDegrees": 135
+        },
+        {
+          "designId": "votive_picket",
+          "pilotId": "tomas_arvel",
+          "spawn": { "x": 876, "y": 180 },
+          "facingDegrees": 135
+        }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "survey_key",
+      "name": "Survey Key",
+      "x": 492,
+      "y": 492,
+      "radius": 74,
+      "owner": 0,
+      "captureSeconds": 10,
+      "resourcePoints": 0
+    }
+  ],
+  "objectives": [
+    {
+      "id": "resolve_approach",
+      "label": "Hold the survey key for 120 seconds",
+      "type": "hold_zones",
+      "team": 0,
+      "required": true,
+      "zoneIds": [
+        "survey_key"
+      ],
+      "holdSeconds": 120
+    },
+    {
+      "id": "lance_survives",
+      "label": "Keep at least one machine operational",
+      "type": "survive",
+      "team": 0,
+      "required": true
+    }
+  ],
+  "triggers": [
+    {
+      "id": "second_section",
+      "when": { "type": "elapsed", "seconds": 55 },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Halloran: two more sealed contacts leaving the north cutting. The key needs another minute."
+        },
+        {
+          "type": "spawn",
+          "team": 1,
+          "units": [
+            {
+              "designId": "warden_lancer",
+              "pilotId": "anja_verrin",
+              "spawn": { "x": 852, "y": 108 },
+              "facingDegrees": 135
+            },
+            {
+              "designId": "sentinel_brawler",
+              "pilotId": "oksana_valev",
+              "spawn": { "x": 828, "y": 84 },
+              "facingDegrees": 135
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "approach_resolved",
+      "when": { "type": "objective_complete", "objectiveId": "resolve_approach" },
+      "once": true,
+      "effects": [
+        {
+          "type": "message",
+          "text": "Halloran: address resolved. Depot doors are twelve kilometres east. Kestrel is already moving."
+        }
+      ]
+    }
+  ],
+  "dropTonnage": 225
+}
