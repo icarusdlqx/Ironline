@@ -45,6 +45,11 @@ interface Props {
   onRemoveEquipment: (index: number) => void;
   /** Called when the player picks something here, so the dossier can follow. */
   onInspect?: (payload: DropPayload) => void;
+  onSelect?: (location: MechLocation) => void;
+  onHover?: (location: MechLocation | null) => void;
+  selected?: boolean;
+  hovered?: boolean;
+  compatible?: boolean;
   /**
    * What the player has picked up off the shelf and not yet placed. Dragging
    * does not exist on a touch screen, so the bay also works as pick-then-place:
@@ -64,6 +69,11 @@ export function LocationCard({
   onRemoveAmmo,
   onRemoveEquipment,
   onInspect,
+  onSelect,
+  onHover,
+  selected = false,
+  hovered = false,
+  compatible = false,
   armed = null,
 }: Props) {
   const hardpoints = chassis.hardpoints[location];
@@ -137,15 +147,23 @@ export function LocationCard({
   const columns = Math.max(1, Math.min(usage.slotsAvailable, 12));
 
   const plate = splitArmour(catalog.rules.construction, location, design.armour[location]);
+  const armedWeaponFits = armed?.kind !== 'weapon' || compatible;
 
   const classes = ['bay-location', `loc-${location}`];
   if (slotsOver || hardpointOver || sizeOver) classes.push('invalid');
-  if (armed !== null) classes.push('armed-target');
+  if (armed !== null && (armed.kind !== 'weapon' || compatible)) classes.push('armed-target');
+  if (selected) classes.push('selected');
+  if (hovered) classes.push('hovered');
+  if (compatible) classes.push('compatible');
 
   return (
     <div
       className={classes.join(' ')}
       data-testid={`bay-location-${location}`}
+      data-selected={selected || undefined}
+      data-compatible={compatible || undefined}
+      onPointerEnter={() => onHover?.(location)}
+      onPointerLeave={() => onHover?.(null)}
       onDragOver={(event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'copy';
@@ -160,11 +178,26 @@ export function LocationCard({
       // because on a phone the slot grid is a few millimetres tall and asking
       // for a precise tap is asking for a mis-tap.
       onClick={() => {
-        if (armed !== null) onDrop(armed, location);
+        if (armed !== null) {
+          if (armedWeaponFits) onDrop(armed, location);
+          return;
+        }
+        onSelect?.(location);
       }}
     >
       <header>
-        <span className="bay-location-name">{SHORT_NAMES[location]}</span>
+        <button
+          type="button"
+          className="bay-location-name"
+          aria-pressed={selected}
+          disabled={armed?.kind === 'weapon' && !compatible}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect?.(location);
+          }}
+        >
+          {SHORT_NAMES[location]}
+        </button>
         <span className={`bay-slots ${slotsOver ? 'over' : ''}`} data-testid={`slots-${location}`}>
           {usage.slotsUsed}/{usage.slotsAvailable}
         </span>
@@ -212,8 +245,11 @@ export function LocationCard({
               // While something is armed the whole card is a drop target, so a
               // tap on a fitted block places rather than removes — otherwise
               // aiming at a gap between blocks becomes load-bearing.
-              onClick={() => {
-                if (armed === null) remove(item);
+              onClick={(event) => {
+                if (armed === null) {
+                  event.stopPropagation();
+                  remove(item);
+                }
               }}
               onFocus={() =>
                 onInspect?.({

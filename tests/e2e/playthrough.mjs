@@ -695,24 +695,53 @@ async function main() {
       (await page.locator('[data-testid="heat-alpha"]').innerText()).length > 0 &&
         (await page.locator('[data-testid="heat-sustained"]').innerText()).includes('/s'),
     );
+    check(
+      'the mechbay renders the battlefield machine and visual weapon comparisons',
+      (await page.locator('[data-testid="mech-preview-canvas"]').count()) === 1 &&
+        (await page.locator('.weapon-card').first().locator('[role="meter"]').count()) === 3 &&
+        (await page.locator('.weapon-glyph').count()) > 0,
+    );
+    await page.screenshot({ path: `${SHOTS}/05-mechbay-overview.png` });
 
     const freeTonnage = async () =>
       Number((await page.locator('[data-testid="free-tonnage"]').innerText()).replace('t', ''));
     const startingFree = await freeTonnage();
 
-    // The gauss rifle does not fit a Sentinel anywhere, so the shelf hides it
-    // until the player asks to window-shop.
+    // Picking a location narrows the shelf to that hardpoint. Window-shopping
+    // remains possible, but an incompatible card cannot be armed or dragged.
     check(
       'the shelf hides weapons the hull cannot mount',
       (await page.locator('[data-testid="stock-weapon-gauss_rifle"]').count()) === 0,
     );
+    await page.locator('[data-testid="bay-location-right_torso"] .bay-location-name').click();
+    check(
+      'selecting a hardpoint filters the shelf to that mount',
+      (await page.locator('[data-testid="bay-location-filter"]').innerText()).toLowerCase().includes('right torso') &&
+        (await page.locator('.weapon-card.is-unavailable').count()) === 0,
+    );
     await page.locator('[data-testid="shelf-show-all"]').check();
-    await page
-      .locator('[data-testid="stock-weapon-gauss_rifle"]')
-      .dragTo(page.locator('[data-testid="bay-location-right_arm"]'));
+    const incompatibleGauss = page.locator('[data-testid="stock-weapon-gauss_rifle"]');
+    check(
+      'showing incompatible weapons explains rather than offering them',
+      (await incompatibleGauss.getAttribute('aria-disabled')) === 'true' &&
+        (await incompatibleGauss.getAttribute('title'))?.includes('Right Torso'),
+    );
+    await page.locator('[data-testid="shelf-show-all"]').uncheck();
+
+    // Native buttons make the same pick-then-place path work from a keyboard.
+    const mediumLaser = page.locator('[data-testid="stock-weapon-medium_laser"]');
+    await mediumLaser.focus();
+    await page.keyboard.press('Enter');
+    check(
+      'a keyboard pick arms only compatible hardpoints',
+      (await page.locator('[data-testid="bay-armed"]').count()) === 1 &&
+        (await page.locator('.bay-location.armed-target').count()) === 1 &&
+        (await page.locator('[data-testid="bay-location-right_torso"].armed-target').count()) === 1,
+    );
+    await page.locator('[data-testid="bay-location-right_torso"]').click();
 
     const afterDrag = await freeTonnage();
-    check('drag-to-hardpoint mounts the weapon', afterDrag < startingFree, `${startingFree}t → ${afterDrag}t`);
+    check('keyboard pick-to-hardpoint mounts the weapon', afterDrag < startingFree, `${startingFree}t → ${afterDrag}t`);
     check('an illegal build reports its problems', (await page.locator('[data-testid="bay-issues"] li').count()) > 0);
     await page.screenshot({ path: `${SHOTS}/05-mechbay-illegal.png` });
     check('save is refused for an illegal build', await page.locator('[data-testid="bay-save"]').isDisabled());
@@ -726,15 +755,27 @@ async function main() {
     });
     check('clicking a disabled save writes nothing to storage', blocked.added === 0);
 
-    // Locations are slot grids now, and an ammo-fed gun arrives with a ton of
-    // ammunition — so the newest *weapon* block is the gauss, and clicking it
-    // takes the gun and its ammo off together.
     await page
-      .locator('[data-testid="bay-location-right_arm"] .slot-block.tone-ballistic button')
+      .locator('[data-testid="bay-location-right_torso"] .slot-block.tone-energy button')
       .last()
       .click();
     check('removing the weapon restores a legal build', !(await page.locator('[data-testid="bay-save"]').isDisabled()));
     check('free tonnage returns to its starting value', (await freeTonnage()) === startingFree);
+
+    // Desktop drag-and-drop uses the same fit predicate and remains available
+    // alongside the touch/keyboard grammar.
+    await page
+      .locator('[data-testid="stock-weapon-medium_laser"]')
+      .dragTo(page.locator('[data-testid="bay-location-right_torso"]'));
+    check(
+      'drag-to-hardpoint uses the same legal mount path',
+      (await freeTonnage()) < startingFree,
+    );
+    await page
+      .locator('[data-testid="bay-location-right_torso"] .slot-block.tone-energy button')
+      .last()
+      .click();
+    check('dragged weapon can be removed cleanly', (await freeTonnage()) === startingFree);
 
     // Per-location armour lives behind a disclosure now; the everyday control
     // is one slider for the whole machine.
@@ -996,10 +1037,15 @@ async function main() {
       (await page.locator('.slot-block').count()) > 8,
       `${await page.locator('.slot-block').count()} slot blocks`,
     );
-    await page.locator('[data-testid="stock-weapon-flamer"]').click();
     check(
-      'the dossier explains the weapon',
-      (await page.locator('[data-testid="bay-dossier-card"]').innerText()).includes('FIREPOWER'),
+      'the weapon card explains its costs, heat and range without a second panel',
+      (await page.locator('[data-testid="weapon-card-flamer"] [role="meter"]').count()) === 3 &&
+        (await page.locator('[data-testid="weapon-card-flamer"]').innerText()).includes('slot') &&
+        (await page.locator('[data-testid="weapon-card-flamer"] .weapon-range-strip').count()) === 1,
+    );
+    check(
+      'campaign stock cannot be fitted twice before commit',
+      (await page.locator('[data-testid="stock-weapon-flamer"]').getAttribute('aria-disabled')) === 'true',
     );
     await page.locator('[data-testid="bay-save"]').click();
     await page.waitForSelector('[data-testid="lance-manifest"]');

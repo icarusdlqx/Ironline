@@ -1,194 +1,20 @@
 import type { Chassis } from '../../schema/chassis';
 import type { MechLocation } from '../../schema/common';
 import type { Design } from '../../schema/design';
-import { chassisBlueprint, type BlueprintPart, type Profile, type Tone } from '../../render/blueprint';
-import { mix, shade } from '../../render/palette';
-
-/**
- * Painted steel under the bay lights, one colour per blueprint tone. On the
- * battlefield `trim` carries the team colour; here there is no team, and a
- * mantlet is a large plate, so it is a muted blue rather than a signal flare.
- */
-const TONES: Record<Tone, number> = {
-  plate: 0x8a97a2,
-  deep: 0x4e5a63,
-  trim: 0x5c8299,
-  glass: 0xa9e4ff,
-  accent: 0xa8b5bf,
-};
-
-/** What the far side of the machine is blended toward, so it sits back. */
-const BACKDROP = 0x141c22;
-const HIGHLIGHT = 0xffc857;
-
-/**
- * Lit from above and a little in front, so the three faces of a plate are three
- * different values. This is the whole reason the machine reads as a machine
- * rather than as one grey area with a couple of notches in it.
- */
-const FACE = { top: 1.2, front: 0.95, side: 0.68 } as const;
-type Face = keyof typeof FACE;
-
-/**
- * An oblique view from front, above, and the mech's right. The nose points to
- * the right of the panel; the near flank drops down and to the left, so the far
- * side of every plate recedes up and to the right.
- *
- * Shallow on purpose. A flat elevation puts both legs in exactly the same
- * place, and a deep three-quarter view smears a hundred-tonne siege hull across
- * the panel until the legs vanish under it.
- */
-const SKEW_X = 0.34;
-const SKEW_Y = 0.2;
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-function project(x: number, y: number, z: number): Point {
-  return { x: x - z * SKEW_X, y: -y + z * SKEW_Y };
-}
-
-/**
- * How near a point is to the eye. Along the projection direction, so a chest
- * plate bolted to the nose draws over the hull behind it and the near leg draws
- * over the far one, whatever order the blueprint listed them in.
- */
-function depth(x: number, y: number, z: number): number {
-  return x * SKEW_X + y * SKEW_Y + z;
-}
-
-function css(colour: number): string {
-  return `#${colour.toString(16).padStart(6, '0')}`;
-}
-
-function round(value: number): number {
-  return Math.round(value * 1_000) / 1_000;
-}
-
-function points(list: readonly Point[]): string {
-  return list.map((p) => `${round(p.x)},${round(p.y)}`).join(' ');
-}
-
-interface Facet {
-  points: string;
-  fill: string;
-  /** Only the outer faces are outlined; interior shading is drawn flush. */
-  outline: boolean;
-}
-
-interface Ellipse {
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-  fill: string;
-  outline: boolean;
-}
-
-interface Piece {
-  key: string;
-  depth: number;
-  facets: Facet[];
-  ellipses: Ellipse[];
-  /** Screen-space rotation for a tilted plate, about its own centre. */
-  spin: string | undefined;
-}
-
-/** A plain rectangle, which is the profile a part without one is cut to. */
-const RECTANGLE: Profile = [
-  [-0.5, -0.5],
-  [0.5, -0.5],
-  [0.5, 0.5],
-  [-0.5, 0.5],
-];
-
-/**
- * A plate as the eye actually sees it: the near face cut to its own outline,
- * plus the rim of every edge turned toward the viewer.
- *
- * Everything on a mech is a prism — a shape extruded across its width — and
- * drawing one properly is what lets a hull have a sloped nose and a tapered
- * deck in the bay as well as on the field, from the same description. A box is
- * just the case where the outline is a rectangle.
- */
-function prismFacets(
-  at: readonly [number, number, number],
-  size: readonly [number, number, number],
-  profile: Profile,
-  paint: (face: Face) => string,
-): Facet[] {
-  const [cx, cy, cz] = at;
-  const hz = size[2] / 2;
-  const corner = (px: number, py: number, dz: number): Point =>
-    project(cx + px * size[0], cy + py * size[1], cz + dz);
-
-  const facets: Facet[] = [];
-
-  for (let index = 0; index < profile.length; index += 1) {
-    const from = profile[index];
-    const to = profile[(index + 1) % profile.length];
-    if (from === undefined || to === undefined) continue;
-
-    // The outward normal of this edge, in the profile's own plane. Anticlockwise
-    // winding puts the outside on the right of the direction of travel.
-    const edgeX = (to[0] - from[0]) * size[0];
-    const edgeY = (to[1] - from[1]) * size[1];
-    const normalX = edgeY;
-    const normalY = -edgeX;
-    // Which way the eye is looking, in that same plane.
-    if (normalX * SKEW_X + normalY * SKEW_Y <= 0) continue;
-
-    facets.push({
-      points: points([
-        corner(from[0], from[1], -hz),
-        corner(to[0], to[1], -hz),
-        corner(to[0], to[1], hz),
-        corner(from[0], from[1], hz),
-      ]),
-      // An edge whose outward normal points up is a deck; one pointing along
-      // the mech is a face. Shading them differently is what gives a cut
-      // corner an edge you can see.
-      fill: paint(normalY > Math.abs(normalX) * 0.6 ? 'top' : 'front'),
-      outline: true,
-    });
-  }
-
-  facets.push({
-    points: points(profile.map(([px, py]) => corner(px, py, hz))),
-    fill: paint('side'),
-    outline: true,
-  });
-
-  return facets;
-}
-
-/**
- * A tapered round limb: a trapezoid for the silhouette, with a lit band down
- * the near edge and a shaded one down the far edge so it reads as a cylinder
- * rather than a plank. Blueprint limbs are wide at the top and narrow at the
- * end, or the reverse — size is [top width, length, bottom width].
- */
-function limbFacets(at: readonly [number, number, number], size: readonly [number, number, number], paint: (face: Face) => string): Facet[] {
-  const [cx, cy, cz] = at;
-  const top = size[0] / 2;
-  const bottom = size[2] / 2;
-  const half = size[1] / 2;
-  const band = (from: number, to: number): string =>
-    points([
-      project(cx + top * from, cy + half, cz),
-      project(cx + top * to, cy + half, cz),
-      project(cx + bottom * to, cy - half, cz),
-      project(cx + bottom * from, cy - half, cz),
-    ]);
-
-  return [
-    { points: band(-1, 1), fill: paint('front'), outline: true },
-    { points: band(-1, -0.25), fill: paint('top'), outline: false },
-    { points: band(0.45, 1), fill: paint('side'), outline: false },
-  ];
-}
+import { chassisBlueprint, type BlueprintPart } from '../../render/blueprint';
+import {
+  depth,
+  limbFacets,
+  partPaint,
+  prismFacets,
+  project,
+  RECTANGLE,
+  round,
+  type Ellipse,
+  type Facet,
+  type Piece,
+  type Point,
+} from './silhouetteGeometry';
 
 interface Props {
   chassis: Chassis;
@@ -228,10 +54,7 @@ export function ChassisSilhouette({ chassis, design, active = null }: Props) {
     const at: [number, number, number] = [part.at[0], part.at[1] + lift(part), part.at[2]];
     const far = part.at[2] < -0.01;
     const lit = active !== null && part.location === active;
-    const paint = (face: Face): string => {
-      const shaded = shade(lit ? HIGHLIGHT : TONES[part.tone], FACE[face]);
-      return css(far ? mix(shaded, BACKDROP, 0.45) : shaded);
-    };
+    const paint = partPaint(part.tone, lit, far);
 
     const centre = project(at[0], at[1], at[2]);
     const facets: Facet[] = [];
