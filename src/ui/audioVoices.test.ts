@@ -19,7 +19,7 @@ import {
   playRestart,
   playSelect,
 } from './audioVoices';
-import { playCrunch, playExplosion, playImpact, playWeapon } from './audioWeapons';
+import { playCrunch, playDestruction, playImpact, playWeapon } from './audioWeapons';
 
 class FakeParam {
   value = 0;
@@ -166,9 +166,9 @@ describe('procedural audio lifetimes', () => {
         playWeapon(bus, faction, style, 6, field);
       }
     }
-    playImpact(bus, field);
+    playImpact(bus, { type: 'ballistic', style: 'tracer', damage: 8 }, field);
     playCrunch(bus, field);
-    playExplosion(bus, 1, field);
+    playDestruction(bus, { kind: 'terminal', tonnage: 80 }, field);
     playPowerSweep(bus, 360, 50, 0.9, field);
     playRestart(bus, 'linewrought', field);
     playRestart(bus, 'aurelian', field);
@@ -247,7 +247,7 @@ describe('faction audio voices', () => {
     expect(sealed.context.sources.every((source) => source.starts[0] === 5)).toBe(true);
   });
 
-  it('charges an Aurelian shot before discharge and lets Linewrought cannon fire immediately', () => {
+  it('starts both factions on the firing event and lets the sealed chamber ring afterwards', () => {
     const welded = harness();
     playWeapon(welded.bus, 'linewrought', 'tracer', 6, { level: 0.8, distance: 40 });
     const sealed = harness();
@@ -255,9 +255,7 @@ describe('faction audio voices', () => {
 
     expect(welded.context.sources[0]?.starts[0]).toBe(5);
     expect(sealed.context.sources.slice(0, 2).map((source) => source.starts[0])).toEqual([5, 5.035]);
-    expect(sealed.context.sources.slice(2).every((source) => (source.starts[0] ?? 0) >= 5.17)).toBe(
-      true,
-    );
+    expect(sealed.context.sources.slice(2).some((source) => source.starts[0] === 5)).toBe(true);
   });
 });
 
@@ -318,7 +316,7 @@ describe('the battle audio lifetime', () => {
       },
     ]);
     const starts = FakeContext.instances.at(-1)?.sources.map((source) => source.starts[0] ?? 0) ?? [];
-    expect(starts.slice(2).every((at) => at >= 5.17)).toBe(true);
+    expect(starts.slice(2).some((at) => at === 5)).toBe(true);
     audio.destroy();
   });
 

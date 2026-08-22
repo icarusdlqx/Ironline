@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Color, Vector3, type Mesh, type MeshBasicMaterial } from 'three';
 import { JetLayer, ScarLayer, SmokeLayer } from './effects';
 
@@ -14,6 +14,10 @@ function brightest(jets: JetLayer): number {
     return ((child as Mesh).material as MeshBasicMaterial).opacity;
   }
   return 0;
+}
+
+function flameHeight(jets: JetLayer): number {
+  return jets.group.children.find((child) => child.visible)?.scale.y ?? 0;
 }
 
 describe('jet exhaust', () => {
@@ -68,6 +72,45 @@ describe('jet exhaust', () => {
     expect(jets.group.children.length).toBe(before);
     expect(burning(jets)).toBeLessThanOrEqual(4);
   });
+
+  it('bounds low FX exhaust to one nozzle per unit', () => {
+    const jets = new JetLayer(8);
+
+    jets.begin();
+    for (let key = 10; key < 14; key += 1) jets.plume(key, new Vector3(), 1, 0);
+    jets.commit();
+    expect(burning(jets)).toBe(4);
+
+    jets.setPresentationMode(true, false);
+    jets.begin();
+    for (let key = 10; key < 14; key += 1) jets.plume(key, new Vector3(), 1, 0);
+    jets.commit();
+    expect(burning(jets)).toBe(2);
+  });
+
+  it('removes exhaust flicker under reduced motion', () => {
+    const jets = new JetLayer();
+
+    jets.setPresentationMode(false, false);
+    jets.begin();
+    jets.plume(0, new Vector3(), 1, 0);
+    jets.commit();
+    const movingStart = flameHeight(jets);
+    jets.begin();
+    jets.plume(0, new Vector3(), 1, 0.025);
+    jets.commit();
+    expect(flameHeight(jets)).not.toBeCloseTo(movingStart);
+
+    jets.setPresentationMode(false, true);
+    jets.begin();
+    jets.plume(0, new Vector3(), 1, 0);
+    jets.commit();
+    const stillStart = flameHeight(jets);
+    jets.begin();
+    jets.plume(0, new Vector3(), 1, 0.025);
+    jets.commit();
+    expect(flameHeight(jets)).toBe(stillStart);
+  });
 });
 
 describe('wreck smoke', () => {
@@ -109,5 +152,23 @@ describe('impact scars', () => {
     // Far past the budget: the ground keeps telling the story, at a fixed cost.
     for (let shot = 0; shot < 500; shot += 1) scars.mark({ x: shot, y: 0 }, 0, 4, 0);
     expect(scars.mesh.count).toBe(8);
+  });
+});
+
+describe('fixed instance attributes', () => {
+  it('preallocates colour buffers and reuses colour scratch during events', () => {
+    const smoke = new SmokeLayer(new Color(0x161c1f));
+    const scars = new ScarLayer(4);
+    expect(smoke.mesh.instanceColor).not.toBeNull();
+    expect(scars.mesh.instanceColor).not.toBeNull();
+    const clone = vi.spyOn(Color.prototype, 'clone');
+
+    smoke.start({ x: 20, y: 30 }, 0);
+    smoke.update(1 / 60);
+    scars.mark({ x: 20, y: 30 }, 0, 4, 0.5);
+
+    expect(clone).not.toHaveBeenCalled();
+    smoke.dispose();
+    scars.dispose();
   });
 });

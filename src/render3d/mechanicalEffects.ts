@@ -7,6 +7,7 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three';
+import { disposeObjectResources } from './sceneResources';
 
 interface MovingSlot {
   age: number;
@@ -55,6 +56,7 @@ export class MechanicalDischargeLayer {
   private nextVent = 0;
   private laidCasings = 0;
   private laidVents = 0;
+  private disposed = false;
 
   constructor(
     private readonly casingCapacity = 56,
@@ -89,6 +91,7 @@ export class MechanicalDischargeLayer {
     ejectsCasing: boolean,
     ground: number,
   ): void {
+    if (this.disposed) return;
     const size = Math.max(0.65, Math.min(2.2, heft));
     const vent = this.ventSlots[this.nextVent];
     if (vent !== undefined) {
@@ -119,6 +122,7 @@ export class MechanicalDischargeLayer {
   }
 
   update(deltaSeconds: number): void {
+    if (this.disposed) return;
     const dt = Math.max(0, deltaSeconds);
     for (let index = 0; index < this.laidVents; index += 1) {
       const slot = this.ventSlots[index];
@@ -162,18 +166,16 @@ export class MechanicalDischargeLayer {
   }
 
   dispose(): void {
-    this.casings.geometry.dispose();
-    this.vents.geometry.dispose();
-    if (Array.isArray(this.casings.material)) {
-      this.casings.material.forEach((material) => material.dispose());
-    } else {
-      this.casings.material.dispose();
-    }
-    if (Array.isArray(this.vents.material)) {
-      this.vents.material.forEach((material) => material.dispose());
-    } else {
-      this.vents.material.dispose();
-    }
+    if (this.disposed) return;
+    this.disposed = true;
+    disposeObjectResources(this.casings);
+    disposeObjectResources(this.vents);
+    this.nextCasing = 0;
+    this.nextVent = 0;
+    this.laidCasings = 0;
+    this.laidVents = 0;
+    this.casings.count = 0;
+    this.vents.count = 0;
   }
 
   private write(

@@ -25,6 +25,8 @@ export interface AmbientBus {
 }
 
 const MASTER_LEVEL = 0.5;
+export const FIELD_VOICE_LIMIT = 8;
+export const FIELD_VOICE_WINDOW_MS = 100;
 
 /** The shared graph and the admission control in front of every one-shot. */
 export class AudioGraph implements VoiceBus, AmbientBus {
@@ -81,11 +83,11 @@ export class AudioGraph implements VoiceBus, AmbientBus {
 
     if (placement.distance !== null) {
       const now = performance.now();
-      if (now - this.window.at > 100) {
+      if (now - this.window.at > FIELD_VOICE_WINDOW_MS) {
         this.window.at = now;
         this.window.count = 0;
       }
-      if (this.window.count >= 8) return null;
+      if (this.window.count >= FIELD_VOICE_LIMIT) return null;
       this.window.count += 1;
     }
 

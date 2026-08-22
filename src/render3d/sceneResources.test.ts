@@ -1,6 +1,7 @@
 import {
   ACESFilmicToneMapping,
   BoxGeometry,
+  InstancedMesh,
   Mesh,
   MeshBasicMaterial,
   Object3D,
@@ -49,6 +50,29 @@ describe('renderer configuration and telemetry', () => {
 });
 
 describe('scene resource lifetime', () => {
+  it('releases every instance buffer before shared drawing resources', () => {
+    const root = new Object3D();
+    const geometry = new BoxGeometry();
+    const material = new MeshBasicMaterial();
+    const first = new InstancedMesh(geometry, material, 2);
+    const second = new InstancedMesh(geometry, material, 3);
+    const order: string[] = [];
+    first.addEventListener('dispose', () => order.push('first-instance'));
+    second.addEventListener('dispose', () => order.push('second-instance'));
+    geometry.addEventListener('dispose', () => order.push('geometry'));
+    material.addEventListener('dispose', () => order.push('material'));
+    root.add(first, second);
+
+    disposeObjectResources(root);
+    disposeObjectResources(root);
+
+    expect(order.filter((event) => event.endsWith('instance'))).toHaveLength(2);
+    expect(order.filter((event) => event === 'geometry')).toHaveLength(1);
+    expect(order.filter((event) => event === 'material')).toHaveLength(1);
+    expect(order.indexOf('first-instance')).toBeLessThan(order.indexOf('geometry'));
+    expect(order.indexOf('second-instance')).toBeLessThan(order.indexOf('geometry'));
+  });
+
   it('disposes shared resources and atmosphere shadows once', () => {
     const scene = new Scene();
     const geometry = new BoxGeometry();

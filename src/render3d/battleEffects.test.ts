@@ -61,7 +61,7 @@ describe('battle camera feedback', () => {
 
     let light: PointLight | null = null;
     scene.traverse((child) => {
-      if (child instanceof PointLight) light = child;
+      if (child instanceof PointLight && child.visible) light = child;
     });
     expect(light).not.toBeNull();
     expect((light as PointLight | null)?.position.equals(muzzle)).toBe(true);
@@ -87,7 +87,7 @@ describe('battle camera feedback', () => {
 
     let light: PointLight | null = null;
     scene.traverse((child) => {
-      if (child instanceof PointLight) light = child;
+      if (child instanceof PointLight && child.visible) light = child;
     });
     expect((light as PointLight | null)?.position.toArray()).toEqual([12, 17, 34]);
   });
@@ -155,7 +155,7 @@ describe('battle camera feedback', () => {
   });
 
   it('places impact flashes on the struck blueprint location', () => {
-    const impact = vi.spyOn(TracerLayer.prototype, 'impact').mockImplementation(() => undefined);
+    const impact = vi.spyOn(TracerLayer.prototype, 'burst').mockImplementation(() => undefined);
     const feedback = new BattleEffects(
       new Scene(),
       new Color(0x1a2024),
@@ -183,12 +183,13 @@ describe('battle camera feedback', () => {
     }]);
 
     const call = impact.mock.calls[0];
-    expect(call === undefined ? null : [call[0].x, call[0].y, call[1]]).toEqual([41, 53, 13]);
+    expect(call === undefined ? null : [call[0].x, call[0].y, call[1], call[2]])
+      .toEqual([41, 53, 13, 'hit']);
     impact.mockRestore();
   });
 
   it('falls back to the hull centre when no location model is placed', () => {
-    const impact = vi.spyOn(TracerLayer.prototype, 'impact').mockImplementation(() => undefined);
+    const impact = vi.spyOn(TracerLayer.prototype, 'burst').mockImplementation(() => undefined);
     const feedback = new BattleEffects(
       new Scene(),
       new Color(0x1a2024),
@@ -214,12 +215,13 @@ describe('battle camera feedback', () => {
     }]);
 
     const call = impact.mock.calls[0];
-    expect(call === undefined ? null : [call[0].x, call[0].y, call[1]]).toEqual([220, 180, 3]);
+    expect(call === undefined ? null : [call[0].x, call[0].y, call[1], call[2]])
+      .toEqual([220, 180, 3, 'hit']);
     impact.mockRestore();
   });
 
   it('does not fall back through an unplaced or hidden model', () => {
-    const impact = vi.spyOn(TracerLayer.prototype, 'impact').mockImplementation(() => undefined);
+    const impact = vi.spyOn(TracerLayer.prototype, 'burst').mockImplementation(() => undefined);
     const feedback = new BattleEffects(
       new Scene(),
       new Color(0x1a2024),

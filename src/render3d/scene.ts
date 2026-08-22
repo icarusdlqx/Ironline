@@ -120,6 +120,7 @@ export class Renderer {
         readouts: { host, world, viewport: () => this.viewport },
       },
     );
+    this.effects.setPresentationMode(this.lowFx);
     this.locomotion = new Locomotion(
       this.terrain.heightAt,
       (at) => this.terrainAt(at),
@@ -182,6 +183,7 @@ export class Renderer {
       // Private browsing; the preference lasts for the session.
     }
     configureRenderer(this.renderer, low, globalThis.devicePixelRatio ?? 1);
+    this.effects.setPresentationMode(low);
     this.resize();
     this.scene.traverse((node) => {
       const mesh = node as Mesh;

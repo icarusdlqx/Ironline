@@ -42,9 +42,16 @@ describe('battlefield layer disposal', () => {
     const jetGeometry = vi.fn();
     const smokeGeometry = vi.fn();
     const scarGeometry = vi.fn();
+    const smokeInstances = vi.fn();
+    const scarInstances = vi.fn();
     (jets.group.children[0] as Mesh).geometry.addEventListener('dispose', jetGeometry);
     smoke.mesh.geometry.addEventListener('dispose', smokeGeometry);
     scars.mesh.geometry.addEventListener('dispose', scarGeometry);
+    smoke.mesh.addEventListener('dispose', smokeInstances);
+    scars.mesh.addEventListener('dispose', scarInstances);
+
+    smoke.start({ x: 10, y: 20 }, 0);
+    scars.mark({ x: 10, y: 20 }, 0, 3, 1);
 
     jets.dispose();
     jets.dispose();
@@ -56,7 +63,20 @@ describe('battlefield layer disposal', () => {
     expect(jetGeometry).toHaveBeenCalledTimes(1);
     expect(smokeGeometry).toHaveBeenCalledTimes(1);
     expect(scarGeometry).toHaveBeenCalledTimes(1);
+    expect(smokeInstances).toHaveBeenCalledTimes(1);
+    expect(scarInstances).toHaveBeenCalledTimes(1);
     expect(jets.group.children).toHaveLength(0);
+    expect(smoke.mesh.count).toBe(0);
+    expect(scars.mesh.count).toBe(0);
+
+    jets.begin();
+    jets.plume(0, new Vector3(), 1, 0);
+    jets.commit();
+    smoke.start({ x: 10, y: 20 }, 0);
+    scars.mark({ x: 10, y: 20 }, 0, 3, 1);
+    expect(jets.group.children).toHaveLength(0);
+    expect(smoke.mesh.count).toBe(0);
+    expect(scars.mesh.count).toBe(0);
   });
 
   it('removes live tracers, flashes and all other battle effects', () => {

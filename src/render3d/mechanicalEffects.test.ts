@@ -37,10 +37,25 @@ describe('mechanical discharge budget', () => {
 
   it('disposes its fixed resources once', () => {
     const layer = new MechanicalDischargeLayer(2, 2);
+    layer.fire(new Vector3(), 0, 1, true, 0);
     const casing = vi.spyOn(layer.casings.geometry, 'dispose');
     const vent = vi.spyOn(layer.vents.geometry, 'dispose');
+    const casingInstances = vi.fn();
+    const ventInstances = vi.fn();
+    layer.casings.addEventListener('dispose', casingInstances);
+    layer.vents.addEventListener('dispose', ventInstances);
+
     layer.dispose();
+    layer.dispose();
+
     expect(casing).toHaveBeenCalledTimes(1);
     expect(vent).toHaveBeenCalledTimes(1);
+    expect(casingInstances).toHaveBeenCalledTimes(1);
+    expect(ventInstances).toHaveBeenCalledTimes(1);
+    expect(layer.casings.count).toBe(0);
+    expect(layer.vents.count).toBe(0);
+    layer.fire(new Vector3(), 0, 1, true, 0);
+    expect(layer.casings.count).toBe(0);
+    expect(layer.vents.count).toBe(0);
   });
 });
