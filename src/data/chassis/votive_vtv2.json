@@ -1,0 +1,103 @@
+{
+  "id": "votive_vtv2",
+  "name": "Votive VTV-2",
+  "faction": "aurelian",
+  "class": "light",
+  "tonnage": 35,
+  "baseCost": 4600000,
+  "engineRating": 280,
+  "internalHeatSinks": 12,
+  "jumpCapable": true,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 1,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "left_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 4,
+      "size": 2
+    },
+    "right_torso": {
+      "energy": 1,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "right_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 4,
+      "size": 2
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 12,
+    "centre_torso": 50,
+    "left_torso": 38,
+    "right_torso": 38,
+    "left_arm": 24,
+    "right_arm": 24,
+    "left_leg": 37,
+    "right_leg": 37
+  },
+  "internals": {
+    "head": 5,
+    "centre_torso": 27,
+    "left_torso": 17,
+    "right_torso": 17,
+    "left_arm": 11,
+    "right_arm": 11,
+    "left_leg": 18,
+    "right_leg": 18
+  },
+  "silhouette": {
+    "form": "scout",
+    "torsoLength": 0.88,
+    "torsoWidth": 0.9,
+    "shoulder": 0.84,
+    "legLength": 1.12,
+    "stance": 0.92
+  },
+  "summary": "A sealed light hunter: fast enough to choose the range, armed enough to make the choice matter.",
+  "lore": "The Votives were found upright in a service vault, twelve to a row, with no racks or lifting points and a white shell that continues through every joint. Nothing on Tessell opens one without breaking it. The intact machines are quick, quiet and heavily armed for thirty-five tonnes. The damaged ones stand where they stopped, because the part that failed has never been identified twice.",
+  "traits": [
+    "long_stride",
+    "narrow_profile"
+  ]
+}

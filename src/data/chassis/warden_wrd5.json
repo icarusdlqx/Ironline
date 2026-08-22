@@ -94,8 +94,8 @@
     "legLength": 1.08,
     "stance": 1.0
   },
-  "summary": "A heavy that keeps up with mediums, at the price of not being armoured like a heavy.",
-  "lore": "Kestrel commissioned the WRD refit to escort rolling stock, which meant it had to march at freight pace all day and still be worth fielding when something went wrong. The bird-legged hull carries a three-hundred rated engine on sixty tonnes and a slightly embarrassed amount of plate. Crews call it the outrider. Kestrel's own paperwork calls it a mobile asset.",
+  "summary": "A sealed relay heavy. It keeps pace with mediums because the missing weight is armour.",
+  "lore": "WRD appears in the depot ledger beside moving substations and survey towers, not combat stores. The second seat faces a blank wall until another Aurelian machine starts nearby; then the lance net comes up without a cable or an aerial. Sixty tonnes carry a three-hundred-rated engine and less plate than the class suggests. A Warden keeps a moving line together. Alone, it is a fast heavy with nowhere safe to put the damage.",
   "traits": [
     "long_stride",
     "command_console"

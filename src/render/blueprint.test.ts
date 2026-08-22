@@ -1,8 +1,67 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../tests/support';
-import { chassisBlueprint } from './blueprint';
+import { LOCATIONS, type MechLocation } from '../schema/common';
+import { chassisBlueprint, type Blueprint, type BlueprintPart } from './blueprint';
 
 const HULLS = [...catalog.chassis.values()];
+const AURELIAN_IDS = [
+  'wisp_wsp1',
+  'votive_vtv2',
+  'sentinel_snl2',
+  'falchion_fal2',
+  'warden_wrd5',
+  'halberd_hlb4',
+  'obsequy_obq3',
+  'pallvault_plv1',
+] as const;
+
+const MIRRORED_LOCATION: Partial<Record<MechLocation, MechLocation>> = {
+  left_arm: 'right_arm',
+  right_arm: 'left_arm',
+  left_torso: 'right_torso',
+  right_torso: 'left_torso',
+  left_leg: 'right_leg',
+  right_leg: 'left_leg',
+};
+
+function cleanZero(value: number): number {
+  return Object.is(value, -0) ? 0 : value;
+}
+
+function mirrorLocation(location: MechLocation | null): MechLocation | null {
+  return location === null ? null : (MIRRORED_LOCATION[location] ?? location);
+}
+
+function partKey(part: BlueprintPart, mirrored = false): string {
+  const at = mirrored
+    ? [part.at[0], part.at[1], -part.at[2]].map(cleanZero)
+    : part.at.map(cleanZero);
+  return JSON.stringify([
+    mirrored ? mirrorLocation(part.location) : part.location,
+    part.shape,
+    at,
+    part.size,
+    part.tone,
+    part.tilt ?? null,
+    part.fixed ?? false,
+    part.joint ?? null,
+    part.profile ?? null,
+    part.transverse ?? null,
+  ]);
+}
+
+function anchorKeys(plan: Blueprint, mirrored = false): string[] {
+  return (Object.entries(plan.hardpoints) as [MechLocation, [number, number, number]][])
+    .map(([location, anchor]) => JSON.stringify([
+      mirrored ? mirrorLocation(location) : location,
+      [anchor[0], anchor[1], mirrored ? cleanZero(-anchor[2]) : cleanZero(anchor[2])],
+    ]))
+    .sort();
+}
+
+function planSignature(plan: Blueprint): string {
+  return plan.parts.map((part) => partKey(part)).sort().join('|');
+}
 
 function planFor(id: string, identity: string | null = id) {
   const chassis = catalog.chassis.get(id);
@@ -86,12 +145,74 @@ describe('body plans', () => {
     expect(forms.has('emplacement')).toBe(true);
   });
 
-  it('adds identity at constant mesh cost without moving weapon anchors', () => {
-    for (const id of ['sentinel_snl2', 'bulwark_bwk3', 'cairn_crn3', 'hornet_hnt2']) {
+  it('adds welded identity at constant mesh cost without moving weapon anchors', () => {
+    for (const id of ['bulwark_bwk3', 'cairn_crn3', 'hornet_hnt2']) {
       const baseline = planFor(id, null);
       const identified = planFor(id);
       expect(identified.hardpoints, id).toEqual(baseline.hardpoints);
       expect(Math.abs(identified.parts.length - baseline.parts.length), id).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('dispatches every Aurelian chassis to its own body plan', () => {
+    const catalogueIds = HULLS
+      .filter((chassis) => chassis.faction === 'aurelian')
+      .map((chassis) => chassis.id)
+      .sort();
+    expect(catalogueIds).toEqual([...AURELIAN_IDS].sort());
+
+    const signatures = AURELIAN_IDS.map((id) => {
+      const identified = planFor(id);
+      expect(planSignature(identified), id).not.toBe(planSignature(planFor(id, null)));
+      return planSignature(identified);
+    });
+
+    expect(new Set(signatures).size).toBe(AURELIAN_IDS.length);
+  });
+
+  it('keeps sealed shells and their weapon anchors bilaterally symmetric', () => {
+    for (const id of AURELIAN_IDS) {
+      const plan = planFor(id);
+      const parts = plan.parts.map((part) => partKey(part)).sort();
+      const mirrored = plan.parts.map((part) => partKey(part, true)).sort();
+      expect(mirrored, id).toEqual(parts);
+      expect(anchorKeys(plan, true), id).toEqual(anchorKeys(plan));
+    }
+  });
+
+  it('covers Aurelian walking joints without exposed bearings', () => {
+    for (const id of AURELIAN_IDS) {
+      const exposed = planFor(id).parts.filter(
+        (part) => part.shape === 'sphere' || part.shape === 'cylinder',
+      );
+      expect(exposed, id).toEqual([]);
+    }
+  });
+
+  it('places an anchor at every location wired to carry a weapon', () => {
+    for (const chassis of HULLS) {
+      const plan = chassisBlueprint(chassis.silhouette, chassis.traits, chassis.hardpoints, chassis.id);
+      for (const location of LOCATIONS) {
+        const hardpoints = chassis.hardpoints[location];
+        if (hardpoints.energy + hardpoints.ballistic + hardpoints.missile === 0) continue;
+        expect(plan.hardpoints[location], `${chassis.id}.${location}`).toBeDefined();
+      }
+    }
+  });
+
+  it('keeps sealed silhouettes inside their battlefield mesh budgets', () => {
+    const budgets = new Map<string, number>([
+      ['wisp_wsp1', 26],
+      ['votive_vtv2', 28],
+      ['sentinel_snl2', 36],
+      ['falchion_fal2', 36],
+      ['warden_wrd5', 38],
+      ['halberd_hlb4', 38],
+      ['obsequy_obq3', 40],
+      ['pallvault_plv1', 40],
+    ]);
+    for (const [id, budget] of budgets) {
+      expect(planFor(id).parts.length, id).toBeLessThanOrEqual(budget);
     }
   });
 
@@ -111,14 +232,23 @@ describe('body plans', () => {
     }
   });
 
-  it('gives the Sentinel a square cab instead of the shared raked canopy', () => {
+  it('keeps the Sentinel broad and the Falchion long', () => {
     const sentinel = planFor('sentinel_snl2');
-    const head = sentinel.parts.filter((part) => part.location === 'head');
-    expect(head.some((part) => part.shape === 'box' && part.tone === 'deep' && part.size[2] >= 0.55)).toBe(true);
-    expect(head.some((part) => part.tone === 'glass' && part.size[2] >= 0.4)).toBe(true);
-    expect(sentinel.parts.some(
-      (part) => part.location === 'centre_torso' && part.size[2] > 1.1 && part.size[1] < 0.2,
-    )).toBe(true);
+    const falchion = planFor('falchion_fal2');
+    const sentinelChest = sentinel.parts.find(
+      (part) => part.location === 'centre_torso' && part.transverse !== undefined,
+    );
+    const falchionChest = falchion.parts.find(
+      (part) => part.location === 'centre_torso' && part.transverse !== undefined,
+    );
+    const sentinelArm = sentinel.parts.find(
+      (part) => part.location === 'left_arm' && part.transverse !== undefined,
+    );
+    const falchionArm = falchion.parts.find(
+      (part) => part.location === 'left_arm' && part.transverse !== undefined,
+    );
+    expect(sentinelChest?.size[2] ?? 0).toBeGreaterThan(falchionChest?.size[2] ?? 0);
+    expect(falchionArm?.size[1] ?? 0).toBeGreaterThan(sentinelArm?.size[1] ?? 0);
   });
 
   it('separates the Bulwark shield from the Cairn launcher towers', () => {

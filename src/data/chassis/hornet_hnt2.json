@@ -18,7 +18,7 @@
     },
     "centre_torso": {
       "energy": 1,
-      "ballistic": 0,
+      "ballistic": 1,
       "missile": 0,
       "slots": 2,
       "size": 1
@@ -47,7 +47,7 @@
     "right_arm": {
       "energy": 1,
       "ballistic": 0,
-      "missile": 0,
+      "missile": 1,
       "slots": 4,
       "size": 2
     },

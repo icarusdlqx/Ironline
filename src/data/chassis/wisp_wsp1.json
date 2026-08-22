@@ -94,8 +94,8 @@
     "legLength": 1.06,
     "stance": 0.95
   },
-  "summary": "Depot-recovered scout frame. Fast, blind-spot small, and made of promises.",
-  "lore": "The VES hulls came out of the Karst Reach depot stacked four deep, which is how everyone knows the Compact considered them expendable. Sarn rebuilds them on a stretched leg assembly that trades every gram of plate for stride length. A Vesper does not fight; it finds, it counts, and it is somewhere else before the counting is noticed. Pilots who treat it as a light brawler are a recognised category in the Barrow Reach mortality tables.",
+  "summary": "A sealed survey frame. It sees first, runs first and survives neither mistake.",
+  "lore": "The Karst Reach register calls the VES a boundary reader. Forty stood upright behind one door, each under a cover that had rotted without marking the shell beneath it. Sensor glass lies inside the hull rather than on it. The legs have no inspection plates. Of the twenty-six frames that woke, eleven still walk; the other fifteen stopped once and have not moved since. A Vesper does not fight. It finds, it counts and it leaves before the counting is noticed.",
   "traits": [
     "long_stride",
     "sensor_mast",

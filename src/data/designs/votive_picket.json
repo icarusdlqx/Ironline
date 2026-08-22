@@ -1,0 +1,50 @@
+{
+  "id": "votive_picket",
+  "name": "Votive VTV-2 'Picket'",
+  "chassisId": "votive_vtv2",
+  "armour": {
+    "head": 12,
+    "centre_torso": 42,
+    "left_torso": 32,
+    "right_torso": 32,
+    "left_arm": 20,
+    "right_arm": 20,
+    "left_leg": 31,
+    "right_leg": 31
+  },
+  "heatSinkId": "heat_sink",
+  "heatSinks": 15,
+  "mounts": [
+    {
+      "weaponId": "er_medium_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "small_laser",
+      "location": "left_arm"
+    },
+    {
+      "weaponId": "er_medium_laser",
+      "location": "right_arm"
+    },
+    {
+      "weaponId": "small_laser",
+      "location": "right_arm"
+    }
+  ],
+  "ammo": [],
+  "equipment": [
+    {
+      "equipmentId": "active_probe",
+      "location": "right_torso"
+    },
+    {
+      "equipmentId": "jump_jet",
+      "location": "left_leg"
+    },
+    {
+      "equipmentId": "jump_jet",
+      "location": "right_leg"
+    }
+  ]
+}

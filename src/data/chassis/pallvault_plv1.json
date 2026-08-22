@@ -1,0 +1,100 @@
+{
+  "id": "pallvault_plv1",
+  "name": "Pallvault PLV-1",
+  "faction": "aurelian",
+  "class": "assault",
+  "tonnage": 100,
+  "baseCost": 29500000,
+  "engineRating": 390,
+  "internalHeatSinks": 20,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "left_torso": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 10,
+      "size": 3
+    },
+    "right_torso": {
+      "energy": 2,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 10,
+      "size": 3
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "right_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 30,
+    "centre_torso": 200,
+    "left_torso": 132,
+    "right_torso": 132,
+    "left_arm": 68,
+    "right_arm": 68,
+    "left_leg": 85,
+    "right_leg": 85
+  },
+  "internals": {
+    "head": 13,
+    "centre_torso": 75,
+    "left_torso": 47,
+    "right_torso": 47,
+    "left_arm": 32,
+    "right_arm": 32,
+    "left_leg": 47,
+    "right_leg": 47
+  },
+  "silhouette": {
+    "form": "bastion",
+    "torsoLength": 1.12,
+    "torsoWidth": 1.16,
+    "shoulder": 1.14,
+    "legLength": 0.94,
+    "stance": 1.12
+  },
+  "summary": "A fast assault skirmisher behind a seamless shell. Four cycling emitters track well inside two hundred metres, then heat and distance take their price.",
+  "lore": "The PLV stands just under the depot roof and was stored without a cradle, feet set directly in the floor. Its two paired emitter banks are sealed into the upper shell; there are no access plates and no alignment marks. Compact manuals describe a five-minute exchange of the complete upper hull. Tessell has no crane that can do it. An intact Pallvault crosses a firing lane before heavier machines have turned. A damaged one is a source of parts for the next.",
+  "traits": []
+}

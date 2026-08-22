@@ -1,0 +1,102 @@
+{
+  "id": "obsequy_obq3",
+  "name": "Obsequy OBQ-3",
+  "faction": "aurelian",
+  "class": "assault",
+  "tonnage": 90,
+  "baseCost": 23800000,
+  "engineRating": 340,
+  "internalHeatSinks": 18,
+  "jumpCapable": false,
+  "hardpoints": {
+    "head": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 2,
+      "size": 1
+    },
+    "centre_torso": {
+      "energy": 1,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "left_torso": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 1,
+      "slots": 10,
+      "size": 3
+    },
+    "right_torso": {
+      "energy": 2,
+      "ballistic": 1,
+      "missile": 0,
+      "slots": 10,
+      "size": 3
+    },
+    "left_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "right_arm": {
+      "energy": 2,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 8,
+      "size": 3
+    },
+    "left_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 1
+    },
+    "right_leg": {
+      "energy": 0,
+      "ballistic": 0,
+      "missile": 0,
+      "slots": 3,
+      "size": 1
+    }
+  },
+  "armourMax": {
+    "head": 28,
+    "centre_torso": 190,
+    "left_torso": 126,
+    "right_torso": 126,
+    "left_arm": 64,
+    "right_arm": 64,
+    "left_leg": 81,
+    "right_leg": 81
+  },
+  "internals": {
+    "head": 12,
+    "centre_torso": 68,
+    "left_torso": 43,
+    "right_torso": 43,
+    "left_arm": 29,
+    "right_arm": 29,
+    "left_leg": 43,
+    "right_leg": 43
+  },
+  "silhouette": {
+    "form": "humanoid",
+    "torsoLength": 1.02,
+    "torsoWidth": 0.94,
+    "shoulder": 1.08,
+    "legLength": 1.04,
+    "stance": 0.96
+  },
+  "summary": "A sealed long-range assault frame. Three projectors, a deep sensor set and no ammunition to count.",
+  "lore": "The Karst ledger lists sixteen OBQ frames under PERIMETER, although only nine bays were opened and one was empty. An Obsequy carries three projector channels and enough coolant to fire them in sequence all day. It has no ammunition doors and no service seams. When one loses an emitter, the remaining pair work normally; when it loses cooling, the whole machine becomes a ninety-tonne room nobody can enter.",
+  "traits": [
+    "sensor_mast"
+  ]
+}

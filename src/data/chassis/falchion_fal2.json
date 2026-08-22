@@ -94,8 +94,8 @@
     "legLength": 1.16,
     "stance": 0.92
   },
-  "summary": "A duellist. Jets, reach and no interest in standing where it was a moment ago.",
-  "lore": "The Falchion came out of a Vasi programme to build something that could fight a heavy and leave before the heavy could answer. It is all arms and legs: the guns hang where a fencer would hold them and the jets sit where the armour should. Pilots who like it will not fly anything else. Pilots who do not, do not last long in one.",
+  "summary": "A sealed duellist. Jets and reach buy the first answer; heat decides the second.",
+  "lore": "The FAL cradles at Vasi were marked INTERCEPT and faced the door. Each frame is all arms and legs, with lift channels buried behind the same white shell as the cockpit and no separate jet housings. Local racks bolt to four shallow sockets. Nothing else comes off. A Falchion can cross a firing lane, answer a heavy and leave before the return shot. If it stays for the next exchange, the heat does what the enemy could not.",
   "traits": [
     "long_stride",
     "narrow_profile"

@@ -1,4 +1,5 @@
 import { PROFILES } from './profiles';
+import { vesperPlan, votivePlan } from './plans-aurelian-light';
 import {
   aerials,
   armoured,
@@ -97,7 +98,10 @@ export const birdPlan: Plan = (b, has, fit, identity) => {
 };
 
 /** The scout is deliberately less machine than mast and legs. */
-export const scoutPlan: Plan = (b, has, fit) => {
+export const scoutPlan: Plan = (b, has, fit, identity) => {
+  if (identity === 'wisp_wsp1') return vesperPlan(b, has, fit, identity);
+  if (identity === 'votive_vtv2') return votivePlan(b, has, fit, identity);
+
   const parts: BlueprintPart[] = [];
   for (const side of [-1, 1]) birdLeg(parts, b, side, 0.46);
   hips(parts, b, 0.7);
