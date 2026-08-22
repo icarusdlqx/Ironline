@@ -187,6 +187,15 @@ function checkMissions(catalog: Catalog, push: Push): void {
 function checkMaps(catalog: Catalog, push: Push): void {
   for (const map of catalog.maps.values()) {
     const file = `maps/${map.id}.json`;
+    const cells = map.width * map.height;
+    const pathfindingBudget = catalog.rules.simulation.pathfindMaxNodes;
+    if (cells > pathfindingBudget) {
+      push(
+        file,
+        'width',
+        `${map.width}×${map.height} map has ${cells} cells, exceeding the ${pathfindingBudget}-node pathfinding budget`,
+      );
+    }
     for (const [symbol, terrainId] of Object.entries(map.legend)) {
       if (catalog.rules.terrain.types[terrainId] === undefined) {
         push(file, `legend.${symbol}`, `unknown terrain type "${terrainId}"`);

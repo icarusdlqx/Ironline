@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useGame } from './store';
+import { battleRemountState, useGame } from './store';
 
 describe('battle entry', () => {
   it('starts at the front door before constructing a field', () => {
@@ -69,5 +69,11 @@ describe('battle entry', () => {
       supportMode: null,
       marquee: null,
     });
+  });
+
+  it('gives every same-screen field remount an empty event ledger', () => {
+    useGame.getState().patch({ log: ['old mission event'], selection: [7], ready: true });
+    useGame.getState().patch(battleRemountState());
+    expect(useGame.getState()).toMatchObject({ log: [], selection: [], ready: false });
   });
 });

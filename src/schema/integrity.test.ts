@@ -3,8 +3,48 @@ import { catalog } from '../../tests/support';
 import { checkIntegrity } from './integrity';
 import type { Catalog, ContentIssue } from './load';
 import { CampaignSchema } from './campaign';
+import type { TerrainMapData } from './map';
 
 describe('campaign content integrity', () => {
+  it('derives the battlefield cell ceiling from the pathfinding node budget', () => {
+    const mapAt = (id: string, width: number, height: number): TerrainMapData => ({
+      id,
+      name: id,
+      tileSize: 24,
+      width,
+      height,
+      atmosphereId: 'overcast_day',
+      legend: { '.': 'open' },
+      tiles: Array.from({ length: height }, () => '.'.repeat(width)),
+      elevation: Array.from({ length: height }, () => '0'.repeat(width)),
+    });
+    const withinBudget = mapAt('within_budget', 56, 56);
+    const aboveBudget = mapAt('above_budget', 57, 57);
+    const maps = new Map([
+      [withinBudget.id, withinBudget],
+      [aboveBudget.id, aboveBudget],
+    ]);
+    const issues: ContentIssue[] = [];
+
+    checkIntegrity({
+      ...catalog,
+      rules: {
+        ...catalog.rules,
+        simulation: { ...catalog.rules.simulation, pathfindMaxNodes: 3200 },
+      },
+      maps,
+      missions: new Map(),
+      campaigns: new Map(),
+    } satisfies Catalog, issues);
+
+    expect(issues.filter((issue) => issue.file === 'maps/within_budget.json')).toEqual([]);
+    expect(issues).toContainEqual({
+      file: 'maps/above_budget.json',
+      path: 'width',
+      message: '57×57 map has 3249 cells, exceeding the 3200-node pathfinding budget',
+    });
+  });
+
   it('rejects employer references that are not in the campaign ledger', () => {
     const campaign = catalog.campaigns.get('border_dispute');
     expect(campaign).toBeDefined();
