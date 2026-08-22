@@ -5,10 +5,10 @@
   "type": "energy",
   "tonnage": 1,
   "slots": 1,
-  "damage": 7,
+  "damage": 6,
   "projectiles": 1,
   "heat": 7,
-  "cooldown": 2.5,
+  "cooldown": 3.5,
   "velocity": null,
   "range": {
     "min": 0,
@@ -27,5 +27,5 @@
     "width": 2.2,
     "arc": 0
   },
-  "summary": "Sarn's extended-optics rework. Half again the reach of a standard medium for half again the heat."
+  "summary": "Sealed optics trade cycle time for reach. Half again the range of the standard medium, and nearly half again the heat in one discharge."
 }

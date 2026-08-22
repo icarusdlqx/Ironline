@@ -28,7 +28,7 @@
       "location": "right_arm"
     },
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "left_torso"
     }
   ],
@@ -39,7 +39,7 @@
       "tons": 2
     },
     {
-      "weaponId": "lrm15",
+      "weaponId": "lrm10",
       "location": "left_torso",
       "tons": 2
     }

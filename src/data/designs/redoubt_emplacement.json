@@ -16,7 +16,7 @@
   "heatSinks": 12,
   "mounts": [
     {
-      "weaponId": "ac10",
+      "weaponId": "lbx_ac10",
       "location": "centre_torso"
     },
     {
@@ -34,7 +34,7 @@
   ],
   "ammo": [
     {
-      "weaponId": "ac10",
+      "weaponId": "lbx_ac10",
       "location": "centre_torso",
       "tons": 2
     }

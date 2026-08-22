@@ -89,7 +89,7 @@ Iteration *i* runs on seed `<seed>:<i>`, so any single battle can be replayed on
   called shots at the legs to leave salvage on the field, withdrawal and
   disengagement, and four difficulty tiers that change behaviour and pilot skill
   but never hit points or damage. Torso twist so guns bear independently of the
-  hull. Content pass to twenty-eight weapons, ten equipment items and eight
+  hull. Content pass to twenty-four weapons, ten equipment items and thirteen
   chassis spanning 25 to 100 tons. `npm run sim` reports damage-per-ton-per-heat
   against each class median.
 - **Setting.** IRONLINE is set on Tessell, where a departed colonial Compact left
@@ -105,14 +105,15 @@ Both criteria are asserted in `src/sim/balance.test.ts`:
 
 - **Weapon balance.** `damagePerTonPerHeat = dps / (tonnage + heatPerSecond /
   dissipationPerSink)` — a mount costs its own tonnage plus the heat sinks
-  needed to keep it firing, and accuracy is folded into the numerator so pulse
-  and Seeker launchers pay for their aim. Cooldown cancels out, leaving rate of
-  fire free for feel. All 28 weapons land within 5% of their class median
-  against a ±20% band.
+  needed to keep it firing, and accuracy is folded into the numerator so Burst
+  and Seeker launchers pay for their aim. Both heat load and cycle time affect
+  the score. All 24 weapons remain inside the ±20% band around
+  their class median.
 - **AI strength.** `mirror_ridge` fields identical lances on mirrored spawns;
   the tactical controller and the `baseline` controller (nearest target, range
   bracket, heat discipline — nothing else) swap sides every other run so no
-  corner of the map flatters either. The tactical AI takes 57.5% of 40 runs.
+  corner of the map flatters either. Two hundred deterministic matches feed a
+  one-sided confidence gate, so ordinary seed noise does not decide the build.
 
 Known finding: light mechs are near-unsurvivable in a stand-up 4v4, because
 `lanceFocus` correctly concentrates on the weakest target. That is doctrine

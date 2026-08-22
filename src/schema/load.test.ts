@@ -40,6 +40,15 @@ describe('content catalog', () => {
     expect([...families].sort()).toEqual(['ballistic', 'energy', 'missile']);
   });
 
+  it('keeps the Phase 2 catalogue at twelve weapons per machine culture', () => {
+    expect(catalog.weapons.size).toBe(24);
+    const factions = [...catalog.weapons.values()].reduce<Record<string, number>>(
+      (counts, weapon) => ({ ...counts, [weapon.faction]: (counts[weapon.faction] ?? 0) + 1 }),
+      {},
+    );
+    expect(factions).toEqual({ aurelian: 12, linewrought: 12 });
+  });
+
   it('assigns weapon source by construction', () => {
     for (const weapon of catalog.weapons.values()) {
       const expected = weapon.type === 'energy' && weapon.id !== 'flamer' ? 'aurelian' : 'linewrought';
