@@ -1,6 +1,8 @@
+import type { Faction } from '../schema/faction';
 import {
   body,
   crack,
+  noiseSweep,
   oscillator,
   thump,
   type VoiceBus,
@@ -9,10 +11,16 @@ import {
 
 export function playWeapon(
   bus: VoiceBus,
+  faction: Faction,
   style: string,
   projectiles: number,
   placement: VoicePlacement,
 ): void {
+  if (faction === 'aurelian') {
+    sealedDischarge(bus, style, projectiles, placement);
+    return;
+  }
+
   switch (style) {
     case 'beam':
       beam(bus, placement);
@@ -36,6 +44,35 @@ export function playWeapon(
     case 'tracer':
     default:
       cannon(bus, Math.min(5, Math.max(1, Math.round(projectiles / 2))), placement);
+  }
+}
+
+/** The charge is audible before the shot, matching a weapon that never kicks its hull. */
+function sealedDischarge(
+  bus: VoiceBus,
+  style: string,
+  projectiles: number,
+  placement: VoicePlacement,
+): void {
+  const frame = bus.begin(placement);
+  if (frame === null) return;
+  const pulseCount = style === 'pulse' ? Math.min(4, Math.max(2, projectiles)) : 1;
+  const charge = style === 'bolt' ? 0.22 : 0.17;
+  const peak = style === 'bolt' ? 1_340 : style === 'pulse' ? 1_020 : 1_180;
+
+  oscillator(frame, frame.now, charge, 170, peak, 0.16, 'sine');
+  oscillator(frame, frame.now + 0.035, charge - 0.035, 340, peak * 1.5, 0.055, 'triangle');
+
+  for (let i = 0; i < pulseCount; i += 1) {
+    const at = frame.now + charge + i * 0.055;
+    crack(frame, at, style === 'bolt' ? 0.42 : 0.28, style === 'bolt' ? 3_100 : 3_800);
+    body(frame, at, style === 'beam' ? 0.24 : 0.09, 6_200, 620, 0.3, 4.5);
+  }
+
+  if (style === 'beam') {
+    noiseSweep(frame, frame.now + charge, 0.25, 4_800, 1_200, 0.18, 'bandpass', 3.2);
+  } else if (style === 'bolt') {
+    thump(frame, frame.now + charge, 0.16, 150, 52, 0.22);
   }
 }
 

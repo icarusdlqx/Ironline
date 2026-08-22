@@ -1,6 +1,8 @@
 import type { TerrainMapData } from '../schema/map';
+import type { Faction } from '../schema/faction';
 import type { SimEvent } from '../sim/events';
 import type { MechEntity, Vec2, World } from '../sim/types';
+import { machineCulture } from '../render3d/machineCulture';
 import { startAmbient, type AmbientHandle } from './audioAmbient';
 import {
   advanceHeatTier,
@@ -22,6 +24,7 @@ import {
   playMissionMessage,
   playOrder,
   playPowerSweep,
+  playRestart,
   playSelect,
 } from './audioVoices';
 import { playCrunch, playExplosion, playImpact, playWeapon } from './audioWeapons';
@@ -119,7 +122,13 @@ export class AudioDirector {
           const weapon = world.catalog.weapons.get(event.weaponId);
           const at = positionOf(world, event.shooterId);
           if (weapon !== undefined && at !== null) {
-            playWeapon(graph, weapon.visual.style, weapon.projectiles, this.placementAt(at));
+            playWeapon(
+              graph,
+              weapon.faction,
+              weapon.visual.style,
+              weapon.projectiles,
+              this.placementAt(at),
+            );
           }
           break;
         }
@@ -143,7 +152,13 @@ export class AudioDirector {
           if (entity !== null) {
             const placement = this.placementAt(entity.pos);
             playExplosion(graph, 1, placement);
-            playCollapse(graph, placement, entity.tonnage, 0.62);
+            const faction = factionOf(world, entity) ?? 'linewrought';
+            playCollapse(
+              graph,
+              placement,
+              entity.tonnage,
+              machineCulture(faction).terminalFallSeconds,
+            );
           }
           break;
         }
@@ -160,8 +175,11 @@ export class AudioDirector {
           break;
         }
         case 'restart': {
-          const at = positionOf(world, event.entityId);
-          if (at !== null) playPowerSweep(graph, 70, 320, 0.6, this.placementAt(at, 0.7));
+          const entity = entityOf(world, event.entityId);
+          const faction = entity === null ? null : factionOf(world, entity);
+          if (entity !== null && faction !== null) {
+            playRestart(graph, faction, this.placementAt(entity.pos, 0.7));
+          }
           break;
         }
         case 'jump_started': {
@@ -188,13 +206,13 @@ export class AudioDirector {
   }
 
   /** A footfall arrives from the rendered leg plant, not the simulation tick. */
-  footfall(at: Vec2, tonnage: number): void {
+  footfall(at: Vec2, tonnage: number, faction: Faction): void {
     const graph = this.graph;
     if (graph === null || this.mutedState) return;
     const level = 0.25 * (0.5 + tonnage / 160);
     const placement = this.placementAt(at, level);
     if (placement.level <= 0.02) return;
-    playFootfall(graph, footfallSurfaceAt(this.terrain, at), placement, tonnage);
+    playFootfall(graph, faction, footfallSurfaceAt(this.terrain, at), placement, tonnage);
   }
 
   /** Feedback for the player's own orders. */
@@ -248,6 +266,10 @@ function entityOf(world: World, id: number): MechEntity | null {
 
 function positionOf(world: World, id: number): Vec2 | null {
   return entityOf(world, id)?.pos ?? null;
+}
+
+function factionOf(world: World, entity: MechEntity): Faction | null {
+  return world.catalog.chassis.get(entity.chassisId)?.faction ?? null;
 }
 
 function readMuted(): boolean {

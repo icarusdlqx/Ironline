@@ -21,6 +21,8 @@ describe('per-foot terrain contact', () => {
       new Set(),
       chassis.hardpoints,
       chassis.id,
+      {},
+      chassis.faction,
     );
     const left: LegPose = { hip: 0, knee: 0, ankle: 0, planted: true };
     const right: LegPose = { hip: 0, knee: 0, ankle: 0, planted: false };

@@ -5,6 +5,7 @@ import type { SimEvent } from '../sim/events';
 import { BattleEffects } from './battleEffects';
 import { TacticalCamera } from './camera';
 import { TracerLayer } from './tracers';
+import { MechanicalDischargeLayer } from './mechanicalEffects';
 
 function effects(camera: TacticalCamera): BattleEffects {
   return new BattleEffects(
@@ -112,6 +113,45 @@ describe('battle camera feedback', () => {
 
     expect(fire.mock.calls[0]?.[4]).toBe(world.catalog.weapons.get('ac5')?.velocity);
     fire.mockRestore();
+  });
+
+  it('bounds mechanical discharge to ballistic fire and honours reduced motion', () => {
+    const discharge = vi.spyOn(MechanicalDischargeLayer.prototype, 'fire')
+      .mockImplementation(() => undefined);
+    const world = testWorld('mechanical-discharge');
+    const event: SimEvent = {
+      type: 'weapon_fired',
+      tick: 1,
+      shooterId: 1,
+      targetId: 2,
+      weaponId: 'ac5',
+    };
+    const active = new BattleEffects(
+      new Scene(),
+      new Color(0x1a2024),
+      new TacticalCamera(false),
+      () => 0,
+      (id) => (id === 1 ? { x: 0, y: 0 } : { x: 100, y: 0 }),
+      () => false,
+    );
+    active.consume(world, [event]);
+    expect(discharge).toHaveBeenCalledTimes(1);
+
+    active.consume(world, [{ ...event, weaponId: 'medium_laser' }]);
+    expect(discharge).toHaveBeenCalledTimes(1);
+    const reduced = new BattleEffects(
+      new Scene(),
+      new Color(0x1a2024),
+      new TacticalCamera(true),
+      () => 0,
+      (id) => (id === 1 ? { x: 0, y: 0 } : { x: 100, y: 0 }),
+      () => false,
+    );
+    reduced.consume(world, [event]);
+    expect(discharge).toHaveBeenCalledTimes(1);
+    active.destroy();
+    reduced.destroy();
+    discharge.mockRestore();
   });
 
   it('places impact flashes on the struck blueprint location', () => {

@@ -16,6 +16,7 @@ import {
   playMissionMessage,
   playOrder,
   playPowerSweep,
+  playRestart,
   playSelect,
 } from './audioVoices';
 import { playCrunch, playExplosion, playImpact, playWeapon } from './audioWeapons';
@@ -160,18 +161,23 @@ describe('procedural audio lifetimes', () => {
     const { bus, context } = harness();
     const field = { level: 0.8, distance: 40 };
 
-    for (const style of ['beam', 'pulse', 'bolt', 'slug', 'missile', 'flame', 'tracer']) {
-      playWeapon(bus, style, 6, field);
+    for (const faction of ['linewrought', 'aurelian'] as const) {
+      for (const style of ['beam', 'pulse', 'bolt', 'slug', 'missile', 'flame', 'tracer']) {
+        playWeapon(bus, faction, style, 6, field);
+      }
     }
     playImpact(bus, field);
     playCrunch(bus, field);
     playExplosion(bus, 1, field);
     playPowerSweep(bus, 360, 50, 0.9, field);
+    playRestart(bus, 'linewrought', field);
+    playRestart(bus, 'aurelian', field);
     playJets(bus, field);
     playLanding(bus, field, 1);
     playCollapse(bus, field, 100, 0.62);
     for (const surface of ['open', 'road', 'rough', 'forest', 'water'] as const) {
-      playFootfall(bus, surface, field, 70);
+      playFootfall(bus, 'linewrought', surface, field, 70);
+      playFootfall(bus, 'aurelian', surface, field, 70);
     }
     for (const voice of ['aim', 'evade', 'sensor', 'coolant', 'brace', 'mixed'] as const) {
       playAbility(bus, voice, 2);
@@ -218,12 +224,133 @@ describe('procedural audio lifetimes', () => {
   });
 });
 
+describe('faction audio voices', () => {
+  it('keeps Aurelian restart silent while Linewrought machinery coughs into motion', () => {
+    const welded = harness();
+    playRestart(welded.bus, 'linewrought', { level: 0.8, distance: 40 });
+    const sealed = harness();
+    playRestart(sealed.bus, 'aurelian', { level: 0.8, distance: 40 });
+
+    expect(welded.context.sources.length).toBeGreaterThan(0);
+    expect(sealed.context.sources).toHaveLength(0);
+    expect(welded.context.sources.some((source) => (source.starts[0] ?? 0) > 5.02)).toBe(true);
+  });
+
+  it('gives Linewrought foot plants a delayed transfer and keeps Aurelian plants even', () => {
+    const welded = harness();
+    playFootfall(welded.bus, 'linewrought', 'open', { level: 0.8, distance: 40 }, 70);
+    const sealed = harness();
+    playFootfall(sealed.bus, 'aurelian', 'open', { level: 0.8, distance: 40 }, 70);
+
+    expect(welded.context.sources.length).toBeGreaterThan(sealed.context.sources.length);
+    expect(welded.context.sources.some((source) => (source.starts[0] ?? 0) > 5)).toBe(true);
+    expect(sealed.context.sources.every((source) => source.starts[0] === 5)).toBe(true);
+  });
+
+  it('charges an Aurelian shot before discharge and lets Linewrought cannon fire immediately', () => {
+    const welded = harness();
+    playWeapon(welded.bus, 'linewrought', 'tracer', 6, { level: 0.8, distance: 40 });
+    const sealed = harness();
+    playWeapon(sealed.bus, 'aurelian', 'beam', 1, { level: 0.8, distance: 40 });
+
+    expect(welded.context.sources[0]?.starts[0]).toBe(5);
+    expect(sealed.context.sources.slice(0, 2).map((source) => source.starts[0])).toEqual([5, 5.035]);
+    expect(sealed.context.sources.slice(2).every((source) => (source.starts[0] ?? 0) >= 5.17)).toBe(
+      true,
+    );
+  });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   FakeContext.instances.length = 0;
 });
 
 describe('the battle audio lifetime', () => {
+  it('routes restart and weapon voices from chassis and weapon culture', () => {
+    vi.stubGlobal('AudioContext', FakeContext as unknown as typeof AudioContext);
+    const world = playerWorld('audio-factions');
+    const welded = world.entities.find(
+      (entity) => world.catalog.chassis.get(entity.chassisId)?.faction === 'linewrought',
+    );
+    const sealed = world.entities.find(
+      (entity) => world.catalog.chassis.get(entity.chassisId)?.faction === 'aurelian',
+    );
+    expect(welded).toBeDefined();
+    expect(sealed).toBeDefined();
+    if (welded === undefined || sealed === undefined) return;
+
+    const routeRestart = (entityId: number): number[] => {
+      const audio = new AudioDirector();
+      audio.unlock();
+      const entity = world.entities.find((candidate) => candidate.id === entityId);
+      if (entity !== undefined) audio.listenAt = entity.pos;
+      audio.consume(world, [{ type: 'restart', tick: world.tick, entityId }]);
+      const context = FakeContext.instances.at(-1);
+      expect(context).toBeDefined();
+      const starts = context?.sources.map((source) => source.starts[0] ?? Number.NaN) ?? [];
+      audio.destroy();
+      return starts;
+    };
+
+    expect(routeRestart(welded.id).length).toBeGreaterThan(routeRestart(sealed.id).length);
+
+    const weldedWeapon = welded.weapons.find(
+      (mount) => world.catalog.weapons.get(mount.weaponId)?.faction === 'linewrought',
+    );
+    const sealedWeapon = sealed.weapons.find(
+      (mount) => world.catalog.weapons.get(mount.weaponId)?.faction === 'aurelian',
+    );
+    expect(weldedWeapon).toBeDefined();
+    expect(sealedWeapon).toBeDefined();
+    if (weldedWeapon === undefined || sealedWeapon === undefined) return;
+
+    const audio = new AudioDirector();
+    audio.unlock();
+    audio.listenAt = sealed.pos;
+    audio.consume(world, [
+      {
+        type: 'weapon_fired',
+        tick: world.tick,
+        shooterId: sealed.id,
+        targetId: welded.id,
+        weaponId: sealedWeapon.weaponId,
+      },
+    ]);
+    const starts = FakeContext.instances.at(-1)?.sources.map((source) => source.starts[0] ?? 0) ?? [];
+    expect(starts.slice(2).every((at) => at >= 5.17)).toBe(true);
+    audio.destroy();
+  });
+
+  it('lands each destruction voice with its faction-specific terminal fall', () => {
+    vi.stubGlobal('AudioContext', FakeContext as unknown as typeof AudioContext);
+    const world = playerWorld('audio-collapse-culture');
+    const welded = world.entities.find(
+      (entity) => world.catalog.chassis.get(entity.chassisId)?.faction === 'linewrought',
+    );
+    const sealed = world.entities.find(
+      (entity) => world.catalog.chassis.get(entity.chassisId)?.faction === 'aurelian',
+    );
+    expect(welded).toBeDefined();
+    expect(sealed).toBeDefined();
+    if (welded === undefined || sealed === undefined) return;
+
+    const latestStart = (entity: typeof welded): number => {
+      const audio = new AudioDirector();
+      audio.unlock();
+      audio.listenAt = entity.pos;
+      audio.consume(world, [
+        { type: 'mech_destroyed', tick: world.tick, entityId: entity.id, method: 'centre_torso' },
+      ]);
+      const starts = FakeContext.instances.at(-1)?.sources.flatMap((source) => source.starts) ?? [];
+      audio.destroy();
+      return Math.max(...starts);
+    };
+
+    expect(latestStart(welded)).toBeCloseTo(5.62);
+    expect(latestStart(sealed)).toBeCloseTo(5.18);
+  });
+
   it('routes the new events and cancels their pending sources on destroy', () => {
     vi.stubGlobal('AudioContext', FakeContext as unknown as typeof AudioContext);
     const audio = new AudioDirector();
@@ -259,7 +386,10 @@ describe('the battle audio lifetime', () => {
       { type: 'knocked_down', tick: world.tick, entityId: mech.id, attackerId: null },
       { type: 'mech_destroyed', tick: world.tick, entityId: mech.id, method: 'centre_torso' },
     ]);
-    audio.footfall({ x: 5, y: 5 }, mech.tonnage);
+    const faction = world.catalog.chassis.get(mech.chassisId)?.faction;
+    expect(faction).toBeDefined();
+    if (faction === undefined) return;
+    audio.footfall({ x: 5, y: 5 }, mech.tonnage, faction);
 
     expect(context.sources.length).toBeGreaterThan(ambient.length + 10);
     expect(context.sources.slice(ambient.length).every((source) => source.stops.length === 1)).toBe(true);

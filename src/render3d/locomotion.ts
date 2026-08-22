@@ -15,14 +15,12 @@ import {
   type GaitProfile,
 } from './terrainGait';
 import type { Interpolated } from './unitViews';
+import { idleWeightCorrection, legPhaseFor } from './machineCulture';
+import { localTilt, sampleGround, type GroundSample } from './locomotionGround';
+import { poseLoosePanels } from './damagedPanels';
 
 export { advanceGait, gaitForTerrain, responseBlend, type GaitProfile } from './terrainGait';
-
-export interface GroundSample {
-  height: number;
-  gradeX: number;
-  gradeY: number;
-}
+export { localTilt, sampleGround, type GroundSample } from './locomotionGround';
 
 interface AnimationState {
   phase: number;
@@ -45,48 +43,15 @@ interface AnimationState {
   contact: FootContactState;
   turnPhase: number;
   turnDirection: -1 | 0 | 1;
+  elapsed: number;
 }
 
 const NOZZLE = new Vector3();
-const TILT_LIMIT = 0.32;
 const OPEN_KNEE = 0.5;
-
-/** Samples gradients in world axes, so a turn on one slope cannot swap lagging pitch and roll. */
-export function sampleGround(
-  heightAt: (x: number, y: number) => number,
-  at: Vec2,
-  reach: number,
-): GroundSample {
-  const span = Math.max(1, reach);
-  const centre = heightAt(at.x, at.y);
-  const east = heightAt(at.x + span, at.y);
-  const west = heightAt(at.x - span, at.y);
-  const south = heightAt(at.x, at.y + span);
-  const north = heightAt(at.x, at.y - span);
-  return {
-    height: centre,
-    gradeX: (east - west) / (span * 2),
-    gradeY: (south - north) / (span * 2),
-  };
-}
-
-export function localTilt(
-  gradeX: number,
-  gradeY: number,
-  facing: number,
-): { x: number; z: number } {
-  const forward = gradeX * Math.cos(facing) + gradeY * Math.sin(facing);
-  const left = -gradeX * Math.sin(facing) + gradeY * Math.cos(facing);
-  return {
-    // The hull faces local +X: forward pitch is around Z, lateral roll around X.
-    x: clamp(-Math.atan(left), -TILT_LIMIT, TILT_LIMIT),
-    z: clamp(Math.atan(forward), -TILT_LIMIT, TILT_LIMIT),
-  };
-}
 
 /** Render-only gait and ground pose; simulation positions remain authoritative. */
 export class Locomotion {
-  onFootfall: ((at: Vec2, tonnage: number) => void) | null = null;
+  onFootfall: ((at: Vec2, tonnage: number, faction: MechModel['faction']) => void) | null = null;
 
   private readonly states = new Map<EntityId, AnimationState>();
 
@@ -94,6 +59,7 @@ export class Locomotion {
     private readonly heightAt: (x: number, y: number) => number,
     private readonly terrainAt: (at: Vec2) => string,
     private readonly effects: BattleEffects,
+    private readonly reducedMotion = false,
   ) {}
 
   place(
@@ -110,7 +76,12 @@ export class Locomotion {
     const tilt = localTilt(state.gradeX, state.gradeY, at.facing);
 
     const contact = entity.jump === null ? state.contact.body : 0;
-    model.root.position.set(at.x, state.ground + lift + contact, at.y);
+    const hullKick = model.hullRecoil.kick;
+    model.root.position.set(
+      at.x - Math.cos(at.facing) * hullKick,
+      state.ground + lift + contact,
+      at.y - Math.sin(at.facing) * hullKick,
+    );
     model.root.rotation.y = -at.facing;
     model.root.rotation.x = tilt.x;
     model.root.rotation.z = tilt.z;
@@ -143,9 +114,11 @@ export class Locomotion {
     terrainId: string,
   ): void {
     const state = this.stateFor(entity.id);
+    state.elapsed += Math.max(0, dt);
+    poseLoosePanels(model.loosePanels, state.elapsed, state.amp, this.reducedMotion);
 
     if (entity.destroyed) {
-      state.fall = Math.min(1, state.fall + dt * 1.5);
+      state.fall = Math.min(1, state.fall + dt / model.culture.terminalFallSeconds);
       const eased = 1 - (1 - state.fall) ** 2;
       const direction = entity.id % 2 === 0 ? 1 : -1;
       model.root.rotation.z = -eased * 1.22 * direction;
@@ -232,6 +205,27 @@ export class Locomotion {
       posePhase = state.turnDirection === 0 ? state.phase : state.turnPhase;
     }
 
+    if (model.faction === 'aurelian' && translated === 0 && turned === 0) {
+      state.amp = 0;
+      state.lean = 0;
+      for (let index = 0; index < model.legs.length; index += 1) {
+        const leg = model.legs[index];
+        const pose = state.poses[index];
+        if (leg === undefined || pose === undefined) continue;
+        resetLegPose(pose);
+        leg.hip.rotation.z = 0;
+        leg.knee.rotation.z = 0;
+        leg.ankle.rotation.z = 0;
+      }
+      model.torso.position.y = model.torsoRestY;
+      model.torso.rotation.x = 0;
+      model.torso.rotation.z = 0;
+      model.root.rotation.x = tilt.x;
+      model.root.rotation.z = tilt.z;
+      settleFootContact(state.contact, model, state.poses, this.heightAt, dt);
+      return;
+    }
+
     const speed = dt > 0 ? travelled / dt : 0;
     const wantedAmp = clamp(speed / 3.5, 0, 1);
     const acceleration = wantedAmp - state.amp;
@@ -245,7 +239,9 @@ export class Locomotion {
       const leg = model.legs[index];
       const pose = state.poses[index];
       if (leg === undefined || pose === undefined) continue;
-      const phase = posePhase + (index === 0 ? 0 : Math.PI);
+      const phase = state.turnDirection === 0
+        ? legPhaseFor(model.culture, posePhase, index)
+        : posePhase + (index === 0 ? 0 : Math.PI);
       if (state.turnDirection === 0) writeStridePose(pose, phase, swing, knee, 0);
       else writeTurnPose(pose, phase, swing, knee, index === 0 ? -1 : 1, state.turnDirection);
       leg.hip.rotation.z = pose.hip;
@@ -253,11 +249,21 @@ export class Locomotion {
       leg.ankle.rotation.z = pose.ankle;
     }
 
-    const bob = motion.bob * profile.bob * (1 - climb * 0.35);
+    const bob = motion.bob * profile.bob * (1 - climb * 0.35) * model.culture.bobScale;
+    const idleCorrection = this.reducedMotion || travelled !== 0 || turned !== 0
+      ? 0
+      : idleWeightCorrection(model.culture, state.elapsed, entity.id);
     model.torso.position.y =
-      model.torsoRestY + Math.abs(Math.sin(posePhase)) * model.torsoRestY * 0.035 * state.amp * bob;
-    model.torso.rotation.x = Math.sin(posePhase) * 0.018 * state.amp * bob;
-    model.torso.rotation.z = state.lean - Math.sin(posePhase) * motion.torsoCounter * state.amp;
+      model.torsoRestY +
+      Math.abs(Math.sin(posePhase)) * model.torsoRestY * 0.035 * state.amp * bob +
+      Math.abs(idleCorrection) * model.torsoRestY * 0.12;
+    model.torso.rotation.x =
+      Math.sin(posePhase) * 0.018 * state.amp * bob + idleCorrection * 0.45;
+    model.torso.rotation.z =
+      (state.lean - Math.sin(posePhase) * motion.torsoCounter * state.amp) *
+      model.culture.torsoMotionScale +
+      Math.sin(posePhase - 0.22) * model.culture.hydraulicSlop * state.amp +
+      idleCorrection;
     model.root.rotation.x = tilt.x;
     model.root.rotation.z = tilt.z;
     settleFootContact(
@@ -272,7 +278,7 @@ export class Locomotion {
     if (step !== state.lastStep) {
       state.lastStep = step;
       if (state.amp > 0.35 && travelled !== 0 && this.onFootfall !== null) {
-        this.onFootfall({ x: at.x, y: at.y }, entity.tonnage);
+        this.onFootfall({ x: at.x, y: at.y }, entity.tonnage, model.faction);
       }
     }
   }
@@ -381,6 +387,7 @@ export class Locomotion {
       contact: createFootContactState(),
       turnPhase: Math.PI / 2,
       turnDirection: 0,
+      elapsed: 0,
     };
     this.states.set(id, fresh);
     return fresh;

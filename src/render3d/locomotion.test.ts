@@ -18,6 +18,7 @@ import {
 function walkingHarness(
   heightAt: (x: number, y: number) => number = () => 0,
   designId = 'sentinel_brawler',
+  reducedMotion = false,
 ) {
   const world = testWorld('render-gait');
   const entity = unitOf(world, designId);
@@ -37,8 +38,10 @@ function walkingHarness(
     new Set(),
     chassis.hardpoints,
     chassis.id,
+    {},
+    chassis.faction,
   );
-  const locomotion = new Locomotion(heightAt, () => 'open', effects);
+  const locomotion = new Locomotion(heightAt, () => 'open', effects, reducedMotion);
   return { entity, model, locomotion };
 }
 
@@ -110,6 +113,92 @@ describe('terrain-following locomotion', () => {
     expect(firstFrame.stride).toBeGreaterThan(gaitForTerrain('forest').stride);
     expect(advance(30).stride).toBeCloseTo(advance(144).stride, 10);
     expect(advance(30).knee).toBeCloseTo(advance(144).knee, 10);
+  });
+
+  it('gives a sealed machine no bob in motion and an exact idle stance', () => {
+    const { entity, model, locomotion } = walkingHarness(() => 0, 'wisp_scout');
+    expect(model.faction).toBe('aurelian');
+    locomotion.place(entity, model, { x: 0, y: 0, facing: 0, torso: 0 }, 0, 0.1);
+    locomotion.place(
+      entity,
+      model,
+      { x: model.strideLength * 0.4, y: 0, facing: 0, torso: 0.5 },
+      0,
+      0.1,
+    );
+    expect(model.torso.position.y).toBe(model.torsoRestY);
+    expect(model.torso.rotation.x).toBe(0);
+    expect(model.torso.rotation.z).toBe(0);
+
+    locomotion.place(
+      entity,
+      model,
+      { x: model.strideLength * 0.4, y: 0, facing: 0, torso: 0.5 },
+      0,
+      0.1,
+    );
+    expect(model.legs.every((leg) =>
+      leg.hip.rotation.z === 0 && leg.knee.rotation.z === 0 && leg.ankle.rotation.z === 0,
+    )).toBe(true);
+    expect(model.torso.position.y).toBe(model.torsoRestY);
+    disposeModel(model.root);
+  });
+
+  it('keeps welded idle corrections alive unless reduced motion is requested', () => {
+    const active = walkingHarness(() => 0, 'hornet_spotter');
+    const reduced = walkingHarness(() => 0, 'hornet_spotter', true);
+    expect(active.model.faction).toBe('linewrought');
+    for (let frame = 0; frame < 30; frame += 1) {
+      active.locomotion.place(
+        active.entity, active.model, { x: 0, y: 0, facing: 0, torso: 0 }, 0, 1 / 30,
+      );
+      reduced.locomotion.place(
+        reduced.entity, reduced.model, { x: 0, y: 0, facing: 0, torso: 0 }, 0, 1 / 30,
+      );
+    }
+    expect(Math.abs(active.model.torso.rotation.z)).toBeGreaterThan(0.001);
+    expect(reduced.model.torso.rotation.z).toBe(0);
+    expect(reduced.model.torso.position.y).toBe(reduced.model.torsoRestY);
+    disposeModel(active.model.root);
+    disposeModel(reduced.model.root);
+  });
+
+  it('moves the complete welded frame through recoil and reports its footfall culture', () => {
+    const { entity, model, locomotion } = walkingHarness(() => 0, 'hornet_spotter');
+    const footfall = vi.fn();
+    locomotion.onFootfall = footfall;
+    model.hullRecoil.kick = 0.5;
+    locomotion.place(entity, model, { x: 0, y: 0, facing: 0, torso: 0 }, 0, 0.1);
+    expect(model.root.position.x).toBe(-0.5);
+    for (let step = 1; step < 9; step += 1) {
+      locomotion.place(
+        entity,
+        model,
+        { x: model.strideLength * step * 0.4, y: 0, facing: 0, torso: 0 },
+        0,
+        0.1,
+      );
+    }
+    expect(footfall).toHaveBeenCalled();
+    expect(footfall.mock.calls.at(-1)?.[2]).toBe('linewrought');
+    disposeModel(model.root);
+  });
+
+  it('drops a sealed wreck decisively faster than welded shopwork', () => {
+    const sealed = walkingHarness(() => 0, 'wisp_scout');
+    const welded = walkingHarness(() => 0, 'hornet_spotter');
+    sealed.entity.destroyed = true;
+    welded.entity.destroyed = true;
+    sealed.locomotion.place(
+      sealed.entity, sealed.model, { x: 0, y: 0, facing: 0, torso: 0 }, 0, 0.1,
+    );
+    welded.locomotion.place(
+      welded.entity, welded.model, { x: 0, y: 0, facing: 0, torso: 0 }, 0, 0.1,
+    );
+    expect(Math.abs(sealed.model.root.rotation.z))
+      .toBeGreaterThan(Math.abs(welded.model.root.rotation.z) * 2);
+    disposeModel(sealed.model.root);
+    disposeModel(welded.model.root);
   });
 
   it('keeps articulated boots parallel to a local slope', () => {

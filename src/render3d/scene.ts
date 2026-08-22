@@ -10,6 +10,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import type { Atmosphere } from '../schema/atmosphere';
+import type { Faction } from '../schema/faction';
 import type { TerrainMapData } from '../schema/map';
 import type { SimEvent } from '../sim/events';
 import { jumpHeight } from '../sim/movement';
@@ -101,14 +102,14 @@ export class Renderer {
 
     this.fog = new FogLayer(world.terrain, this.terrain.heightAt);
     this.scene.add(this.fog.mesh);
-    this.units = new UnitViews(this.scene, this.terrain.heightAt);
+    this.units = new UnitViews(this.scene, this.terrain.heightAt, this.camera.reducedMotion);
     this.effects = new BattleEffects(
       this.scene,
       surroundColour(rig),
       this.camera,
       this.terrain.heightAt,
       (id) => this.units.positionOf(id),
-      (id, weaponId, out) => this.units.fireMount(id, weaponId, out),
+      (id, weaponId, out, breech) => this.units.fireMount(id, weaponId, out, breech),
       {
         anchorOf: (id, location, out) => this.units.locationOf(id, location, out),
         canLocate: (id) => this.units.canLocate(id),
@@ -120,6 +121,7 @@ export class Renderer {
       this.terrain.heightAt,
       (at) => this.terrainAt(at),
       this.effects,
+      this.camera.reducedMotion,
     );
     this.markers = new MarkerLayer(this.terrain.heightAt, (id) => this.units.positionOf(id));
     this.scene.add(this.markers.group);
@@ -157,11 +159,11 @@ export class Renderer {
     return this.terrain.mesh;
   }
 
-  get onFootfall(): ((at: Vec2, tonnage: number) => void) | null {
+  get onFootfall(): ((at: Vec2, tonnage: number, faction: Faction) => void) | null {
     return this.locomotion.onFootfall;
   }
 
-  set onFootfall(callback: ((at: Vec2, tonnage: number) => void) | null) {
+  set onFootfall(callback: ((at: Vec2, tonnage: number, faction: Faction) => void) | null) {
     this.locomotion.onFootfall = callback;
   }
 
@@ -202,6 +204,7 @@ export class Renderer {
   }
 
   consumeEvents(world: World, events: readonly SimEvent[]): void {
+    this.units.consumeEvents(events);
     this.effects.consume(world, events);
   }
 

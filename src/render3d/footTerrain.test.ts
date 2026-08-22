@@ -75,6 +75,8 @@ describe('real-map foot terrain', () => {
       new Set(),
       chassis.hardpoints,
       chassis.id,
+      {},
+      chassis.faction,
     );
     const effects = { land: vi.fn(), plume: vi.fn() } as unknown as BattleEffects;
     const locomotion = new Locomotion(terrain.heightAt, () => 'rough', effects);
