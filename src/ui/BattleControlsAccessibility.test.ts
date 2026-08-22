@@ -115,6 +115,27 @@ describe('battle control state semantics', () => {
     expect(buttonTag(markup, 'command-hold_position')).toContain('aria-pressed="true"');
   });
 
+  it('omits commands the current training lesson has not introduced', () => {
+    const markup = renderToStaticMarkup(
+      createElement(CommandPalette, {
+        orderMode: null,
+        enabled: true,
+        holdingFire: false,
+        heatSafety: false,
+        ability: UNIT.ability,
+        alpha: UNIT.alpha,
+        jump: null,
+        posture: UNIT.posture,
+        visibleCommandIds: new Set(['move']),
+        onCommand: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain('data-testid="command-move"');
+    expect(markup).not.toContain('data-testid="command-attack"');
+    expect(markup).not.toContain('data-testid="command-hold_fire"');
+  });
+
   it('exposes weapon toggles and lance selection as pressed states', () => {
     const weapons = renderToStaticMarkup(
       createElement(WeaponGroups, { unit: UNIT, onToggleGroup: () => undefined }),

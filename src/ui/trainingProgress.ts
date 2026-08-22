@@ -18,6 +18,7 @@ export interface TrainingSignals {
 }
 
 const TRAINING_KEY = 'ironline.training';
+const PROFILE_MARKER_EXCLUSIONS = new Set([TRAINING_KEY, 'ironline.playtest.v1']);
 
 function storage(): Storage | null {
   try {
@@ -60,7 +61,12 @@ function writeTraining(step: TrainingStep, status: TrainingStatus): void {
 function hasExperiencedProfile(store: Storage): boolean {
   for (let index = 0; index < store.length; index += 1) {
     const key = store.key(index);
-    if (key?.startsWith('ironline.') === true && key !== TRAINING_KEY) return true;
+    if (
+      key?.startsWith('ironline.') === true &&
+      !PROFILE_MARKER_EXCLUSIONS.has(key)
+    ) {
+      return true;
+    }
   }
   return false;
 }
@@ -86,12 +92,19 @@ export function trainingStartStep(): TrainingStep {
   return record?.status === 'active' ? record.step : 0;
 }
 
+export function startTraining(): void {
+  if (readTraining()?.status === 'active') return;
+  writeTraining(0, 'active');
+}
+
 export function storeTrainingStep(step: TrainingStep): void {
   writeTraining(step, 'active');
 }
 
 export function skipTraining(): void {
-  writeTraining(readTraining()?.step ?? 0, 'skipped');
+  const record = readTraining();
+  if (record?.status === 'complete') return;
+  writeTraining(record?.step ?? 0, 'skipped');
 }
 
 export function completeTraining(): void {

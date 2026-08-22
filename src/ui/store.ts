@@ -134,7 +134,13 @@ export interface UnitSnapshot {
   sensorRange: number;
 }
 
-export type Screen = 'battle' | 'mechbay' | 'campaign';
+export type Screen = 'home' | 'battle' | 'mechbay' | 'campaign';
+
+export interface BattleEntry {
+  missionId?: string;
+  battleCode?: string;
+  campaignPending?: boolean;
+}
 
 /**
  * The to-hit readout for the primary selected mech, refreshed with the HUD.
@@ -220,6 +226,7 @@ export interface GameState {
 }
 
 export interface GameActions {
+  enterBattle: (entry?: BattleEntry) => void;
   setSelection: (ids: EntityId[]) => void;
   assignControlGroup: (slot: number, ids: EntityId[]) => void;
   setOrderMode: (mode: OrderMode) => void;
@@ -234,7 +241,7 @@ const LOG_LIMIT = 60;
 const INITIAL_SKIRMISH_MISSION = initialSkirmishMission();
 
 export const useGame = create<GameState & GameActions>((set) => ({
-  screen: 'battle',
+  screen: 'home',
   campaignPending: false,
   ready: false,
   error: null,
@@ -273,6 +280,44 @@ export const useGame = create<GameState & GameActions>((set) => ({
   marquee: null,
   hitPreview: null,
 
+  enterBattle: (entry = {}) =>
+    set((state) => ({
+      screen: 'battle',
+      campaignPending: entry.campaignPending ?? false,
+      ready: false,
+      error: null,
+      paused: true,
+      speed: 1,
+      tick: 0,
+      elapsedSeconds: 0,
+      missionDurationSeconds: 0,
+      finished: false,
+      winner: null,
+      playerTeam: 0,
+      heatTiers: [],
+      selection: [],
+      controlGroups: {},
+      orderMode: null,
+      queueOrders: false,
+      calledShotLocation: null,
+      units: [],
+      enemies: [],
+      log: [],
+      skirmishMissionId: entry.missionId ?? state.skirmishMissionId,
+      battleCode: entry.battleCode ?? state.battleCode,
+      missionName: '',
+      briefing: '',
+      briefingSeen: false,
+      resourcePoints: 0,
+      objectives: [],
+      zones: [],
+      missionStatus: 'active',
+      missionReason: null,
+      supportMode: null,
+      reservesLeft: 0,
+      marquee: null,
+      hitPreview: null,
+    })),
   setSelection: (ids) => set({ selection: ids }),
   assignControlGroup: (slot, ids) =>
     set((state) => ({ controlGroups: { ...state.controlGroups, [slot]: ids } })),

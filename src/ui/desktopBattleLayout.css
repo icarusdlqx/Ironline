@@ -1,4 +1,8 @@
 @media (min-width: 641px) {
+  .topbar {
+    z-index: 20;
+  }
+
   .briefing {
     top: max(52px, 5%);
   }

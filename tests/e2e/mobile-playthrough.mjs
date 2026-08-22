@@ -18,11 +18,15 @@ async function mobilePage(browser, url, viewport) {
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
+  await page.addInitScript(() => localStorage.clear());
   await page.goto(url);
+  await page.waitForSelector('[data-testid="home-screen"]');
+  const homeWithoutEngine = await page.evaluate(() => globalThis.__ironline === undefined);
+  await page.locator('[data-testid="home-learn"]').tap();
   await page.waitForFunction(() => globalThis.__ironline !== undefined, { timeout: 30_000 });
   await page.waitForSelector('[data-testid="briefing"]');
   await page.waitForFunction(() => globalThis.__ironline.useGame.getState().ready);
-  return { context, page, errors };
+  return { context, page, errors, homeWithoutEngine };
 }
 
 async function overflowOf(page, selector) {
@@ -84,11 +88,43 @@ async function openBattleMenu(page) {
   await sheet.waitFor({ state: 'visible' });
 }
 
+async function unlockRangeDrill(page) {
+  await page.evaluate(() => {
+    const { engine, useGame, world } = globalThis.__ironline;
+    const selected = useGame.getState().selection[0];
+    const mech = world.entities.find((entity) => entity.id === selected);
+    if (mech === undefined) throw new Error('training selection is missing');
+    engine.orderMove({ x: mech.pos.x + 40, y: mech.pos.y + 20 }, false);
+  });
+  await page.waitForSelector('[data-testid="command-attack"]');
+  await page.evaluate(() => {
+    const { engine, world } = globalThis.__ironline;
+    const target = world.entities.find((entity) => entity.team !== world.playerTeam);
+    if (target === undefined) throw new Error('training target is missing');
+    engine.orderAttack(target.id, null);
+  });
+  await page.waitForSelector('[data-testid="mobile-tab-unit"]');
+  await page.locator('[data-testid="mobile-tab-unit"]').tap();
+  await page.waitForSelector('[data-testid="training-heat-readout"]');
+  await page.evaluate(() => {
+    const { useGame } = globalThis.__ironline;
+    const current = useGame.getState();
+    const selected = new Set(current.selection);
+    current.patch({
+      units: current.units.map((unit) =>
+        selected.has(unit.id) ? { ...unit, heat: Math.max(1, unit.heat) } : unit,
+      ),
+    });
+  });
+  await page.waitForSelector('[data-testid="mobile-queue"]');
+}
+
 
 async function runOrientation({ browser, url, shots, check, viewport, label, shotLabel }) {
-  const { context, page, errors } = await mobilePage(browser, url, viewport);
+  const { context, page, errors, homeWithoutEngine } = await mobilePage(browser, url, viewport);
   try {
     const prefix = `mobile ${label}`;
+    check(`${prefix} Home does not mount the battle engine`, homeWithoutEngine);
     check(
       `${prefix} uses a coarse touch layout`,
       await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
@@ -135,7 +171,13 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     );
 
     const firstLance = page.locator('[data-testid="lance-bar"] button').first();
+    check(
+      `${prefix} selection lesson hides the untaught dock`,
+      (await page.locator('[data-testid="mobile-queue"]').count()) === 0 &&
+        (await page.locator('[data-testid="command-move"]').count()) === 0,
+    );
     await firstLance.tap();
+    await page.waitForSelector('[data-testid="command-move"]');
     check(
       `${prefix} first lance card accepts a touch`,
       (await page.evaluate(() => globalThis.__ironline.useGame.getState().selection.length)) === 1 &&
@@ -150,6 +192,15 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     });
     check(`${prefix} select-all chooses the live lance`, allSelected);
 
+    await firstLance.tap();
+    await unlockRangeDrill(page);
+    check(
+      `${prefix} range drill restores the full mobile dock`,
+      (await page.locator('[data-testid="mobile-tab-support"]').count()) === 1 &&
+        (await page.locator('[data-testid="mobile-tab-contacts"]').count()) === 1 &&
+        (await page.locator('[data-testid="mobile-tab-unit"]').count()) === 1,
+    );
+
     await page.locator('[data-testid="mobile-queue"]').tap();
     check(
       `${prefix} queue mode arms from the dock`,
@@ -161,6 +212,7 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
       !(await page.evaluate(() => globalThis.__ironline.useGame.getState().queueOrders)),
     );
 
+    await page.locator('[data-testid="mobile-tab-orders"]').tap();
     await firstLance.tap();
     await page.locator('[data-testid="command-move"]').tap();
     check(
@@ -226,6 +278,8 @@ async function runOrientation({ browser, url, shots, check, viewport, label, sho
     await page.screenshot({ path: `${shots}/13-mobile-${shotLabel}-campaign.png` });
 
     await page.locator('[data-testid="camp-exit"]').tap();
+    await page.waitForSelector('[data-testid="home-screen"]');
+    await page.locator('[data-testid="home-skirmish"]').tap();
     await page.waitForSelector('[data-testid="briefing"]');
     await openBattleMenu(page);
     await page.locator('[data-testid="open-mechbay"]').tap();
@@ -340,7 +394,10 @@ export async function runMobilePlaythrough({ browser, url, shots, check }) {
   const desktopContext = await browser.newContext({ viewport: TABLET });
   const desktopPage = await desktopContext.newPage();
   try {
+    await desktopPage.addInitScript(() => localStorage.clear());
     await desktopPage.goto(url);
+    await desktopPage.waitForSelector('[data-testid="home-screen"]');
+    await desktopPage.locator('[data-testid="home-learn"]').click();
     await desktopPage.waitForSelector('[data-testid="briefing"]');
     check(
       '1024px fine-pointer desktop keeps the desktop layout',

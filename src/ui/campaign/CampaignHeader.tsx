@@ -1,4 +1,5 @@
 import type { CampaignPersistenceState } from '../../campaign/save';
+import { usePlaytest } from '../playtest';
 import { CampaignRecoveryNotice } from './CampaignRecoveryNotice';
 
 export interface CampaignHeaderProps {
@@ -38,6 +39,7 @@ export function CampaignHeader({
   onToggleManual,
   onExit,
 }: CampaignHeaderProps) {
+  const { openFeedback } = usePlaytest();
   return (
     <header className="camp-top">
       <div className="camp-title">
@@ -89,17 +91,17 @@ export function CampaignHeader({
         {manualOpen ? 'Close Manual' : 'Field Manual'}
       </button>
       <button type="button" onClick={onExit} data-testid="camp-exit">
-        Skirmish
+        Home
       </button>
-      <a
+      <button
+        type="button"
         className="pause feedback-link"
-        href="https://github.com/icarusdlqx/Ironline/issues"
-        target="_blank"
-        rel="noreferrer"
+        onClick={openFeedback}
         title="Something broken, unfair, or missing? Tell the builders."
+        data-testid="feedback-link"
       >
         Feedback
-      </a>
+      </button>
       <CampaignRecoveryNotice
         persistence={persistence}
         onExportOriginal={onExportRecovery}

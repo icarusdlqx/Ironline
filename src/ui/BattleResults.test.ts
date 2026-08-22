@@ -86,6 +86,57 @@ describe('battle results screen', () => {
     expect(markup).not.toContain('data-testid="choose-mission"');
   });
 
+  it('makes the campaign the primary exit after successful training', () => {
+    const markup = renderToStaticMarkup(
+      createElement(BattleResults, {
+        ...COMMON,
+        missionName: 'Range Walk',
+        selectedMissionId: 'training_ground',
+        campaignPending: false,
+        trainingActions: {
+          onStartCampaign: () => undefined,
+          onReplay: () => undefined,
+          onRetry: () => undefined,
+          onContinueAnyway: () => undefined,
+        },
+      }),
+    );
+
+    expect(markup).toContain('data-testid="training-start-campaign"');
+    expect(markup).toContain('Start campaign');
+    expect(markup).toContain('data-testid="training-replay"');
+    expect(markup).toContain('Replay range');
+    expect(markup).not.toContain('data-testid="new-field"');
+    expect(markup).not.toContain('data-testid="result-mission-picker"');
+    expect(markup).not.toContain('data-testid="choose-mission"');
+  });
+
+  it('offers retry first and an explicit campaign exit after failed training', () => {
+    const markup = renderToStaticMarkup(
+      createElement(BattleResults, {
+        ...COMMON,
+        result: { ...RESULT, missionStatus: 'failure', winner: 1 },
+        missionName: 'Range Walk',
+        selectedMissionId: 'training_ground',
+        campaignPending: false,
+        trainingActions: {
+          onStartCampaign: () => undefined,
+          onReplay: () => undefined,
+          onRetry: () => undefined,
+          onContinueAnyway: () => undefined,
+        },
+      }),
+    );
+
+    expect(markup).toContain('data-testid="training-retry"');
+    expect(markup).toContain('Retry range');
+    expect(markup).toContain('data-testid="training-continue-anyway"');
+    expect(markup).toContain('Continue anyway');
+    expect(markup).not.toContain('data-testid="replay-mission"');
+    expect(markup).not.toContain('data-testid="new-field"');
+    expect(markup).not.toContain('data-testid="result-mission-picker"');
+  });
+
   it('shows the real field grade without awarding exercise salvage', () => {
     const condition = Object.fromEntries(
       LOCATIONS.map((location) => [

@@ -10,6 +10,7 @@ interface Props {
   catalog: Catalog;
   design: Design;
   commissionTitle?: string;
+  commissionCancelLabel?: string;
   stored: readonly string[];
   saveable: boolean;
   status: BayStatus | null;
@@ -27,6 +28,7 @@ export function BayChrome({
   catalog,
   design,
   commissionTitle,
+  commissionCancelLabel,
   stored,
   saveable,
   status,
@@ -86,7 +88,7 @@ export function BayChrome({
           Reset to stock
         </button>
         <button type="button" onClick={onExit} data-testid="bay-exit">
-          {commissioned ? 'Back to manifest' : 'Back to skirmish'}
+          {commissioned ? commissionCancelLabel ?? 'Back to manifest' : 'Back to skirmish'}
         </button>
       </header>
 

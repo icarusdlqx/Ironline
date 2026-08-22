@@ -1,0 +1,76 @@
+.campaign-guide {
+  grid-area: guide;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  align-content: center;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 64%, transparent);
+  border-left-width: 4px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent));
+  box-shadow: 0 8px 24px #0007;
+}
+
+.camp:has(.campaign-guide) {
+  grid-template-rows: auto auto 1fr auto auto auto;
+  grid-template-areas:
+    'top      top'
+    'guide    guide'
+    'map      contract'
+    'map      hall'
+    'bay      roster'
+    'store    market'
+    'log      log';
+}
+
+.campaign-guide span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.campaign-guide p {
+  margin: 0;
+}
+
+.campaign-guide button {
+  justify-self: end;
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: rgba(10, 15, 20, 0.78);
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.campaign-guide button:hover,
+.campaign-guide button:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent);
+  outline-offset: 2px;
+}
+
+.camp[data-first-drop-stage='choose'] .camp-contract,
+.camp[data-first-drop-stage='prepare'] .camp-contract {
+  outline: 2px solid color-mix(in srgb, var(--accent) 76%, white);
+  outline-offset: 3px;
+}
+
+@media (pointer: coarse), (max-width: 720px) {
+  .camp:has(.campaign-guide) {
+    grid-template-rows: none;
+    grid-template-areas: none;
+  }
+
+  .campaign-guide {
+    position: sticky;
+    top: calc(52px + env(safe-area-inset-top));
+    z-index: 16;
+  }
+}

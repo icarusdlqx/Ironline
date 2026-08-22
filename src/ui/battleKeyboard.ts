@@ -1,3 +1,8 @@
+import {
+  currentTrainingPresentationStep,
+  trainingShortcutAllowed,
+} from './trainingPresentation';
+
 const INTERACTIVE_TARGETS = [
   'a[href]',
   'button',
@@ -26,7 +31,14 @@ export interface BattleKeyContext {
   repeat: boolean;
 }
 
+export function battleModalOpen(
+  root: Pick<Document, 'querySelector'> | null = typeof document === 'undefined' ? null : document,
+): boolean {
+  return root?.querySelector('[aria-modal="true"]') !== null && root !== null;
+}
+
 export function isInteractiveKeyTarget(target: EventTarget | null): boolean {
+  if (battleModalOpen()) return true;
   const eventElement = target instanceof Element ? target : null;
   const activeElement = typeof document === 'undefined' ? null : document.activeElement;
   const element = eventElement ?? activeElement;
@@ -38,6 +50,7 @@ export function shouldIgnoreBattleKey(context: BattleKeyContext): boolean {
     !context.briefingSeen ||
     context.finished ||
     context.interactiveTarget ||
+    !trainingShortcutAllowed(currentTrainingPresentationStep(), context.code) ||
     (context.repeat && TOGGLE_KEYS.has(context.code))
   );
 }

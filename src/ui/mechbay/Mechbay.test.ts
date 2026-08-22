@@ -15,6 +15,7 @@ describe('campaign cooling inventory', () => {
         onExit: () => undefined,
         commission: {
           title: design.name,
+          cancelLabel: 'Back to hangar',
           design,
           inventory: new Map([[design.heatSinkId, design.heatSinks]]),
           onCommit: () => ({ ok: true, reason: null }),
@@ -25,6 +26,7 @@ describe('campaign cooling inventory', () => {
 
     expect(html).toContain('Heat Sink');
     expect(html).not.toContain('Compound Heat Sink');
+    expect(html).toContain('Back to hangar');
   });
 });
 

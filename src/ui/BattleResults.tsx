@@ -10,6 +10,13 @@ export interface ResultMissionOption {
   name: string;
 }
 
+export interface TrainingResultActions {
+  onStartCampaign: () => void;
+  onReplay: () => void;
+  onRetry: () => void;
+  onContinueAnyway: () => void;
+}
+
 interface BattleResultsProps {
   result: BattleResult;
   playerTeam: number;
@@ -22,7 +29,7 @@ interface BattleResultsProps {
   onNewField: () => void;
   onChooseMission: (missionId: string) => void;
   onReturnToCampaign: () => void;
-  onContinueToCampaign?: () => void;
+  trainingActions?: TrainingResultActions;
 }
 
 function accuracyLabel(hits: number, shots: number, accuracy: number | null): string {
@@ -41,7 +48,7 @@ export function BattleResults({
   onNewField,
   onChooseMission,
   onReturnToCampaign,
-  onContinueToCampaign,
+  trainingActions,
 }: BattleResultsProps) {
   const report = viewBattleResult(result, playerTeam);
   const [nextMissionId, setNextMissionId] = useState(selectedMissionId);
@@ -148,17 +155,48 @@ export function BattleResults({
                 : 'Resolve the contract before returning to the company.'}
             </small>
           </div>
+        ) : trainingActions !== undefined ? (
+          <div className="battle-results-actions training" data-testid="training-result-actions">
+            {result.missionStatus === 'success' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={trainingActions.onStartCampaign}
+                  data-testid="training-start-campaign"
+                >
+                  Start campaign
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={trainingActions.onReplay}
+                  data-testid="training-replay"
+                >
+                  Replay range
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={trainingActions.onRetry}
+                  data-testid="training-retry"
+                >
+                  Retry range
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={trainingActions.onContinueAnyway}
+                  data-testid="training-continue-anyway"
+                >
+                  Continue anyway
+                </button>
+              </>
+            )}
+          </div>
         ) : (
           <div className="battle-results-actions">
-            {onContinueToCampaign === undefined ? null : (
-              <button
-                type="button"
-                onClick={onContinueToCampaign}
-                data-testid="training-continue"
-              >
-                Continue to campaign
-              </button>
-            )}
             <button
               type="button"
               onClick={onSameField}
