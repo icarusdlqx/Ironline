@@ -2,6 +2,7 @@ import type { TerrainMapData } from '../schema/map';
 import type { Faction } from '../schema/faction';
 import type { SimEvent } from '../sim/events';
 import type { MechEntity, Vec2, World } from '../sim/types';
+import { canPresentEntity } from '../render3d/combatReadouts';
 import { machineCulture } from '../render3d/machineCulture';
 import { startAmbient, type AmbientHandle } from './audioAmbient';
 import {
@@ -27,7 +28,7 @@ import {
   playRestart,
   playSelect,
 } from './audioVoices';
-import { playCrunch, playExplosion, playImpact, playWeapon } from './audioWeapons';
+import { playCrunch, playDestruction, playImpact, playWeapon } from './audioWeapons';
 
 /**
  * Every sound in the game, synthesised.
@@ -45,6 +46,7 @@ export class AudioDirector {
   private pendingAmbient: string | null = null;
   private terrain: TerrainMapData | null = null;
   private readonly heatTiers = new Map<number, HeatTier>();
+  private readonly cueEvents: SimEvent[] = [];
   private mutedState = readMuted();
   private destroyed = false;
 
@@ -91,6 +93,7 @@ export class AudioDirector {
     this.stopAmbient();
     this.terrain = null;
     this.heatTiers.clear();
+    this.cueEvents.length = 0;
     const graph = this.graph;
     this.graph = null;
     graph?.close();
@@ -106,9 +109,13 @@ export class AudioDirector {
   consume(world: World, events: readonly SimEvent[]): void {
     const heatCue = this.updateHeat(world);
     const graph = this.graph;
+    this.cueEvents.length = 0;
     if (graph === null || this.mutedState) return;
 
-    const summary = summariseEventCues(events);
+    for (const event of events) {
+      if (isPlayerConsoleCue(world, event)) this.cueEvents.push(event);
+    }
+    const summary = summariseEventCues(this.cueEvents);
     if (summary.abilityVoice !== null) {
       playAbility(graph, summary.abilityVoice, summary.abilityCount);
     }
@@ -119,6 +126,7 @@ export class AudioDirector {
     for (const event of events) {
       switch (event.type) {
         case 'weapon_fired': {
+          if (!canPresentEntity(world, event.shooterId)) break;
           const weapon = world.catalog.weapons.get(event.weaponId);
           const at = positionOf(world, event.shooterId);
           if (weapon !== undefined && at !== null) {
@@ -133,25 +141,42 @@ export class AudioDirector {
           break;
         }
         case 'projectile_hit': {
+          if (!canPresentEntity(world, event.targetId)) break;
           const at = positionOf(world, event.targetId);
-          if (at !== null) playImpact(graph, this.placementAt(at));
+          const weapon = world.catalog.weapons.get(event.weaponId);
+          if (at !== null) {
+            playImpact(
+              graph,
+              {
+                type: weapon?.type ?? 'ballistic',
+                style: weapon?.visual.style ?? 'tracer',
+                damage: event.damage,
+              },
+              this.placementAt(at),
+            );
+          }
           break;
         }
         case 'critical_hit': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const at = positionOf(world, event.entityId);
           if (at !== null) playCrunch(graph, this.placementAt(at));
           break;
         }
         case 'ammo_explosion': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const at = positionOf(world, event.entityId);
-          if (at !== null) playExplosion(graph, 0.8, this.placementAt(at));
+          if (at !== null) {
+            playDestruction(graph, { kind: 'ammo', damage: event.damage }, this.placementAt(at));
+          }
           break;
         }
         case 'mech_destroyed': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const entity = entityOf(world, event.entityId);
           if (entity !== null) {
             const placement = this.placementAt(entity.pos);
-            playExplosion(graph, 1, placement);
+            playDestruction(graph, { kind: 'terminal', tonnage: entity.tonnage }, placement);
             const faction = factionOf(world, entity) ?? 'linewrought';
             playCollapse(
               graph,
@@ -163,6 +188,7 @@ export class AudioDirector {
           break;
         }
         case 'knocked_down': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const entity = entityOf(world, event.entityId);
           if (entity !== null) {
             playCollapse(graph, this.placementAt(entity.pos), entity.tonnage, 0.4);
@@ -170,11 +196,13 @@ export class AudioDirector {
           break;
         }
         case 'shutdown': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const at = positionOf(world, event.entityId);
           if (at !== null) playPowerSweep(graph, 360, 50, 0.9, this.placementAt(at));
           break;
         }
         case 'restart': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const entity = entityOf(world, event.entityId);
           const faction = entity === null ? null : factionOf(world, entity);
           if (entity !== null && faction !== null) {
@@ -183,12 +211,15 @@ export class AudioDirector {
           break;
         }
         case 'jump_started': {
+          if (!canPresentEntity(world, event.entityId)) break;
           const at = positionOf(world, event.entityId);
           if (at !== null) playJets(graph, this.placementAt(at));
           break;
         }
         case 'jump_landed':
-          playLanding(graph, this.placementAt({ x: event.x, y: event.y }), 1);
+          if (canPresentEntity(world, event.entityId)) {
+            playLanding(graph, this.placementAt({ x: event.x, y: event.y }), 1);
+          }
           break;
         case 'zone_captured':
         case 'objective_settled':
@@ -270,6 +301,13 @@ function positionOf(world: World, id: number): Vec2 | null {
 
 function factionOf(world: World, entity: MechEntity): Faction | null {
   return world.catalog.chassis.get(entity.chassisId)?.faction ?? null;
+}
+
+function isPlayerConsoleCue(world: World, event: SimEvent): boolean {
+  if (event.type === 'mission_message') return true;
+  if (event.type !== 'ability_used' && event.type !== 'alpha_strike') return false;
+  const entity = entityOf(world, event.entityId);
+  return entity !== null && entity.team === (world.playerTeam ?? 0);
 }
 
 function readMuted(): boolean {

@@ -8,7 +8,7 @@ import type { Viewport } from './camera';
 import { canPresentEntity, CombatReadouts } from './combatReadouts';
 import { JetLayer, ScarLayer, SmokeLayer } from './effects';
 import { measureReadoutLayout } from './readoutSafeArea';
-import { TracerLayer } from './tracers';
+import { TracerLayer, type ShotBurstKind } from './tracers';
 import { MechanicalDischargeLayer } from './mechanicalEffects';
 import { disposeObjectResources } from './sceneResources';
 
@@ -43,6 +43,22 @@ const DEFAULT_SHOT: Weapon['visual'] = {
   arc: 0,
 };
 
+const CRITICAL_COLOUR = 0xffd07a;
+const AMMO_COLOUR = 0xffa34f;
+const TERMINAL_COLOUR = 0xff6b38;
+const FLASH_CAPACITY = 4;
+
+function eventColour(weapon: Weapon | undefined): number {
+  return weapon === undefined ? 0xffffff : parseInt(weapon.visual.colour.slice(1), 16);
+}
+
+function missAngle(event: Extract<SimEvent, { type: 'projectile_miss' }>): number {
+  const hash = Math.imul(event.tick + 1, 73_856_093)
+    ^ Math.imul(event.shooterId + 1, 19_349_663)
+    ^ Math.imul(event.targetId + 1, 83_492_791);
+  return (hash >>> 0) / 0xffffffff * Math.PI * 2;
+}
+
 /** Combat effects and camera recoil share one clock and one fixed budget. */
 export class BattleEffects {
   private readonly tracers = new TracerLayer();
@@ -62,6 +78,7 @@ export class BattleEffects {
   private readonly canLocate: BattleFeedbackBindings['canLocate'];
   private readonly currentPositionOf: (id: EntityId) => Vec2 | null;
   private readonly readouts: CombatReadouts | null;
+  private lowFx = false;
   private destroyed = false;
 
   constructor(
@@ -106,14 +123,31 @@ export class BattleEffects {
       this.mechanical.casings,
       this.mechanical.vents,
     );
+    for (let index = 0; index < FLASH_CAPACITY; index += 1) {
+      const light = new PointLight(0xffffff, 0, 120, 2);
+      light.visible = false;
+      this.flashes.push({ light, ttl: 0 });
+      scene.add(light);
+    }
+    this.tracers.setPresentationMode(false, camera.reducedMotion);
+    this.jets.setPresentationMode(false, camera.reducedMotion);
+  }
+
+  setPresentationMode(lowFx: boolean): void {
+    if (this.destroyed) return;
+    this.lowFx = lowFx;
+    this.tracers.setPresentationMode(lowFx, this.camera.reducedMotion);
+    this.jets.setPresentationMode(lowFx, this.camera.reducedMotion);
   }
 
   beginFrame(deltaSeconds: number): void {
+    if (this.destroyed) return;
     this.elapsed += deltaSeconds;
     this.jets.begin();
   }
 
   finishFrame(deltaSeconds: number): void {
+    if (this.destroyed) return;
     this.shakeTime += deltaSeconds;
     this.shakeAmplitude *= Math.exp(-deltaSeconds * 7);
     if (this.shakeAmplitude < 0.02) this.shakeAmplitude = 0;
@@ -144,6 +178,7 @@ export class BattleEffects {
   }
 
   consume(world: World, events: readonly SimEvent[]): void {
+    if (this.destroyed) return;
     this.readouts?.consume(world, events);
     for (const event of events) {
       if (event.type === 'mech_destroyed' || event.type === 'ammo_explosion') {
@@ -153,29 +188,74 @@ export class BattleEffects {
           this.toGroundPoint(this.effectPoint);
           this.addShake(6 * this.nearness(this.effectAt));
           if (event.type === 'mech_destroyed') {
+            const entity = findEntity(world, event.entityId);
+            const scale = 1 + Math.min(1.2, (entity?.tonnage ?? 50) / 100);
+            this.tracers.burst(
+              this.effectAt,
+              this.effectPoint.y - 14,
+              'terminal',
+              TERMINAL_COLOUR,
+              scale,
+            );
             this.smoke.start(this.effectAt, this.effectPoint.y - 6);
             this.scars.mark(this.effectAt, this.heightAt(this.effectAt.x, this.effectAt.y), 22, 0.55);
           } else {
+            this.tracers.burst(
+              this.effectAt,
+              this.effectPoint.y - 14,
+              'ammo',
+              AMMO_COLOUR,
+              0.8 + Math.min(1, event.damage / 60),
+            );
             this.tracers.spawnSmoke(this.effectAt, this.effectPoint.y - 14);
           }
         }
-      } else if (event.type === 'projectile_hit' && event.damage >= 14) {
-        const at = canPresentEntity(world, event.targetId) ? this.currentPositionOf(event.targetId) : null;
-        if (at !== null) this.addShake(1.6 * this.nearness(at));
-      } else if (event.type === 'jump_landed') {
+        continue;
+      }
+
+      if (event.type === 'critical_hit' || event.type === 'location_destroyed') {
+        if (!canPresentEntity(world, event.entityId)) continue;
+        if (this.locationOf(event.entityId, event.location, this.effectPoint)) {
+          this.toGroundPoint(this.effectPoint);
+          this.emitBurst('critical', CRITICAL_COLOUR, event.type === 'location_destroyed' ? 1.5 : 1);
+        }
+        continue;
+      }
+
+      if (event.type === 'projectile_miss') {
+        if (!canPresentEntity(world, event.targetId)) continue;
+        const target = this.currentPositionOf(event.targetId);
+        if (target === null) continue;
+        const angle = missAngle(event);
+        const distance = 18 + ((event.tick + event.shooterId + event.targetId) & 15);
+        this.effectAt.x = target.x + Math.cos(angle) * distance;
+        this.effectAt.y = target.y + Math.sin(angle) * distance;
+        const weapon = world.catalog.weapons.get(event.weaponId);
+        this.tracers.burst(
+          this.effectAt,
+          this.heightAt(this.effectAt.x, this.effectAt.y) - 14,
+          'miss',
+          eventColour(weapon),
+          0.8,
+        );
+        continue;
+      }
+
+      if (event.type === 'jump_landed') {
         this.addShake(1.4 * this.nearness({ x: event.x, y: event.y }));
+        continue;
       }
 
       if (event.type !== 'weapon_fired' && event.type !== 'projectile_hit') continue;
 
       const weapon = world.catalog.weapons.get(event.weaponId);
-      const colour = weapon === undefined ? 0xffffff : parseInt(weapon.visual.colour.slice(1), 16);
+      const colour = eventColour(weapon);
 
       if (event.type === 'projectile_hit') {
         if (!canPresentEntity(world, event.targetId)) continue;
         if (this.locationOf(event.targetId, event.location, this.effectPoint)) {
           this.toGroundPoint(this.effectPoint);
-          this.tracers.impact(this.effectAt, this.effectPoint.y - 14, colour);
+          this.emitBurst('hit', colour, 0.75 + Math.min(1.25, event.damage / 18));
           const damage = weapon?.damage ?? 5;
           this.scars.mark(
             this.effectAt,
@@ -183,10 +263,14 @@ export class BattleEffects {
             3 + Math.min(9, damage * 0.35),
             weapon?.type === 'energy' ? 1 : 0.25,
           );
+          if (event.damage >= 14) this.addShake(1.6 * this.nearness(this.effectAt));
         }
         continue;
       }
 
+      if (!canPresentEntity(world, event.shooterId) || !canPresentEntity(world, event.targetId)) {
+        continue;
+      }
       const shooter = this.positionOf(event.shooterId);
       const target = this.positionOf(event.targetId);
       if (target === null) continue;
@@ -207,7 +291,7 @@ export class BattleEffects {
         colour,
         this.heightAt,
       );
-      if (weapon?.type === 'ballistic' && !this.camera.reducedMotion) {
+      if (weapon?.type === 'ballistic' && !this.camera.reducedMotion && !this.lowFx) {
         const shooterEntity = findEntity(world, event.shooterId);
         const heft = 0.5 + Math.min(1, weapon.tonnage / 14);
         this.mechanical.fire(
@@ -218,20 +302,23 @@ export class BattleEffects {
           this.heightAt(this.breech.x, this.breech.z),
         );
       }
-      this.muzzleLight(this.muzzle, colour, weapon?.damage ?? 5);
+      if (!this.lowFx) this.muzzleLight(this.muzzle, colour, weapon?.damage ?? 5);
     }
   }
 
   land(at: Vec2, colour: number, shake: number): void {
+    if (this.destroyed) return;
     this.tracers.impact(at, this.heightAt(at.x, at.y) + 2, colour);
     this.addShake(shake * this.nearness(at));
   }
 
   plume(key: number, at: Vector3, throttle: number): void {
+    if (this.destroyed) return;
     this.jets.plume(key, at, throttle, this.elapsed);
   }
 
   spawnSmoke(at: Vec2): void {
+    if (this.destroyed) return;
     this.tracers.spawnSmoke(at, this.heightAt(at.x, at.y));
   }
 
@@ -274,6 +361,10 @@ export class BattleEffects {
     this.effectAt.y = at.z;
   }
 
+  private emitBurst(kind: ShotBurstKind, colour: number, scale: number): void {
+    this.tracers.burst(this.effectAt, this.effectPoint.y - 14, kind, colour, scale);
+  }
+
   private nearness(at: Vec2): number {
     const distance = Math.hypot(at.x - this.camera.target.x, at.y - this.camera.target.y);
     return Math.max(0, 1 - distance / 700);
@@ -285,8 +376,12 @@ export class BattleEffects {
   }
 
   private muzzleLight(at: Vector3, colour: number, damage: number): void {
-    const idle = this.flashes.find((flash) => flash.ttl <= 0);
-    const flash = idle ?? this.newFlash();
+    let flash: MuzzleFlash | null = null;
+    for (const candidate of this.flashes) {
+      if (candidate.ttl > 0) continue;
+      flash = candidate;
+      break;
+    }
     if (flash === null) return;
     flash.ttl = 0.09;
     flash.light.color.setHex(colour);
@@ -295,13 +390,4 @@ export class BattleEffects {
     flash.light.visible = true;
   }
 
-  private newFlash(): MuzzleFlash | null {
-    if (this.flashes.length >= 4) return null;
-    const light = new PointLight(0xffffff, 0, 120, 2);
-    light.visible = false;
-    this.scene.add(light);
-    const flash = { light, ttl: 0 };
-    this.flashes.push(flash);
-    return flash;
-  }
 }

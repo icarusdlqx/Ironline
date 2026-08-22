@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { InstancedBufferAttribute, Matrix4, ShaderMaterial, Vector3 } from 'three';
 import { ContactShadowLayer, contactShadowStrength } from './contactShadows';
 
@@ -42,17 +42,27 @@ describe('contact shadows', () => {
     const shadows = new ContactShadowLayer(() => 0);
     const geometry = shadows.mesh.geometry;
     const material = shadows.mesh.material as ShaderMaterial;
-    let geometryDisposed = false;
-    let materialDisposed = false;
-    geometry.addEventListener('dispose', () => {
-      geometryDisposed = true;
-    });
-    material.addEventListener('dispose', () => {
-      materialDisposed = true;
-    });
+    const geometryDisposed = vi.fn();
+    const materialDisposed = vi.fn();
+    const instancesDisposed = vi.fn();
+    geometry.addEventListener('dispose', geometryDisposed);
+    material.addEventListener('dispose', materialDisposed);
+    shadows.mesh.addEventListener('dispose', instancesDisposed);
+    shadows.begin();
+    shadows.place({ x: 0, y: 0 }, 10, 0, 0);
+    shadows.commit();
+    expect(shadows.mesh.count).toBe(1);
 
     shadows.dispose();
-    expect(geometryDisposed).toBe(true);
-    expect(materialDisposed).toBe(true);
+    shadows.dispose();
+
+    expect(geometryDisposed).toHaveBeenCalledTimes(1);
+    expect(materialDisposed).toHaveBeenCalledTimes(1);
+    expect(instancesDisposed).toHaveBeenCalledTimes(1);
+    expect(shadows.mesh.count).toBe(0);
+    shadows.begin();
+    shadows.place({ x: 0, y: 0 }, 10, 0, 0);
+    shadows.commit();
+    expect(shadows.mesh.count).toBe(0);
   });
 });

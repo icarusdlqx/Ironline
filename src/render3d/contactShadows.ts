@@ -8,6 +8,7 @@ import {
   Vector3,
 } from 'three';
 import type { Vec2 } from '../sim/types';
+import { disposeObjectResources } from './sceneResources';
 
 const UP = new Vector3(0, 1, 0);
 const NORMAL = new Vector3();
@@ -54,6 +55,7 @@ export class ContactShadowLayer {
 
   private readonly strength: InstancedBufferAttribute;
   private used = 0;
+  private disposed = false;
 
   constructor(
     private readonly heightAt: (x: number, y: number) => number,
@@ -78,11 +80,12 @@ export class ContactShadowLayer {
   }
 
   begin(): void {
+    if (this.disposed) return;
     this.used = 0;
   }
 
   place(at: Vec2, radius: number, facing: number, lift: number): void {
-    if (this.used >= this.capacity) return;
+    if (this.disposed || this.used >= this.capacity) return;
 
     const reach = Math.max(3, radius * 0.4);
     const east = this.heightAt(at.x + reach, at.y);
@@ -103,6 +106,7 @@ export class ContactShadowLayer {
   }
 
   commit(): void {
+    if (this.disposed) return;
     this.mesh.count = this.used;
     if (this.used === 0) return;
     this.mesh.instanceMatrix.needsUpdate = true;
@@ -110,7 +114,10 @@ export class ContactShadowLayer {
   }
 
   dispose(): void {
-    this.mesh.geometry.dispose();
-    (this.mesh.material as ShaderMaterial).dispose();
+    if (this.disposed) return;
+    this.disposed = true;
+    disposeObjectResources(this.mesh);
+    this.used = 0;
+    this.mesh.count = 0;
   }
 }

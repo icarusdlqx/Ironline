@@ -1,6 +1,7 @@
 import {
   ACESFilmicToneMapping,
   BufferGeometry,
+  InstancedMesh,
   Material,
   PCFShadowMap,
   Scene,
@@ -72,11 +73,13 @@ export function disposeObjectResources(root: Object3D): void {
   if (disposedRoots.has(root)) return;
   disposedRoots.add(root);
   const geometries = new Set<BufferGeometry>();
+  const instances = new Set<InstancedMesh>();
   const materials = new Set<Material>();
   const textures = new Set<Texture>();
   const shadows = new Set<{ dispose: () => void }>();
 
   root.traverse((node) => {
+    if (node instanceof InstancedMesh) instances.add(node);
     const drawable = node as Object3D & {
       geometry?: BufferGeometry;
       material?: Material | Material[];
@@ -96,6 +99,7 @@ export function disposeObjectResources(root: Object3D): void {
     if (root.environment instanceof Texture) textures.add(root.environment);
   }
   materials.forEach((material) => materialTextures(material, textures));
+  instances.forEach((instance) => instance.dispose());
   geometries.forEach((geometry) => geometry.dispose());
   textures.forEach((texture) => texture.dispose());
   materials.forEach((material) => material.dispose());
