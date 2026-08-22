@@ -7,6 +7,7 @@ import {
   Vector2,
 } from 'three';
 import type { Profile, TransverseTaper } from '../render/blueprint/types';
+import type { MechGeometryQuality } from './renderQuality';
 
 /**
  * A box with its edges taken off.
@@ -17,7 +18,12 @@ import type { Profile, TransverseTaper } from '../render/blueprint/types';
  * and "armour plate". The bevel is a fraction of the smallest dimension, so a
  * thin fin does not round away to nothing.
  */
-export function chamferedBox(width: number, height: number, depth: number): BufferGeometry {
+export function chamferedBox(
+  width: number,
+  height: number,
+  depth: number,
+  quality: MechGeometryQuality = 'tactical',
+): BufferGeometry {
   const bevel = Math.min(width, height, depth) * 0.22;
   const inset = Math.min(bevel, Math.min(width, height) / 2 - 0.001);
 
@@ -40,8 +46,8 @@ export function chamferedBox(width: number, height: number, depth: number): Buff
     bevelEnabled: depthBevel > 0.0005,
     bevelThickness: depthBevel,
     bevelSize: depthBevel,
-    bevelSegments: 2,
-    curveSegments: 3,
+    bevelSegments: quality === 'hero' ? 3 : 2,
+    curveSegments: quality === 'hero' ? 5 : 3,
   });
   // Extrude runs along +Z from zero; centre it so the part sits on its own origin.
   geometry.translate(0, 0, -(depth - depthBevel * 2) / 2);
@@ -61,7 +67,11 @@ export function chamferedBox(width: number, height: number, depth: number): Buff
  * Profiles must be convex. The bevel insets the outline, and an inset reflex
  * corner folds through itself.
  */
-export function hullSlab(profile: readonly (readonly [number, number])[], depth: number): BufferGeometry {
+export function hullSlab(
+  profile: readonly (readonly [number, number])[],
+  depth: number,
+  quality: MechGeometryQuality = 'tactical',
+): BufferGeometry {
   const first = profile[0];
   if (first === undefined) throw new Error('a hull needs a profile');
 
@@ -88,7 +98,7 @@ export function hullSlab(profile: readonly (readonly [number, number])[], depth:
     bevelEnabled: bevel > 0.0005,
     bevelThickness: bevel,
     bevelSize: bevel,
-    bevelSegments: 2,
+    bevelSegments: quality === 'hero' ? 3 : 2,
     curveSegments: 1,
   });
   geometry.translate(0, 0, -usable / 2);
@@ -235,9 +245,14 @@ export function armourShell(
  * A tapered limb segment: wider at the joint than at the end, with the corners
  * rounded off. Straight prisms are what make legs read as scaffolding.
  */
-export function taperedLimb(top: number, bottom: number, length: number): BufferGeometry {
+export function taperedLimb(
+  top: number,
+  bottom: number,
+  length: number,
+  quality: MechGeometryQuality = 'tactical',
+): BufferGeometry {
   const profile: Vector2[] = [];
-  const steps = 8;
+  const steps = quality === 'hero' ? 12 : 8;
   for (let step = 0; step <= steps; step += 1) {
     const t = step / steps;
     const radius = top + (bottom - top) * t;
@@ -245,7 +260,7 @@ export function taperedLimb(top: number, bottom: number, length: number): Buffer
     const pinch = Math.sin(Math.min(1, Math.min(t, 1 - t) * 6) * (Math.PI / 2));
     profile.push(new Vector2(Math.max(0.001, radius * (0.72 + 0.28 * pinch)), length / 2 - t * length));
   }
-  const geometry = new LatheGeometry(profile, 7);
+  const geometry = new LatheGeometry(profile, quality === 'hero' ? 12 : 7);
   geometry.computeVertexNormals();
   return geometry;
 }

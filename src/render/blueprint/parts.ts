@@ -2,6 +2,7 @@ import type { MechLocation } from '../../schema/common';
 import { PROFILES } from './profiles';
 import type {
   BlueprintPart,
+  BlueprintDetail,
   Bones,
   Fitting,
   HardpointCount,
@@ -21,8 +22,12 @@ export function part(
   tilt?: number,
 ): BlueprintPart {
   return tilt === undefined
-    ? { location, shape, at, size, tone }
-    : { location, shape, at, size, tone, tilt };
+    ? { location, shape, at, size, tone, detail: 'structure' }
+    : { location, shape, at, size, tone, detail: 'structure', tilt };
+}
+
+export function detailed(piece: BlueprintPart, detail: BlueprintDetail): BlueprintPart {
+  return { ...piece, detail };
 }
 
 export function bolted(piece: BlueprintPart): BlueprintPart {

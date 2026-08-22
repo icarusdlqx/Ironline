@@ -2,6 +2,8 @@ import type { MechLocation } from '../../schema/common';
 
 export type Tone = 'plate' | 'deep' | 'trim' | 'glass' | 'accent';
 
+export type BlueprintDetail = 'structure' | 'surface' | 'hero';
+
 export type LegJoint = 'hip' | 'knee' | 'ankle';
 
 /** Tapered segments carry weight more convincingly than straight prisms. */
@@ -27,6 +29,8 @@ export interface BlueprintPart {
   at: [number, number, number];
   size: [number, number, number];
   tone: Tone;
+  /** Inspection detail can disappear without changing silhouette, damage or anchors. */
+  detail: BlueprintDetail;
   /** Lean about the lateral axis, in radians. Positive pitches the nose down. */
   tilt?: number;
   /** Vehicle hull pieces stay put while the turret traverses. */

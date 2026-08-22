@@ -15,6 +15,7 @@ import {
   type MechModel,
   type MountArt,
 } from '../../render3d/mechModel';
+import { HERO_MECH_RENDER } from '../../render3d/renderQuality';
 import { advanceStartupSequence, setStartupPowered } from '../../render3d/startupLights';
 
 const BAY_COLOUR = 0x78c9ff;
@@ -93,6 +94,7 @@ export function buildPreviewModel(catalog: Catalog, chassis: Chassis, design: De
     chassis.id,
     {},
     chassis.faction,
+    HERO_MECH_RENDER,
   );
 
   if (model.startup !== null) {

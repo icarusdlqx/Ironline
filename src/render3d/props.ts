@@ -13,6 +13,7 @@ import type { TeamVision } from '../sim/sensors';
 import type { TerrainGrid } from '../sim/terrain';
 import { shade } from '../render/palette';
 import { createPropGeometry, type PropKind } from './propGeometry';
+import { disposeObjectResources } from './sceneResources';
 
 /**
  * Ceilings per prop kind, so a map that is wall-to-wall forest cannot ask a
@@ -326,5 +327,13 @@ export class PropLayer {
         batch.mesh.instanceMatrix.needsUpdate = true;
       }
     }
+  }
+
+  dispose(): void {
+    disposeObjectResources(this.group);
+    this.group.clear();
+    this.batches.length = 0;
+    this.tileInstances.clear();
+    this.revealed = null;
   }
 }

@@ -41,6 +41,7 @@ describe('mechbay preview model', () => {
     const { chassis, design } = sentinel();
     const preview = buildPreviewModel(catalog, chassis, design);
     try {
+      expect(preview.model.root.userData.modelDetail).toBe('hero');
       expect(preview.model.weapons).toHaveLength(design.mounts.length);
       expect(preview.markers.map((marker) => marker.userData.hardpointLocation)).toEqual([
         'centre_torso',
